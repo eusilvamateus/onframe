@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.1 - 2026-07-23
+
+### Corrigido
+
+- A remocao de promocoes nao exige mais preenchimento de preco promocional.
+- Promocoes programadas aplicadas ao anuncio agora permitem alterar ou remover
+  quando o Mercado Livre informa essas acoes no contrato da oferta.
+
 ## v0.1.0 - 2026-07-23
 
 ### Adicionado

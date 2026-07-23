@@ -1,6 +1,6 @@
 {
   "name": "onframe",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Extensao local para editar fotos de anuncios do Mercado Livre pela pagina do produto.",
   "type": "commonjs",
