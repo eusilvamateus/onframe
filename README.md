@@ -146,3 +146,4 @@ Depois remova a extensao manualmente em `chrome://extensions` ou
 - Alteracoes salvas podem levar alguns minutos para aparecer visualmente no
   Mercado Livre.
 - Produtos de catalogo podem ter limitacoes impostas pelo proprio Mercado Livre.
+- O fluxo de desenvolvimento, commit e push fica em `CONTRIBUTING.md`.
