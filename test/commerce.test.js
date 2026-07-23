@@ -357,10 +357,13 @@ test('promocoes mostram preco principal, acumulativas, programadas e desconto di
   assert.match(source, /Desconto do anúncio/);
   assert.match(source, /Desconto direto/);
   assert.match(source, /function programmedPromotionEntries/);
+  assert.match(source, /programmed-offer/);
   assert.match(source, /Ativa/);
   assert.match(source, /Programada/);
   assert.match(source, /function currentPromotionEntry/);
   assert.match(source, /campaignPromotionEntries\(groups\.activeOffers\)/);
+  assert.match(source, /\(kind === 'active-offer' \|\| kind === 'programmed-offer'\) && CommerceModel\.canUpdateOffer/);
+  assert.match(source, /kind === 'active-offer' \|\| kind === 'programmed-offer' \|\| kind === 'stackable-offer'/);
   assert.match(source, /DE \$\{start\} A \$\{end\}/);
   assert.match(source, /function formatCentralDate/);
   assert.doesNotMatch(source, /function formatShortDate/);
@@ -368,6 +371,15 @@ test('promocoes mostram preco principal, acumulativas, programadas e desconto di
   assert.match(styles, /\.onframe-commerce-card\s*{\s*display: flex;/);
   assert.match(styles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(source, /paused-offer/);
+  assert.doesNotMatch(source, /readonly-offer/);
+});
+
+test('remocao de promocao nao exige campos de criacao ou edicao', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+
+  assert.match(source, /const method = action === 'delete' \? 'DELETE'/);
+  assert.match(source, /const payload = action === 'delete'\s*\?\s*CommerceModel\.buildOfferDeletePayload\(entry\)/);
+  assert.doesNotMatch(source, /let payload = CommerceModel\.buildOfferPayload\(entry, values\);/);
 });
 
 test('pricing summary normaliza preco, quantidade, automacao, referencia e catalogo', async () => {

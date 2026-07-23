@@ -484,7 +484,7 @@
         ${renderPromotionSection('Descontos acumulativos', stackableOffers, 'stackable-offer', '')}
         ${renderPromotionSection('Disponíveis para entrar', openCampaigns, 'eligible-offer', 'Nenhuma oportunidade disponível.')}
         ${discountEntry ? renderPromotionSection('Desconto do anúncio', [discountEntry], 'discount-offer', '') : ''}
-        ${renderPromotionSection('Programadas', programmedOffers, 'readonly-offer', 'Nenhuma promoção programada.')}
+        ${renderPromotionSection('Programadas', programmedOffers, 'programmed-offer', 'Nenhuma promoção programada.')}
       `;
     }
 
@@ -607,8 +607,8 @@
     function renderPromotionCard(entry, kind, index) {
       const key = `${kind}:${index}`;
       const canCreate = kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry);
-      const canUpdate = kind === 'active-offer' && CommerceModel.canUpdateOffer(entry);
-      const canDelete = (kind === 'active-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
+      const canUpdate = (kind === 'active-offer' || kind === 'programmed-offer') && CommerceModel.canUpdateOffer(entry);
+      const canDelete = (kind === 'active-offer' || kind === 'programmed-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
       const userFields = CommerceModel.getUserFields(canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
       const formOpen = state.promotionFormKey === key;
       const confirm = state.promotionConfirm && state.promotionConfirm.key === key ? state.promotionConfirm : null;
@@ -992,10 +992,10 @@
 
     function promotionTone(entry, kind) {
       if (kind === 'active-offer') return promotionDisplayTone(entry);
+      if (kind === 'programmed-offer') return 'blue';
       if (kind === 'stackable-offer') return promotionDisplayTone(entry);
       if (kind === 'discount-offer') return promotionDisplayTone(entry);
       if (kind === 'eligible-offer') return 'orange';
-      if (kind === 'readonly-offer') return 'blue';
       const bucket = String(entry && entry.bucket || '').toLowerCase();
       if (bucket === 'active') return 'green';
       if (bucket === 'eligible') return 'orange';
@@ -1008,7 +1008,7 @@
       if (kind === 'stackable-offer') return promotionDisplayStatusLabel(entry);
       if (kind === 'discount-offer') return promotionDisplayStatusLabel(entry);
       if (kind === 'eligible-offer') return 'Elegível';
-      if (kind === 'readonly-offer') return 'Programada';
+      if (kind === 'programmed-offer') return 'Programada';
       const status = String(entry && entry.status || '').toLowerCase();
       if (status === 'started' || status === 'active') return 'No anúncio';
       if (status === 'candidate') return 'Elegível';
@@ -1029,6 +1029,11 @@
         if (canDelete) return 'Promoção aplicada. Você pode remover daqui.';
         return 'Promoção aplicada pelo Mercado Livre.';
       }
+      if (kind === 'programmed-offer') {
+        if (canUpdate && userFields.length) return 'Aplicada ao anúncio. Você pode alterar antes de entrar.';
+        if (canDelete) return 'Aplicada ao anúncio. Você pode remover antes de entrar.';
+        return 'Vai entrar em vigor automaticamente.';
+      }
       if (kind === 'stackable-offer') {
         if (isCandidatePromotion(entry)) return 'Desconto acumulativo disponível para este anúncio.';
         if (String(entry && entry.display_status || '').toLowerCase() === 'programmed') return 'Desconto acumulativo programado.';
@@ -1036,7 +1041,6 @@
       }
       if (canCreate && userFields.length) return 'Configure os dados antes de aplicar.';
       if (canCreate) return 'Pronta para aplicar neste anúncio.';
-      if (kind === 'readonly-offer') return 'Vai entrar em vigor automaticamente.';
       return 'Disponível para consulta.';
     }
 
@@ -1595,7 +1599,7 @@
           .filter((entry) => !isCandidatePromotion(entry))
           .map((entry, index) => ({ key: `stackable-offer:${index}`, entry })),
         ...(discountEntry && !isCandidatePromotion(discountEntry) ? [{ key: 'discount-offer:0', entry: discountEntry }] : []),
-        ...programmedPromotionEntries(groups).map((entry, index) => ({ key: `readonly-offer:${index}`, entry }))
+        ...programmedPromotionEntries(groups).map((entry, index) => ({ key: `programmed-offer:${index}`, entry }))
       ].filter(({ entry }) => moneyOrNull(promotionDisplayPrice(entry)));
     }
 
@@ -1803,16 +1807,12 @@
         state.actionError = '';
         state.actionMessage = '';
         const values = readPromotionValues(card);
-        let method = 'POST';
-        let payload = CommerceModel.buildOfferPayload(entry, values);
-        if (action === 'update') {
-          method = 'PUT';
-          payload = CommerceModel.buildOfferUpdatePayload(entry, values);
-        }
-        if (action === 'delete') {
-          method = 'DELETE';
-          payload = CommerceModel.buildOfferDeletePayload(entry);
-        }
+        const method = action === 'delete' ? 'DELETE' : action === 'update' ? 'PUT' : 'POST';
+        const payload = action === 'delete'
+          ? CommerceModel.buildOfferDeletePayload(entry)
+          : action === 'update'
+            ? CommerceModel.buildOfferUpdatePayload(entry, values)
+            : CommerceModel.buildOfferPayload(entry, values);
         const confirming = state.promotionConfirm && state.promotionConfirm.key === key && state.promotionConfirm.action === action;
         if (!confirming) {
           state.promotionConfirm = { key, action, values };
@@ -1882,7 +1882,7 @@
       if (kind === 'stackable-offer') return stackablePromotionEntries(groups)[index] || null;
       if (kind === 'eligible-offer') return promotionOpportunityEntries(groups)[index] || null;
       if (kind === 'discount-offer') return buildDiscountEntry();
-      if (kind === 'readonly-offer') return programmedPromotionEntries(groups)[index] || null;
+      if (kind === 'programmed-offer') return programmedPromotionEntries(groups)[index] || null;
       return null;
     }
 
