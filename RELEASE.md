@@ -60,6 +60,7 @@ Use `MAJOR` para:
 - O historico deve permanecer linear sempre que possivel.
 - A `dev` pode conter commits tagueados depois de sincronizar com `main`; isso e
   esperado porque tags apontam para commits, nao para branches.
+- O fluxo diario de commit e push fica em `CONTRIBUTING.md`.
 
 ## Preparar uma versao
 
@@ -67,15 +68,15 @@ Na `dev`, valide o estado que sera promovido:
 
 ```powershell
 git checkout dev
-git pull origin dev
-npm test
+git pull --ff-only origin dev
+npm run test:all
 ```
 
 Promova `dev` para `main` por fast-forward:
 
 ```powershell
 git checkout main
-git pull origin main
+git pull --ff-only origin main
 git merge --ff-only dev
 ```
 
