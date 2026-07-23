@@ -1,0 +1,159 @@
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  src: url('../fonts/Poppins-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/JetBrainsMono-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('../fonts/PlayfairDisplay-MediumItalic.ttf') format('truetype');
+  font-weight: 500;
+  font-style: italic;
+}
+
+:root {
+  --ob-blue: #0a4ee4;
+  --ob-blue-700: #0840b8;
+  --ob-blue-100: #e0eaff;
+  --ob-blue-050: #f1f5ff;
+  --ob-green: #779e3d;
+  --ob-green-700: #5f7f30;
+  --ob-green-100: #ecf3da;
+  --ob-green-050: #f5fae8;
+  --ob-orange: #eb7c2d;
+  --ob-orange-700: #c46220;
+  --ob-orange-100: #fde6d3;
+  --ob-orange-050: #fef3e9;
+  --ob-red: #d23838;
+  --ob-red-700: #a72424;
+  --ob-red-100: #fde2e2;
+  --ob-red-050: #fff5f5;
+  --ob-cream: #f2f0e8;
+  --ob-cream-soft: #faf9f5;
+  --ob-ink: #545454;
+  --ob-ink-strong: #2a2a2a;
+  --ob-ink-soft: #7a7a7a;
+  --ob-ink-mute: #a8a8a8;
+  --ob-line: #ececec;
+  --ob-line-soft: #f4f4f4;
+  --ob-surface: #ffffff;
+  --ob-surface-2: #fbfbfb;
+  --ob-fg: var(--ob-ink);
+  --ob-fg-strong: var(--ob-ink-strong);
+  --ob-fg-soft: var(--ob-ink-soft);
+  --ob-fg-mute: var(--ob-ink-mute);
+  --ob-fg-accent: var(--ob-blue);
+  --ob-fg-on-color: #ffffff;
+  --ob-bg: var(--ob-surface);
+  --ob-bg-alt: var(--ob-surface-2);
+  --ob-bg-warm: var(--ob-cream);
+  --ob-border: var(--ob-line);
+  --ob-focus-ring: rgba(10, 78, 228, 0.32);
+  --ob-success: var(--ob-green);
+  --ob-success-bg: var(--ob-green-100);
+  --ob-warning: var(--ob-orange);
+  --ob-warning-bg: var(--ob-orange-100);
+  --ob-danger: var(--ob-red);
+  --ob-danger-bg: var(--ob-red-100);
+  --ob-fg-disabled: var(--ob-fg-mute);
+  --ob-bg-disabled: var(--ob-bg-warm);
+  --ob-shadow-xs: 0 1px 2px rgba(20, 20, 20, 0.04);
+  --ob-shadow-sm: 0 1px 3px rgba(20, 20, 20, 0.05), 0 1px 2px rgba(20, 20, 20, 0.03);
+  --ob-shadow-md: 0 4px 12px rgba(20, 20, 20, 0.06), 0 1px 3px rgba(20, 20, 20, 0.04);
+  --ob-shadow-lg: 0 12px 28px rgba(20, 20, 20, 0.08), 0 4px 8px rgba(20, 20, 20, 0.04);
+  --ob-shadow-pop: 0 8px 24px rgba(10, 78, 228, 0.18);
+  --ob-scrim: rgba(20, 20, 20, 0.45);
+  --ob-scrim-light: rgba(20, 20, 20, 0.08);
+  --ob-font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ob-font-serif: 'Playfair Display', 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
+  --ob-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ob-w-regular: 400;
+  --ob-w-medium: 500;
+  --ob-w-semibold: 600;
+  --ob-w-bold: 700;
+  --ob-w-black: 800;
+  --ob-fs-xs: 12px;
+  --ob-fs-sm: 14px;
+  --ob-fs-base: 16px;
+  --ob-fs-md: 18px;
+  --ob-fs-lg: 22px;
+  --ob-lh-tight: 1.05;
+  --ob-lh-snug: 1.2;
+  --ob-lh-normal: 1.45;
+  --ob-lh-relaxed: 1.6;
+  --ob-tracking-wide: 0.04em;
+  --ob-s-1: 4px;
+  --ob-s-2: 8px;
+  --ob-s-3: 12px;
+  --ob-s-4: 16px;
+  --ob-s-5: 24px;
+  --ob-s-6: 32px;
+  --ob-s-7: 48px;
+  --ob-gap-xs: var(--ob-s-1);
+  --ob-gap-sm: var(--ob-s-2);
+  --ob-gap-md: var(--ob-s-4);
+  --ob-gap-lg: var(--ob-s-5);
+  --ob-pad-card: var(--ob-s-5);
+  --ob-pad-page: var(--ob-s-6);
+  --ob-r-xs: 4px;
+  --ob-r-sm: 8px;
+  --ob-r-md: 12px;
+  --ob-r-lg: 16px;
+  --ob-r-xl: 20px;
+  --ob-r-pill: 999px;
+  --ob-r-control: var(--ob-r-sm);
+  --ob-r-surface: var(--ob-r-md);
+  --ob-r-overlay: var(--ob-r-lg);
+  --ob-z-base: 0;
+  --ob-z-raised: 10;
+  --ob-z-dropdown: 100;
+  --ob-z-tooltip: 200;
+  --ob-z-overlay: 300;
+  --ob-z-modal: 400;
+  --ob-z-toast: 500;
+  --ob-z-system: 9000;
+  --ob-z-extension-popover: 2147483645;
+  --ob-z-extension-overlay: 2147483646;
+  --ob-z-extension-modal: 2147483647;
+  --ob-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ob-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ob-dur-fast: 120ms;
+  --ob-dur-base: 200ms;
+  color-scheme: light;
+}

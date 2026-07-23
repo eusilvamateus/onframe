@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" width="200" height="56">
+  <g>
+    <rect x="4" y="10" width="36" height="36" rx="10" fill="#0a4ee4"></rect>
+    <rect x="10" y="16" width="14" height="14" rx="4" fill="#f2f0e8"></rect>
+    <circle cx="32" cy="38" r="7" fill="#eb7c2d"></circle>
+  </g>
+  <text x="50" y="38" font-family="Poppins, sans-serif" font-size="26" font-weight="800" letter-spacing="-0.03em">
+    <tspan fill="#2a2a2a">on</tspan><tspan fill="#0a4ee4">blide</tspan>
+  </text>
+</svg>

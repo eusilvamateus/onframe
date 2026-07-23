@@ -1,0 +1,20 @@
+{
+  "name": "onframe",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Extensao local para editar fotos de anuncios do Mercado Livre pela pagina do produto.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node service/server.js",
+    "check": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap/check.ps1",
+    "package:release": "node scripts/release/package-release.js",
+    "version:check": "node scripts/release/check-version.js",
+    "version:set": "node scripts/release/set-version.js",
+    "release:check": "npm run version:check && npm run test:all && npm run package:release",
+    "test": "node --test",
+    "test:all": "node --test test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/service.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

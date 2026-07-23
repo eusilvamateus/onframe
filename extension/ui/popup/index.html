@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OnFrame</title>
+  <link rel="stylesheet" href="../../vendor/phosphor/phosphor.css">
+  <link rel="stylesheet" href="../../styles/foundations.css">
+  <link rel="stylesheet" href="../../styles/components.css">
+  <link rel="stylesheet" href="../../styles/shell.css">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="ob-shell">
+  <main class="popup">
+    <header class="header">
+      <div class="ob-brand">
+        <img src="../../assets/logomark.svg" alt="">
+        <div>
+          <p class="ob-eyebrow">OnFrame</p>
+          <h1 class="ob-title">Controle <em>rapido</em></h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a class="version-tag" id="version-tag" href="https://github.com/eusilvamateus/onframe/releases" target="_blank" rel="noopener noreferrer">v...</a>
+        <button class="ob-button secondary ob-icon-button" id="toggle-editor" type="button" title="Mostrar editor" aria-label="Mostrar editor"></button>
+        <button class="ob-button ghost ob-icon-button" id="open-options" type="button" title="Abrir opções" aria-label="Abrir opções"></button>
+        <button class="ob-button secondary ob-icon-button" id="refresh" type="button" title="Atualizar" aria-label="Atualizar"></button>
+      </div>
+    </header>
+
+    <section class="block ob-card">
+      <div class="block-head">
+        <h2 class="ob-card-title">OnFrame</h2>
+        <span class="ob-badge grey" id="service-badge">Verificando</span>
+      </div>
+      <p class="ob-copy" id="service-text">Conferindo se esta pronto para uso.</p>
+    </section>
+
+    <section class="block ob-card">
+      <div class="block-head">
+        <h2 class="ob-card-title">Conta</h2>
+        <span class="block-actions">
+          <span class="ob-badge grey" id="account-badge">Verificando</span>
+          <button class="ob-button secondary ob-icon-button compact-icon" id="connect" type="button" title="Conectar conta" aria-label="Conectar conta"></button>
+        </span>
+      </div>
+      <p class="ob-copy" id="account-text">Buscando conta conectada.</p>
+      <div class="account-list is-hidden" id="account-list" aria-label="Contas Mercado Livre conectadas"></div>
+    </section>
+
+    <section class="block ob-card update-block is-hidden" id="update-block">
+      <div class="block-head">
+        <h2 class="ob-card-title">Atualizacao</h2>
+        <span class="ob-badge grey" id="update-badge">Verificando</span>
+      </div>
+      <p class="ob-copy" id="update-text">Conferindo releases.</p>
+      <button class="ob-button primary full" id="update-start" type="button">Copiar comando</button>
+    </section>
+    <p class="action-feedback is-hidden" id="action-feedback"></p>
+  </main>
+
+  <script src="../../core/icons.js"></script>
+  <script src="../../core/shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.onframe/
+.env
+.env.*
+!.env.example
+tokens.json
+*.log
