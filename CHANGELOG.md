@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.2 - 2026-07-23
+
+### Documentacao
+
+- Adicionado guia de contribuicao com o fluxo padrao de commit, push e release.
+- Ajustado o documento de releases para usar `--ff-only` e validar com
+  `npm run test:all`.
+
+### Manutencao
+
+- Ignorados os dados locais gerados pelo `code-review-graph`.
+
 ## v0.1.1 - 2026-07-23
 
 ### Corrigido
