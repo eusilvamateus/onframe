@@ -60,7 +60,6 @@ Use `MAJOR` para:
 - O historico deve permanecer linear sempre que possivel.
 - A `dev` pode conter commits tagueados depois de sincronizar com `main`; isso e
   esperado porque tags apontam para commits, nao para branches.
-- O fluxo diario de commit e push fica em `CONTRIBUTING.md`.
 
 ## Preparar uma versao
 
