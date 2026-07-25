@@ -23,8 +23,10 @@
     const modules = [];
     const photos = createPhotosModule(services);
     const commerce = createCommerceModule(services);
+    const description = createDescriptionModule(services);
     if (photos) modules.push(assertModuleContract(photos));
     if (commerce) modules.push(assertModuleContract(commerce));
+    if (description) modules.push(assertModuleContract(description));
     return modules;
   }
 
@@ -38,6 +40,12 @@
     const CommerceModule = services && services.CommerceModule;
     if (!CommerceModule || typeof CommerceModule.createCommerceModule !== 'function') return null;
     return CommerceModule.createCommerceModule(services);
+  }
+
+  function createDescriptionModule(services) {
+    const DescriptionModule = services && services.DescriptionModule;
+    if (!DescriptionModule || typeof DescriptionModule.createDescriptionModule !== 'function') return null;
+    return DescriptionModule.createDescriptionModule(services);
   }
 
   function assertModuleContract(module) {

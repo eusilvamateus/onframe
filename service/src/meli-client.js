@@ -188,6 +188,24 @@ class MercadoLivreClient {
     })), { method: 'DELETE' });
   }
 
+  async getItemDescription(itemId) {
+    return this.request(`/items/${encodeURIComponent(itemId)}/description`);
+  }
+
+  async createItemDescription(itemId, plainText) {
+    return this.request(`/items/${encodeURIComponent(itemId)}/description`, {
+      method: 'POST',
+      body: JSON.stringify({ plain_text: plainText })
+    });
+  }
+
+  async updateItemDescription(itemId, plainText) {
+    return this.request(`/items/${encodeURIComponent(itemId)}/description?api_version=2`, {
+      method: 'PUT',
+      body: JSON.stringify({ plain_text: plainText })
+    });
+  }
+
   async updateItem(itemId, payload) {
     return this.request(`/items/${itemId}`, {
       method: 'PUT',

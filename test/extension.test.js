@@ -27,6 +27,7 @@ const {
   detection,
   photosModel,
   commerceModel,
+  descriptionModel,
   moduleRegistry,
   icons,
   fakePng,
@@ -47,7 +48,8 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
     'styles/foundations.css',
     'styles/components.css',
     'modules/photos/styles.css',
-    'modules/commerce/styles.css'
+    'modules/commerce/styles.css',
+    'modules/description/styles.css'
   ]);
   assert.ok(manifest.web_accessible_resources[0].resources.includes('vendor/phosphor/*'));
   assert.ok(scripts.indexOf('core/detection.js') < scripts.indexOf('modules/photos/model.js'));
@@ -55,6 +57,9 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
   assert.ok(scripts.indexOf('modules/photos/model.js') < scripts.indexOf('modules/photos/module.js'));
   assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('modules/commerce/model.js'));
   assert.ok(scripts.indexOf('modules/commerce/model.js') < scripts.indexOf('modules/commerce/module.js'));
+  assert.ok(scripts.indexOf('modules/commerce/module.js') < scripts.indexOf('modules/description/model.js'));
+  assert.ok(scripts.indexOf('modules/description/model.js') < scripts.indexOf('modules/description/module.js'));
+  assert.ok(scripts.indexOf('modules/description/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/commerce/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('core/module-registry.js') < scripts.indexOf('core/content-shell.js'));
@@ -105,6 +110,10 @@ test('module registry cria modulos com contrato estavel', () => {
     id: 'commerce',
     label: 'Preço e promoções'
   });
+  const descriptionModule = Object.assign({}, photosModule, {
+    id: 'description',
+    label: 'Descrição'
+  });
   const modules = moduleRegistry.createModules({
     PhotosModule: {
       createPhotoModule(services) {
@@ -118,11 +127,17 @@ test('module registry cria modulos com contrato estavel', () => {
         return commerceModule;
       }
     },
+    DescriptionModule: {
+      createDescriptionModule(services) {
+        calls.push(`description:${services.marker}`);
+        return descriptionModule;
+      }
+    },
     marker: 'ok'
   });
 
-  assert.deepStrictEqual(calls, ['photos:ok', 'commerce:ok']);
-  assert.deepStrictEqual(modules, [photosModule, commerceModule]);
+  assert.deepStrictEqual(calls, ['photos:ok', 'commerce:ok', 'description:ok']);
+  assert.deepStrictEqual(modules, [photosModule, commerceModule, descriptionModule]);
   assert.throws(() => moduleRegistry.assertModuleContract({ id: 'bad', label: 'Ruim' }), /sem contrato/);
 });
 
@@ -146,9 +161,10 @@ test('design system nao e redefinido pelos modulos', () => {
   const components = fs.readFileSync(path.join(extensionRoot, 'styles', 'components.css'), 'utf8');
   const photosStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'photos', 'styles.css'), 'utf8');
   const commerceStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'commerce', 'styles.css'), 'utf8');
+  const descriptionStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'description', 'styles.css'), 'utf8');
   const popupStyles = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'popup.css'), 'utf8');
   const optionsStyles = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'options.css'), 'utf8');
-  const moduleStyles = `${photosStyles}\n${commerceStyles}`;
+  const moduleStyles = `${photosStyles}\n${commerceStyles}\n${descriptionStyles}`;
 
   assert.strictEqual(fs.existsSync(path.join(extensionRoot, 'styles', 'onblide.css')), false);
   assert.strictEqual(fs.existsSync(path.join(extensionRoot, 'core', 'ui.js')), false);
@@ -167,6 +183,7 @@ test('design system nao e redefinido pelos modulos', () => {
 
 test('acoes em massa usam componentes do design system e feedback de envio', () => {
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const descriptionSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'module.js'), 'utf8');
   const commerceStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
   assert.strictEqual(commerceSource.includes('class="ob-checkbox onframe-commerce-bulk-switch'), true);
@@ -179,6 +196,11 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   assert.strictEqual(commerceSource.includes('Removendo promoção das variações elegíveis...'), true);
   assert.strictEqual(commerceSource.includes('state.operationPending = \'promotion-bulk-preview\''), true);
   assert.strictEqual(commerceSource.includes('state.operationPending = \'promotion-bulk-commit\''), true);
+  assert.strictEqual(descriptionSource.includes('class="ob-checkbox onframe-description-bulk-switch'), true);
+  assert.strictEqual(descriptionSource.includes('role="checkbox"'), true);
+  assert.strictEqual(descriptionSource.includes('type="checkbox"'), false);
+  assert.strictEqual(descriptionSource.includes('/description/bulk'), true);
+  assert.strictEqual(descriptionModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Descrição salva em 2 variações. (1 falha)');
 });
 
 test('ui exibem comando de atualizacao auditavel', () => {

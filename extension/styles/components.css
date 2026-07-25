@@ -3,7 +3,9 @@
 .onblide-ml-dialog-root,
 .onframe-commerce-inline,
 .onframe-commerce-popover-root,
-.onframe-commerce-modal-root {
+.onframe-commerce-modal-root,
+.onframe-description-root,
+.onframe-description-action {
   color: var(--ob-fg);
   font-family: var(--ob-font);
   font-feature-settings: "ss01", "cv11";
@@ -34,7 +36,15 @@
 .onframe-commerce-modal-root,
 .onframe-commerce-modal-root *,
 .onframe-commerce-modal-root *::before,
-.onframe-commerce-modal-root *::after {
+.onframe-commerce-modal-root *::after,
+.onframe-description-root,
+.onframe-description-root *,
+.onframe-description-root *::before,
+.onframe-description-root *::after,
+.onframe-description-action,
+.onframe-description-action *,
+.onframe-description-action *::before,
+.onframe-description-action *::after {
   box-sizing: border-box;
 }
 

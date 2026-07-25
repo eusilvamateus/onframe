@@ -22,6 +22,11 @@ const {
   handleBulkPreview
 } = require('./routes/bulk');
 const {
+  handleDescriptionBulkUpdate,
+  handleDescriptionGet,
+  handleDescriptionUpdate
+} = require('./routes/descriptions');
+const {
   handlePictureCommit,
   handlePictureFixSize,
   handlePictureQuality,
@@ -143,6 +148,22 @@ function createApp(options = {}) {
       if (req.method === 'POST' && bulkCommitMatch) {
         const itemClient = await resolveClientForBulkRequest(url, bulkCommitMatch[1]);
         return sendJson(res, 200, await handleBulkCommit({ req, client: itemClient, itemId: bulkCommitMatch[1], readJson }));
+      }
+
+      const descriptionMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/description$/);
+      if (req.method === 'GET' && descriptionMatch) {
+        const itemClient = await resolveClientForItemRequest(url, descriptionMatch[1]);
+        return sendJson(res, 200, await handleDescriptionGet({ client: itemClient, itemId: descriptionMatch[1] }));
+      }
+      if (req.method === 'PUT' && descriptionMatch) {
+        const itemClient = await resolveClientForItemRequest(url, descriptionMatch[1]);
+        return sendJson(res, 200, await handleDescriptionUpdate({ req, client: itemClient, itemId: descriptionMatch[1], readJson }));
+      }
+
+      const descriptionBulkMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/description\/bulk$/);
+      if (req.method === 'POST' && descriptionBulkMatch) {
+        const itemClient = await resolveClientForBulkRequest(url, descriptionBulkMatch[1]);
+        return sendJson(res, 200, await handleDescriptionBulkUpdate({ req, client: itemClient, itemId: descriptionBulkMatch[1], readJson }));
       }
 
       const promotionSummaryMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/promotions\/summary$/);

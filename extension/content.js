@@ -5,6 +5,8 @@
   const PhotosModule = window.OnFramePhotosModule;
   const CommerceModel = window.OnFrameCommerceModel;
   const CommerceModule = window.OnFrameCommerceModule;
+  const DescriptionModel = window.OnFrameDescriptionModel;
+  const DescriptionModule = window.OnFrameDescriptionModule;
   const ModuleRegistry = window.OnFrameModuleRegistry;
   const ContentShell = window.OnFrameContentShell;
   const api = Shared.createApi({ offlineMessage: 'Serviço local desligado. Abra o OnFrame.' });
@@ -21,6 +23,8 @@
     PhotosModule,
     CommerceModel,
     CommerceModule,
+    DescriptionModel,
+    DescriptionModule,
     api,
     root,
     requestPageContextReload: (reason) => shell.reloadPageContext(reason)

@@ -26,6 +26,7 @@ const {
   createCampaign,
   createOffer,
   deleteOffer,
+  descriptions,
   updateManager,
   detection,
   photosModel,
@@ -39,6 +40,131 @@ const {
   listen
 } = require('./helpers');
 const crypto = require('crypto');
+
+test('descricoes usam upsert com texto simples', async () => {
+  const calls = [];
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => ({ id: itemId, seller_id: 123 }),
+    getItemDescription: async (itemId) => {
+      calls.push(['getItemDescription', itemId]);
+      return { plain_text: 'Atual', last_updated: '2026-07-25T10:00:00.000Z' };
+    },
+    updateItemDescription: async (itemId, plainText) => {
+      calls.push(['updateItemDescription', itemId, plainText]);
+      return { plain_text: plainText, last_updated: '2026-07-25T11:00:00.000Z' };
+    },
+    createItemDescription: async () => {
+      throw new Error('create should not be called');
+    }
+  };
+
+  const result = await descriptions.upsertDescription(client, 'MLB1234567890', {
+    plainText: '  Nova descrição\r\ncom linha  '
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.created, false);
+  assert.strictEqual(result.description.plainText, 'Nova descrição\ncom linha');
+  assert.deepStrictEqual(calls, [
+    ['getItemDescription', 'MLB1234567890'],
+    ['updateItemDescription', 'MLB1234567890', 'Nova descrição\ncom linha']
+  ]);
+  assert.throws(() => descriptions.normalizePlainText('   '), /description_empty/);
+});
+
+test('descricoes criam quando item ainda nao tem descricao', async () => {
+  const calls = [];
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => ({ id: itemId, seller_id: 123 }),
+    getItemDescription: async () => {
+      const err = new Error('not_found');
+      err.statusCode = 404;
+      throw err;
+    },
+    updateItemDescription: async () => {
+      throw new Error('update should not be called');
+    },
+    createItemDescription: async (itemId, plainText) => {
+      calls.push(['createItemDescription', itemId, plainText]);
+      return { plain_text: plainText };
+    }
+  };
+
+  const result = await descriptions.upsertDescription(client, 'MLB1234567890', { plainText: 'Primeira descrição' });
+
+  assert.strictEqual(result.created, true);
+  assert.strictEqual(result.description.plainText, 'Primeira descrição');
+  assert.deepStrictEqual(calls, [['createItemDescription', 'MLB1234567890', 'Primeira descrição']]);
+});
+
+test('descricoes em massa aplicam nas variacoes ativas e reportam falhas parciais', async () => {
+  const updated = [];
+  const items = {
+    MLB1000000001: {
+      id: 'MLB1000000001',
+      title: 'Azul',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Cadeira',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000001',
+      status: 'active',
+      tags: []
+    },
+    MLB1000000002: {
+      id: 'MLB1000000002',
+      title: 'Verde',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Cadeira',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000002',
+      status: 'active',
+      tags: []
+    }
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => items[itemId],
+    getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+    getUserProductFamily: async () => ({
+      user_products: [
+        { id: 'MLBU100000001' },
+        { id: 'MLBU100000002' }
+      ]
+    }),
+    searchItemsByUserProduct: async () => ({ results: Object.keys(items) }),
+    getItemDescription: async () => ({ plain_text: 'Atual' }),
+    updateItemDescription: async (itemId, plainText) => {
+      if (itemId === 'MLB1000000002') {
+        const err = new Error('Validation error');
+        err.statusCode = 400;
+        throw err;
+      }
+      updated.push({ itemId, plainText });
+      return { plain_text: plainText };
+    }
+  };
+
+  const result = await descriptions.updateDescriptionFamily(client, 'MLB1000000001', {
+    scope: 'user_product_family',
+    plainText: 'Descrição nova'
+  });
+
+  assert.strictEqual(result.action, 'description.update');
+  assert.deepStrictEqual(result.counts, {
+    total: 2,
+    eligible: 1,
+    blocked: 0,
+    applied: 1,
+    skipped: 0,
+    failed: 1
+  });
+  assert.deepStrictEqual(updated, [{ itemId: 'MLB1000000001', plainText: 'Descrição nova' }]);
+  assert.strictEqual(result.targets[1].status, 'failed');
+});
 
 test('shared toUserError nao registra log tecnico sem debug explicito', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'shared.js'), 'utf8');
@@ -250,6 +376,7 @@ test('service separa rotas de item e fotos do servidor HTTP', () => {
   const pricingRoute = require('../service/src/routes/pricing');
   const promotionsRoute = require('../service/src/routes/promotions');
   const bulkRoute = require('../service/src/routes/bulk');
+  const descriptionsRoute = require('../service/src/routes/descriptions');
   const itemContext = require('../service/src/item-context');
 
   assert.strictEqual(typeof itemsRoute.handleResolve, 'function');
@@ -261,6 +388,9 @@ test('service separa rotas de item e fotos do servidor HTTP', () => {
   assert.strictEqual(typeof promotionsRoute.handleCreateOffer, 'function');
   assert.strictEqual(typeof bulkRoute.handleBulkPreview, 'function');
   assert.strictEqual(typeof bulkRoute.handleBulkCommit, 'function');
+  assert.strictEqual(typeof descriptionsRoute.handleDescriptionGet, 'function');
+  assert.strictEqual(typeof descriptionsRoute.handleDescriptionUpdate, 'function');
+  assert.strictEqual(typeof descriptionsRoute.handleDescriptionBulkUpdate, 'function');
   assert.strictEqual(typeof itemContext.resolveItemContext, 'function');
   assert.strictEqual(appSource.includes('async function handlePictureCommit'), false);
   assert.strictEqual(appSource.includes('async function resolveItemContext'), false);
@@ -270,6 +400,7 @@ test('service mantem exports publicos enxutos', () => {
   const meliClient = require('../service/src/meli-client');
   const pricing = require('../service/src/pricing');
   const promotions = require('../service/src/promotions');
+  const descriptions = require('../service/src/descriptions');
   const pictureQuality = require('../service/src/picture-quality');
   const updateManagerModule = require('../service/src/update-manager');
   const itemContextSource = fs.readFileSync(path.join(__dirname, '..', 'service', 'src', 'item-context.js'), 'utf8');
@@ -287,6 +418,12 @@ test('service mantem exports publicos enxutos', () => {
     'previewOfferAction',
     'updateCampaign',
     'updateOffer'
+  ]);
+  assert.deepStrictEqual(Object.keys(descriptions).sort(), [
+    'getDescription',
+    'normalizePlainText',
+    'updateDescriptionFamily',
+    'upsertDescription'
   ]);
   assert.deepStrictEqual(Object.keys(pictureQuality).sort(), [
     'OFFICIAL_TARGET_SIZE',

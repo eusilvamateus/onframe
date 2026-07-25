@@ -5,6 +5,7 @@ function sanitizeError(err) {
 
 function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err && err.statusCode) {
   const text = String(sanitized || '').toLowerCase();
+  const bodyText = err && err.body ? JSON.stringify(err.body).toLowerCase() : '';
   const status = Number(statusCode || 0);
 
   if (text.includes('mercado livre nao autenticado') || status === 401 || text.includes('invalid_token') || text.includes('invalid_grant') || text.includes('unauthorized')) {
@@ -23,6 +24,15 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   }
   if (text.includes('pricing_invalid_amount')) {
     return 'Informe um preço válido.';
+  }
+  if (text.includes('description_empty')) {
+    return 'Informe a descrição.';
+  }
+  if (text.includes('item.description.type.invalid') ||
+    bodyText.includes('item.description.type.invalid') ||
+    (text.includes('description') && text.includes('plain text')) ||
+    (bodyText.includes('description') && bodyText.includes('plain text'))) {
+    return 'A descrição deve conter apenas texto simples.';
   }
   if (text.includes('pricing_automation_active') ||
     text.includes('item.price.not_modifiable') ||
