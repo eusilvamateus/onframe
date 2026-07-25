@@ -6,9 +6,6 @@ const path = require('path');
 const vm = require('vm');
 const {
   buildCommitPayload,
-  collectItemIdCandidates,
-  extractItemId,
-  normalizeItemId,
   pickMode
 } = require('../service/src/items');
 const { TokenStore, decrypt, encrypt } = require('../service/src/token-store');
@@ -108,9 +105,6 @@ module.exports = {
   path,
   vm,
   buildCommitPayload,
-  collectItemIdCandidates,
-  extractItemId,
-  normalizeItemId,
   pickMode,
   MercadoLivreClient,
   TokenStore,

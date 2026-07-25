@@ -6,9 +6,6 @@ const {
   path,
   vm,
   buildCommitPayload,
-  collectItemIdCandidates,
-  extractItemId,
-  normalizeItemId,
   pickMode,
   decrypt,
   encrypt,
@@ -262,6 +259,19 @@ test('shell centraliza sincronizacao de contexto da pagina', () => {
   assert.strictEqual(registrySource.includes("'handlePageContextChange'"), true);
 });
 
+test('shell usa resolucao rapida antes da hidratacao completa', () => {
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
+  const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+
+  assert.strictEqual(shellSource.includes('/api/resolve/quick'), true);
+  assert.strictEqual(shellSource.includes("status: 'quick-ready'"), true);
+  assert.strictEqual(shellSource.includes("status: 'hydration-error'"), true);
+  assert.strictEqual(shellSource.includes('waitForStableProductPage'), false);
+  assert.strictEqual(commerceSource.includes("status !== 'ready' && status !== 'quick-ready'"), true);
+  assert.strictEqual(photosSource.includes("status === 'hydration-error' || status === 'error'"), true);
+});
+
 test('commerce nao usa degrade verde nos popovers', () => {
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
@@ -281,12 +291,26 @@ test('modulos propagam conta dona nas chamadas por item', () => {
   assert.match(commerceSource, /function itemApiPath/);
 });
 
+test('qualidade de fotos nao registra falha tecnica sem debug', () => {
+  const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const warnIndex = photosSource.indexOf("console.warn('[OnFrame] qualidade de fotos:'");
+  const debugIndex = photosSource.indexOf('Shared.isDebugLoggingEnabled');
+
+  assert.match(photosSource, /function isTransientFetchError/);
+  assert.match(photosSource, /await wait\(250\)/);
+  assert.ok(debugIndex >= 0);
+  assert.ok(warnIndex > debugIndex);
+});
+
 test('icons usam classes phosphor e nao svg manual', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'icons.js'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
   const phosphorCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
 
   assert.strictEqual(source.includes('<path'), false);
   assert.strictEqual(source.includes('<svg'), false);
+  assert.match(components, /\.ob-icon\s*\{[^}]*place-items:\s*center/s);
+  assert.match(components, /\.ob-icon\s+\.ph::before\s*\{[^}]*line-height:\s*1/s);
 
   for (const [name, phosphorName] of Object.entries(icons.names)) {
     const rendered = icons.render(name, 16);

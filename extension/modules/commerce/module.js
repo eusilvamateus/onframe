@@ -136,6 +136,16 @@
         return;
       }
 
+      if (status === 'hydration-error') {
+        if (!state.context) {
+          state.loaded = true;
+          state.busy = false;
+          state.actionError = update && update.error ? update.error : 'Não foi possível ler este anúncio.';
+          mountCommerce();
+        }
+        return;
+      }
+
       if (status === 'error') {
         state.context = null;
         state.itemId = null;
@@ -147,7 +157,16 @@
         return;
       }
 
-      if (status !== 'ready') return;
+      if (status !== 'ready' && status !== 'quick-ready') return;
+
+      if ((status === 'ready' || status === 'quick-ready') && isSameResolvedItem(update.context) && state.context) {
+        state.context = update.context;
+        state.pageSignature = pageSignature;
+        state.busy = false;
+        state.loaded = true;
+        mountCommerce();
+        return;
+      }
 
       state.pageSignature = pageSignature;
       state.actionMessage = '';
@@ -156,6 +175,12 @@
       state.priceEditing = false;
       state.promotionModalOpen = false;
       void loadContext(update.context);
+    }
+
+    function isSameResolvedItem(context) {
+      const nextItemId = context && context.item && context.item.id ? String(context.item.id) : '';
+      const nextOwnerId = context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
+      return Boolean(nextItemId && state.itemId && nextItemId === String(state.itemId) && nextOwnerId === String(state.ownerUserId || ''));
     }
 
     async function loadContext(context) {

@@ -10,13 +10,13 @@
     const api = services.api;
     const toUserError = services.toUserError;
     const modules = Array.isArray(services.modules) ? services.modules : [];
-    const syncDelayMs = Number(services.syncDelayMs || 350);
-    const settleDelayMs = Number(services.settleDelayMs || 120);
-    const maxSettleAttempts = Number(services.maxSettleAttempts || 6);
+    const syncDelayMs = Number(services.syncDelayMs || 120);
     let syncTimer = null;
     let observer = null;
     let syncRequestId = 0;
     let currentSignature = '';
+    let currentItemKey = '';
+    let currentSelectionKey = '';
     let currentContext = null;
     let activeModule = modules[0] || null;
     let editorVisible = true;
@@ -64,6 +64,8 @@
 
       if (!isProductPage()) {
         currentSignature = '';
+        currentItemKey = '';
+        currentSelectionKey = '';
         currentContext = null;
         for (const module of modules) {
           if (shouldResetModule(module)) module.reset();
@@ -73,26 +75,83 @@
 
       if (!modules.length) return;
 
-      const page = await waitForStableProductPage(requestId);
+      const page = readProductPageContext();
       if (!page || requestId !== syncRequestId) return;
       if (!options.force && page.signature === currentSignature && currentContext) {
         scheduleRender();
         return;
       }
 
+      if (!options.force && currentContext && page.itemKey && page.itemKey === currentItemKey) {
+        currentContext = enrichProductContext(currentContext, page);
+        currentSignature = page.signature;
+        currentSelectionKey = page.selectionKey;
+        notifyModules({
+          status: currentContext.quick ? 'quick-ready' : 'ready',
+          signature: currentSignature,
+          context: currentContext,
+          reason
+        });
+        if (currentContext.quick) {
+          void hydratePageContext({ requestId, page, quickContext: currentContext, reason });
+        }
+        return;
+      }
+
       currentSignature = page.signature;
+      currentItemKey = page.itemKey;
+      currentSelectionKey = page.selectionKey;
       notifyModules({
-        status: 'loading',
+        status: 'identifying',
         signature: page.signature,
         context: currentContext,
         reason
       });
 
       try {
-        const context = await resolvePageContext({ page });
+        const quickContext = await resolveQuickPageContext({ page });
+        if (requestId !== syncRequestId) return;
+        currentContext = quickContext;
+        currentSignature = quickContext && quickContext.page && quickContext.page.signature ? quickContext.page.signature : page.signature;
+        currentItemKey = page.itemKey;
+        currentSelectionKey = page.selectionKey;
+        notifyModules({
+          status: 'quick-ready',
+          signature: currentSignature,
+          context: quickContext,
+          reason
+        });
+        void hydratePageContext({ requestId, page, quickContext, reason });
+      } catch (err) {
+        if (requestId !== syncRequestId) return;
+        if (shouldFallbackToFullResolve(err)) {
+          notifyModules({
+            status: 'loading',
+            signature: page.signature,
+            context: currentContext,
+            reason
+          });
+          void hydratePageContext({ requestId, page, quickContext: null, reason });
+          return;
+        }
+        currentContext = null;
+        notifyModules({
+          status: 'error',
+          signature: page.signature,
+          error: toUserError(err),
+          reason
+        });
+      }
+    }
+
+    async function hydratePageContext({ requestId, page, quickContext, reason }) {
+      try {
+        const context = await resolvePageContext({ page, quickContext });
         if (requestId !== syncRequestId) return;
         currentContext = context;
         currentSignature = context && context.page && context.page.signature ? context.page.signature : page.signature;
+        currentItemKey = page.itemKey;
+        currentSelectionKey = page.selectionKey;
         notifyModules({
           status: 'ready',
           signature: currentSignature,
@@ -101,6 +160,16 @@
         });
       } catch (err) {
         if (requestId !== syncRequestId) return;
+        if (quickContext) {
+          notifyModules({
+            status: 'hydration-error',
+            signature: quickContext && quickContext.page && quickContext.page.signature ? quickContext.page.signature : page.signature,
+            context: quickContext,
+            error: toUserError(err),
+            reason
+          });
+          return;
+        }
         currentContext = null;
         notifyModules({
           status: 'error',
@@ -283,18 +352,25 @@
       const target = event.target && typeof event.target.closest === 'function'
         ? event.target.closest('[aria-checked], [aria-pressed], [data-testid], a[href*="attributes="], a[href*="product_trigger_id"], button')
         : null;
-      if (target) schedulePageSync('interaction');
+      if (target) schedulePageSync('interaction', { delay: 60 });
     }
 
     function hasRelevantPageMutation(mutations) {
+      let hasExternalMutation = false;
       for (const mutation of mutations || []) {
         if (isOnFrameNode(mutation.target)) continue;
         const added = Array.from(mutation.addedNodes || []);
         const removed = Array.from(mutation.removedNodes || []);
-        if (added.concat(removed).some((node) => !isOnFrameNode(node))) return true;
-        if (mutation.type === 'attributes') return true;
+        if (added.concat(removed).some((node) => !isOnFrameNode(node))) hasExternalMutation = true;
+        if (mutation.type === 'attributes') hasExternalMutation = true;
       }
-      return false;
+      if (!hasExternalMutation) return false;
+      if (!isProductPage()) return true;
+      const page = readProductPageContext();
+      return !currentSignature ||
+        page.signature !== currentSignature ||
+        page.itemKey !== currentItemKey ||
+        page.selectionKey !== currentSelectionKey;
     }
 
     function isOnFrameNode(node) {
@@ -322,7 +398,24 @@
 
     async function resolvePageContext(options = {}) {
       const page = options.page || readProductPageContext();
+      const ownerAccount = options.quickContext && options.quickContext.ownerAccount ? options.quickContext.ownerAccount : null;
       const context = await api('/api/resolve', {
+        method: 'POST',
+        body: JSON.stringify({
+          url: page.url,
+          html: '',
+          ownerUserId: ownerAccount && ownerAccount.user_id ? ownerAccount.user_id : undefined,
+          pageIdentity: page.pageIdentity,
+          itemCandidates: page.itemCandidates,
+          userProductCandidates: page.userProductCandidates
+        })
+      });
+      return enrichProductContext(context, page);
+    }
+
+    async function resolveQuickPageContext(options = {}) {
+      const page = options.page || readProductPageContext();
+      const context = await api('/api/resolve/quick', {
         method: 'POST',
         body: JSON.stringify({
           url: page.url,
@@ -340,27 +433,17 @@
       return activeModule ? activeModule.getStatus() : getShellStatus();
     }
 
-    async function waitForStableProductPage(requestId) {
-      let previous = readProductPageContext();
-      for (let attempt = 0; attempt < maxSettleAttempts; attempt += 1) {
-        await delay(settleDelayMs);
-        if (requestId !== syncRequestId) return null;
-        if (!isProductPage()) return null;
-        const current = readProductPageContext();
-        if (current.signature === previous.signature) return current;
-        previous = current;
-      }
-      return previous;
-    }
-
     function readProductPageContext() {
       const url = location.href;
       const pageIdentity = Detection.collectPageIdentity(document, url, { includeScripts: false });
       const itemCandidates = Detection.collectItemIdCandidatesFromPage(document, url, { includeScripts: false });
       const userProductCandidates = Detection.collectUserProductCandidatesFromPage(document, url, { includeScripts: false });
+      const selectionKey = JSON.stringify(Detection.createSelectionKey(document, url));
       return {
         url,
         signature: readPageSignature(),
+        itemKey: Detection.createPageItemKey(pageIdentity, url),
+        selectionKey,
         pageIdentity,
         itemCandidates,
         userProductCandidates
@@ -382,8 +465,9 @@
       });
     }
 
-    function delay(ms) {
-      return new Promise((resolve) => setTimeout(resolve, ms));
+    function shouldFallbackToFullResolve(err) {
+      const status = Number(err && (err.status || err.statusCode) ? (err.status || err.statusCode) : 0);
+      return ![400, 401, 403, 409].includes(status);
     }
 
     return {

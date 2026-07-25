@@ -135,7 +135,7 @@
       return;
     }
 
-    if (status === 'error') {
+    if (status === 'hydration-error' || status === 'error') {
       state.context = null;
       state.ownerUserId = null;
       state.busy = false;
@@ -178,10 +178,12 @@
       state.context = context;
       state.ownerUserId = context && context.ownerAccount && context.ownerAccount.user_id ? context.ownerAccount.user_id : null;
       state.selectedVariationId = context.selectedVariationId || null;
-      state.originalVariations = cloneVariations(context.variations || []);
-      state.variations = cloneVariations(context.variations || []);
-      state.originalPictures = selectPicturesForActiveVariation(context).map(toDraftPicture);
-      state.draftPictures = state.originalPictures.map(clonePicture);
+      state.originalVariations = PhotosModel.cloneVariations(context.variations || []);
+      state.variations = PhotosModel.cloneVariations(context.variations || []);
+      state.originalPictures = PhotosModel
+        .selectPicturesForActiveVariation(context, state.selectedVariationId)
+        .map((picture) => PhotosModel.toDraftPicture(picture, makeLocalId));
+      state.draftPictures = state.originalPictures.map(PhotosModel.clonePicture);
       state.dirty = false;
       state.blockedPageSignature = '';
       state.pendingPageContext = null;
@@ -920,9 +922,7 @@
     rerenderTray();
 
     try {
-      const quality = await api(itemApiPath(itemId, '/pictures/quality', {
-        variation_id: variationId
-      }));
+      const quality = await loadPictureQualityReport(itemId, variationId);
       if (!isActiveQualityRequest(requestId, itemId, variationId)) return;
       state.quality = quality;
       state.qualityError = '';
@@ -930,13 +930,40 @@
       if (!isActiveQualityRequest(requestId, itemId, variationId)) return;
       state.quality = null;
       state.qualityError = 'Análise indisponível';
-      console.warn('[OnFrame] qualidade de fotos:', err && (err.technicalError || err.message || err));
+      logPictureQualityWarning(err);
     } finally {
       if (isActiveQualityRequest(requestId, itemId, variationId)) {
         state.qualityLoading = false;
         rerenderTray();
       }
     }
+  }
+
+  async function loadPictureQualityReport(itemId, variationId) {
+    const path = itemApiPath(itemId, '/pictures/quality', {
+      variation_id: variationId
+    });
+    try {
+      return await api(path);
+    } catch (err) {
+      if (!isTransientFetchError(err)) throw err;
+      await wait(250);
+      return api(path);
+    }
+  }
+
+  function isTransientFetchError(err) {
+    const text = String(err && (err.technicalError || err.message) || err || '');
+    return /failed to fetch|networkerror|load failed|network request failed/i.test(text);
+  }
+
+  function logPictureQualityWarning(err) {
+    if (!Shared.isDebugLoggingEnabled || !Shared.isDebugLoggingEnabled()) return;
+    console.warn('[OnFrame] qualidade de fotos:', err && (err.technicalError || err.message || err));
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function isActiveQualityRequest(requestId, itemId, variationId) {
@@ -1302,8 +1329,13 @@
 
   async function commitFinalSelectedPictures(finalSelectedPictures) {
     const selectedIds = finalSelectedPictures.map((picture) => picture.id).filter(Boolean);
-    const variations = buildVariationPayload(selectedIds);
-    const pictures = buildItemPicturesPayload(finalSelectedPictures, variations);
+    const variations = PhotosModel.buildVariationPayload(state.variations, state.selectedVariationId, selectedIds);
+    const pictures = PhotosModel.buildItemPicturesPayload({
+      contextPictures: state.context ? state.context.pictures || [] : [],
+      finalSelectedPictures,
+      variations,
+      originalPictures: state.originalPictures
+    });
 
     await api(itemApiPath(state.context.item.id, '/pictures/commit'), {
       method: 'POST',
@@ -1311,35 +1343,6 @@
     });
 
     state.draftPictures = finalSelectedPictures.map((picture) => Object.assign({}, picture, { pending: false }));
-  }
-
-  function buildVariationPayload(selectedIds) {
-    return PhotosModel.buildVariationPayload(state.variations, state.selectedVariationId, selectedIds);
-  }
-
-  function buildItemPicturesPayload(finalSelectedPictures, variations) {
-    return PhotosModel.buildItemPicturesPayload({
-      contextPictures: state.context ? state.context.pictures || [] : [],
-      finalSelectedPictures,
-      variations,
-      originalPictures: state.originalPictures
-    });
-  }
-
-  function estimateFinalItemPictureCount() {
-    return PhotosModel.estimateFinalItemPictureCount({
-      contextPictures: state.context ? state.context.pictures || [] : [],
-      draftPictures: state.draftPictures,
-      originalPictures: state.originalPictures
-    });
-  }
-
-  function createPictureSelectionSnapshot(selectedPictures) {
-    return PhotosModel.createPictureSelectionSnapshot(state.originalPictures, selectedPictures);
-  }
-
-  function pictureId(picture) {
-    return PhotosModel.pictureId(picture);
   }
 
   function itemApiPath(itemId, suffix, params = {}) {
@@ -1358,8 +1361,8 @@
     state.reloadCountdown = 0;
     const blockedPageSignature = state.blockedPageSignature;
     state.blockedPageSignature = '';
-    state.draftPictures = state.originalPictures.map(clonePicture);
-    state.variations = cloneVariations(state.originalVariations);
+    state.draftPictures = state.originalPictures.map(PhotosModel.clonePicture);
+    state.variations = PhotosModel.cloneVariations(state.originalVariations);
     state.dirty = false;
     state.error = '';
     state.message = '';
@@ -1680,10 +1683,6 @@
     });
   }
 
-  function selectPicturesForActiveVariation(context) {
-    return PhotosModel.selectPicturesForActiveVariation(context, state.selectedVariationId);
-  }
-
   function isCatalogListing() {
     return Boolean(state.context && state.context.item && state.context.item.catalog_listing);
   }
@@ -1694,20 +1693,11 @@
 
   function getPictureEditingBlockedMessage() {
     const item = state.context && state.context.item ? state.context.item : null;
-    if (!item) return '';
-    const editability = item.pictureEditability || {};
-    if (editability.editable === false && editability.message) return editability.message;
-    if (item.picturesEditable === false) {
-      return 'Fotos bloqueadas neste anúncio.';
-    }
-    if (item.catalog_listing) {
-      return 'Catálogo: fotos bloqueadas pelo Mercado Livre.';
-    }
+    const permissions = state.context && state.context.permissions ? state.context.permissions : {};
+    const editability = permissions.pictureEditability || item && item.pictureEditability || {};
+    if (editability.editable === false) return editability.message || 'Fotos bloqueadas neste anúncio.';
+    if (permissions.picturesEditable === false) return 'Fotos bloqueadas neste anúncio.';
     return '';
-  }
-
-  function getSelectedVariation(variations) {
-    return PhotosModel.getSelectedVariation(variations, state.selectedVariationId);
   }
 
   function ensureFileInput() {
@@ -1734,22 +1724,6 @@
     if (state.dialogRoot) state.dialogRoot.remove();
     state.dialogRoot = null;
     state.lastDialogMarkup = '';
-  }
-
-  function normalizeLimit(value) {
-    return PhotosModel.normalizeLimit(value);
-  }
-
-  function toDraftPicture(picture) {
-    return PhotosModel.toDraftPicture(picture, makeLocalId);
-  }
-
-  function clonePicture(picture) {
-    return PhotosModel.clonePicture(picture);
-  }
-
-  function cloneVariations(variations) {
-    return PhotosModel.cloneVariations(variations);
   }
 
   function readFileAsDataUrl(file) {

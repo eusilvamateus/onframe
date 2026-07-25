@@ -6,9 +6,6 @@ const {
   path,
   vm,
   buildCommitPayload,
-  collectItemIdCandidates,
-  extractItemId,
-  normalizeItemId,
   pickMode,
   decrypt,
   encrypt,
@@ -38,28 +35,6 @@ const {
   fakeElement,
   listen
 } = require('./helpers');
-
-test('extractItemId normaliza URLs e HTML do Mercado Livre Brasil', () => {
-  assert.strictEqual(
-    extractItemId('https://produto.mercadolivre.com.br/MLB-1828680414-controle-xbox-_JM'),
-    'MLB1828680414'
-  );
-  assert.strictEqual(extractItemId('{"item_id":"MLB123456789"}'), 'MLB123456789');
-  assert.strictEqual(normalizeItemId('mlb-123456789'), 'MLB123456789');
-  assert.strictEqual(normalizeItemId('MLB123456'), null);
-  assert.strictEqual(normalizeItemId('MLA123456789'), null);
-});
-
-test('collectItemIdCandidates ignora ids de foto, categoria e catalogo', () => {
-  const html = `
-    {"category_id":"MLB123456789","picture_id":"687462-MLB110560215373_042026"}
-    <link rel="canonical" href="https://produto.mercadolivre.com.br/MLB-4615439233-cadeira-_JM">
-    {"item_id":"MLB4615439233"}
-    {"catalog_product_id":"MLB9988776655"}
-  `;
-
-  assert.deepStrictEqual(collectItemIdCandidates(html), ['MLB4615439233']);
-});
 
 test('pickMode diferencia anuncio sem variacoes, variacoes antigas e user product', () => {
   assert.strictEqual(pickMode({ id: 'MLB1', variations: [] }), 'classic');
@@ -417,6 +392,174 @@ test('api resolve encontra automaticamente a conta dona do anuncio', async (t) =
     [101, 'MLB1234567890'],
     [202, 'MLB1234567890']
   ]);
+});
+
+test('api resolve quick encontra user_product com busca ativa limitada sem getMe', async (t) => {
+  const calls = [];
+  const accounts = [
+    { user_id: 706112599, nickname: 'BOGU SYS', refresh_token: 'TG-1', active: true, enabled: true }
+  ];
+  const server = await listen(createApp({
+    store: {
+      listAccountTokens: async () => accounts
+    },
+    client: {},
+    clientFactory: (account) => ({
+      getMe: async () => {
+        throw new Error('Não deveria chamar getMe no quick resolve com conta conhecida.');
+      },
+      getUserProduct: async (userProductId) => {
+        calls.push(['getUserProduct', userProductId]);
+        return { id: userProductId, family_id: 'MLBFAMILY1' };
+      },
+      searchItemsByUserProduct: async (userId, userProductId, options) => {
+        calls.push(['searchItemsByUserProduct', userId, userProductId, options]);
+        return { results: ['MLB7242152428'] };
+      },
+      getItem: async (itemId) => {
+        calls.push(['getItem', itemId]);
+        return {
+          id: itemId,
+          title: 'Item user product',
+          seller_id: account.user_id,
+          site_id: 'MLB',
+          status: 'active',
+          user_product_id: 'MLBU4433394234',
+          pictures: [{ id: 'P1' }],
+          variations: [{ id: 10 }]
+        };
+      }
+    })
+  }));
+  t.after(() => server.close());
+
+  const response = await fetch(`${server.url}/api/resolve/quick`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      pageIdentity: {
+        urlUserProductId: 'MLBU4433394234'
+      }
+    })
+  });
+  const body = await response.json();
+
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(body.quick, true);
+  assert.strictEqual(body.item.id, 'MLB7242152428');
+  assert.strictEqual(body.ownerAccount.user_id, 706112599);
+  assert.deepStrictEqual(body.pictures, []);
+  assert.deepStrictEqual(calls, [
+    ['getUserProduct', 'MLBU4433394234'],
+    ['searchItemsByUserProduct', '706112599', 'MLBU4433394234', { status: 'active', limit: 1 }],
+    ['getItem', 'MLB7242152428']
+  ]);
+});
+
+test('api resolve quick reaproveita cache por conta e identidade', async (t) => {
+  let getItemCalls = 0;
+  const accounts = [
+    { user_id: 310458346, nickname: 'BOGU STORE', refresh_token: 'TG-1', active: true, enabled: true }
+  ];
+  const server = await listen(createApp({
+    store: {
+      listAccountTokens: async () => accounts
+    },
+    client: {},
+    clientFactory: (account) => ({
+      getMe: async () => {
+        throw new Error('Não deveria chamar getMe no quick resolve com conta conhecida.');
+      },
+      getItem: async (itemId) => {
+        getItemCalls += 1;
+        return {
+          id: itemId,
+          title: 'Mesa catalogo propria',
+          seller_id: account.user_id,
+          site_id: 'MLB',
+          status: 'active',
+          catalog_listing: true,
+          pictures: []
+        };
+      }
+    })
+  }));
+  t.after(() => server.close());
+
+  const payload = {
+    pageIdentity: {
+      denounceItemId: 'MLB6312193712',
+      catalogProductId: 'MLB66053189'
+    }
+  };
+
+  const firstResponse = await fetch(`${server.url}/api/resolve/quick`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const firstBody = await firstResponse.json();
+  const secondResponse = await fetch(`${server.url}/api/resolve/quick`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const secondBody = await secondResponse.json();
+
+  assert.strictEqual(firstResponse.status, 200);
+  assert.strictEqual(secondResponse.status, 200);
+  assert.strictEqual(firstBody.cache.hit, false);
+  assert.strictEqual(secondBody.cache.hit, true);
+  assert.strictEqual(secondBody.ownerAccount.user_id, 310458346);
+  assert.strictEqual(getItemCalls, 1);
+});
+
+test('api resolve usa ownerUserId para hidratar sem varrer contas', async (t) => {
+  const calls = [];
+  const accounts = [
+    { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true, enabled: true },
+    { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false, enabled: true }
+  ];
+  const server = await listen(createApp({
+    store: {
+      listAccountTokens: async () => accounts
+    },
+    client: {},
+    clientFactory: (account) => ({
+      getMe: async () => {
+        throw new Error('Não deveria chamar getMe quando ownerUserId vem do quick resolve.');
+      },
+      getItem: async (itemId) => {
+        calls.push([account.user_id, itemId]);
+        return {
+          id: itemId,
+          title: 'Item loja 2',
+          seller_id: 202,
+          site_id: 'MLB',
+          status: 'active',
+          pictures: []
+        };
+      }
+    })
+  }));
+  t.after(() => server.close());
+
+  const response = await fetch(`${server.url}/api/resolve`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ownerUserId: 202,
+      pageIdentity: {
+        urlItemId: 'MLB1234567890'
+      }
+    })
+  });
+  const body = await response.json();
+
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(body.item.id, 'MLB1234567890');
+  assert.strictEqual(body.ownerAccount.user_id, 202);
+  assert.deepStrictEqual(calls, [[202, 'MLB1234567890']]);
 });
 
 test('api resolve bloqueia anuncio que nao pertence a contas conectadas', async (t) => {

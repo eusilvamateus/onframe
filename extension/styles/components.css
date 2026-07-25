@@ -105,20 +105,30 @@
 }
 
 .ob-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-grid;
+  place-items: center;
   width: 18px;
   height: 18px;
   color: currentColor;
   flex: none;
   font-size: 18px;
-  line-height: 1;
+  line-height: 0;
+  vertical-align: middle;
 }
 
 .ob-icon .ph {
-  display: inline-flex;
+  display: block;
+  width: 1em;
+  height: 1em;
   font-size: inherit;
+  line-height: 1;
+  text-align: center;
+}
+
+.ob-icon .ph::before {
+  display: block;
+  width: 1em;
+  height: 1em;
   line-height: 1;
 }
 

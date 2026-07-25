@@ -1,24 +1,3 @@
-function extractItemId(value) {
-  return collectItemIdCandidates(value)[0] || null;
-}
-
-function collectItemIdCandidates(value) {
-  const text = String(value || '');
-  const candidates = [];
-
-  collectByPattern(candidates, text, /produto\.mercadolivre\.com\.br\/[^"'<>]*?\b(MLB-?\d{9,13})\b/ig, null, { skipExcludedContext: false });
-  collectByPattern(candidates, text, /"item_?id"\s*:\s*"?(MLB-?\d{9,13})"?/ig, null, { skipExcludedContext: false });
-  collectByPattern(candidates, text, /"id"\s*:\s*"(MLB-?\d{9,13})"/ig, isLikelyItemContext);
-
-  return Array.from(new Set(candidates.map(normalizeItemId).filter(Boolean)));
-}
-
-function normalizeItemId(value) {
-  const raw = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const match = raw.match(/MLB\d{9,13}/);
-  return match ? match[0] : null;
-}
-
 function pickMode(item) {
   if (item && item.user_product_id && item.family_name) return 'user_product';
   if (item && Array.isArray(item.variations) && item.variations.length) return 'legacy_variations';
@@ -97,29 +76,7 @@ function normalizeLimit(value) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function collectByPattern(candidates, text, pattern, contextGuard, options = {}) {
-  for (const match of text.matchAll(pattern)) {
-    const raw = match[1] || match[0];
-    const context = text.slice(Math.max(0, match.index - 80), match.index + match[0].length + 80);
-    if (options.skipExcludedContext !== false && hasExcludedContext(context)) continue;
-    if (contextGuard && !contextGuard(context)) continue;
-    const itemId = normalizeItemId(raw);
-    if (itemId) candidates.push(itemId);
-  }
-}
-
-function hasExcludedContext(context) {
-  return /\b(category_id|categoryId|domain_id|domainId|family_id|familyId|catalog_product_id|catalogProductId|picture_id|pictureId|thumbnail|secure_url|pictures?)\b/i.test(context);
-}
-
-function isLikelyItemContext(context) {
-  return /\b(item|product|listing|permalink|produto\.mercadolivre)\b/i.test(context);
-}
-
 module.exports = {
   buildCommitPayload,
-  collectItemIdCandidates,
-  extractItemId,
-  normalizeItemId,
   pickMode
 };

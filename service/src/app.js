@@ -8,7 +8,11 @@ const { TokenStore } = require('./token-store');
 const { ownerUserIdFromUrl, resolveItemClient } = require('./account-client');
 const { createUpdateManager } = require('./update-manager');
 const { sanitizeError, userFriendlyError } = require('./errors');
-const { handleResolve } = require('./routes/items');
+const {
+  createItemRouteCache,
+  handleResolve,
+  handleResolveQuick
+} = require('./routes/items');
 const {
   handlePriceSummary,
   handleStandardPriceUpdate
@@ -41,6 +45,7 @@ function createApp(options = {}) {
   const client = options.client || new MercadoLivreClient({ env, store });
   const clientFactory = options.clientFactory || ((account) => createAccountClient({ env, store, client, account }));
   const updateManager = options.updateManager || createUpdateManager({ env });
+  const itemRouteCache = options.itemRouteCache || createItemRouteCache();
   const pendingAuth = new Map();
   const startedAt = new Date();
 
@@ -104,6 +109,11 @@ function createApp(options = {}) {
 
       if (route === 'POST /api/resolve') {
         const result = await handleResolve({ req, client, store, clientFactory, readJson });
+        return sendJson(res, result.statusCode || 200, result.payload || result);
+      }
+
+      if (route === 'POST /api/resolve/quick') {
+        const result = await handleResolveQuick({ req, client, store, clientFactory, readJson, cache: itemRouteCache });
         return sendJson(res, result.statusCode || 200, result.payload || result);
       }
 

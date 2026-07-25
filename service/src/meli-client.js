@@ -92,8 +92,11 @@ class MercadoLivreClient {
     return this.request(`/sites/${encodeURIComponent(siteId)}/user-products-families/${encodeURIComponent(familyId)}`);
   }
 
-  async searchItemsByUserProduct(userId, userProductId) {
-    return this.request(`/users/${encodeURIComponent(userId)}/items/search?user_product_id=${encodeURIComponent(userProductId)}`);
+  async searchItemsByUserProduct(userId, userProductId, options = {}) {
+    const params = Object.assign({}, options || {}, {
+      user_product_id: userProductId
+    });
+    return this.request(withQuery(`/users/${encodeURIComponent(userId)}/items/search`, params));
   }
 
   async getListingPrices(siteId, params = {}) {

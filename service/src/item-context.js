@@ -1,6 +1,9 @@
 const {
   pickMode
 } = require('./items');
+const {
+  normalizeOwnerUserId
+} = require('./account-client');
 const { sanitizeError } = require('./errors');
 
 function buildPageIdentity(body) {
@@ -41,19 +44,37 @@ function buildPageIdentity(body) {
 async function resolveItemContext(client, options) {
   const config = options || {};
   const pageIdentity = normalizePageIdentity(config.pageIdentity || {});
-  if (hasAnyPageIdentity(pageIdentity)) return resolveStrictPageIdentity(client, pageIdentity);
+  if (hasAnyPageIdentity(pageIdentity)) return resolveStrictPageIdentity(client, pageIdentity, {
+    ownerUserId: config.ownerUserId
+  });
 
   const err = new Error('Anúncio não detectado.');
   err.statusCode = 400;
   throw err;
 }
 
-async function resolveStrictPageIdentity(client, identity) {
+async function resolveQuickItemContext(client, options) {
+  const config = options || {};
+  const pageIdentity = normalizePageIdentity(config.pageIdentity || {});
+  if (!hasAnyPageIdentity(pageIdentity)) {
+    const err = new Error('Anúncio não detectado.');
+    err.statusCode = 400;
+    throw err;
+  }
+  return resolveStrictPageIdentity(client, pageIdentity, {
+    quick: true,
+    ownerUserId: config.ownerUserId
+  });
+}
+
+async function resolveStrictPageIdentity(client, identity, options = {}) {
   const itemTargets = selectStrongItemTargets(identity);
   const rejected = [];
   for (const itemTarget of itemTargets) {
     try {
-      const context = await loadItemContext(client, itemTarget.itemId);
+      const context = options.quick
+        ? await loadQuickItemContext(client, itemTarget.itemId, options)
+        : await loadItemContext(client, itemTarget.itemId, options);
       assertContextMatchesPageIdentity(context, identity, itemTarget.source);
       context.pageIdentity = identity;
       context.resolvedFrom = itemTarget.source;
@@ -67,7 +88,9 @@ async function resolveStrictPageIdentity(client, identity) {
   }
 
   if (identity.urlUserProductId) {
-    const context = await loadFirstUserProductItemContext(client, [identity.urlUserProductId]);
+    const context = options.quick
+      ? await loadQuickUserProductItemContext(client, [identity.urlUserProductId], options)
+      : await loadFirstUserProductItemContext(client, [identity.urlUserProductId], options);
     context.pageIdentity = identity;
     context.resolvedFrom = 'url_user_product';
     if (rejected.length) context.rejectedItemCandidates = rejected;
@@ -144,19 +167,23 @@ function assertContextMatchesPageIdentity(context, identity, resolvedFrom) {
   throw err;
 }
 
-async function loadFirstUserProductItemContext(client, userProductIds) {
+async function loadFirstUserProductItemContext(client, userProductIds, options = {}) {
   const rejected = [];
-  const me = await client.getMe();
+  const ownerUserId = normalizeOwnerUserId(options.ownerUserId);
+  const me = ownerUserId ? { id: ownerUserId } : await client.getMe();
 
   for (const userProductId of userProductIds) {
     try {
-      const search = await client.searchItemsByUserProduct(me.id, userProductId);
+      const search = await client.searchItemsByUserProduct(me.id, userProductId, {
+        status: 'active',
+        limit: 20
+      });
       const ids = Array.isArray(search.results) ? search.results : [];
       if (!ids.length) {
         rejected.push({ userProductId, statusCode: 404, error: 'Nenhum anuncio encontrado para este user_product.' });
         continue;
       }
-      const { contexts, rejected: rejectedItems } = await loadOwnedItemContextCandidates(client, ids);
+      const { contexts, rejected: rejectedItems } = await loadOwnedItemContextCandidates(client, ids, options);
       rejected.push(...rejectedItems);
       const exactContexts = contexts.filter((context) => isExactUserProductContext(context, userProductId));
       const context = selectBestUserProductItemContext(exactContexts, userProductId);
@@ -176,12 +203,52 @@ async function loadFirstUserProductItemContext(client, userProductIds) {
   throw err;
 }
 
-async function loadOwnedItemContextCandidates(client, candidates) {
+async function loadQuickUserProductItemContext(client, userProductIds, options = {}) {
+  const rejected = [];
+  const ownerUserId = normalizeOwnerUserId(options.ownerUserId);
+  const me = ownerUserId ? { id: ownerUserId } : await client.getMe();
+
+  for (const userProductId of userProductIds) {
+    try {
+      const [userProductResult, search] = await Promise.allSettled([
+        client.getUserProduct(userProductId),
+        client.searchItemsByUserProduct(me.id, userProductId, {
+          status: 'active',
+          limit: 1
+        })
+      ]);
+      const ids = search.status === 'fulfilled' && Array.isArray(search.value && search.value.results)
+        ? search.value.results
+        : [];
+      if (!ids.length) {
+        rejected.push({ userProductId, statusCode: 404, error: 'Nenhum anuncio ativo encontrado para este user_product.' });
+        continue;
+      }
+      const context = await loadQuickItemContext(client, ids[0], options);
+      context.userProduct = userProductResult.status === 'fulfilled'
+        ? userProductResult.value
+        : { error: sanitizeError(userProductResult.reason) };
+      context.resolvedFromUserProductId = userProductId;
+      if (rejected.length) context.rejectedUserProductCandidates = rejected;
+      return context;
+    } catch (err) {
+      const statusCode = err && err.statusCode ? err.statusCode : 500;
+      rejected.push({ userProductId, statusCode, error: sanitizeError(err) });
+      if (![403, 404].includes(statusCode)) throw err;
+    }
+  }
+
+  const err = new Error('Nenhum anuncio encontrado para o user_product da pagina.');
+  err.statusCode = 404;
+  throw err;
+}
+
+async function loadOwnedItemContextCandidates(client, candidates, options = {}) {
   const contexts = [];
   const rejected = [];
   for (const itemId of candidates) {
     try {
-      contexts.push(await loadItemContext(client, itemId));
+      contexts.push(await loadItemContext(client, itemId, options));
     } catch (err) {
       const statusCode = err && err.statusCode ? err.statusCode : 500;
       rejected.push({ itemId, statusCode, error: sanitizeError(err) });
@@ -221,32 +288,60 @@ function scoreUserProductItemContext(context, userProductId) {
   return score;
 }
 
-async function loadItemContext(client, itemId) {
-  const item = await assertOwnedItem(client, itemId);
-  let userProduct = null;
-  let family = null;
-  const pictureLimits = await loadPictureLimits(client, item);
+async function loadItemContext(client, itemId, options = {}) {
+  const item = await assertOwnedItem(client, itemId, options);
   const summarizedItem = summarizeItem(item);
-
-  if (item.user_product_id) {
-    try {
-      userProduct = await client.getUserProduct(item.user_product_id);
-      if (userProduct && userProduct.family_id) {
-        family = await client.getUserProductFamily(item.site_id, userProduct.family_id);
-      }
-    } catch (err) {
-      userProduct = { error: sanitizeError(err) };
-    }
-  }
+  const pictureLimitsPromise = loadPictureLimits(client, item);
+  const userProductPromise = item.user_product_id
+    ? loadUserProductDetails(client, item)
+    : Promise.resolve({ userProduct: null, family: null });
+  const [pictureLimits, userProductDetails] = await Promise.all([
+    pictureLimitsPromise,
+    userProductPromise
+  ]);
 
   return {
     mode: pickMode(item),
     item: summarizedItem,
     capabilities: summarizeCapabilities(summarizedItem),
-    userProduct,
-    family,
+    userProduct: userProductDetails.userProduct,
+    family: userProductDetails.family,
     pictureLimits,
     pictures: Array.isArray(item.pictures) ? item.pictures : [],
+    variations: Array.isArray(item.variations) ? item.variations : []
+  };
+}
+
+async function loadUserProductDetails(client, item) {
+  let userProduct = null;
+  let family = null;
+  try {
+    userProduct = await client.getUserProduct(item.user_product_id);
+    if (userProduct && userProduct.family_id) {
+      family = await client.getUserProductFamily(item.site_id, userProduct.family_id);
+    }
+  } catch (err) {
+    userProduct = { error: sanitizeError(err) };
+  }
+  return { userProduct, family };
+}
+
+async function loadQuickItemContext(client, itemId, options = {}) {
+  const item = await assertOwnedItem(client, itemId, options);
+  const summarizedItem = summarizeItem(item);
+  return {
+    quick: true,
+    mode: pickMode(item),
+    item: summarizedItem,
+    capabilities: summarizeCapabilities(summarizedItem),
+    userProduct: null,
+    family: null,
+    pictureLimits: {
+      maxPicturesPerItem: null,
+      maxPicturesPerVariation: null,
+      source: 'not_loaded'
+    },
+    pictures: [],
     variations: Array.isArray(item.variations) ? item.variations : []
   };
 }
@@ -282,8 +377,12 @@ function summarizePictureLimits(category) {
   };
 }
 
-async function assertOwnedItem(client, itemId) {
-  const [item, me] = await Promise.all([client.getItem(itemId), client.getMe()]);
+async function assertOwnedItem(client, itemId, options = {}) {
+  const ownerUserId = normalizeOwnerUserId(options.ownerUserId);
+  const [item, me] = await Promise.all([
+    client.getItem(itemId),
+    ownerUserId ? Promise.resolve({ id: ownerUserId }) : client.getMe()
+  ]);
   if (!item || !item.id) {
     const err = new Error('Item nao encontrado.');
     err.statusCode = 404;
@@ -508,5 +607,6 @@ module.exports = {
   hasAnyPageIdentity,
   loadPictureLimits,
   resolveItemContext,
+  resolveQuickItemContext,
   summarizeItem
 };

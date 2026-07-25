@@ -6,9 +6,6 @@ const {
   path,
   vm,
   buildCommitPayload,
-  collectItemIdCandidates,
-  extractItemId,
-  normalizeItemId,
   pickMode,
   decrypt,
   encrypt,
@@ -244,7 +241,7 @@ test('botao do editor completo fica integrado na bandeja', () => {
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
 
   assert.match(styles, /\.onblide-ml-tray-modal-row \{/);
-  assert.match(styles, /margin: 0 0 8px;/);
+  assert.match(styles, /margin: 0 0 10px;/);
   assert.match(styles, /\.onblide-ml-expand \{/);
   assert.match(styles, /box-shadow: none;/);
   assert.doesNotMatch(styles, /margin: -4px 0 6px;/);

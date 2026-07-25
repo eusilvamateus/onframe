@@ -11,19 +11,14 @@ function enabledAccountTokens(accounts) {
 async function resolveItemClient({ itemId, ownerUserId, store, client, clientFactory }) {
   if (!store || typeof clientFactory !== 'function') return client;
 
-  const explicitOwner = normalizeUserId(ownerUserId);
+  const explicitOwner = normalizeOwnerUserId(ownerUserId);
   if (explicitOwner) {
     const account = await readConnectedAccount(store, explicitOwner);
     if (!account) {
-      const err = new Error('Conta conectada não encontrada para este anúncio.');
-      err.statusCode = 403;
-      throw err;
+      throw buildMissingOwnerAccountError();
     }
     if (account.enabled === false) {
-      const err = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
-      err.statusCode = 403;
-      err.disabledAccount = true;
-      throw err;
+      throw buildDisabledOwnerAccountError();
     }
     return clientFactory(account);
   }
@@ -124,20 +119,36 @@ function buildAllAccountsDisabledError() {
   return err;
 }
 
-function normalizeUserId(value) {
+function buildMissingOwnerAccountError() {
+  const err = new Error('Conta conectada não encontrada para este anúncio.');
+  err.statusCode = 403;
+  return err;
+}
+
+function buildDisabledOwnerAccountError() {
+  const err = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
+  err.statusCode = 403;
+  err.disabledAccount = true;
+  return err;
+}
+
+function normalizeOwnerUserId(value) {
   const text = String(value || '').trim();
   return /^\d+$/.test(text) ? text : '';
 }
 
 function ownerUserIdFromUrl(url) {
-  return normalizeUserId(url && url.searchParams ? url.searchParams.get('owner_user_id') : '');
+  return normalizeOwnerUserId(url && url.searchParams ? url.searchParams.get('owner_user_id') : '');
 }
 
 module.exports = {
   buildAllAccountsDisabledError,
+  buildDisabledOwnerAccountError,
+  buildMissingOwnerAccountError,
   buildNoConnectedOwnerError,
   connectedAccountTokens,
   enabledAccountTokens,
+  normalizeOwnerUserId,
   ownerUserIdFromUrl,
   resolveItemClient
 };
