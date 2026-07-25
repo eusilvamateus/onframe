@@ -132,11 +132,13 @@
       state.busy = false;
       state.pageSignature = pageSignature;
       state.error = '';
+      if (!DescriptionModel.canBulkEditDescription(state.context)) state.bulkEnabled = false;
+      if (!DescriptionModel.canEditDescription(state.context) && state.editing) closeEditor({ restoreText: true });
       mountDescription();
     }
 
     function mountDescription() {
-      if (!state.visible || !isProductPageUrl(location.href) || !state.itemId) {
+      if (!state.visible || !isProductPageUrl(location.href) || !state.itemId || !DescriptionModel.canEditDescription(state.context)) {
         removeInjectedActions();
         return;
       }
@@ -188,7 +190,7 @@
     }
 
     async function openEditor() {
-      if (!state.visible || !state.itemId || state.loading || state.saving) return;
+      if (!state.visible || !state.itemId || state.loading || state.saving || !DescriptionModel.canEditDescription(state.context)) return;
       state.editing = true;
       state.loading = true;
       state.error = '';
@@ -248,7 +250,8 @@
 
     function renderEditorMarkup() {
       const disabled = state.loading || state.saving;
-      const canBulk = DescriptionModel.isUserProductContext(state.context);
+      const canBulk = DescriptionModel.canBulkEditDescription(state.context);
+      if (!canBulk) state.bulkEnabled = false;
       return `
         <section class="onframe-description-editor" aria-label="Editar descrição">
           <div class="onframe-description-editor-head">
@@ -284,7 +287,7 @@
     function renderBulkFailures() {
       const result = state.bulkResult;
       const failures = result && Array.isArray(result.targets)
-        ? result.targets.filter((target) => target.status === 'failed')
+        ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
         : [];
       if (!failures.length) return '';
       return `
@@ -318,7 +321,7 @@
     }
 
     async function saveDescription() {
-      if (!state.itemId || state.saving || state.loading) return;
+      if (!state.itemId || state.saving || state.loading || !DescriptionModel.canEditDescription(state.context)) return;
       const plainText = DescriptionModel.normalizeText(state.text);
       if (!plainText) {
         state.error = 'Informe a descrição.';
@@ -350,7 +353,7 @@
         state.bulkResult = state.bulkEnabled ? result : null;
         state.message = state.bulkEnabled ? DescriptionModel.bulkResultMessage(result) : 'Descrição salva.';
         state.saving = false;
-        if (state.bulkEnabled && Number(result && result.counts && result.counts.failed || 0) > 0) {
+        if (state.bulkEnabled && countNotChanged(result) > 0) {
           mountDescription();
           return;
         }
@@ -434,6 +437,11 @@
       if (state.ownerUserId) query.set('owner_user_id', String(state.ownerUserId));
       const search = query.toString();
       return `/api/items/${encodeURIComponent(state.itemId)}${suffix}${search ? `?${search}` : ''}`;
+    }
+
+    function countNotChanged(result) {
+      const counts = result && result.counts ? result.counts : {};
+      return Number(counts.failed || 0) + Number(counts.blocked || 0) + Number(counts.skipped || 0);
     }
 
     function readPageSignature() {

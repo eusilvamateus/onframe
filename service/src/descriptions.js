@@ -12,6 +12,11 @@ async function getDescription(client, itemId) {
 async function upsertDescription(client, itemId, input = {}) {
   const item = await assertOwnedItem(client, itemId);
   const plainText = normalizePlainText(input.plainText);
+  return upsertOwnedDescription(client, item, plainText);
+}
+
+async function upsertOwnedDescription(client, item, plainText) {
+  assertDescriptionEditableItem(item);
   const current = await getExistingDescription(client, item.id);
   const result = current.exists
     ? await client.updateItemDescription(item.id, plainText)
@@ -34,9 +39,20 @@ async function updateDescriptionFamily(client, itemId, input = {}) {
 
   const plainText = normalizePlainText(input.plainText);
   const targets = await resolveFamilyTargets(client, itemId, input);
-  const results = await mapLimit(targets.items, 2, async (target) => {
+  const prepared = await mapLimit(targets.items, 4, async (target) => prepareDescriptionTarget(client, target));
+  const editableTargets = prepared.filter((target) => target.eligible);
+  const editableVariations = editableTargets.filter((target) => !target.current);
+
+  if (!editableVariations.length) {
+    const err = new Error('bulk_description_no_editable_variations');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const results = await mapLimit(prepared, 2, async (target) => {
+    if (!target.eligible) return stripPreparedTarget(target);
     try {
-      const result = await upsertDescription(client, target.itemId, { plainText });
+      const result = await upsertOwnedDescription(client, target.item, plainText);
       return {
         itemId: target.itemId,
         userProductId: target.userProductId || null,
@@ -64,6 +80,57 @@ async function updateDescriptionFamily(client, itemId, input = {}) {
   return buildDescriptionBulkResponse(targets, results);
 }
 
+async function prepareDescriptionTarget(client, target) {
+  try {
+    const item = await assertOwnedItem(client, target.itemId);
+    if (item.catalog_listing) {
+      return blockedTarget(target, item, 'catalog_listing_description_read_only', 'Catálogo: descrição bloqueada pelo Mercado Livre.');
+    }
+
+    return {
+      item,
+      itemId: item.id,
+      userProductId: target.userProductId || item.user_product_id || null,
+      title: target.title || item.title || null,
+      current: Boolean(target.current),
+      eligible: true,
+      status: 'eligible'
+    };
+  } catch (err) {
+    return {
+      itemId: target.itemId,
+      userProductId: target.userProductId || null,
+      title: target.title || null,
+      current: Boolean(target.current),
+      eligible: false,
+      status: 'failed',
+      reasonCode: err && err.message ? String(err.message) : 'description_target_error',
+      statusCode: err && err.statusCode ? err.statusCode : null,
+      message: sanitizeError(err)
+    };
+  }
+}
+
+function blockedTarget(target, item, reasonCode, message) {
+  return {
+    itemId: item.id,
+    userProductId: target.userProductId || item.user_product_id || null,
+    title: target.title || item.title || null,
+    current: Boolean(target.current),
+    eligible: false,
+    status: 'blocked',
+    reasonCode,
+    statusCode: 409,
+    message
+  };
+}
+
+function stripPreparedTarget(target) {
+  const output = Object.assign({}, target);
+  delete output.item;
+  return output;
+}
+
 async function getExistingDescription(client, itemId) {
   try {
     const description = await client.getItemDescription(itemId);
@@ -87,6 +154,14 @@ function normalizeDescription(itemId, description, exists) {
   };
 }
 
+function assertDescriptionEditableItem(item) {
+  if (item && item.catalog_listing) {
+    const err = new Error('catalog_listing_description_read_only');
+    err.statusCode = 409;
+    throw err;
+  }
+}
+
 function normalizePlainText(value) {
   const plainText = String(value === undefined || value === null ? '' : value).replace(/\r\n/g, '\n').trim();
   if (!plainText) {
@@ -108,7 +183,7 @@ function buildDescriptionBulkResponse(targets, results) {
     counts: {
       total: entries.length,
       eligible: entries.filter((entry) => entry.eligible).length,
-      blocked: 0,
+      blocked: entries.filter((entry) => entry.status === 'blocked').length,
       applied: entries.filter((entry) => entry.status === 'applied').length,
       skipped: 0,
       failed: entries.filter((entry) => entry.status === 'failed').length

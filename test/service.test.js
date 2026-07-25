@@ -166,6 +166,140 @@ test('descricoes em massa aplicam nas variacoes ativas e reportam falhas parciai
   assert.strictEqual(result.targets[1].status, 'failed');
 });
 
+test('descricoes em massa nao oferecem familia sem variacao editavel adicional', async () => {
+  let updateCalled = false;
+  const items = {
+    MLB1000000001: {
+      id: 'MLB1000000001',
+      title: 'Principal',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Kit',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000001',
+      status: 'active',
+      tags: []
+    },
+    MLB1000000002: {
+      id: 'MLB1000000002',
+      title: 'Catálogo vinculado',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Kit',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000001',
+      status: 'active',
+      catalog_listing: true,
+      tags: []
+    }
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => items[itemId],
+    getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+    getUserProductFamily: async () => ({
+      user_products: [{ id: 'MLBU100000001' }]
+    }),
+    searchItemsByUserProduct: async () => ({ results: Object.keys(items) }),
+    getItemDescription: async () => ({ plain_text: 'Atual' }),
+    updateItemDescription: async () => {
+      updateCalled = true;
+      throw new Error('update should not be called');
+    }
+  };
+
+  await assert.rejects(
+    descriptions.updateDescriptionFamily(client, 'MLB1000000001', {
+      scope: 'user_product_family',
+      plainText: 'Descrição nova'
+    }),
+    /bulk_description_no_editable_variations/
+  );
+  assert.strictEqual(updateCalled, false);
+});
+
+test('descricoes em massa bloqueiam catalogo antes de salvar e seguem nas variacoes editaveis', async () => {
+  const updated = [];
+  const items = {
+    MLB1000000001: {
+      id: 'MLB1000000001',
+      title: 'Azul',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Cadeira',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000001',
+      status: 'active',
+      tags: []
+    },
+    MLB1000000002: {
+      id: 'MLB1000000002',
+      title: 'Verde',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Cadeira',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000002',
+      status: 'active',
+      tags: []
+    },
+    MLB1000000003: {
+      id: 'MLB1000000003',
+      title: 'Catálogo',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Cadeira',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000003',
+      status: 'active',
+      catalog_listing: true,
+      tags: []
+    }
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => items[itemId],
+    getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+    getUserProductFamily: async () => ({
+      user_products: [
+        { id: 'MLBU100000001' },
+        { id: 'MLBU100000002' },
+        { id: 'MLBU100000003' }
+      ]
+    }),
+    searchItemsByUserProduct: async (sellerId, userProductIds) => ({
+      results: Object.values(items)
+        .filter((item) => String(userProductIds).split(',').includes(item.user_product_id))
+        .map((item) => item.id)
+    }),
+    getItemDescription: async () => ({ plain_text: 'Atual' }),
+    updateItemDescription: async (itemId, plainText) => {
+      updated.push({ itemId, plainText });
+      return { plain_text: plainText };
+    }
+  };
+
+  const result = await descriptions.updateDescriptionFamily(client, 'MLB1000000001', {
+    scope: 'user_product_family',
+    plainText: 'Descrição nova'
+  });
+
+  assert.deepStrictEqual(result.counts, {
+    total: 3,
+    eligible: 2,
+    blocked: 1,
+    applied: 2,
+    skipped: 0,
+    failed: 0
+  });
+  assert.deepStrictEqual(updated, [
+    { itemId: 'MLB1000000001', plainText: 'Descrição nova' },
+    { itemId: 'MLB1000000002', plainText: 'Descrição nova' }
+  ]);
+  assert.strictEqual(result.targets[2].status, 'blocked');
+  assert.strictEqual(result.targets[2].reasonCode, 'catalog_listing_description_read_only');
+});
+
 test('shared toUserError nao registra log tecnico sem debug explicito', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'shared.js'), 'utf8');
   const warnings = [];
@@ -336,6 +470,14 @@ test('userFriendlyError traduz erros comuns para linguagem natural', () => {
   const catalog = new Error('catalog_listing_pictures_read_only');
   catalog.statusCode = 409;
   assert.match(userFriendlyError(catalog), /Catálogo/i);
+
+  const catalogDescription = new Error('catalog_listing_description_read_only');
+  catalogDescription.statusCode = 409;
+  assert.match(userFriendlyError(catalogDescription), /descrição bloqueada/i);
+
+  const noBulkDescriptionTargets = new Error('bulk_description_no_editable_variations');
+  noBulkDescriptionTargets.statusCode = 409;
+  assert.match(userFriendlyError(noBulkDescriptionTargets), /Não há variações editáveis/i);
 
   const closedWithBids = new Error('Cannot update item MLB5770062148 [status:closed, has_bids:true]');
   closedWithBids.statusCode = 400;

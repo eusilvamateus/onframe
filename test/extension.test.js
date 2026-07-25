@@ -200,7 +200,29 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   assert.strictEqual(descriptionSource.includes('role="checkbox"'), true);
   assert.strictEqual(descriptionSource.includes('type="checkbox"'), false);
   assert.strictEqual(descriptionSource.includes('/description/bulk'), true);
-  assert.strictEqual(descriptionModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Descrição salva em 2 variações. (1 falha)');
+  assert.strictEqual(descriptionSource.includes('canBulkEditDescription'), true);
+  assert.strictEqual(descriptionModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Descrição salva em 2 variações. (1 não alterada)');
+  assert.strictEqual(descriptionModel.canBulkEditDescription({
+    quick: true,
+    mode: 'user_product',
+    item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001' },
+    family: { user_products: [{ id: 'MLBU100000001' }, { id: 'MLBU100000002' }] }
+  }), false);
+  assert.strictEqual(descriptionModel.canBulkEditDescription({
+    mode: 'user_product',
+    item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001', catalog_listing: true },
+    family: { user_products: [{ id: 'MLBU100000001' }, { id: 'MLBU100000002' }] }
+  }), false);
+  assert.strictEqual(descriptionModel.canBulkEditDescription({
+    mode: 'user_product',
+    item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001' },
+    family: { user_products: [{ id: 'MLBU100000001' }] }
+  }), false);
+  assert.strictEqual(descriptionModel.canBulkEditDescription({
+    mode: 'user_product',
+    item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001' },
+    family: { user_products: [{ id: 'MLBU100000001' }, { id: 'MLBU100000002' }] }
+  }), true);
 });
 
 test('ui exibem comando de atualizacao auditavel', () => {

@@ -14,6 +14,14 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('catálogo sem anúncio confirmado') || text.includes('catalogo sem anuncio confirmado')) {
     return 'Catálogo sem anúncio seu identificado.';
   }
+  if (text.includes('bulk_description_no_editable_variations')) {
+    return 'Não há variações editáveis para aplicar em massa.';
+  }
+  if (text.includes('catalog_listing_description_read_only') ||
+    text.includes('description is not modifiable on catalog listing item') ||
+    bodyText.includes('description is not modifiable on catalog listing item')) {
+    return 'Catálogo: descrição bloqueada pelo Mercado Livre.';
+  }
   if (text.includes('catalog_listing_pictures_read_only') || text.includes('catalogo') || text.includes('catálogo')) {
     return 'Catálogo: fotos bloqueadas pelo Mercado Livre.';
   }
