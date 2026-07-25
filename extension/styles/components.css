@@ -246,6 +246,29 @@
   box-shadow: none;
 }
 
+.ob-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 2px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-top-color: currentColor;
+  border-radius: var(--ob-r-pill);
+  animation: ob-spinner-rotate 760ms linear infinite;
+}
+
+.ob-spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 1.8px;
+}
+
+@keyframes ob-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .ob-icon-button,
 .onblide-ml-icon-btn,
 .onframe-commerce-icon-btn {
@@ -596,6 +619,65 @@
 .account-switch:focus-visible {
   box-shadow: 0 0 0 3px var(--ob-focus-ring);
   outline: none;
+}
+
+.ob-checkbox {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ob-fg-strong);
+  cursor: pointer;
+  font-family: var(--ob-font);
+  text-align: left;
+  opacity: 1;
+}
+
+.ob-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ob-checkbox-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  flex: none;
+  border: 1.5px solid var(--ob-border);
+  border-radius: 6px;
+  background: var(--ob-surface);
+  color: var(--ob-fg-on-color);
+  transition: background 160ms var(--ob-ease), border-color 160ms var(--ob-ease), box-shadow var(--ob-dur-fast) var(--ob-ease);
+}
+
+.ob-checkbox.is-checked .ob-checkbox-box,
+.ob-checkbox[aria-checked="true"] .ob-checkbox-box {
+  border-color: var(--ob-blue);
+  background: var(--ob-blue);
+}
+
+.ob-checkbox:hover .ob-checkbox-box,
+.ob-checkbox:focus-visible .ob-checkbox-box {
+  box-shadow: 0 0 0 3px var(--ob-focus-ring);
+}
+
+.ob-checkbox:focus-visible {
+  outline: none;
+}
+
+.ob-checkbox-label {
+  display: block;
+  color: var(--ob-fg-strong);
+  font-size: 14px;
+  font-weight: var(--ob-w-medium);
+  line-height: 1.3;
 }
 
 .account-list {

@@ -15,6 +15,7 @@
     upload: 'upload-simple',
     trash: 'trash',
     x: 'x',
+    check: 'check',
     warning: 'warning',
     checkCircle: 'check-circle',
     info: 'info',
