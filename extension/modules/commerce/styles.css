@@ -125,7 +125,7 @@
   margin: 0 0 10px;
 }
 
-.onframe-commerce-cost-grid span {
+.onframe-commerce-cost-grid > span {
   display: grid;
   gap: 4px;
   flex: 0 1 calc(50% - 4px);
@@ -137,12 +137,12 @@
   background: var(--ob-surface-2);
 }
 
-.onframe-commerce-cost-grid span.green {
+.onframe-commerce-cost-grid > span.green {
   border-color: color-mix(in srgb, var(--ob-green) 35%, var(--ob-border));
   background: var(--ob-green-100);
 }
 
-.onframe-commerce-cost-grid span.warning {
+.onframe-commerce-cost-grid > span.warning {
   border-color: color-mix(in srgb, var(--ob-orange) 35%, var(--ob-border));
   background: var(--ob-orange-100);
 }
@@ -152,11 +152,11 @@
   font: 700 13px/1.15 var(--ob-font);
 }
 
-.onframe-commerce-cost-grid span.green b {
+.onframe-commerce-cost-grid > span.green b {
   color: var(--ob-green-700);
 }
 
-.onframe-commerce-cost-grid span.warning b {
+.onframe-commerce-cost-grid > span.warning b {
   color: var(--ob-orange-700);
 }
 
@@ -221,7 +221,7 @@
   gap: 8px;
 }
 
-.onframe-commerce-promo-metrics span {
+.onframe-commerce-promo-metrics > span {
   display: grid;
   gap: 4px;
   flex: 0 1 calc(50% - 4px);
@@ -235,7 +235,7 @@
   font: 600 11px/1.2 var(--ob-font);
 }
 
-.onframe-commerce-promo-metrics span.green {
+.onframe-commerce-promo-metrics > span.green {
   border-color: color-mix(in srgb, var(--ob-green) 35%, var(--ob-border));
   background: var(--ob-green-100);
   color: var(--ob-green-700);
@@ -246,7 +246,7 @@
   font: 700 13px/1.15 var(--ob-font);
 }
 
-.onframe-commerce-promo-metrics span.green b {
+.onframe-commerce-promo-metrics > span.green b {
   color: var(--ob-green-700);
 }
 
@@ -294,7 +294,7 @@
   gap: 6px;
 }
 
-.onframe-commerce-estimate-grid span {
+.onframe-commerce-estimate-grid > span {
   display: grid;
   gap: 4px;
   flex: 0 1 150px;
@@ -305,12 +305,12 @@
   background: var(--ob-surface);
 }
 
-.onframe-commerce-estimate-grid span.green {
+.onframe-commerce-estimate-grid > span.green {
   border-color: color-mix(in srgb, var(--ob-green) 35%, var(--ob-border));
   background: var(--ob-green-100);
 }
 
-.onframe-commerce-estimate-grid span.warning {
+.onframe-commerce-estimate-grid > span.warning {
   border-color: color-mix(in srgb, var(--ob-orange) 35%, var(--ob-border));
   background: var(--ob-orange-100);
 }
@@ -326,11 +326,11 @@
   font: 700 13px/1.15 var(--ob-font);
 }
 
-.onframe-commerce-estimate-grid span.green b {
+.onframe-commerce-estimate-grid > span.green b {
   color: var(--ob-green-700);
 }
 
-.onframe-commerce-estimate-grid span.warning b {
+.onframe-commerce-estimate-grid > span.warning b {
   color: var(--ob-orange-700);
 }
 
@@ -737,7 +737,7 @@
   gap: 7px;
 }
 
-.onframe-commerce-meta span {
+.onframe-commerce-meta > span {
   display: grid;
   gap: 2px;
   flex: 0 1 136px;
@@ -749,17 +749,17 @@
   font: 600 11px/1.2 var(--ob-font);
 }
 
-.onframe-commerce-meta span.primary {
+.onframe-commerce-meta > span.primary {
   background: var(--ob-blue-050);
   color: var(--ob-blue-700);
 }
 
-.onframe-commerce-meta span.success {
+.onframe-commerce-meta > span.success {
   background: var(--ob-green-100);
   color: var(--ob-green-700);
 }
 
-.onframe-commerce-meta span.warning {
+.onframe-commerce-meta > span.warning {
   background: var(--ob-orange-100);
   color: var(--ob-orange-700);
 }
@@ -810,8 +810,8 @@
   gap: 7px;
 }
 
-.onframe-commerce-review-grid span,
-.onframe-commerce-estimate-grid span {
+.onframe-commerce-review-grid > span,
+.onframe-commerce-estimate-grid > span {
   display: grid;
   gap: 4px;
   min-height: 50px;
@@ -823,29 +823,29 @@
   font: 600 11px/1 var(--ob-font);
 }
 
-.onframe-commerce-review-grid span {
+.onframe-commerce-review-grid > span {
   flex: 0 1 132px;
 }
 
-.onframe-commerce-review-grid span.success,
-.onframe-commerce-estimate-grid span.success,
-.onframe-commerce-estimate-grid span.green {
+.onframe-commerce-review-grid > span.success,
+.onframe-commerce-estimate-grid > span.success,
+.onframe-commerce-estimate-grid > span.green {
   border-color: color-mix(in srgb, var(--ob-green) 35%, var(--ob-border));
   background: var(--ob-green-100);
   color: var(--ob-green-700);
 }
 
-.onframe-commerce-review-grid span.primary,
-.onframe-commerce-estimate-grid span.primary {
+.onframe-commerce-review-grid > span.primary,
+.onframe-commerce-estimate-grid > span.primary {
   border-color: color-mix(in srgb, var(--ob-blue) 16%, var(--ob-border));
   background: var(--ob-blue-050);
   color: var(--ob-blue-700);
 }
 
-.onframe-commerce-review-grid span.warning,
-.onframe-commerce-review-grid span.warn,
-.onframe-commerce-estimate-grid span.warning,
-.onframe-commerce-estimate-grid span.warn {
+.onframe-commerce-review-grid > span.warning,
+.onframe-commerce-review-grid > span.warn,
+.onframe-commerce-estimate-grid > span.warning,
+.onframe-commerce-estimate-grid > span.warn {
   background: var(--ob-orange-100);
   color: var(--ob-orange-700);
 }
@@ -872,10 +872,6 @@
   align-items: baseline;
   flex-wrap: wrap;
   gap: 5px;
-}
-
-.onframe-commerce-metric-value {
-  min-width: 0;
 }
 
 .onframe-commerce-metric-badge {

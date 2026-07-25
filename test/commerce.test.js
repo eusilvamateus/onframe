@@ -260,6 +260,9 @@ test('popover de preco mostra valor promocional e custos sem referencia externa'
   assert.doesNotMatch(styles, /onframe-commerce-price-reference/);
   assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
   assert.doesNotMatch(styles, /grid-column:\s*1 \/ -1/);
+  assert.match(styles, /\.onframe-commerce-promo-metrics > span/);
+  assert.match(styles, /\.onframe-commerce-review-grid > span/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-(?:cost-grid|promo-metrics|estimate-grid|meta|review-grid) span\b/);
   assert.match(source, /Editar preço base/);
 });
 

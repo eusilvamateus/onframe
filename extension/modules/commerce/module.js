@@ -1015,7 +1015,7 @@
         <span class="${escapeAttribute(metric.tone || 'muted')}">
           <small>${escapeHtml(metric.label)}</small>
           <b>
-            <span class="onframe-commerce-metric-value">${escapeHtml(metric.value)}</span>
+            ${escapeHtml(metric.value)}
             ${metric.badge ? `<em class="onframe-commerce-metric-badge">${escapeHtml(metric.badge)}</em>` : ''}
           </b>
         </span>
