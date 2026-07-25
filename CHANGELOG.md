@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.2.0 - 2026-07-25
+
+### Adicionado
+
+- Acoes em massa para aplicar, alterar ou remover preco e promocoes nas
+  variacoes de anuncios `user_product`, respeitando elegibilidade e bloqueios
+  individuais de cada variacao.
+- Validacao previa das variacoes elegiveis antes de confirmar uma acao em
+  massa.
+
+### Melhorado
+
+- Feedback de carregamento durante validacao e envio de acoes em massa.
+- Cards de preco e promocoes com menos repeticao de informacoes e melhor
+  organizacao de rebate, repasse, comissao e frete.
+- Checkbox de acao em massa alinhado ao design system local.
+- Grid de revisao de custos ajustado para ocupar melhor o espaco quando houver
+  quantidade impar de cards.
+
+### Corrigido
+
+- Removida duplicidade de `Mercado Livre paga` em cards de promocoes.
+- Corrigida regressao visual em que valores internos viravam cards aninhados.
+- Ajustada a revisao de aplicacao de promocoes para nao repetir preco,
+  desconto, rebate e percentual do vendedor no mesmo bloco.
+
 ## v0.1.2 - 2026-07-23
 
 ### Documentacao
