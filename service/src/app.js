@@ -133,15 +133,15 @@ function createApp(options = {}) {
         return sendJson(res, 200, await handleStandardPriceUpdate({ req, client: itemClient, itemId: standardPriceMatch[1], readJson }));
       }
 
-      const bulkPreviewMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/bulk\/preview$/);
+      const bulkPreviewMatch = url.pathname.match(/^\/api\/items\/((?:MLB|MLBU)\d+)\/bulk\/preview$/);
       if (req.method === 'POST' && bulkPreviewMatch) {
-        const itemClient = await resolveClientForItemRequest(url, bulkPreviewMatch[1]);
+        const itemClient = await resolveClientForBulkRequest(url, bulkPreviewMatch[1]);
         return sendJson(res, 200, await handleBulkPreview({ req, client: itemClient, itemId: bulkPreviewMatch[1], readJson }));
       }
 
-      const bulkCommitMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/bulk\/commit$/);
+      const bulkCommitMatch = url.pathname.match(/^\/api\/items\/((?:MLB|MLBU)\d+)\/bulk\/commit$/);
       if (req.method === 'POST' && bulkCommitMatch) {
-        const itemClient = await resolveClientForItemRequest(url, bulkCommitMatch[1]);
+        const itemClient = await resolveClientForBulkRequest(url, bulkCommitMatch[1]);
         return sendJson(res, 200, await handleBulkCommit({ req, client: itemClient, itemId: bulkCommitMatch[1], readJson }));
       }
 
@@ -230,6 +230,26 @@ function createApp(options = {}) {
       client,
       clientFactory
     });
+  }
+
+  async function resolveClientForBulkRequest(url, subjectId) {
+    if (!/^MLBU\d+$/i.test(String(subjectId || ''))) return resolveClientForItemRequest(url, subjectId);
+    const ownerUserId = ownerUserIdFromUrl(url);
+    if (!ownerUserId || !store || typeof store.readAccount !== 'function' || typeof clientFactory !== 'function') {
+      return client;
+    }
+    const account = await store.readAccount(ownerUserId);
+    if (!account || !account.refresh_token) {
+      const err = new Error('Conta conectada não encontrada para este anúncio.');
+      err.statusCode = 403;
+      throw err;
+    }
+    if (account.enabled === false) {
+      const err = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
+      err.statusCode = 403;
+      throw err;
+    }
+    return clientFactory(account);
   }
 }
 

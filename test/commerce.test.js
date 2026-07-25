@@ -1162,4 +1162,18 @@ test('api bulk preview expõe contrato local por item', async (t) => {
   assert.strictEqual(body.action, 'pricing.standard.update');
   assert.strictEqual(body.counts.total, 2);
   assert.strictEqual(body.counts.eligible, 2);
+
+  const userProductResponse = await fetch(`${server.url}/api/items/MLBU200000001/bulk/preview`, {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'user_product_family',
+      action: 'pricing.standard.update',
+      payload: { amount: 130 }
+    })
+  });
+  const userProductBody = await userProductResponse.json();
+
+  assert.strictEqual(userProductResponse.status, 200);
+  assert.strictEqual(userProductBody.source.itemId, 'MLB2000000001');
+  assert.strictEqual(userProductBody.counts.eligible, 2);
 });

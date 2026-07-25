@@ -69,7 +69,7 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
     throw err;
   }
 
-  const item = await assertOwnedItem(client, itemId);
+  const item = await resolveSourceItem(client, itemId);
   if (!item.user_product_id || !item.family_name) {
     const err = new Error('bulk_requires_user_product_family');
     err.statusCode = 409;
@@ -125,6 +125,24 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
     userProductIds,
     items: items.filter(Boolean)
   };
+}
+
+async function resolveSourceItem(client, subjectId) {
+  const id = String(subjectId || '').trim().toUpperCase();
+  if (!/^MLBU\d+$/.test(id)) return assertOwnedItem(client, subjectId);
+
+  const me = await client.getMe();
+  const search = await client.searchItemsByUserProduct(me.id, id, {
+    status: 'active',
+    limit: 1
+  });
+  const itemId = Array.isArray(search && search.results) ? search.results[0] : null;
+  if (!itemId) {
+    const err = new Error('Nenhum anuncio ativo encontrado para este user_product.');
+    err.statusCode = 404;
+    throw err;
+  }
+  return assertOwnedItem(client, itemId);
 }
 
 async function previewTarget(client, operation, target) {
