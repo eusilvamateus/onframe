@@ -774,6 +774,7 @@
         });
       }
       promotionBenefitMetrics(entry, { includeAmount: !appliedCostFacts.some((metric) => metric.label === 'Mercado Livre paga'), basePrice: displayPrice }).forEach((metric) => {
+        if (metric.label === 'Mercado Livre paga' && hasMetricLabel(metrics, metric.label)) return;
         if (!hasMetric(metrics, metric)) metrics.push(metric);
       });
       if (entry.stock) metrics.push({ label: 'Estoque', value: `${entry.stock} un.`, tone: 'muted' });
@@ -1038,6 +1039,10 @@
         metric.label === candidate.label &&
         metric.value === candidate.value &&
         (metric.badge || '') === (candidate.badge || ''));
+    }
+
+    function hasMetricLabel(metrics, label) {
+      return metrics.some((metric) => metric && metric.label === label);
     }
 
     function priceSaveLabel() {

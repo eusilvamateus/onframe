@@ -288,6 +288,9 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /label: 'Preço final'/);
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
   assert.match(source, /benefitAmount !== null && metric\.label === 'Mercado Livre paga'/);
+  assert.match(source, /metric\.label === 'Mercado Livre paga' && hasMetricLabel\(metrics, metric\.label\)/);
+  assert.match(source, /function promotionContributionMetrics/);
+  assert.match(source, /return promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: promotionDisplayPrice\(entry\) \}\)/);
   assert.doesNotMatch(source, /Impacto estimado/);
   assert.doesNotMatch(source, /Prévia de custos/);
   assert.doesNotMatch(source, /function estimateDataForKey/);
