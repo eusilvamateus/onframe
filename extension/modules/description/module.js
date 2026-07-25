@@ -36,6 +36,8 @@
       collapsableElement: null,
       collapsableContainer: null,
       collapsableMaxHeight: '',
+      editorShellMinHeight: 0,
+      editorTextareaMinHeight: 0,
       renderTimer: null,
       requestId: 0,
       pageSignature: ''
@@ -231,6 +233,7 @@
     }
 
     function ensureEditingLayout(elements) {
+      captureEditingMetrics(elements);
       const content = elements.content;
       if (content && content.style.display !== 'none') {
         state.contentDisplay = content.style.display || '';
@@ -248,18 +251,31 @@
       }
     }
 
+    function captureEditingMetrics(elements) {
+      if (state.editorShellMinHeight || !elements) return;
+      const shell = elements.collapsable || elements.description;
+      const shellHeight = shell && typeof shell.getBoundingClientRect === 'function'
+        ? Math.ceil(shell.getBoundingClientRect().height)
+        : 0;
+      if (!shellHeight) return;
+      state.editorShellMinHeight = Math.max(320, shellHeight);
+      state.editorTextareaMinHeight = Math.max(260, state.editorShellMinHeight - 150);
+    }
+
     function renderEditorMarkup() {
       const disabled = state.loading || state.saving;
       const canBulk = DescriptionModel.canBulkEditDescription(state.context);
       if (!canBulk) state.bulkEnabled = false;
+      const editorStyle = state.editorShellMinHeight ? ` style="min-height:${escapeAttribute(state.editorShellMinHeight)}px"` : '';
+      const textareaStyle = state.editorTextareaMinHeight ? ` style="min-height:${escapeAttribute(state.editorTextareaMinHeight)}px"` : '';
       return `
-        <section class="onframe-description-editor" aria-label="Editar descrição">
+        <section class="onframe-description-editor" aria-label="Editar descrição"${editorStyle}>
           <div class="onframe-description-editor-head">
             <strong>Editar descrição</strong>
             ${state.loading ? `<span class="onframe-description-state">${spinner()}Carregando descrição completa...</span>` : ''}
             ${state.saving ? `<span class="onframe-description-state">${spinner()}Salvando...</span>` : ''}
           </div>
-          <textarea class="onframe-description-textarea" data-action="description-input" ${disabled ? 'disabled' : ''}>${escapeHtml(state.text)}</textarea>
+          <textarea class="onframe-description-textarea" data-action="description-input"${textareaStyle} ${disabled ? 'disabled' : ''}>${escapeHtml(state.text)}</textarea>
           ${canBulk ? renderBulkSwitch() : ''}
           ${state.error ? `<div class="onframe-description-alert error">${escapeHtml(state.error)}</div>` : ''}
           ${state.message ? `<div class="onframe-description-alert success">${escapeHtml(state.message)}</div>` : ''}
@@ -387,6 +403,8 @@
       state.collapsableElement = null;
       state.collapsableContainer = null;
       state.collapsableMaxHeight = '';
+      state.editorShellMinHeight = 0;
+      state.editorTextareaMinHeight = 0;
       state.editing = false;
       state.loading = false;
       state.saving = false;

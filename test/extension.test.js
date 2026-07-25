@@ -225,6 +225,15 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   }), true);
 });
 
+test('editor inline de descricao preserva altura visual ao abrir', () => {
+  const descriptionSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'module.js'), 'utf8');
+
+  assert.strictEqual(descriptionSource.includes('captureEditingMetrics(elements)'), true);
+  assert.strictEqual(descriptionSource.includes('state.editorShellMinHeight = Math.max(320, shellHeight)'), true);
+  assert.strictEqual(descriptionSource.includes('style="min-height:${escapeAttribute(state.editorShellMinHeight)}px"'), true);
+  assert.strictEqual(descriptionSource.includes('style="min-height:${escapeAttribute(state.editorTextareaMinHeight)}px"'), true);
+});
+
 test('ui exibem comando de atualizacao auditavel', () => {
   const popupHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'index.html'), 'utf8');
   const popupJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.js'), 'utf8');
