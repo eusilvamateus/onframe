@@ -285,7 +285,12 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /function renderPromotionReview/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
   assert.match(source, /function promotionBenefitAmount/);
-  assert.match(source, /label: 'Preço final'/);
+  assert.match(source, /const suppressCostFacts = confirm && confirm\.action !== 'delete'/);
+  assert.match(source, /renderPromotionFacts\(entry, kind, key, userFields, \{ suppressCostFacts \}\)/);
+  assert.match(source, /function renderPromotionConfirmWarnings\(rangeWarning\)/);
+  assert.doesNotMatch(source, /function renderPromotionConfirmFacts/);
+  assert.doesNotMatch(source, /const discount = discountPercent\(entry\.original_price, targetPrice\)/);
+  assert.doesNotMatch(source, /if \(targetPrice\) facts\.push\(\{ label: 'Preço final'/);
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
   assert.match(source, /benefitAmount !== null && metric\.label === 'Mercado Livre paga'/);
   assert.match(source, /metric\.label === 'Mercado Livre paga' && hasMetricLabel\(metrics, metric\.label\)/);

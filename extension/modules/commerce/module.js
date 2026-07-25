@@ -670,7 +670,8 @@
       const confirmBlocked = confirm ? isPromotionConfirmationBlocked(entry, confirm) : false;
       const tone = promotionTone(entry, kind);
       const status = promotionStatusLabel(entry, kind);
-      const facts = renderPromotionFacts(entry, kind, key, userFields);
+      const suppressCostFacts = confirm && confirm.action !== 'delete';
+      const facts = renderPromotionFacts(entry, kind, key, userFields, { suppressCostFacts });
       const hint = promotionHint(entry, kind, canCreate, canUpdate, canDelete, userFields);
       const statusBadge = renderPromotionStatusBadge(status, tone, kind);
 
@@ -754,7 +755,7 @@
       return 'muted';
     }
 
-    function renderPromotionFacts(entry, kind, key, userFields = []) {
+    function renderPromotionFacts(entry, kind, key, userFields = [], options = {}) {
       const metrics = [];
       const displayPrice = promotionDisplayPrice(entry);
       const priceLabel = entry.price ? 'Preço' : entry.suggested_price ? 'Sugerido' : entry.total_price_for_boosted_offer ? 'Preço' : '';
@@ -767,16 +768,18 @@
       const stackableContext = stackablePromotionContextMetric(entry);
       if (stackableContext) metrics.push(stackableContext);
       let appliedCostFacts = [];
-      if (kind !== 'eligible-offer') {
+      if (!options.suppressCostFacts && kind !== 'eligible-offer') {
         appliedCostFacts = renderAppliedPromotionCostFacts(key);
         appliedCostFacts.forEach((metric) => {
           metrics.push(metric);
         });
       }
-      promotionBenefitMetrics(entry, { includeAmount: !appliedCostFacts.some((metric) => metric.label === 'Mercado Livre paga'), basePrice: displayPrice }).forEach((metric) => {
-        if (metric.label === 'Mercado Livre paga' && hasMetricLabel(metrics, metric.label)) return;
-        if (!hasMetric(metrics, metric)) metrics.push(metric);
-      });
+      if (!options.suppressCostFacts) {
+        promotionBenefitMetrics(entry, { includeAmount: !appliedCostFacts.some((metric) => metric.label === 'Mercado Livre paga'), basePrice: displayPrice }).forEach((metric) => {
+          if (metric.label === 'Mercado Livre paga' && hasMetricLabel(metrics, metric.label)) return;
+          if (!hasMetric(metrics, metric)) metrics.push(metric);
+        });
+      }
       if (entry.stock) metrics.push({ label: 'Estoque', value: `${entry.stock} un.`, tone: 'muted' });
       if (userFields.includes('deal_price')) metrics.push({ label: 'Preço', value: 'Editável', tone: 'muted' });
       return metrics.map(renderMetricChip).join('');
@@ -924,7 +927,7 @@
           <span>${escapeHtml(confirmationText(confirm.action))}</span>
           ${renderBulkSwitch('promotion', state.promotionBulkEnabled)}
           ${period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : ''}
-          ${renderPromotionConfirmFacts(entry, targetPrice, rangeWarning)}
+          ${renderPromotionConfirmWarnings(rangeWarning)}
           ${estimateMarkup}
           ${renderBulkBusyStatus()}
           ${renderBulkStatus(confirm.bulkPreview || null, confirm.bulkError || '')}
@@ -939,14 +942,9 @@
       return Boolean(promotionRangeWarning(entry, targetPrice));
     }
 
-    function renderPromotionConfirmFacts(entry, targetPrice, rangeWarning) {
-      const facts = [];
-      const discount = discountPercent(entry.original_price, targetPrice);
-      if (targetPrice) facts.push({ label: 'Preço final', value: CommerceModel.formatMoney(targetPrice, itemCurrency()), tone: 'primary' });
-      if (discount) facts.push({ label: 'Desconto', value: `${discount}% OFF`, tone: 'success' });
-      if (rangeWarning) facts.push({ label: 'Ajuste necessário', value: rangeWarning, tone: 'warning' });
-      if (!facts.length) return '';
-      return `<div class="onframe-commerce-review-grid">${facts.map((metric) => renderReviewMetric(metric)).join('')}</div>`;
+    function renderPromotionConfirmWarnings(rangeWarning) {
+      if (!rangeWarning) return '';
+      return `<div class="onframe-commerce-review-grid">${renderReviewMetric({ label: 'Ajuste necessário', value: rangeWarning, tone: 'warning' })}</div>`;
     }
 
     function renderPromotionEstimate(key, mode = 'review') {
