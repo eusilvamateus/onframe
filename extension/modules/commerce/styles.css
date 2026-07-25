@@ -119,8 +119,8 @@
 }
 
 .onframe-commerce-cost-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 10px;
 }
@@ -128,15 +128,13 @@
 .onframe-commerce-cost-grid span {
   display: grid;
   gap: 4px;
+  flex: 0 1 calc(50% - 4px);
+  min-width: 126px;
   min-height: 56px;
   padding: 10px;
   border: 1px solid var(--ob-line);
   border-radius: var(--ob-r-sm);
   background: var(--ob-surface-2);
-}
-
-.onframe-commerce-cost-grid span:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
 }
 
 .onframe-commerce-cost-grid span.green {
@@ -218,14 +216,16 @@
 }
 
 .onframe-commerce-promo-metrics {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .onframe-commerce-promo-metrics span {
   display: grid;
   gap: 4px;
+  flex: 0 1 calc(50% - 4px);
+  min-width: 126px;
   min-height: 56px;
   padding: 10px;
   border: 1px solid var(--ob-line);
@@ -233,10 +233,6 @@
   background: var(--ob-surface);
   color: var(--ob-ink-soft);
   font: 600 11px/1.2 var(--ob-font);
-}
-
-.onframe-commerce-promo-metrics span:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
 }
 
 .onframe-commerce-promo-metrics span.green {
@@ -293,14 +289,15 @@
 }
 
 .onframe-commerce-estimate-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .onframe-commerce-estimate-grid span {
   display: grid;
   gap: 4px;
+  flex: 0 1 150px;
   min-height: 52px;
   padding: 9px;
   border: 1px solid var(--ob-line);
@@ -735,15 +732,15 @@
 }
 
 .onframe-commerce-meta {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
-  grid-auto-rows: minmax(46px, auto);
+  display: flex;
+  flex-wrap: wrap;
   gap: 7px;
 }
 
 .onframe-commerce-meta span {
   display: grid;
   gap: 2px;
+  flex: 0 1 136px;
   min-height: 42px;
   padding: 7px 8px;
   border-radius: var(--ob-r-sm);
@@ -808,8 +805,8 @@
 }
 
 .onframe-commerce-review-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 7px;
 }
 
@@ -824,6 +821,10 @@
   background: var(--ob-surface);
   color: var(--ob-ink-soft);
   font: 600 11px/1 var(--ob-font);
+}
+
+.onframe-commerce-review-grid span {
+  flex: 0 1 132px;
 }
 
 .onframe-commerce-review-grid span.success,
@@ -860,6 +861,34 @@
 .onframe-commerce-estimate-grid b {
   color: var(--ob-ink-strong);
   font: 700 13px/1.15 var(--ob-font);
+}
+
+.onframe-commerce-cost-grid b,
+.onframe-commerce-promo-metrics b,
+.onframe-commerce-meta b,
+.onframe-commerce-review-grid b,
+.onframe-commerce-estimate-grid b {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.onframe-commerce-metric-value {
+  min-width: 0;
+}
+
+.onframe-commerce-metric-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 17px;
+  padding: 2px 6px;
+  border-radius: var(--ob-r-pill);
+  background: color-mix(in srgb, currentColor 10%, var(--ob-surface));
+  color: currentColor;
+  font: 800 10px/1 var(--ob-font);
+  font-style: normal;
+  white-space: nowrap;
 }
 
 .onframe-commerce-form-grid {

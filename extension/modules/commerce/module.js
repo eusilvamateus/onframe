@@ -533,10 +533,11 @@
     }
 
     function renderActivePromotionSummary(entry) {
-      const originalPrice = entry.original_price || null;
-      const finalPrice = entry.price || entry.suggested_price || null;
+      const originalPrice = promotionSummaryOriginalPrice(entry);
+      const finalPrice = promotionSummaryDisplayPrice(entry);
       const discount = discountPercent(originalPrice, finalPrice);
       const metrics = [
+        finalPrice ? { label: 'Preço final', value: CommerceModel.formatMoney(finalPrice, itemCurrency()), tone: 'primary' } : null,
         discount ? { label: 'Desconto', value: `${discount}% OFF`, tone: 'green' } : null,
         ...promotionContributionMetrics(entry)
       ].filter(Boolean);
@@ -548,6 +549,19 @@
           ${renderPromotionMetricGrid(metrics)}
         </div>
       `;
+    }
+
+    function promotionSummaryDisplayPrice(entry) {
+      const displayPrice = promotionDisplayPrice(entry);
+      if (displayPrice) return displayPrice;
+      if (!entry || entry.is_current_price !== true) return null;
+      return moneyOrNull(state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.amount);
+    }
+
+    function promotionSummaryOriginalPrice(entry) {
+      if (entry && entry.original_price) return entry.original_price;
+      if (!entry || entry.is_current_price !== true) return null;
+      return moneyOrNull(state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.regular_amount);
     }
 
     function renderStackablePromotionSummary(entries) {
@@ -594,7 +608,7 @@
       const benefitPercentage = Number.isFinite(meliPercentage) && meliPercentage > 0 ? meliPercentage : boostPercentage;
 
       if (options.includeAmount && amount !== null) {
-        metrics.push({ label: 'Mercado Livre paga', value: formatBenefitValue(amount, benefitPercentage, currency), tone: 'green' });
+        metrics.push(buildBenefitMetric('Mercado Livre paga', amount, benefitPercentage, currency, 'green'));
       }
       if (Number.isFinite(sellerPercentage) && sellerPercentage > 0) {
         metrics.push({ label: 'Você paga', value: formatPercent(sellerPercentage) });
@@ -625,10 +639,7 @@
       return `
         <div class="onframe-commerce-promo-metrics">
           ${list.map((metric) => `
-            <span class="${escapeAttribute(metric.tone || '')}">
-              <small>${escapeHtml(metric.label)}</small>
-              <b>${escapeHtml(metric.value)}</b>
-            </span>
+            ${renderMetricChip(metric)}
           `).join('')}
         </div>
       `;
@@ -744,30 +755,30 @@
     }
 
     function renderPromotionFacts(entry, kind, key, userFields = []) {
-      const chips = [];
+      const metrics = [];
       const displayPrice = promotionDisplayPrice(entry);
       const priceLabel = entry.price ? 'Preço' : entry.suggested_price ? 'Sugerido' : entry.total_price_for_boosted_offer ? 'Preço' : '';
-      if (displayPrice) chips.push(renderMetaChip(priceLabel, CommerceModel.formatMoney(displayPrice, itemCurrency()), 'primary'));
+      if (displayPrice) metrics.push({ label: priceLabel, value: CommerceModel.formatMoney(displayPrice, itemCurrency()), tone: 'primary' });
       const discount = discountPercent(entry.original_price, displayPrice);
-      if (discount) chips.push(renderMetaChip('Desconto', `${discount}% OFF`, 'success'));
+      if (discount) metrics.push({ label: 'Desconto', value: `${discount}% OFF`, tone: 'success' });
       if (entry.suggested_price && entry.price && entry.suggested_price !== entry.price) {
-        chips.push(renderMetaChip('Sugerido', CommerceModel.formatMoney(entry.suggested_price, itemCurrency()), 'primary'));
+        metrics.push({ label: 'Sugerido', value: CommerceModel.formatMoney(entry.suggested_price, itemCurrency()), tone: 'primary' });
       }
       const stackableContext = stackablePromotionContextMetric(entry);
-      if (stackableContext) chips.push(renderMetaChip(stackableContext.label, stackableContext.value, 'muted'));
+      if (stackableContext) metrics.push(stackableContext);
       let appliedCostFacts = [];
       if (kind !== 'eligible-offer') {
         appliedCostFacts = renderAppliedPromotionCostFacts(key);
         appliedCostFacts.forEach((metric) => {
-          chips.push(renderMetaChip(metric.label, metric.value, metric.tone || 'muted'));
+          metrics.push(metric);
         });
       }
-      if (!appliedCostFacts.length) promotionBenefitMetrics(entry, { includeAmount: true, basePrice: displayPrice }).forEach((metric) => {
-        chips.push(renderMetaChip(metric.label, metric.value, metric.tone || 'muted'));
+      promotionBenefitMetrics(entry, { includeAmount: !appliedCostFacts.some((metric) => metric.label === 'Mercado Livre paga'), basePrice: displayPrice }).forEach((metric) => {
+        if (!hasMetric(metrics, metric)) metrics.push(metric);
       });
-      if (entry.stock) chips.push(renderMetaChip('Estoque', `${entry.stock} un.`, 'muted'));
-      if (userFields.includes('deal_price')) chips.push(renderMetaChip('Preço', 'Editável', 'muted'));
-      return chips.join('');
+      if (entry.stock) metrics.push({ label: 'Estoque', value: `${entry.stock} un.`, tone: 'muted' });
+      if (userFields.includes('deal_price')) metrics.push({ label: 'Preço', value: 'Editável', tone: 'muted' });
+      return metrics.map(renderMetricChip).join('');
     }
 
     function renderAppliedPromotionCostFacts(key) {
@@ -780,7 +791,7 @@
       }
       const benefitAmount = promotionBenefitAmount(estimate.data.promotionBenefit, estimate.data.dealPrice);
       if (benefitAmount !== null) {
-        facts.push({ label: 'Mercado Livre paga', value: formatBenefitValue(benefitAmount, promotionBenefitPercentage(estimate.data.promotionBenefit), currency), tone: 'success' });
+        facts.push(buildBenefitMetric('Mercado Livre paga', benefitAmount, promotionBenefitPercentage(estimate.data.promotionBenefit), currency, 'success'));
       }
       return facts;
     }
@@ -788,16 +799,6 @@
     function renderPromotionStatusBadge(status, tone, kind) {
       if (kind === 'eligible-offer') return '';
       return `<span class="onframe-commerce-status ${escapeAttribute(tone)}">${escapeHtml(status)}</span>`;
-    }
-
-    function renderMetaChip(label, value, tone) {
-      if (!value) return '';
-      return `
-        <span class="${escapeAttribute(tone || 'muted')}">
-          <small>${escapeHtml(label)}</small>
-          <b>${escapeHtml(value)}</b>
-        </span>
-      `;
     }
 
     function renderPriceSnapshot(summary, priceState) {
@@ -827,10 +828,7 @@
       return `
         <div class="onframe-commerce-cost-grid">
           ${metrics.map((metric) => `
-            <span class="${escapeAttribute(metric.tone || '')}">
-              <small>${escapeHtml(metric.label)}</small>
-              <b>${escapeHtml(metric.value)}</b>
-            </span>
+            ${renderMetricChip(metric)}
           `).join('')}
         </div>
       `;
@@ -858,7 +856,7 @@
         metrics.push({ label: 'Frete vendedor', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
       }
       if (benefit && moneyOrNull(benefit.amount) !== null) {
-        metrics.splice(1, 0, { label: 'Mercado Livre paga', value: formatBenefitValue(benefit.amount, promotionBenefitPercentage(benefit), currency), tone: 'green' });
+        metrics.splice(1, 0, buildBenefitMetric('Mercado Livre paga', benefit.amount, promotionBenefitPercentage(benefit), currency, 'green'));
       } else if (benefit && Number(benefit.meli_percentage) > 0) {
         metrics.splice(1, 0, { label: 'Mercado Livre paga', value: formatPercent(benefit.meli_percentage), tone: 'green' });
       }
@@ -889,7 +887,7 @@
         metrics.push({ label: `Preço ${payment ? `no ${payment}` : 'acumulativo'}`, value: CommerceModel.formatMoney(benefit.total_price_for_boosted_offer, currency), tone: 'primary' });
       }
       if (moneyOrNull(benefit.amount) !== null) {
-        metrics.push({ label: 'Mercado Livre paga', value: formatBenefitValue(benefit.amount, promotionBenefitPercentage(benefit), currency), tone: 'green' });
+        metrics.push(buildBenefitMetric('Mercado Livre paga', benefit.amount, promotionBenefitPercentage(benefit), currency, 'green'));
       } else if (promotionBenefitPercentage(benefit)) {
         metrics.push({ label: 'Mercado Livre paga', value: formatPercent(promotionBenefitPercentage(benefit)), tone: 'green' });
       }
@@ -992,7 +990,7 @@
       }
       const benefitAmount = promotionBenefitAmount(benefit, estimate.dealPrice);
       if (benefitAmount !== null) {
-        metrics.push({ label: 'Mercado Livre paga', value: formatBenefitValue(benefitAmount, promotionBenefitPercentage(benefit), currency), tone: 'green' });
+        metrics.push(buildBenefitMetric('Mercado Livre paga', benefitAmount, promotionBenefitPercentage(benefit), currency, 'green'));
       }
       if (commission && moneyOrNull(commission.amount) !== null) {
         metrics.push({ label: 'Comissão', value: CommerceModel.formatMoney(commission.amount, currency), tone: 'muted' });
@@ -1008,12 +1006,38 @@
     }
 
     function renderReviewMetric(metric) {
+      return renderMetricChip(metric);
+    }
+
+    function renderMetricChip(metric) {
+      if (!metric || !metric.value) return '';
       return `
         <span class="${escapeAttribute(metric.tone || 'muted')}">
           <small>${escapeHtml(metric.label)}</small>
-          <b>${escapeHtml(metric.value)}</b>
+          <b>
+            <span class="onframe-commerce-metric-value">${escapeHtml(metric.value)}</span>
+            ${metric.badge ? `<em class="onframe-commerce-metric-badge">${escapeHtml(metric.badge)}</em>` : ''}
+          </b>
         </span>
       `;
+    }
+
+    function buildBenefitMetric(label, amount, percentage, currency, tone = 'green') {
+      const amountText = CommerceModel.formatMoney(amount, currency || itemCurrency());
+      const percentageText = formatPercent(percentage);
+      return {
+        label,
+        value: amountText,
+        badge: percentageText || '',
+        tone
+      };
+    }
+
+    function hasMetric(metrics, candidate) {
+      return metrics.some((metric) => metric &&
+        metric.label === candidate.label &&
+        metric.value === candidate.value &&
+        (metric.badge || '') === (candidate.badge || ''));
     }
 
     function priceSaveLabel() {
@@ -1264,12 +1288,6 @@
       const number = Number(value);
       if (!Number.isFinite(number)) return '';
       return `${number.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-    }
-
-    function formatBenefitValue(amount, percentage, currency) {
-      const amountText = CommerceModel.formatMoney(amount, currency || itemCurrency());
-      const percentageText = formatPercent(percentage);
-      return percentageText ? `${amountText} · ${percentageText}` : amountText;
     }
 
     function promotionBenefitPercentage(benefit) {

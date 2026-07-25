@@ -244,9 +244,12 @@ test('popover de preco mostra valor promocional e custos sem referencia externa'
   assert.match(source, /Mercado Livre paga/);
   assert.match(source, /function renderPriceStackableScenarios/);
   assert.match(source, /Desconto acumulativo/);
-  assert.match(source, /formatBenefitValue/);
+  assert.match(source, /function buildBenefitMetric/);
+  assert.match(source, /onframe-commerce-metric-badge/);
+  assert.doesNotMatch(source, /formatBenefitValue/);
+  assert.doesNotMatch(source, / · /);
   assert.doesNotMatch(source, /Bônus Mercado Livre/);
-  assert.match(source, /metrics\.splice\(1, 0, \{ label: 'Mercado Livre paga'/);
+  assert.match(source, /metrics\.splice\(1, 0, buildBenefitMetric\('Mercado Livre paga'/);
   assert.match(source, /Custos/);
   assert.strictEqual(source.includes('onframe-commerce-price-secondary'), false);
   assert.doesNotMatch(source, /label: 'Preço base'/);
@@ -255,7 +258,8 @@ test('popover de preco mostra valor promocional e custos sem referencia externa'
   assert.doesNotMatch(source, /<small>Diferença<\/small>/);
   assert.doesNotMatch(source, /Vs\. referência/);
   assert.doesNotMatch(styles, /onframe-commerce-price-reference/);
-  assert.match(styles, /span:last-child:nth-child\(odd\)/);
+  assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
+  assert.doesNotMatch(styles, /grid-column:\s*1 \/ -1/);
   assert.match(source, /Editar preço base/);
 });
 
@@ -278,6 +282,7 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /function renderPromotionReview/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
   assert.match(source, /function promotionBenefitAmount/);
+  assert.match(source, /label: 'Preço final'/);
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
   assert.match(source, /benefitAmount !== null && metric\.label === 'Mercado Livre paga'/);
   assert.doesNotMatch(source, /Impacto estimado/);
