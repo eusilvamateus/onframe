@@ -156,6 +156,7 @@ test('design system nao e redefinido pelos modulos', () => {
   assert.match(components, /\.onframe-commerce-btn/);
   assert.match(components, /\.account-card/);
   assert.match(components, /\.ob-checkbox/);
+  assert.match(components, /\.ob-icon-12/);
   assert.match(components, /\.ob-spinner/);
   assert.doesNotMatch(moduleStyles, /--ob-[a-z-]+:\s/);
   assert.doesNotMatch(moduleStyles, /@font-face/);
@@ -166,11 +167,13 @@ test('design system nao e redefinido pelos modulos', () => {
 
 test('acoes em massa usam componentes do design system e feedback de envio', () => {
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const commerceStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
   assert.strictEqual(commerceSource.includes('class="ob-checkbox onframe-commerce-bulk-switch'), true);
   assert.strictEqual(commerceSource.includes('role="checkbox"'), true);
   assert.strictEqual(commerceSource.includes('aria-checked="${checked ? \'true\' : \'false\'}"'), true);
   assert.strictEqual(commerceSource.includes('type="checkbox"'), false);
+  assert.doesNotMatch(commerceStyles, /\.onframe-commerce-bulk-switch\s*{[^}]*min-height:\s*24px/s);
   assert.strictEqual(commerceSource.includes('Validando variações elegíveis...'), true);
   assert.strictEqual(commerceSource.includes('Aplicando promoção nas variações elegíveis...'), true);
   assert.strictEqual(commerceSource.includes('Removendo promoção das variações elegíveis...'), true);

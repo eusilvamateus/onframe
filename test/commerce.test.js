@@ -303,6 +303,8 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /Você recebe/);
   assert.match(styles, /\.onframe-commerce-estimate/);
   assert.match(styles, /\.onframe-commerce-review/);
+  assert.match(styles, /\.onframe-commerce-estimate-grid > span\s*{[^}]*flex:\s*1 1 150px/s);
+  assert.match(styles, /\.onframe-commerce-review-grid > span\s*{[^}]*flex:\s*1 1 132px/s);
   assert.match(styles, /\.onframe-commerce-period-legend/);
 });
 

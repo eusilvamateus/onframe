@@ -297,7 +297,7 @@
 .onframe-commerce-estimate-grid > span {
   display: grid;
   gap: 4px;
-  flex: 0 1 150px;
+  flex: 1 1 150px;
   min-height: 52px;
   padding: 9px;
   border: 1px solid var(--ob-line);
@@ -380,7 +380,6 @@
 
 .onframe-commerce-bulk-switch {
   margin: 10px 0 0;
-  min-height: 24px;
 }
 
 .onframe-commerce-bulk-status {
@@ -824,7 +823,7 @@
 }
 
 .onframe-commerce-review-grid > span {
-  flex: 0 1 132px;
+  flex: 1 1 132px;
 }
 
 .onframe-commerce-review-grid > span.success,
