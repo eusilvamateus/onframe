@@ -307,6 +307,48 @@ async function deleteOffer(client, itemId, input = {}) {
   return client.deletePromotionOffer(item.id, buildOfferDeleteParams(input, promotionAdapter));
 }
 
+async function previewOfferAction(client, itemId, action, input = {}) {
+  const normalizedAction = String(action || '').trim().toLowerCase();
+  if (normalizedAction === 'create' || normalizedAction === 'update') {
+    const item = await assertOwnedItem(client, itemId);
+    const promotionType = normalizePromotionType(input.promotionType || input.promotion_type);
+    const promotionAdapter = requireAdapter(promotionType);
+    assertNotReadonly(promotionAdapter);
+    assertActionSupported(promotionAdapter, normalizedAction === 'create' ? 'offerCreate' : 'offerUpdate');
+    assertRequired(input, normalizedAction === 'create' ? promotionAdapter.offerCreate : promotionAdapter.offerUpdate);
+    const payload = buildOfferPayload(input, promotionAdapter);
+    await assertPromotionPriceInRange(client, item.id, payload);
+    const estimate = await estimatePromotionImpact(client, item.id, input);
+    return Object.assign({ ok: true, action: normalizedAction }, estimate);
+  }
+
+  if (normalizedAction === 'delete') {
+    const item = await assertOwnedItem(client, itemId);
+    const current = await optional(() => client.getItemPromotions(item.id), [404]);
+    const promotionType = normalizePromotionType(input.promotionType || input.promotion_type);
+    const promotionAdapter = requireAdapter(promotionType);
+    assertNotReadonly(promotionAdapter);
+    assertActionSupported(promotionAdapter, 'offerDelete');
+    assertRequired(input, promotionAdapter.offerDelete);
+    assertStartedDeletePolicyDoesNotApply(input, promotionAdapter, current);
+    return {
+      ok: true,
+      action: normalizedAction,
+      item: summarizePromotionItem(item),
+      promotion: {
+        id: input.promotionId || input.promotion_id || null,
+        offer_id: input.offerId || input.offer_id || null,
+        type: promotionAdapter.type,
+        label: promotionAdapter.label
+      }
+    };
+  }
+
+  const err = new Error('bulk_action_not_supported');
+  err.statusCode = 400;
+  throw err;
+}
+
 async function listCampaigns(client) {
   const me = await client.getMe();
   const response = await client.getSellerPromotions(me.id);
@@ -874,6 +916,7 @@ module.exports = {
   deleteOffer,
   estimatePromotionImpact,
   listCampaigns,
+  previewOfferAction,
   updateCampaign,
   updateOffer
 };

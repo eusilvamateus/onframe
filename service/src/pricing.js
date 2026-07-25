@@ -139,6 +139,40 @@ async function updateStandardPrice(client, itemId, input = {}) {
   };
 }
 
+async function previewStandardPriceUpdate(client, itemId, input = {}) {
+  const item = await assertOwnedItem(client, itemId);
+  const amount = normalizeAmount(input.amount);
+  if (!amount) {
+    const err = new Error('pricing_invalid_amount');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const [automation, promotions] = await Promise.all([
+    optional(() => client.getPricingAutomation(item.id), { nullableStatuses: [404] }),
+    optional(() => client.getItemPromotions(item.id), { nullableStatuses: [404] })
+  ]);
+  const restrictions = buildPriceRestrictions(item, automation, promotions);
+  const blocker = restrictions.find((restriction) => restriction.level === 'block');
+  if (blocker) {
+    const err = new Error(blocker.code);
+    err.statusCode = 409;
+    err.details = blocker;
+    throw err;
+  }
+
+  return {
+    ok: true,
+    item: summarizePricingItem(item),
+    standardPrice: {
+      amount,
+      currency_id: item.currency_id || null,
+      source: 'bulk_preview'
+    },
+    restrictions
+  };
+}
+
 async function loadListingCosts(client, item, price) {
   if (!item || !item.site_id || !price) return null;
   const params = {
@@ -679,5 +713,6 @@ function isClosedItem(item) {
 module.exports = {
   buildCostProjection,
   buildPriceSummary,
+  previewStandardPriceUpdate,
   updateStandardPrice
 };

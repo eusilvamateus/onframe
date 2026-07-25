@@ -18,6 +18,10 @@ const {
   handleStandardPriceUpdate
 } = require('./routes/pricing');
 const {
+  handleBulkCommit,
+  handleBulkPreview
+} = require('./routes/bulk');
+const {
   handlePictureCommit,
   handlePictureFixSize,
   handlePictureQuality,
@@ -127,6 +131,18 @@ function createApp(options = {}) {
       if (req.method === 'PUT' && standardPriceMatch) {
         const itemClient = await resolveClientForItemRequest(url, standardPriceMatch[1]);
         return sendJson(res, 200, await handleStandardPriceUpdate({ req, client: itemClient, itemId: standardPriceMatch[1], readJson }));
+      }
+
+      const bulkPreviewMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/bulk\/preview$/);
+      if (req.method === 'POST' && bulkPreviewMatch) {
+        const itemClient = await resolveClientForItemRequest(url, bulkPreviewMatch[1]);
+        return sendJson(res, 200, await handleBulkPreview({ req, client: itemClient, itemId: bulkPreviewMatch[1], readJson }));
+      }
+
+      const bulkCommitMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/bulk\/commit$/);
+      if (req.method === 'POST' && bulkCommitMatch) {
+        const itemClient = await resolveClientForItemRequest(url, bulkCommitMatch[1]);
+        return sendJson(res, 200, await handleBulkCommit({ req, client: itemClient, itemId: bulkCommitMatch[1], readJson }));
       }
 
       const promotionSummaryMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/promotions\/summary$/);

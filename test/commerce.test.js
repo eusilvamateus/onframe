@@ -36,6 +36,10 @@ const {
   fakeElement,
   listen
 } = require('./helpers');
+const {
+  buildBulkPreview,
+  commitBulkAction
+} = require('../service/src/bulk-actions');
 
 test('commerce model resume estado de preco e bloqueios', () => {
   const editable = commerceModel.getPriceState({
@@ -577,6 +581,97 @@ test('pricing update bloqueia anuncio encerrado antes de alterar o item', async 
   assert.strictEqual(updateCalled, false);
 });
 
+test('bulk de preco resolve familia user_product e aplica somente elegiveis', async () => {
+  const updated = [];
+  const items = {
+    MLB1000000001: {
+      id: 'MLB1000000001',
+      title: 'Azul',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Camiseta',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000001',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      tags: []
+    },
+    MLB1000000002: {
+      id: 'MLB1000000002',
+      title: 'Verde',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Camiseta',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000002',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      tags: []
+    },
+    MLB1000000003: {
+      id: 'MLB1000000003',
+      title: 'Preto',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Camiseta',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000003',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      tags: ['dynamic_standard_price']
+    }
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => items[itemId],
+    getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+    getUserProductFamily: async () => ({
+      user_products: [
+        { id: 'MLBU100000001' },
+        { id: 'MLBU100000002' },
+        { id: 'MLBU100000003' }
+      ]
+    }),
+    searchItemsByUserProduct: async (sellerId, userProductIds, options) => {
+      assert.strictEqual(sellerId, 123);
+      assert.strictEqual(userProductIds, 'MLBU100000001,MLBU100000002,MLBU100000003');
+      assert.deepStrictEqual(options, { status: 'active', limit: 100 });
+      return { results: Object.keys(items) };
+    },
+    getPricingAutomation: async (itemId) => itemId === 'MLB1000000003' ? { status: 'ACTIVE' } : null,
+    getItemPromotions: async () => ({ results: [] }),
+    updateItem: async (itemId, payload) => {
+      updated.push({ itemId, payload });
+      return Object.assign({}, items[itemId], payload);
+    }
+  };
+
+  const preview = await buildBulkPreview(client, 'MLB1000000001', {
+    scope: 'user_product_family',
+    action: 'pricing.standard.update',
+    payload: { amount: 120 }
+  });
+
+  assert.strictEqual(preview.counts.total, 3);
+  assert.strictEqual(preview.counts.eligible, 2);
+  assert.strictEqual(preview.counts.blocked, 1);
+  assert.strictEqual(preview.targets.find((target) => target.itemId === 'MLB1000000003').reasonCode, 'pricing_automation_active');
+
+  const commit = await commitBulkAction(client, 'MLB1000000001', {
+    scope: 'user_product_family',
+    action: 'pricing.standard.update',
+    payload: { amount: 120 },
+    targetItemIds: preview.targets.map((target) => target.itemId)
+  });
+
+  assert.strictEqual(commit.counts.applied, 2);
+  assert.strictEqual(commit.counts.skipped, 1);
+  assert.deepStrictEqual(updated.map((entry) => entry.itemId).sort(), ['MLB1000000001', 'MLB1000000002']);
+});
+
 test('promotion adapter exige estoque em oferta relampago e monta payload', async () => {
   await assert.rejects(
     () => createOffer({
@@ -1006,4 +1101,65 @@ test('api pricing e promotions expõem rotas locais', async (t) => {
   assert.strictEqual(estimateBody.dealPrice, 90);
   assert.strictEqual(estimateBody.promotion.type, 'SMART');
   assert.strictEqual(estimateBody.promotion.label, 'Campanha Smart');
+});
+
+test('api bulk preview expõe contrato local por item', async (t) => {
+  const items = {
+    MLB2000000001: {
+      id: 'MLB2000000001',
+      title: 'Azul',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Camiseta',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU200000001',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      tags: []
+    },
+    MLB2000000002: {
+      id: 'MLB2000000002',
+      title: 'Verde',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Camiseta',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU200000002',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      tags: []
+    }
+  };
+  const server = await listen(createApp({
+    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+    client: {
+      getMe: async () => ({ id: 123 }),
+      getItem: async (itemId) => items[itemId],
+      getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+      getUserProductFamily: async () => ({
+        results: [{ id: 'MLBU200000001' }, { id: 'MLBU200000002' }]
+      }),
+      searchItemsByUserProduct: async () => ({ results: Object.keys(items) }),
+      getPricingAutomation: async () => null,
+      getItemPromotions: async () => ({ results: [] })
+    }
+  }));
+  t.after(() => server.close());
+
+  const response = await fetch(`${server.url}/api/items/MLB2000000001/bulk/preview`, {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'user_product_family',
+      action: 'pricing.standard.update',
+      payload: { amount: 130 }
+    })
+  });
+  const body = await response.json();
+
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(body.action, 'pricing.standard.update');
+  assert.strictEqual(body.counts.total, 2);
+  assert.strictEqual(body.counts.eligible, 2);
 });

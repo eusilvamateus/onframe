@@ -249,6 +249,7 @@ test('service separa rotas de item e fotos do servidor HTTP', () => {
   const picturesRoute = require('../service/src/routes/pictures');
   const pricingRoute = require('../service/src/routes/pricing');
   const promotionsRoute = require('../service/src/routes/promotions');
+  const bulkRoute = require('../service/src/routes/bulk');
   const itemContext = require('../service/src/item-context');
 
   assert.strictEqual(typeof itemsRoute.handleResolve, 'function');
@@ -258,6 +259,8 @@ test('service separa rotas de item e fotos do servidor HTTP', () => {
   assert.strictEqual(typeof pricingRoute.handleStandardPriceUpdate, 'function');
   assert.strictEqual(typeof promotionsRoute.handlePromotionSummary, 'function');
   assert.strictEqual(typeof promotionsRoute.handleCreateOffer, 'function');
+  assert.strictEqual(typeof bulkRoute.handleBulkPreview, 'function');
+  assert.strictEqual(typeof bulkRoute.handleBulkCommit, 'function');
   assert.strictEqual(typeof itemContext.resolveItemContext, 'function');
   assert.strictEqual(appSource.includes('async function handlePictureCommit'), false);
   assert.strictEqual(appSource.includes('async function resolveItemContext'), false);
@@ -272,7 +275,7 @@ test('service mantem exports publicos enxutos', () => {
   const itemContextSource = fs.readFileSync(path.join(__dirname, '..', 'service', 'src', 'item-context.js'), 'utf8');
 
   assert.deepStrictEqual(Object.keys(meliClient).sort(), ['MercadoLivreClient']);
-  assert.deepStrictEqual(Object.keys(pricing).sort(), ['buildCostProjection', 'buildPriceSummary', 'updateStandardPrice']);
+  assert.deepStrictEqual(Object.keys(pricing).sort(), ['buildCostProjection', 'buildPriceSummary', 'previewStandardPriceUpdate', 'updateStandardPrice']);
   assert.deepStrictEqual(Object.keys(promotions).sort(), [
     'buildPromotionSummary',
     'createCampaign',
@@ -281,6 +284,7 @@ test('service mantem exports publicos enxutos', () => {
     'deleteOffer',
     'estimatePromotionImpact',
     'listCampaigns',
+    'previewOfferAction',
     'updateCampaign',
     'updateOffer'
   ]);

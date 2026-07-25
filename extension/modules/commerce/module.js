@@ -35,6 +35,10 @@
       popover: null,
       priceEditing: false,
       priceDraft: '',
+      priceBulkEnabled: false,
+      priceBulkPreview: null,
+      priceBulkHash: '',
+      priceBulkError: '',
       detailsOpen: false,
       promotionModalOpen: false,
       promotionFormKey: '',
@@ -42,6 +46,7 @@
       promotionEstimates: {},
       promotionEstimateTimers: {},
       promotionEstimateRequestId: 0,
+      promotionBulkEnabled: false,
       promotionConfirm: null,
       promotionFocusKey: '',
       datePickerRoot: null,
@@ -85,12 +90,17 @@
       state.popover = null;
       state.priceEditing = false;
       state.priceDraft = '';
+      state.priceBulkEnabled = false;
+      state.priceBulkPreview = null;
+      state.priceBulkHash = '';
+      state.priceBulkError = '';
       state.detailsOpen = false;
       state.promotionModalOpen = false;
       state.promotionFormKey = '';
       state.promotionDraftValues = {};
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
+      state.promotionBulkEnabled = false;
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
       removeDatePicker();
@@ -389,8 +399,10 @@
             <span>Novo preço</span>
             <input data-field="price" inputmode="decimal" autocomplete="off" value="${escapeAttribute(state.priceDraft)}">
           </label>
+          ${renderBulkSwitch('price', state.priceBulkEnabled)}
+          ${renderBulkStatus(state.priceBulkPreview, state.priceBulkError)}
           <div class="onframe-commerce-actions">
-            <button class="onframe-commerce-btn primary" data-action="save-price" type="button" ${state.busy ? 'disabled' : ''}>Salvar</button>
+            <button class="onframe-commerce-btn primary" data-action="save-price" type="button" ${state.busy ? 'disabled' : ''}>${escapeHtml(priceSaveLabel())}</button>
             <button class="onframe-commerce-btn" data-action="cancel-price" type="button" ${state.busy ? 'disabled' : ''}>Descartar</button>
           </div>
         </section>
@@ -658,9 +670,9 @@
           ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
           ${renderPromotionReview(key, entry, formOpen, confirm)}
           <div class="onframe-commerce-card-actions">
-            ${canCreate ? `<button class="onframe-commerce-btn primary compact" data-action="create-offer" type="button" ${confirmBlocked && confirm.action === 'create' ? 'disabled' : ''}>${icon(confirm && confirm.action === 'create' ? 'checkCircle' : formOpen ? 'checkCircle' : 'tag', 14)}${confirm && confirm.action === 'create' ? 'Confirmar aplicação' : userFields.length && !formOpen ? 'Configurar oferta' : 'Revisar aplicação'}</button>` : ''}
-            ${canUpdate ? `<button class="onframe-commerce-btn compact" data-action="update-offer" type="button" ${confirmBlocked && confirm.action === 'update' ? 'disabled' : ''}>${icon(confirm && confirm.action === 'update' ? 'checkCircle' : formOpen ? 'checkCircle' : 'pencil', 14)}${confirm && confirm.action === 'update' ? 'Confirmar alteração' : userFields.length && !formOpen ? 'Alterar valores' : 'Revisar alteração'}</button>` : ''}
-            ${canDelete ? `<button class="onframe-commerce-btn danger compact" data-action="delete-offer" type="button">${icon(confirm && confirm.action === 'delete' ? 'checkCircle' : 'x', 14)}${confirm && confirm.action === 'delete' ? 'Confirmar remoção' : 'Remover promoção'}</button>` : ''}
+            ${canCreate ? `<button class="onframe-commerce-btn primary compact" data-action="create-offer" type="button" ${confirmBlocked && confirm.action === 'create' ? 'disabled' : ''}>${icon(confirm && confirm.action === 'create' ? 'checkCircle' : formOpen ? 'checkCircle' : 'tag', 14)}${promotionActionLabel('create', confirm, formOpen, userFields)}</button>` : ''}
+            ${canUpdate ? `<button class="onframe-commerce-btn compact" data-action="update-offer" type="button" ${confirmBlocked && confirm.action === 'update' ? 'disabled' : ''}>${icon(confirm && confirm.action === 'update' ? 'checkCircle' : formOpen ? 'checkCircle' : 'pencil', 14)}${promotionActionLabel('update', confirm, formOpen, userFields)}</button>` : ''}
+            ${canDelete ? `<button class="onframe-commerce-btn danger compact" data-action="delete-offer" type="button">${icon(confirm && confirm.action === 'delete' ? 'checkCircle' : 'x', 14)}${promotionActionLabel('delete', confirm, formOpen, userFields)}</button>` : ''}
             ${confirm ? '<button class="onframe-commerce-btn compact" data-action="cancel-promotion-confirm" type="button">Cancelar</button>' : ''}
           </div>
         </article>
@@ -904,9 +916,11 @@
         <div class="onframe-commerce-review">
           <strong>${escapeHtml(confirmationTitle(confirm.action))}</strong>
           <span>${escapeHtml(confirmationText(confirm.action))}</span>
+          ${renderBulkSwitch('promotion', state.promotionBulkEnabled)}
           ${period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : ''}
           ${renderPromotionConfirmFacts(entry, targetPrice, rangeWarning)}
           ${estimateMarkup}
+          ${renderBulkStatus(confirm.bulkPreview || null, confirm.bulkError || '')}
         </div>
       `;
     }
@@ -994,6 +1008,65 @@
       `;
     }
 
+    function priceSaveLabel() {
+      if (!state.priceBulkEnabled || !state.priceBulkPreview) return 'Salvar';
+      const eligible = bulkEligibleTargets(state.priceBulkPreview).length;
+      return eligible > 1 ? `Confirmar em ${eligible} variações` : 'Confirmar';
+    }
+
+    function renderBulkSwitch(kind, checked) {
+      if (!canUseBulkActions()) return '';
+      const action = kind === 'price' ? 'toggle-price-bulk' : 'toggle-promotion-bulk';
+      const id = `onframe-commerce-bulk-${kind}`;
+      return `
+        <label class="onframe-commerce-bulk-switch" for="${escapeAttribute(id)}">
+          <input id="${escapeAttribute(id)}" data-action="${escapeAttribute(action)}" type="checkbox" ${checked ? 'checked' : ''}>
+          <span>Aplicar a todas as variações</span>
+        </label>
+      `;
+    }
+
+    function renderBulkStatus(preview, error) {
+      if (error) {
+        return `<div class="onframe-commerce-bulk-status warn">${escapeHtml(shortMessage(error))}</div>`;
+      }
+      if (!preview) return '';
+      const counts = preview.counts || {};
+      const eligible = Number(counts.eligible || 0);
+      const total = Number(counts.total || 0);
+      const blocked = Number(counts.blocked || 0);
+      if (!eligible) {
+        return `<div class="onframe-commerce-bulk-status warn">Nenhuma variação elegível${blocked ? ` (${blocked} bloqueada${blocked === 1 ? '' : 's'})` : ''}.</div>`;
+      }
+      return `
+        <div class="onframe-commerce-bulk-status ok">
+          ${escapeHtml(`${eligible} de ${total} variações elegíveis.`)}
+          ${blocked ? `<details><summary>${escapeHtml(`${blocked} ignorada${blocked === 1 ? '' : 's'}`)}</summary>${renderBulkBlockedList(preview)}</details>` : ''}
+        </div>
+      `;
+    }
+
+    function renderBulkBlockedList(preview) {
+      const blocked = (preview && Array.isArray(preview.targets) ? preview.targets : [])
+        .filter((target) => !target.eligible)
+        .slice(0, 6);
+      if (!blocked.length) return '';
+      return `<ul>${blocked.map((target) => `<li>${escapeHtml(shortTargetLabel(target))}: ${escapeHtml(CommerceModel.friendlyError(target.reasonCode || target.message || 'Bloqueado'))}</li>`).join('')}</ul>`;
+    }
+
+    function shortTargetLabel(target) {
+      return target && (target.title || target.itemId) ? String(target.title || target.itemId).slice(0, 42) : 'Variação';
+    }
+
+    function canUseBulkActions() {
+      return Boolean(state.context && state.context.mode === 'user_product');
+    }
+
+    function bulkEligibleTargets(preview) {
+      return (preview && Array.isArray(preview.targets) ? preview.targets : [])
+        .filter((target) => target && target.eligible && target.itemId);
+    }
+
     function promotionRangeWarning(entry, targetPrice) {
       const price = Number(targetPrice || 0);
       const min = Number(entry && entry.min_price || 0);
@@ -1013,6 +1086,21 @@
     function confirmationText(action) {
       if (action === 'delete') return 'A remoção será enviada ao Mercado Livre ao confirmar.';
       return 'Nada foi enviado ainda. Revise antes de confirmar.';
+    }
+
+    function promotionActionLabel(action, confirm, formOpen, userFields) {
+      if (confirm && confirm.action === action && state.promotionBulkEnabled && confirm.bulkPreview) {
+        const eligible = bulkEligibleTargets(confirm.bulkPreview).length;
+        return eligible > 1 ? `Confirmar em ${eligible} variações` : 'Confirmar';
+      }
+      if (confirm && confirm.action === action) {
+        if (action === 'delete') return 'Confirmar remoção';
+        if (action === 'update') return 'Confirmar alteração';
+        return 'Confirmar aplicação';
+      }
+      if (action === 'delete') return 'Remover promoção';
+      if (action === 'update') return userFields.length && !formOpen ? 'Alterar valores' : 'Revisar alteração';
+      return userFields.length && !formOpen ? 'Configurar oferta' : 'Revisar aplicação';
     }
 
     function promotionTone(entry, kind) {
@@ -1340,6 +1428,7 @@
       bindButton(state.popoverRoot, 'reload-commerce', () => void reloadCommerce());
       bindButton(state.popoverRoot, 'open-promotion-modal', openPromotionModal);
       bindButton(state.popoverRoot, 'refresh-page', refreshPage);
+      bindBulkControls(state.popoverRoot);
     }
 
     function bindModalEvents() {
@@ -1352,8 +1441,51 @@
       bindButton(state.modalRoot, 'cancel-promotion-confirm', cancelPromotionConfirm);
       bindButton(state.modalRoot, 'refresh-page', refreshPage);
       bindButton(state.modalRoot, 'open-date-picker', (button) => openDatePicker(button.closest('.onframe-commerce-date-field') && button.closest('.onframe-commerce-date-field').querySelector('[data-date-display]')));
+      bindBulkControls(state.modalRoot);
       bindPromotionFieldDrafts(state.modalRoot);
       bindDateFields(state.modalRoot);
+    }
+
+    function bindBulkControls(container) {
+      const priceToggle = container.querySelector('[data-action="toggle-price-bulk"]');
+      if (priceToggle) {
+        priceToggle.addEventListener('change', () => {
+          state.priceBulkEnabled = Boolean(priceToggle.checked);
+          state.priceBulkPreview = null;
+          state.priceBulkHash = '';
+          state.priceBulkError = '';
+          state.actionError = '';
+          state.actionMessage = '';
+          rerenderPopover();
+        });
+      }
+
+      const promotionToggle = container.querySelector('[data-action="toggle-promotion-bulk"]');
+      if (promotionToggle) {
+        promotionToggle.addEventListener('change', () => {
+          state.promotionBulkEnabled = Boolean(promotionToggle.checked);
+          if (state.promotionConfirm) {
+            state.promotionConfirm = Object.assign({}, state.promotionConfirm, {
+              bulkPreview: null,
+              bulkError: '',
+              bulkHash: ''
+            });
+          }
+          state.actionError = '';
+          state.actionMessage = '';
+          rerenderModal();
+        });
+      }
+
+      const priceInput = container.querySelector('[data-field="price"]');
+      if (priceInput) {
+        priceInput.addEventListener('input', () => {
+          state.priceDraft = priceInput.value;
+          state.priceBulkPreview = null;
+          state.priceBulkHash = '';
+          state.priceBulkError = '';
+        });
+      }
     }
 
     function bindButton(container, action, handler) {
@@ -1735,6 +1867,10 @@
       if (!priceState.canEdit) return;
       state.priceEditing = true;
       state.priceDraft = priceState.amount ? String(priceState.amount).replace('.', ',') : '';
+      state.priceBulkEnabled = false;
+      state.priceBulkPreview = null;
+      state.priceBulkHash = '';
+      state.priceBulkError = '';
       state.actionError = '';
       state.actionMessage = '';
       rerenderPopover();
@@ -1743,6 +1879,10 @@
     function cancelPriceEdit() {
       state.priceEditing = false;
       state.priceDraft = '';
+      state.priceBulkEnabled = false;
+      state.priceBulkPreview = null;
+      state.priceBulkHash = '';
+      state.priceBulkError = '';
       state.actionError = '';
       rerenderPopover();
     }
@@ -1754,6 +1894,11 @@
       if (!amount) {
         state.actionError = 'Informe um preço válido.';
         rerenderPopover();
+        return;
+      }
+
+      if (state.priceBulkEnabled && canUseBulkActions()) {
+        await saveBulkPrice(amount);
         return;
       }
 
@@ -1778,6 +1923,63 @@
       }
     }
 
+    async function saveBulkPrice(amount) {
+      const payload = { amount };
+      const hash = bulkHash('pricing.standard.update', payload);
+      if (!state.priceBulkPreview || state.priceBulkHash !== hash) {
+        state.busy = true;
+        state.priceBulkError = '';
+        state.priceBulkPreview = null;
+        state.priceBulkHash = hash;
+        rerenderPopover();
+        try {
+          state.priceBulkPreview = await api(itemApiPath('/bulk/preview'), {
+            method: 'POST',
+            body: JSON.stringify(bulkRequest('pricing.standard.update', payload))
+          });
+          const eligible = bulkEligibleTargets(state.priceBulkPreview).length;
+          state.actionMessage = eligible ? 'Revise as variações antes de confirmar.' : '';
+          state.priceBulkError = eligible ? '' : 'Nenhuma variação elegível.';
+        } catch (err) {
+          state.priceBulkError = toUserError(err);
+        } finally {
+          state.busy = false;
+          rerenderPopover();
+        }
+        return;
+      }
+
+      const targetItemIds = bulkEligibleTargets(state.priceBulkPreview).map((target) => target.itemId);
+      if (!targetItemIds.length) {
+        state.priceBulkError = 'Nenhuma variação elegível.';
+        rerenderPopover();
+        return;
+      }
+
+      state.busy = true;
+      state.actionError = '';
+      state.actionMessage = '';
+      rerenderPopover();
+      try {
+        const result = await api(itemApiPath('/bulk/commit'), {
+          method: 'POST',
+          body: JSON.stringify(bulkRequest('pricing.standard.update', payload, targetItemIds))
+        });
+        state.priceEditing = false;
+        state.priceDraft = '';
+        state.priceBulkPreview = null;
+        state.priceBulkHash = '';
+        state.priceBulkError = '';
+        state.actionMessage = bulkResultMessage(result, 'Preço salvo');
+        await loadSummaries(state.requestId);
+      } catch (err) {
+        state.actionError = toUserError(err);
+      } finally {
+        state.busy = false;
+        mountCommerce();
+      }
+    }
+
     function openPromotionModal() {
       state.popover = null;
       removePopover();
@@ -1786,6 +1988,7 @@
       state.actionMessage = '';
       state.promotionFormKey = '';
       state.promotionDraftValues = {};
+      state.promotionBulkEnabled = false;
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
       renderModal();
@@ -1796,6 +1999,7 @@
       state.promotionModalOpen = false;
       state.promotionFormKey = '';
       state.promotionDraftValues = {};
+      state.promotionBulkEnabled = false;
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
       state.promotionConfirm = null;
@@ -1846,6 +2050,69 @@
           state.actionMessage = '';
           if (action !== 'delete') schedulePromotionEstimate(key, entry, values);
           rerenderModal();
+          return;
+        }
+
+        if (state.promotionBulkEnabled && canUseBulkActions()) {
+          const hash = bulkHash(`promotion.offer.${action}`, payload);
+          if (!state.promotionConfirm.bulkPreview || state.promotionConfirm.bulkHash !== hash) {
+            state.busy = true;
+            state.promotionConfirm = Object.assign({}, state.promotionConfirm, {
+              bulkPreview: null,
+              bulkError: '',
+              bulkHash: hash
+            });
+            rerenderModal();
+            try {
+              const preview = await api(itemApiPath('/bulk/preview'), {
+                method: 'POST',
+                body: JSON.stringify(bulkRequest(`promotion.offer.${action}`, payload))
+              });
+              const eligible = bulkEligibleTargets(preview).length;
+              state.promotionConfirm = Object.assign({}, state.promotionConfirm, {
+                bulkPreview: preview,
+                bulkError: eligible ? '' : 'Nenhuma variação elegível.',
+                bulkHash: hash
+              });
+              state.actionMessage = eligible ? 'Revise as variações antes de confirmar.' : '';
+            } catch (err) {
+              state.promotionConfirm = Object.assign({}, state.promotionConfirm, {
+                bulkPreview: null,
+                bulkError: CommerceModel.friendlyError(err),
+                bulkHash: hash
+              });
+            } finally {
+              state.busy = false;
+              rerenderModal();
+            }
+            return;
+          }
+
+          const targetItemIds = bulkEligibleTargets(state.promotionConfirm.bulkPreview).map((target) => target.itemId);
+          if (!targetItemIds.length) {
+            state.promotionConfirm = Object.assign({}, state.promotionConfirm, {
+              bulkError: 'Nenhuma variação elegível.'
+            });
+            rerenderModal();
+            return;
+          }
+
+          state.busy = true;
+          state.actionError = '';
+          state.actionMessage = '';
+          rerenderModal();
+          const result = await api(itemApiPath('/bulk/commit'), {
+            method: 'POST',
+            body: JSON.stringify(bulkRequest(`promotion.offer.${action}`, payload, targetItemIds))
+          });
+          state.actionMessage = bulkResultMessage(result, action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
+          state.promotionFormKey = '';
+          state.promotionDraftValues = {};
+          clearPromotionEstimateTimers();
+          state.promotionEstimates = {};
+          state.promotionConfirm = null;
+          await loadSummaries(state.requestId);
+          schedulePromotionManagerEstimates();
           return;
         }
 
@@ -2042,6 +2309,29 @@
       });
       const search = query.toString();
       return `/api/items/${encodeURIComponent(state.itemId)}${suffix}${search ? `?${search}` : ''}`;
+    }
+
+    function bulkRequest(action, payload, targetItemIds) {
+      const request = {
+        scope: 'user_product_family',
+        action,
+        payload: payload || {}
+      };
+      if (Array.isArray(targetItemIds)) request.targetItemIds = targetItemIds;
+      return request;
+    }
+
+    function bulkHash(action, payload) {
+      return `${action}:${JSON.stringify(payload || {})}`;
+    }
+
+    function bulkResultMessage(result, fallback) {
+      const counts = result && result.counts ? result.counts : {};
+      const applied = Number(counts.applied || 0);
+      const failed = Number(counts.failed || 0);
+      const skipped = Number(counts.skipped || 0);
+      const suffix = failed || skipped ? ` (${failed + skipped} não alterada${failed + skipped === 1 ? '' : 's'})` : '';
+      return `${fallback} em ${applied} variação${applied === 1 ? '' : 's'}.${suffix}`;
     }
 
     function isoDateOnly(value) {
