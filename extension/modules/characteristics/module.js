@@ -600,6 +600,7 @@
         <th class="andes-table__header andes-table__header--left ui-vpp-striped-specs__row__column ui-vpp-striped-specs__row__column--id" scope="row">
           <div class="andes-table__header__container onframe-characteristics-extra-label">
             <span class="onframe-characteristics-extra-label-text">${escapeHtml(field.label)}</span>
+            ${renderPendingStatusBadge(field)}
             ${renderHiddenStatusBadge(field)}
           </div>
         </th>
@@ -702,6 +703,11 @@
       return showReadOnlyBadge ? `<span class="ob-badge grey onframe-characteristics-status-badge" title="${escapeAttribute(readOnlyTitle)}">Leitura</span>` : '';
     }
 
+    function renderPendingStatusBadge(field) {
+      if (!field || !field.pending) return '';
+      return '<span class="ob-badge orange onframe-characteristics-status-badge pending" title="Campo existe no contrato da categoria, mas ainda não está preenchido no anúncio">Pendente</span>';
+    }
+
     function renderHiddenStatusBadge(field) {
       if (!field || !Array.isArray(field.tags) || !field.tags.includes('hidden') || field.publicField) return '';
       return '<span class="ob-badge blue onframe-characteristics-status-badge" title="Campo não exibido na ficha pública">Oculto</span>';
@@ -732,7 +738,7 @@
       return `
         <span class="onframe-characteristics-inline-control">
           <span class="ob-field-shell onframe-characteristics-field-shell ${disabled ? 'is-disabled' : ''}">
-            <input class="ob-field-input onframe-characteristics-compact-field" data-field-id="${escapeAttribute(field.id)}" data-field-part="valueName" aria-label="${escapeAttribute(field.label)}" type="text" inputmode="${escapeAttribute(inputMode)}" autocomplete="off" value="${escapeAttribute(draft.valueName || '')}" ${disabled ? 'disabled' : ''}>
+            <input class="ob-field-input onframe-characteristics-compact-field" data-field-id="${escapeAttribute(field.id)}" data-field-part="valueName" aria-label="${escapeAttribute(field.label)}" type="text" inputmode="${escapeAttribute(inputMode)}" autocomplete="off" value="${escapeAttribute(draft.valueName || '')}" placeholder="${field.pending ? 'Digite o valor' : ''}" ${disabled ? 'disabled' : ''}>
           </span>
         </span>
       `;
@@ -783,7 +789,8 @@
       const value = config.value || '';
       const key = selectKey(field.id, part);
       const open = !config.disabled && state.openSelectKey === key;
-      const selected = options.find((option) => option.value === value) || options[0] || { value: '', label: 'Selecione' };
+      const selected = value ? options.find((option) => option.value === value) : null;
+      const display = selected || { value: '', label: 'Selecione' };
       const shellClass = config.shellClass ? ` ${config.shellClass}` : '';
       const compositeIds = Array.isArray(config.compositeFieldIds) ? config.compositeFieldIds.filter(Boolean) : [];
       const compositeAttribute = compositeIds.length ? ` data-select-composite-ids="${escapeAttribute(compositeIds.join(','))}"` : '';
@@ -802,7 +809,7 @@
             aria-expanded="${open ? 'true' : 'false'}"
             ${config.disabled ? 'disabled' : ''}
           >
-            <span class="onframe-characteristics-select-value">${escapeHtml(selected.label || selected.value || 'Selecione')}</span>
+            <span class="onframe-characteristics-select-value">${escapeHtml(display.label || display.value || 'Selecione')}</span>
           </button>
           <span class="ob-select-caret" aria-hidden="true">${icon('caretDown', 12)}</span>
           ${open ? renderCustomSelectMenu(field, part, key, options, value, compositeIds) : ''}
@@ -1135,6 +1142,7 @@
         if (!changedIds.has(field.id)) return;
         const draft = state.draft[field.id] || {};
         const displayValue = formatDraftDisplayValue(field, draft);
+        field.pending = false;
         field.displayValue = displayValue || field.displayValue;
         if (field.multivalued) {
           field.valueName = displayValue;
@@ -1267,10 +1275,11 @@
         };
       }
       if (field.valueType === 'list' || field.valueType === 'boolean') {
+        if (field.pending && !field.valueId && !field.valueName && !field.displayValue) return { valueId: '' };
         const options = Array.isArray(field.options) ? field.options : [];
         const matched = options.find((option) => option.id === field.valueId) ||
           options.find((option) => normalizeText(option.name).toLowerCase() === normalizeText(field.valueName || field.displayValue).toLowerCase()) ||
-          options[0] || {};
+          {};
         return { valueId: matched.id || '' };
       }
       return {

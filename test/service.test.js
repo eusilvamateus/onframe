@@ -351,6 +351,76 @@ test('caracteristicas montam ficha com technical specs e respeitam bloqueios do 
   assert.strictEqual(byId.get('COLOR').reason, 'variation_attribute');
 });
 
+test('caracteristicas expõem atributos pendentes seguros do schema da categoria', async () => {
+  const payloads = [];
+  const item = {
+    id: 'MLB1000000001',
+    seller_id: 123,
+    category_id: 'MLB123',
+    domain_id: 'MLB-TEST',
+    catalog_listing: false,
+    attributes: [
+      { id: 'HAT_AND_CAP_TYPE', name: 'Tipo de chapéu', value_name: 'Chapéu fedora' }
+    ]
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => item,
+    getCategoryAttributes: async () => [
+      { id: 'HAT_AND_CAP_TYPE', name: 'Tipo de chapéu', value_type: 'string', attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'COMPOSITION', name: 'Composição', value_type: 'string', tags: { hidden: true, multivalued: true }, hierarchy: 'FAMILY', attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'IS_REVERSIBLE', name: 'É reversível', value_type: 'boolean', tags: { hidden: true }, hierarchy: 'FAMILY', values: [{ id: '242084', name: 'Não' }, { id: '242085', name: 'Sim' }], attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'IS_KIT', name: 'É kit', value_type: 'boolean', tags: { hidden: true }, hierarchy: 'ITEM', values: [{ id: '242084', name: 'Não' }, { id: '242085', name: 'Sim' }], attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'PRODUCT_DATA_SOURCE', name: 'Fonte do produto', value_type: 'string', tags: { hidden: true }, hierarchy: 'ITEM', attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'PRODUCT_FEATURES', name: 'Características do produto', value_type: 'string', tags: { hidden: true }, hierarchy: 'ITEM', attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'PACKAGE_HEIGHT', name: 'Altura da embalagem', value_type: 'number_unit', tags: { hidden: true }, allowed_units: [{ id: 'cm' }], attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'GTIN', name: 'Código universal de produto', value_type: 'string', hierarchy: 'PRODUCT_IDENTIFIER', attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' },
+      { id: 'MAIN_COLOR', name: 'Cor principal', value_type: 'list', tags: { variation_attribute: true }, values: [{ id: '52049', name: 'Preto' }], attribute_group_id: 'OTHERS', attribute_group_name: 'Outros' }
+    ],
+    getDomainTechnicalSpecs: async () => ({
+      output: {
+        groups: [{
+          id: 'OTHERS',
+          label: 'Outros',
+          components: [{ attributes: [{ id: 'HAT_AND_CAP_TYPE' }] }]
+        }]
+      }
+    }),
+    updateItem: async (itemId, payload) => {
+      payloads.push({ itemId, payload });
+      return { id: itemId };
+    }
+  };
+
+  const snapshot = await characteristics.getCharacteristics(client, 'MLB1000000001');
+  const byId = new Map(snapshot.fields.map((field) => [field.id, field]));
+  const pendingIds = snapshot.fields.filter((field) => field.pending).map((field) => field.id).sort();
+
+  assert.deepStrictEqual(pendingIds, ['COMPOSITION', 'IS_KIT', 'IS_REVERSIBLE', 'PRODUCT_DATA_SOURCE']);
+  assert.strictEqual(snapshot.meta.pendingCount, 4);
+  assert.strictEqual(byId.get('COMPOSITION').editable, true);
+  assert.strictEqual(byId.get('COMPOSITION').multivalued, true);
+  assert.strictEqual(byId.get('COMPOSITION').reason, null);
+  assert.strictEqual(byId.get('IS_REVERSIBLE').editable, true);
+  assert.strictEqual(byId.has('PRODUCT_FEATURES'), false);
+  assert.strictEqual(byId.has('PACKAGE_HEIGHT'), false);
+  assert.strictEqual(byId.has('GTIN'), false);
+  assert.strictEqual(byId.has('MAIN_COLOR'), false);
+
+  await characteristics.updateCharacteristics(client, 'MLB1000000001', {
+    attributes: [
+      { id: 'COMPOSITION', valueName: 'Poliéster, Algodão' },
+      { id: 'IS_REVERSIBLE', valueId: '242085' }
+    ]
+  });
+
+  assert.deepStrictEqual(payloads[0].payload.attributes, [
+    { id: 'HAT_AND_CAP_TYPE', value_name: 'Chapéu fedora' },
+    { id: 'COMPOSITION', values: [{ name: 'Poliéster' }, { name: 'Algodão' }] },
+    { id: 'IS_REVERSIBLE', value_id: '242085' }
+  ]);
+});
+
 test('caracteristicas permitem hidden publico e multivalor publico com contrato seguro', async () => {
   const payloads = [];
   const item = {

@@ -7,6 +7,7 @@ const CONCURRENCY_READ = 4;
 const CONCURRENCY_WRITE = 2;
 const EDITABLE_VALUE_TYPES = new Set(['string', 'number', 'number_unit', 'boolean', 'list']);
 const BLOCKED_HIERARCHIES = new Set(['PARENT_PK', 'CHILD_PK']);
+const PENDING_BLOCKED_HIERARCHIES = new Set(['PARENT_PK', 'CHILD_PK', 'PRODUCT_IDENTIFIER']);
 const BLOCKED_TAGS = new Set([
   'fixed',
   'read_only',
@@ -39,6 +40,37 @@ const PACKAGE_LOGISTICS_ATTRIBUTE_LABELS = new Set([
   'LARGURA DA EMBALAGEM DO VENDEDOR',
   'PESO DA EMBALAGEM',
   'PESO DA EMBALAGEM DO VENDEDOR'
+]);
+const PENDING_BLOCKED_ATTRIBUTE_IDS = new Set([
+  'ADDITIONAL_INFO_REQUIRED',
+  'AGID',
+  'BATTERIES_FEATURES',
+  'CATALOG_TITLE',
+  'DESCRIPTIVE_TAGS',
+  'EMPTY_GTIN_REASON',
+  'EXCLUDED_PLATFORMS',
+  'FILTRABLE_GENDER',
+  'FOODS_AND_DRINKS',
+  'HAS_COMPATIBILITIES',
+  'HAZMAT_TRANSPORTABILITY',
+  'IEPS',
+  'IMPORT_DUTY',
+  'INVOICE_PRODUCT_NAME',
+  'IVA_FOR_RESALE',
+  'LIMITED_MARKETPLACE_VISIBILITY_REASONS',
+  'MEASURE_UNIT_DESCRIPTION',
+  'MEASURE_UNIT_KEY',
+  'MEDICINES',
+  'PACKAGE_DATA_SOURCE',
+  'PRODUCT_CHEMICAL_FEATURES',
+  'PRODUCT_FEATURES',
+  'SAT_KEY',
+  'SEARCH_ENHANCEMENT_FIELDS',
+  'SELLER_PACKAGE_DATA_SOURCE',
+  'SHIPMENT_PACKING',
+  'SYI_PYMES_ID',
+  'VALUE_ADDED_TAX',
+  'VERTICAL_TAGS'
 ]);
 
 async function getCharacteristics(client, itemId) {
@@ -141,10 +173,12 @@ async function buildCharacteristicsSnapshot(client, item) {
     .map((attribute) => [String(attribute.id), attribute]));
   const groups = buildGroupsFromTechnicalSpecs(technicalSpecs, itemById, schemaById);
   appendUngroupedItemAttributes(groups, itemAttributes, schemaById);
+  appendPendingSchemaAttributes(groups, categoryAttributes, itemById, schemaById);
   const packageDimensions = buildPackageDimensions(itemAttributes, schemaById);
   const flatFields = groups.flatMap((group) => group.attributes);
   const allFields = flatFields.concat(packageDimensions.fields);
   const editableCount = allFields.filter((field) => field.editable).length;
+  const pendingCount = flatFields.filter((field) => field.pending).length;
 
   return {
     ok: true,
@@ -157,6 +191,7 @@ async function buildCharacteristicsSnapshot(client, item) {
       categoryId: sourceItem.category_id || null,
       domainId: sourceItem.domain_id || null,
       editableCount,
+      pendingCount,
       totalCount: allFields.length
     }
   };
@@ -217,6 +252,63 @@ function appendUngroupedItemAttributes(groups, itemAttributes, schemaById) {
   grouped.forEach((group) => groups.push(group));
 }
 
+function appendPendingSchemaAttributes(groups, categoryAttributes, itemById, schemaById) {
+  const seen = new Set(groups.flatMap((group) => group.attributes.map((field) => field.id)));
+  for (const schemaAttribute of Array.isArray(categoryAttributes) ? categoryAttributes : []) {
+    const id = normalizeAttributeId(schemaAttribute && schemaAttribute.id);
+    if (!id || seen.has(id) || itemById.has(id)) continue;
+    const schema = schemaById.get(id) || schemaAttribute;
+    if (!isPendingSchemaAttribute(schema, id)) continue;
+    const groupName = schema.attribute_group_name || schema.group_name || 'Outros';
+    const groupId = schema.attribute_group_id || schema.group_id || normalizeGroupId(groupName);
+    const field = buildField(null, schema, {
+      groupId,
+      groupName,
+      pending: true
+    });
+    if (!field.editable) continue;
+    appendFieldToGroup(groups, groupId, groupName, field);
+    seen.add(id);
+  }
+}
+
+function appendFieldToGroup(groups, groupId, groupName, field) {
+  const normalizedGroupId = normalizeGroupId(groupId || groupName);
+  const normalizedGroupName = normalizeAttributeLabel(groupName);
+  let group = groups.find((candidate) => {
+    const candidateId = normalizeGroupId(candidate && candidate.id);
+    const candidateName = normalizeAttributeLabel(candidate && candidate.label);
+    return candidateId === normalizedGroupId || Boolean(normalizedGroupName && candidateName === normalizedGroupName);
+  });
+  if (!group) {
+    group = {
+      id: String(groupId || normalizedGroupId || `group_${groups.length + 1}`),
+      label: String(groupName || 'Outros'),
+      attributes: []
+    };
+    groups.push(group);
+  }
+  group.attributes.push(field);
+}
+
+function isPendingSchemaAttribute(schemaAttribute, id) {
+  const schema = schemaAttribute && typeof schemaAttribute === 'object' ? schemaAttribute : {};
+  const normalizedId = normalizeAttributeId(id || schema.id);
+  if (!normalizedId || PENDING_BLOCKED_ATTRIBUTE_IDS.has(normalizedId)) return false;
+  if (isLogisticsPackageAttribute(normalizedId, null, schema)) return false;
+  const valueType = String(schema.value_type || '').toLowerCase();
+  if (!EDITABLE_VALUE_TYPES.has(valueType)) return false;
+  const tags = collectTags(schema.tags);
+  const hierarchy = String(schema.hierarchy || schema.tags && schema.tags.hierarchy || '').trim().toUpperCase();
+  if (PENDING_BLOCKED_HIERARCHIES.has(hierarchy)) return false;
+  for (const tag of BLOCKED_TAGS) {
+    if (tags.has(tag)) return false;
+  }
+  if ((valueType === 'list' || valueType === 'boolean') && !normalizeOptions(schema.values).length) return false;
+  if (tags.has('multivalued') && !canEditMultivaluedField({ pending: true, valueType })) return false;
+  return tags.has('hidden') || tags.has('required') || tags.has('conditional_required');
+}
+
 function buildPackageDimensions(itemAttributes, schemaById) {
   const byId = new Map((Array.isArray(itemAttributes) ? itemAttributes : [])
     .filter((attribute) => attribute && isSellerPackageAttribute(attribute.id))
@@ -261,6 +353,7 @@ function buildField(itemAttribute, schema, spec = {}) {
   const valueType = String(schemaAttribute.value_type || attribute.value_type || inferValueType(attribute)).toLowerCase();
   const tags = collectTags(schemaAttribute.tags, attribute.tags);
   const hierarchy = String(spec.hierarchy || schemaAttribute.hierarchy || schemaAttribute.tags && schemaAttribute.tags.hierarchy || '').trim();
+  const pending = Boolean(spec.pending);
   const editability = resolveFieldEditability({
     attribute,
     schema: schemaAttribute,
@@ -268,7 +361,8 @@ function buildField(itemAttribute, schema, spec = {}) {
     valueType,
     tags,
     hierarchy,
-    publicField: Boolean(spec.publicField)
+    publicField: Boolean(spec.publicField),
+    pending
   });
   const options = normalizeOptions(schemaAttribute.values);
   const value = readAttributeValue(attribute);
@@ -291,13 +385,14 @@ function buildField(itemAttribute, schema, spec = {}) {
     reason: editability.reason,
     message: editability.message,
     multivalued: tags.has('multivalued'),
+    pending,
     publicField: Boolean(spec.publicField),
     tags: Array.from(tags).sort(),
     hierarchy: hierarchy || null
   };
 }
 
-function resolveFieldEditability({ attribute, schema, id, valueType, tags, hierarchy, publicField }) {
+function resolveFieldEditability({ attribute, schema, id, valueType, tags, hierarchy, publicField, pending }) {
   if (!schema || !schema.id) {
     return blocked('missing_schema', 'Contrato do campo indisponível.');
   }
@@ -313,10 +408,10 @@ function resolveFieldEditability({ attribute, schema, id, valueType, tags, hiera
   }
   for (const tag of CONTEXTUAL_BLOCKED_TAGS) {
     if (!tags.has(tag)) continue;
-    if (tag === 'hidden' && !publicField && !isSellerPackageAttribute(id)) {
+    if (tag === 'hidden' && !publicField && !isSellerPackageAttribute(id) && !pending) {
       return blocked('hidden', 'Campo oculto pelo Mercado Livre.');
     }
-    if (tag === 'multivalued' && !canEditMultivaluedField({ publicField, valueType })) {
+    if (tag === 'multivalued' && !canEditMultivaluedField({ publicField, pending, valueType })) {
       return blocked('multivalued', 'Campo com múltiplos valores.');
     }
   }
@@ -326,7 +421,7 @@ function resolveFieldEditability({ attribute, schema, id, valueType, tags, hiera
   if ((valueType === 'list' || valueType === 'boolean') && !normalizeOptions(schema.values).length) {
     return blocked('missing_options', 'Opções indisponíveis.');
   }
-  if (!attribute || !attribute.id) {
+  if ((!attribute || !attribute.id) && !pending) {
     return blocked('missing_attribute', 'Campo ainda não existe no anúncio.');
   }
   return {
@@ -349,8 +444,8 @@ function isLogisticsPackageAttribute(id, itemAttribute, schemaAttribute) {
   return PACKAGE_LOGISTICS_ATTRIBUTE_LABELS.has(label);
 }
 
-function canEditMultivaluedField({ publicField, valueType }) {
-  if (!publicField) return false;
+function canEditMultivaluedField({ publicField, pending, valueType }) {
+  if (!publicField && !pending) return false;
   return valueType === 'string' || valueType === 'list';
 }
 

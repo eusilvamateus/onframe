@@ -368,6 +368,11 @@
   font-size: 9px;
 }
 
+.onframe-characteristics-status-badge.pending {
+  background: var(--ob-orange-100);
+  color: var(--ob-orange-700);
+}
+
 .onframe-characteristics-status-badge::before {
   width: 4px;
   height: 4px;
