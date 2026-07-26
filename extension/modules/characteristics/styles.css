@@ -336,7 +336,7 @@
   display: flex !important;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--ob-gap-xs);
+  gap: 3px 5px;
   width: 100%;
   max-width: 100%;
   margin: 0 !important;
@@ -345,6 +345,7 @@
 }
 
 .onframe-characteristics-extra-label-text {
+  flex: 0 1 auto;
   min-width: 0;
   text-align: left !important;
 }
@@ -363,9 +364,12 @@
 }
 
 .onframe-characteristics-status-badge {
-  min-height: 15px;
-  padding: 2px 5px;
+  flex: none;
+  min-height: 14px;
+  padding: 1px 5px;
+  gap: 3px;
   font-size: 9px;
+  font-weight: var(--ob-w-bold);
 }
 
 .onframe-characteristics-status-badge.pending {
@@ -373,9 +377,19 @@
   color: var(--ob-orange-700);
 }
 
+.onframe-characteristics-status-badge.readonly {
+  background: var(--ob-bg-warm);
+  color: var(--ob-fg-soft);
+}
+
+.onframe-characteristics-status-badge.hidden {
+  background: var(--ob-blue-100);
+  color: var(--ob-blue-700);
+}
+
 .onframe-characteristics-status-badge::before {
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
 }
 
 .onframe-characteristics-package-card {

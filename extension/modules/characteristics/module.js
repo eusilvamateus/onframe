@@ -354,7 +354,7 @@
         <label class="onframe-characteristics-package-field">
           <span class="onframe-characteristics-package-label">
             ${escapeHtml(field.label)}
-            ${!field.editable ? renderFieldStatusBadges(field) : ''}
+            ${!field.editable ? renderCharacteristicStatusBadge(field) : ''}
           </span>
           ${field.editable ? renderPackageNumberUnitControl(field, locked) : renderPackageReadOnlyValue(field)}
         </label>
@@ -600,8 +600,7 @@
         <th class="andes-table__header andes-table__header--left ui-vpp-striped-specs__row__column ui-vpp-striped-specs__row__column--id" scope="row">
           <div class="andes-table__header__container onframe-characteristics-extra-label">
             <span class="onframe-characteristics-extra-label-text">${escapeHtml(field.label)}</span>
-            ${renderPendingStatusBadge(field)}
-            ${renderHiddenStatusBadge(field)}
+            ${renderCharacteristicStatusBadge(field)}
           </div>
         </th>
         <td class="andes-table__column andes-table__column--left andes-table__column--vertical-align-center ui-vpp-striped-specs__row__column onframe-characteristics-inline-cell">
@@ -615,14 +614,12 @@
         return `
           <span class="onframe-characteristics-extra-value">
             ${renderFieldControl(field, disabled)}
-            ${renderFieldStatusBadges(field)}
           </span>
         `;
       }
       return `
         <span class="onframe-characteristics-extra-value">
           <span class="andes-table__column--value">${escapeHtml(field.displayValue || field.valueName || '-')}</span>
-          ${renderFieldStatusBadges(field)}
         </span>
       `;
     }
@@ -692,25 +689,53 @@
       return `
         <span class="onframe-characteristics-composite-readonly">
           <span class="andes-table__column--value">${escapeHtml(field.displayValue || field.valueName || '-')}</span>
-          ${renderFieldStatusBadges(field)}
+          ${renderCharacteristicStatusBadge(field)}
         </span>
       `;
     }
 
-    function renderFieldStatusBadges(field) {
+    function renderCharacteristicStatusBadge(field) {
+      const status = getCharacteristicStatus(field);
+      if (!status) return '';
+      return `<span class="ob-badge ${status.tone} onframe-characteristics-status-badge ${status.kind}" title="${escapeAttribute(status.title)}">${escapeHtml(status.label)}</span>`;
+    }
+
+    function getCharacteristicStatus(field) {
+      if (!field) return null;
+      const hidden = isHiddenField(field);
+      if (field.pending) {
+        return {
+          kind: 'pending',
+          tone: 'orange',
+          label: 'Pendente',
+          title: hidden
+            ? 'Campo existe no contrato da categoria, ainda não está preenchido e não aparece na ficha pública.'
+            : 'Campo existe no contrato da categoria, mas ainda não está preenchido no anúncio.'
+        };
+      }
       const readOnlyTitle = field && field.message ? field.message : 'Campo sem edição disponível.';
       const showReadOnlyBadge = field && !field.editable && field.reason !== 'hidden';
-      return showReadOnlyBadge ? `<span class="ob-badge grey onframe-characteristics-status-badge" title="${escapeAttribute(readOnlyTitle)}">Leitura</span>` : '';
+      if (showReadOnlyBadge) {
+        return {
+          kind: 'readonly',
+          tone: 'grey',
+          label: 'Leitura',
+          title: hidden ? `${readOnlyTitle} Campo não exibido na ficha pública.` : readOnlyTitle
+        };
+      }
+      if (hidden) {
+        return {
+          kind: 'hidden',
+          tone: 'blue',
+          label: 'Oculto',
+          title: 'Campo não exibido na ficha pública.'
+        };
+      }
+      return null;
     }
 
-    function renderPendingStatusBadge(field) {
-      if (!field || !field.pending) return '';
-      return '<span class="ob-badge orange onframe-characteristics-status-badge pending" title="Campo existe no contrato da categoria, mas ainda não está preenchido no anúncio">Pendente</span>';
-    }
-
-    function renderHiddenStatusBadge(field) {
-      if (!field || !Array.isArray(field.tags) || !field.tags.includes('hidden') || field.publicField) return '';
-      return '<span class="ob-badge blue onframe-characteristics-status-badge" title="Campo não exibido na ficha pública">Oculto</span>';
+    function isHiddenField(field) {
+      return Boolean(field && Array.isArray(field.tags) && field.tags.includes('hidden') && !field.publicField);
     }
 
     function ensureInlineCellRecord(field, target, options = {}) {

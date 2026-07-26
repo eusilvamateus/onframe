@@ -314,10 +314,14 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.strictEqual(characteristicsSource.includes('onframe-characteristics-row-composite'), true);
   assert.strictEqual(characteristicsSource.includes('onframe-characteristics-composite-control'), true);
   assert.strictEqual(characteristicsSource.includes('onframe-characteristics-extra-label-text'), true);
-  assert.strictEqual(characteristicsSource.includes('renderPendingStatusBadge(field)'), true);
-  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-status-badge pending'), true);
-  assert.strictEqual(characteristicsSource.includes('renderHiddenStatusBadge(field)'), true);
-  assert.strictEqual(characteristicsSource.includes('ob-badge blue onframe-characteristics-status-badge'), true);
+  assert.strictEqual(characteristicsSource.includes('renderCharacteristicStatusBadge(field)'), true);
+  assert.strictEqual(characteristicsSource.includes('function getCharacteristicStatus(field)'), true);
+  assert.strictEqual(characteristicsSource.includes("label: 'Pendente'"), true);
+  assert.strictEqual(characteristicsSource.includes("label: 'Leitura'"), true);
+  assert.strictEqual(characteristicsSource.includes("label: 'Oculto'"), true);
+  assert.strictEqual(characteristicsSource.includes('renderPendingStatusBadge(field)'), false);
+  assert.strictEqual(characteristicsSource.includes('renderHiddenStatusBadge(field)'), false);
+  assert.strictEqual(characteristicsSource.includes('renderFieldStatusBadges(field)'), false);
   assert.strictEqual(characteristicsSource.includes('renderMissingFields(disabled)'), false);
   assert.strictEqual(characteristicsSource.includes('ob-field-shell onframe-characteristics-field-shell'), true);
   assert.strictEqual(characteristicsSource.includes('ob-field-input onframe-characteristics-compact-field'), true);
@@ -377,6 +381,8 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.strictEqual(styles.includes('width: 100%'), true);
   assert.strictEqual(styles.includes('.onframe-characteristics-status-badge'), true);
   assert.strictEqual(styles.includes('.onframe-characteristics-status-badge.pending'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-status-badge.readonly'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-status-badge.hidden'), true);
   assert.strictEqual(styles.includes('.onframe-characteristics-is-editing .onframe-characteristics-inline-cell input'), true);
   assert.strictEqual(components.includes('#highlighted_specs_attrs.onframe-characteristics-is-editing'), true);
   assert.strictEqual(styles.includes('.onframe-characteristics-hidden-fields'), false);
