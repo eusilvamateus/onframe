@@ -1183,6 +1183,45 @@ test('release package nao inclui env nem estado gerenciado', () => {
   assert.strictEqual(source.includes('.bat'), false);
 });
 
+test('release notes usam capa publica e apenas a secao da versao', () => {
+  const releaseNotes = require('../scripts/release/prepare-release-notes');
+  const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'release.yml'), 'utf8');
+  const changelog = [
+    '# Changelog',
+    '',
+    '## v0.3.2 - 2026-07-26',
+    '',
+    '### Corrigido',
+    '',
+    '- Workflow corrigido.',
+    '',
+    '## v0.3.1 - 2026-07-26',
+    '',
+    '### Corrigido',
+    '',
+    '- Texto antigo.'
+  ].join('\n');
+
+  const notes = releaseNotes.buildReleaseNotes({
+    tag: 'v0.3.2',
+    previousTag: 'v0.3.1',
+    repoUrl: 'https://github.test/onframe',
+    changelog
+  });
+
+  assert.match(notes, /^# OnFrame v0\.3\.2/);
+  assert.match(notes, /- Version: `v0\.3\.2`/);
+  assert.match(notes, /- Previous release: \[`v0\.3\.1`\]\(https:\/\/github\.test\/onframe\/releases\/tag\/v0\.3\.1\)/);
+  assert.match(notes, /- Compare: \[`v0\.3\.1\.\.\.v0\.3\.2`\]\(https:\/\/github\.test\/onframe\/compare\/v0\.3\.1\.\.\.v0\.3\.2\)/);
+  assert.match(notes, /Workflow corrigido/);
+  assert.doesNotMatch(notes, /Texto antigo/);
+  assert.doesNotMatch(notes, /^## v0\.3\.2/m);
+  assert.strictEqual(workflow.includes('fetch-depth: 0'), true);
+  assert.strictEqual(workflow.includes('scripts/release/prepare-release-notes.js'), true);
+  assert.strictEqual(workflow.includes('--notes-file CHANGELOG.md'), false);
+  assert.strictEqual(workflow.includes('--title "OnFrame'), false);
+});
+
 test('bootstrap substitui atalhos bat legados', () => {
   const root = path.join(__dirname, '..');
   const startScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'start.ps1'), 'utf8');

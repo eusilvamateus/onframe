@@ -13,42 +13,14 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - run: npm run release:check
       - name: Prepare release notes
-        shell: pwsh
-        run: |
-          $tag = $env:GITHUB_REF_NAME
-          $pattern = '^##\s+' + [regex]::Escape($tag) + '(\s|-|$)'
-          $notesPath = Join-Path (Get-Location) "dist/release-notes-$tag.md"
-          $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-          $lines = Get-Content CHANGELOG.md
-          $start = -1
-
-          for ($i = 0; $i -lt $lines.Length; $i++) {
-            if ($lines[$i] -match $pattern) {
-              $start = $i
-              break
-            }
-          }
-
-          if ($start -lt 0) {
-            [System.IO.File]::WriteAllText($notesPath, "Release $tag", $utf8NoBom)
-            exit 0
-          }
-
-          $end = $lines.Length
-          for ($i = $start + 1; $i -lt $lines.Length; $i++) {
-            if ($lines[$i] -match '^##\s+') {
-              $end = $i
-              break
-            }
-          }
-
-          $selected = $lines[$start..($end - 1)]
-          [System.IO.File]::WriteAllText($notesPath, ($selected -join [Environment]::NewLine), $utf8NoBom)
+        run: node scripts/release/prepare-release-notes.js $env:GITHUB_REF_NAME --output "dist/release-notes-$($env:GITHUB_REF_NAME).md"
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
