@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.2 - 2026-07-26
+
+### Corrigido
+
+- Releases do GitHub passam a usar somente as notas da versao publicada.
+- Titulos das releases foram padronizados para a propria tag `vX.Y.Z`.
+- Removida nota interna de versionamento do changelog publico.
+
 ## v0.3.1 - 2026-07-26
 
 ### Adicionado
