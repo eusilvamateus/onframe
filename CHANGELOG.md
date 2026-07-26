@@ -112,8 +112,3 @@
 - Popup e pagina de opcoes alinhados ao design system da Onblide.
 - Servico local para manter autenticacao, chamadas ao Mercado Livre e atualizacao
   do pacote fora da extensao.
-
-### Observacao
-
-- O versionamento anterior foi descartado intencionalmente. Esta versao passa a
-  ser o novo ponto inicial do projeto.
