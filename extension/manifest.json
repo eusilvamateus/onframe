@@ -20,6 +20,9 @@
     "default_title": "OnFrame",
     "default_popup": "ui/popup/index.html"
   },
+  "background": {
+    "service_worker": "background.js"
+  },
   "web_accessible_resources": [
     {
       "resources": [

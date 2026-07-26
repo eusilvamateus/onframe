@@ -735,6 +735,38 @@ test('token store trata token legado como desconectado', async () => {
   assert.deepStrictEqual(await store.listAccounts(), []);
 });
 
+test('token store migra criptografia do segredo local antigo para segredo forte', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'onframe-token-migration-'));
+  const filePath = path.join(dir, 'tokens.json');
+  const fallbackStore = new TokenStore({
+    env: {
+      ML_TOKEN_STORE_PATH: filePath
+    }
+  });
+  await fallbackStore.write({
+    access_token: 'APP_USR-old',
+    refresh_token: 'TG-old',
+    user_id: 123,
+    expires_at: 1000
+  }, {
+    nickname: 'BOGU STORE'
+  });
+
+  const secureStore = new TokenStore({
+    env: {
+      ML_TOKEN_STORE_PATH: filePath,
+      ONBLIDE_TOKEN_SECRET: 'strong-local-secret'
+    }
+  });
+  const token = await secureStore.read();
+  assert.strictEqual(token.refresh_token, 'TG-old');
+  assert.strictEqual(secureStore.getSecurityState().mode, 'configured');
+
+  const encrypted = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const decrypted = JSON.parse(decrypt(encrypted, cryptoKeyForTest('strong-local-secret')));
+  assert.strictEqual(decrypted.accounts['123'].refresh_token, 'TG-old');
+});
+
 test('mercado livre client usa Onblide Connect para token e refresh', async () => {
   const writes = [];
   const requests = [];
@@ -780,6 +812,25 @@ test('mercado livre client usa Onblide Connect para token e refresh', async () =
   assert.strictEqual(writes.length, 2);
   assert.strictEqual(writes[1].token.refresh_token, 'TG-refresh');
   assert.strictEqual(writes[1].account.user_id, 123);
+});
+
+test('mercado livre client bloqueia download de imagem fora do mlstatic', async () => {
+  const client = new MercadoLivreClient({
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => 'image/jpeg' },
+      arrayBuffer: async () => Buffer.from('jpg')
+    })
+  });
+
+  const image = await client.downloadImage('https://http2.mlstatic.com/D_NQ_NP_2X_TEST-F.webp');
+  assert.strictEqual(image.mimeType, 'image/jpeg');
+  assert.strictEqual(image.base64, Buffer.from('jpg').toString('base64'));
+  await assert.rejects(
+    () => client.downloadImage('https://example.com/picture.jpg'),
+    /Host de imagem nao permitido/
+  );
 });
 
 test('userFriendlyError traduz erros comuns para linguagem natural', () => {
@@ -949,6 +1000,48 @@ test('service expoe status de atualizacao auditavel', async (t) => {
   assert.deepStrictEqual(await status.json(), { ok: true, updateAvailable: false });
 });
 
+test('service restringe origem web e aceita origem da extensao', async (t) => {
+  const origin = 'chrome-extension://lcmagfimconmglpokmlkcjieohohnigj';
+  const server = await listen(createApp({
+    store: { read: async () => null }
+  }));
+  t.after(() => server.close());
+
+  const blocked = await fetch(`${server.url}/auth/status`, {
+    headers: { origin: 'https://evil.example' }
+  });
+  const blockedBody = await blocked.json();
+  assert.strictEqual(blocked.status, 403);
+  assert.strictEqual(blockedBody.code, 'origin_not_allowed');
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(blockedBody, 'technicalError'), false);
+
+  const allowed = await fetch(`${server.url}/auth/status`, {
+    headers: { origin }
+  });
+  assert.strictEqual(allowed.status, 200);
+  assert.strictEqual(allowed.headers.get('access-control-allow-origin'), origin);
+  assert.deepStrictEqual(await allowed.json(), {
+    authenticated: false,
+    userId: null,
+    expiresAt: null
+  });
+});
+
+test('service retorna erros sanitizados com requestId e sem technicalError', async (t) => {
+  const server = await listen(createApp({
+    store: { read: async () => null }
+  }));
+  t.after(() => server.close());
+
+  const response = await fetch(`${server.url}/nao-existe`);
+  const body = await response.json();
+  assert.strictEqual(response.status, 404);
+  assert.strictEqual(body.code, 'endpoint_not_found');
+  assert.ok(body.requestId);
+  assert.strictEqual(response.headers.get('x-onframe-request-id'), body.requestId);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(body, 'technicalError'), false);
+});
+
 test('update manager compara versoes semver e extrai tags', () => {
   assert.match(
     updateManager.buildBootstrapCommand({ root: 'C:\\OnFrame', scriptUrl: 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' }),
@@ -1022,6 +1115,7 @@ test('release package nao inclui env nem estado gerenciado', () => {
 
 test('bootstrap substitui atalhos bat legados', () => {
   const root = path.join(__dirname, '..');
+  const startScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'start.ps1'), 'utf8');
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
@@ -1037,6 +1131,10 @@ test('bootstrap substitui atalhos bat legados', () => {
   );
   assert.strictEqual(updateScript.includes('.bat'), false);
   assert.strictEqual(updateScript.includes('Start-OnFrameService'), true);
+  assert.strictEqual(startScript.includes('RandomNumberGenerator]::Fill'), false);
+  assert.strictEqual(updateScript.includes('RandomNumberGenerator]::Fill'), false);
+  assert.strictEqual(startScript.includes('RandomNumberGenerator]::Create()'), true);
+  assert.strictEqual(updateScript.includes('RandomNumberGenerator]::Create()'), true);
   assert.strictEqual(updateScript.includes('powershell -NoProfile -ExecutionPolicy Bypass -File $startScript'), false);
   assert.strictEqual(updateScript.includes("Join-Path $env:LOCALAPPDATA 'OnFrame'"), true);
   assert.strictEqual(updateScript.includes('(Get-Location).Path'), false);
@@ -1175,10 +1273,17 @@ test('diagnostics retorna estado local sem vazar tokens', async (t) => {
   assert.strictEqual(body.service, 'onframe');
   assert.strictEqual(Object.prototype.hasOwnProperty.call(body.config, 'clientIdConfigured'), false);
   assert.strictEqual(Object.prototype.hasOwnProperty.call(body.config, 'clientSecretConfigured'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(body.config, 'envFilePath'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(body.config, 'connectBaseUrl'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(body.runtime, 'pid'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(body.runtime, 'cwd'), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(body, 'paths'), false);
   assert.strictEqual(body.auth.tokenPresent, true);
   assert.strictEqual(body.auth.userId, 123);
+  assert.strictEqual(body.config.tokenSecretMode, 'fallback');
   assert.strictEqual(serialized.includes('TG-secret'), false);
   assert.strictEqual(serialized.includes('APP_USR-secret'), false);
+  assert.strictEqual(serialized.includes('C:\\tokens'), false);
 });
 
 test('diagnostics nao alerta token expirado quando refresh esta salvo', async (t) => {
@@ -1200,9 +1305,9 @@ test('diagnostics nao alerta token expirado quando refresh esta salvo', async (t
   assert.strictEqual(response.status, 200);
   assert.strictEqual(body.auth.tokenPresent, true);
   assert.strictEqual(body.auth.expired, true);
-  assert.strictEqual(body.ready, true);
-  assert.deepStrictEqual(body.issues, []);
-  assert.deepStrictEqual(body.nextActions, ['Pronto para editar fotos.']);
+  assert.strictEqual(body.ready, false);
+  assert.deepStrictEqual(body.issues, ['token_secret_fallback']);
+  assert.deepStrictEqual(body.nextActions, ['Configure o segredo local de tokens reiniciando pelo bootstrap.']);
 });
 
 test('auth accounts lista, ativa e remove contas locais', async (t) => {

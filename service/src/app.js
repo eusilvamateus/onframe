@@ -5,6 +5,11 @@ const path = require('path');
 const { URL } = require('url');
 const { MercadoLivreClient } = require('./meli-client');
 const { TokenStore } = require('./token-store');
+const {
+  classifyRequest,
+  createAuditLogger,
+  extractItemId
+} = require('./audit-log');
 const { ownerUserIdFromUrl, resolveItemClient } = require('./account-client');
 const { createUpdateManager } = require('./update-manager');
 const { sanitizeError, userFriendlyError } = require('./errors');
@@ -60,15 +65,27 @@ function createApp(options = {}) {
   const clientFactory = options.clientFactory || ((account) => createAccountClient({ env, store, client, account }));
   const updateManager = options.updateManager || createUpdateManager({ env });
   const itemRouteCache = options.itemRouteCache || createItemRouteCache();
+  const accessPolicy = createAccessPolicy({ env, root: options.root });
+  const auditLogger = options.auditLogger || createAuditLogger({ env, root: options.root || process.cwd() });
   const pendingAuth = new Map();
   const startedAt = new Date();
 
   return http.createServer(async (req, res) => {
-    setCorsHeaders(res);
-    if (req.method === 'OPTIONS') return sendJson(res, 204, null);
+    const requestId = randomToken();
+    const requestStartedAt = Date.now();
+    res.setHeader('x-onframe-request-id', requestId);
 
     try {
       const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
+      setCorsHeaders(req, res, accessPolicy);
+      attachAuditLogger({ req, res, url, requestId, startedAt: requestStartedAt, store, auditLogger });
+
+      const accessError = validateLocalAccess(req, url, accessPolicy);
+      if (req.method === 'OPTIONS') {
+        return accessError ? sendError(res, accessError, requestId) : sendJson(res, 204, null);
+      }
+      if (accessError) return sendError(res, accessError, requestId);
+
       const route = `${req.method} ${url.pathname}`;
 
       if (route === 'GET /health') {
@@ -253,14 +270,12 @@ function createApp(options = {}) {
         return sendJson(res, 200, await handlePictureCommit({ req, client: itemClient, itemId: commitMatch[1], readJson }));
       }
 
-      return sendJson(res, 404, { error: 'Endpoint nao encontrado.' });
+      const notFound = new Error('Endpoint nao encontrado.');
+      notFound.statusCode = 404;
+      notFound.code = 'endpoint_not_found';
+      throw notFound;
     } catch (err) {
-      const status = err && err.statusCode ? err.statusCode : 500;
-      const technicalError = sanitizeError(err);
-      return sendJson(res, status, {
-        error: userFriendlyError(err, technicalError, status),
-        technicalError
-      });
+      return sendError(res, err, requestId);
     }
   });
 
@@ -502,10 +517,10 @@ function summarizeAccount(user) {
 }
 
 async function buildDiagnostics({ env, store, startedAt }) {
-  const envFilePath = path.resolve(__dirname, '..', '..', '.env');
   const token = await safeReadToken(store);
   const expiresAt = token && token.expires_at ? Number(token.expires_at) : null;
   const now = Date.now();
+  const tokenSecurity = getTokenSecurityState(store, env);
   const diagnostics = {
     ok: true,
     service: 'onframe',
@@ -519,15 +534,12 @@ async function buildDiagnostics({ env, store, startedAt }) {
       requiredNodeMajor: REQUIRED_NODE_MAJOR,
       nodeOk: Number(process.versions.node.split('.')[0] || 0) >= REQUIRED_NODE_MAJOR,
       platform: process.platform,
-      arch: process.arch,
-      pid: process.pid,
-      cwd: process.cwd()
+      arch: process.arch
     },
     config: {
-      envFileExists: fs.existsSync(envFilePath),
-      envFilePath,
-      connectBaseUrl: env.ONBLIDE_CONNECT_BASE_URL || DEFAULT_CONNECT_BASE_URL,
-      tokenSecretConfigured: hasValue(env.ONBLIDE_TOKEN_SECRET)
+      envFileExists: fs.existsSync(path.resolve(__dirname, '..', '..', '.env')),
+      tokenSecretConfigured: tokenSecurity.configured,
+      tokenSecretMode: tokenSecurity.mode
     },
     auth: {
       tokenPresent: Boolean(token && token.refresh_token),
@@ -536,9 +548,6 @@ async function buildDiagnostics({ env, store, startedAt }) {
       expiresInMs: expiresAt ? expiresAt - now : null,
       expired: expiresAt ? expiresAt <= now : false,
       expiringSoon: expiresAt ? expiresAt <= now + 30 * 60 * 1000 : false
-    },
-    paths: {
-      tokenStore: store && store.filePath ? store.filePath : null
     },
     issues: [],
     nextActions: []
@@ -562,6 +571,7 @@ async function safeReadToken(store) {
 function buildDiagnosticIssues(diagnostics) {
   const issues = [];
   if (!diagnostics.runtime.nodeOk) issues.push('node_version');
+  if (diagnostics.config.tokenSecretMode === 'fallback') issues.push('token_secret_fallback');
   if (!diagnostics.auth.tokenPresent) issues.push('account_disconnected');
   return issues;
 }
@@ -574,8 +584,20 @@ function buildDiagnosticActions(diagnostics) {
   if (!diagnostics.auth.tokenPresent) {
     actions.push('Conecte a conta.');
   }
+  if (diagnostics.config.tokenSecretMode === 'fallback') {
+    actions.push('Configure o segredo local de tokens reiniciando pelo bootstrap.');
+  }
   if (!actions.length) actions.push('Pronto para editar fotos.');
   return actions;
+}
+
+function getTokenSecurityState(store, env) {
+  if (store && typeof store.getSecurityState === 'function') return store.getSecurityState();
+  const configured = hasValue(env && env.ONBLIDE_TOKEN_SECRET);
+  return {
+    configured,
+    mode: configured ? 'configured' : 'fallback'
+  };
 }
 
 function hasValue(value) {
@@ -606,7 +628,25 @@ async function readJson(req, options = {}) {
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  assertJsonContentType(req);
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch (err) {
+    const parseError = new Error('JSON invalido.');
+    parseError.statusCode = 400;
+    parseError.code = 'invalid_json';
+    throw parseError;
+  }
+}
+
+function assertJsonContentType(req) {
+  const contentType = String(req.headers['content-type'] || '').toLowerCase();
+  if (!contentType || contentType.includes('application/json')) return;
+  if (!req.headers.origin && contentType.includes('text/plain')) return;
+  const err = new Error('Content-Type invalido. Use application/json.');
+  err.statusCode = 415;
+  err.code = 'invalid_content_type';
+  throw err;
 }
 
 async function listAccountsFallback(store) {
@@ -645,10 +685,117 @@ function prunePendingAuth(pendingAuth) {
   }
 }
 
-function setCorsHeaders(res) {
-  res.setHeader('access-control-allow-origin', '*');
+function createAccessPolicy({ env, root } = {}) {
+  return {
+    allowedOrigins: getAllowedOrigins(env, root)
+  };
+}
+
+function getAllowedOrigins(env, root) {
+  const configured = String(env && env.ONFRAME_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const extensionId = configured.length ? null : getManifestExtensionId(root);
+  return configured.length
+    ? configured
+    : (extensionId ? [`chrome-extension://${extensionId}`] : []);
+}
+
+function getManifestExtensionId(root) {
+  try {
+    const manifestPath = path.join(root || path.resolve(__dirname, '..', '..'), 'extension', 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    if (!manifest.key) return null;
+    const der = Buffer.from(manifest.key, 'base64');
+    const hash = crypto.createHash('sha256').update(der).digest();
+    return Array.from(hash.subarray(0, 16))
+      .map((byte) => [byte >> 4, byte & 15].map((nibble) => String.fromCharCode(97 + nibble)).join(''))
+      .join('');
+  } catch (err) {
+    return null;
+  }
+}
+
+function validateLocalAccess(req, url, accessPolicy) {
+  const origin = String(req.headers.origin || '').trim();
+  if (!origin) return null;
+  if (accessPolicy.allowedOrigins.includes(origin)) return null;
+  if (isPublicRoute(req, url)) return null;
+  const err = new Error('Origem nao autorizada para o serviço local.');
+  err.statusCode = 403;
+  err.code = 'origin_not_allowed';
+  return err;
+}
+
+function isPublicRoute(req, url) {
+  const pathname = url && url.pathname ? url.pathname : '';
+  return (req.method === 'GET' && pathname === '/health') ||
+    (req.method === 'GET' && pathname === '/auth/mercadolivre/callback');
+}
+
+function setCorsHeaders(req, res, accessPolicy) {
+  const origin = String(req.headers.origin || '').trim();
+  if (origin && accessPolicy.allowedOrigins.includes(origin)) {
+    res.setHeader('access-control-allow-origin', origin);
+  }
+  res.setHeader('vary', 'Origin');
   res.setHeader('access-control-allow-methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('access-control-allow-headers', 'content-type');
+  res.setHeader('access-control-allow-headers', 'content-type,x-onframe-extension');
+}
+
+function attachAuditLogger({ req, res, url, requestId, startedAt, store, auditLogger }) {
+  if (!auditLogger || typeof auditLogger.log !== 'function' || req.method === 'OPTIONS' || url.pathname === '/health') return;
+  const originalEnd = res.end;
+  res.end = function wrappedEnd(...args) {
+    const result = res.statusCode >= 200 && res.statusCode < 400 ? 'success' : 'error';
+    const entry = {
+      requestId,
+      origin: req.headers.origin || null,
+      action: classifyRequest(req.method, url.pathname),
+      method: req.method,
+      path: url.pathname,
+      itemId: extractItemId(url.pathname),
+      status: res.statusCode,
+      result,
+      durationMs: Date.now() - startedAt,
+      errorCode: res.locals && res.locals.errorCode ? res.locals.errorCode : null
+    };
+    readAuditUserId(store)
+      .then((userId) => auditLogger.log(Object.assign(entry, { userId })))
+      .catch(() => auditLogger.log(entry));
+    return originalEnd.apply(this, args);
+  };
+}
+
+async function readAuditUserId(store) {
+  if (!store || typeof store.read !== 'function') return null;
+  const token = await store.read();
+  return token && token.user_id ? token.user_id : null;
+}
+
+function sendError(res, err, requestId) {
+  const status = err && err.statusCode ? Number(err.statusCode) : 500;
+  const code = err && err.code ? err.code : statusToErrorCode(status);
+  const technicalError = sanitizeError(err);
+  res.locals = Object.assign({}, res.locals || {}, { errorCode: code });
+  const payload = {
+    error: userFriendlyError(err, technicalError, status),
+    code,
+    requestId
+  };
+  return sendJson(res, status, payload);
+}
+
+function statusToErrorCode(status) {
+  if (status === 400) return 'bad_request';
+  if (status === 401) return 'unauthenticated';
+  if (status === 403) return 'forbidden';
+  if (status === 404) return 'not_found';
+  if (status === 413) return 'payload_too_large';
+  if (status === 415) return 'unsupported_media_type';
+  if (status === 502) return 'upstream_error';
+  return 'internal_error';
 }
 
 function sendJson(res, statusCode, payload) {

@@ -54,8 +54,8 @@ try {
   Write-Host ''
   Write-Host "Servico ativo em http://127.0.0.1:$port." -ForegroundColor Green
   Write-Line 'Versao' $diagnostics.version
-  Write-Line 'PID' $diagnostics.runtime.pid
   Write-Line 'Token local' $(if ($diagnostics.auth.tokenPresent) { 'salvo' } else { 'nao conectado' })
+  if ($diagnostics.config.tokenSecretMode) { Write-Line 'Segredo token' $diagnostics.config.tokenSecretMode }
   if ($diagnostics.auth.userId) { Write-Line 'User ID' $diagnostics.auth.userId }
   Write-Host ''
   Write-Host 'Proximos passos:'

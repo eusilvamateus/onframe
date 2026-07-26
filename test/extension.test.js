@@ -44,6 +44,7 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
 
   assert.strictEqual(manifest.action.default_popup, 'ui/popup/index.html');
   assert.strictEqual(manifest.options_ui.page, 'ui/options/index.html');
+  assert.strictEqual(manifest.background.service_worker, 'background.js');
   assert.deepStrictEqual(manifest.content_scripts[0].css, [
     'vendor/phosphor/phosphor.css',
     'styles/foundations.css',
@@ -76,6 +77,7 @@ test('manifest e telas referenciam arquivos existentes', () => {
   const extensionRoot = path.join(__dirname, '..', 'extension');
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   const manifestFiles = [
+    manifest.background.service_worker,
     manifest.action.default_popup,
     manifest.options_ui.page,
     ...manifest.content_scripts[0].js,

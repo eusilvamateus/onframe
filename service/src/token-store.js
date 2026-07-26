@@ -24,11 +24,16 @@ class TokenStore {
     try {
       const raw = await fs.readFile(this.filePath, 'utf8');
       const payload = JSON.parse(raw);
-      const decrypted = JSON.parse(decrypt(payload, getKey(this.env)));
+      const result = decryptDatabasePayload(payload, this.env);
+      const decrypted = JSON.parse(result.plainText);
       if (!decrypted || decrypted.v !== 2 || !decrypted.accounts || typeof decrypted.accounts !== 'object') {
         return null;
       }
-      return normalizeDatabase(decrypted);
+      const database = normalizeDatabase(decrypted);
+      if (result.migratedFromFallback) {
+        await this.writeDatabase(database);
+      }
+      return database;
     } catch (err) {
       if (err && err.code === 'ENOENT') return null;
       return null;
@@ -121,6 +126,14 @@ class TokenStore {
     const encrypted = encrypt(JSON.stringify(normalizeDatabase(database)), getKey(this.env));
     await fs.writeFile(this.filePath, JSON.stringify(encrypted), { mode: 0o600 });
   }
+
+  getSecurityState() {
+    const configured = hasConfiguredSecret(this.env);
+    return {
+      configured,
+      mode: configured ? 'configured' : 'fallback'
+    };
+  }
 }
 
 function summarizeAccounts(database) {
@@ -191,8 +204,35 @@ function buildAccountEntry(token, account, existing) {
 }
 
 function getKey(env) {
-  const secret = env.ONBLIDE_TOKEN_SECRET || `${os.userInfo().username}@${os.hostname()}:onblide-mercadolivre`;
+  const secret = hasConfiguredSecret(env) ? env.ONBLIDE_TOKEN_SECRET : getFallbackSecret();
   return crypto.scryptSync(secret, 'onblide-ml-token-store-v1', 32);
+}
+
+function getFallbackKey() {
+  return crypto.scryptSync(getFallbackSecret(), 'onblide-ml-token-store-v1', 32);
+}
+
+function getFallbackSecret() {
+  return `${os.userInfo().username}@${os.hostname()}:onblide-mercadolivre`;
+}
+
+function hasConfiguredSecret(env) {
+  return String(env && env.ONBLIDE_TOKEN_SECRET || '').trim().length > 0;
+}
+
+function decryptDatabasePayload(payload, env) {
+  try {
+    return {
+      plainText: decrypt(payload, getKey(env)),
+      migratedFromFallback: false
+    };
+  } catch (err) {
+    if (!hasConfiguredSecret(env)) throw err;
+    return {
+      plainText: decrypt(payload, getFallbackKey()),
+      migratedFromFallback: true
+    };
+  }
 }
 
 function encrypt(plainText, key) {

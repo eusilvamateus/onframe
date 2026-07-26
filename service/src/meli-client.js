@@ -246,6 +246,7 @@ class MercadoLivreClient {
   }
 
   async downloadImage(url) {
+    assertAllowedImageUrl(url);
     const response = await this.fetch(String(url || ''), {
       headers: { accept: 'image/*' }
     });
@@ -338,6 +339,27 @@ function normalizeImageMimeType(value) {
   const text = String(value || '').split(';')[0].trim().toLowerCase();
   if (text === 'image/png') return 'image/png';
   return 'image/jpeg';
+}
+
+function assertAllowedImageUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(String(value || ''));
+  } catch (err) {
+    const invalid = new Error('URL de imagem invalida.');
+    invalid.statusCode = 400;
+    invalid.code = 'invalid_image_url';
+    throw invalid;
+  }
+  const protocol = parsed.protocol.toLowerCase();
+  const hostname = parsed.hostname.toLowerCase();
+  const allowedHost = hostname === 'mlstatic.com' || hostname.endsWith('.mlstatic.com');
+  if ((protocol !== 'https:' && protocol !== 'http:') || !allowedHost) {
+    const blocked = new Error('Host de imagem nao permitido.');
+    blocked.statusCode = 400;
+    blocked.code = 'image_host_not_allowed';
+    throw blocked;
+  }
 }
 
 module.exports = {

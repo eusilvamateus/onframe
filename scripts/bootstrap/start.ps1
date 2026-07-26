@@ -34,6 +34,47 @@ function Invoke-Health {
   }
 }
 
+function New-TokenSecret {
+  $bytes = New-Object byte[] 32
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try {
+    $rng.GetBytes($bytes)
+  } finally {
+    $rng.Dispose()
+  }
+  return ([Convert]::ToBase64String($bytes)).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
+function Ensure-TokenSecret {
+  param([string]$EnvPath)
+
+  if (-not (Test-Path $EnvPath)) { return }
+  $lines = [System.Collections.Generic.List[string]]::new()
+  $lines.AddRange([string[]](Get-Content -LiteralPath $EnvPath))
+  $index = -1
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^\s*ONBLIDE_TOKEN_SECRET\s*=') {
+      $index = $i
+      break
+    }
+  }
+
+  $secret = New-TokenSecret
+  if ($index -lt 0) {
+    $lines.Add("ONBLIDE_TOKEN_SECRET=$secret")
+    Set-Content -LiteralPath $EnvPath -Value $lines -Encoding UTF8
+    Write-Host 'Segredo local de tokens criado.' -ForegroundColor Yellow
+    return
+  }
+
+  $value = ($lines[$index] -replace '^\s*ONBLIDE_TOKEN_SECRET\s*=\s*', '').Trim().Trim('"').Trim("'")
+  if (-not $value) {
+    $lines[$index] = "ONBLIDE_TOKEN_SECRET=$secret"
+    Set-Content -LiteralPath $EnvPath -Value $lines -Encoding UTF8
+    Write-Host 'Segredo local de tokens criado.' -ForegroundColor Yellow
+  }
+}
+
 function Test-Node {
   $command = Get-Command node -ErrorAction SilentlyContinue
   if (-not $command) { return $null }
@@ -60,6 +101,7 @@ try {
     Copy-Item -LiteralPath $envExamplePath -Destination $envPath
     Write-Host 'Arquivo .env criado com a configuracao padrao.' -ForegroundColor Yellow
   }
+  Ensure-TokenSecret -EnvPath $envPath
 
   $port = Get-Port -InstallRoot $InstallRoot
   if (Invoke-Health -Port $port) {

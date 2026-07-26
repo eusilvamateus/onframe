@@ -10,7 +10,8 @@
     "package:release": "node scripts/release/package-release.js",
     "version:check": "node scripts/release/check-version.js",
     "version:set": "node scripts/release/set-version.js",
-    "release:check": "npm run version:check && npm run test:all && npm run package:release",
+    "audit:deps": "npm audit --audit-level=moderate",
+    "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
     "test": "node --test",
     "test:all": "node --test test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/service.test.js"
   },

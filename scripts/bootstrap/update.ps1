@@ -61,6 +61,51 @@ function Invoke-OnFrameHealth {
   }
 }
 
+function New-TokenSecret {
+  $bytes = New-Object byte[] 32
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  try {
+    $rng.GetBytes($bytes)
+  } finally {
+    $rng.Dispose()
+  }
+  return ([Convert]::ToBase64String($bytes)).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
+function Ensure-OnFrameTokenSecret {
+  param([string]$Root)
+
+  $envPath = Join-Path $Root '.env'
+  $envExamplePath = Join-Path $Root '.env.example'
+  if (-not (Test-Path $envPath) -and (Test-Path $envExamplePath)) {
+    Copy-Item -LiteralPath $envExamplePath -Destination $envPath
+  }
+  if (-not (Test-Path $envPath)) { return }
+
+  $lines = [System.Collections.Generic.List[string]]::new()
+  $lines.AddRange([string[]](Get-Content -LiteralPath $envPath))
+  $index = -1
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -match '^\s*ONBLIDE_TOKEN_SECRET\s*=') {
+      $index = $i
+      break
+    }
+  }
+
+  $secret = New-TokenSecret
+  if ($index -lt 0) {
+    $lines.Add("ONBLIDE_TOKEN_SECRET=$secret")
+    Set-Content -LiteralPath $envPath -Value $lines -Encoding UTF8
+    return
+  }
+
+  $value = ($lines[$index] -replace '^\s*ONBLIDE_TOKEN_SECRET\s*=\s*', '').Trim().Trim('"').Trim("'")
+  if (-not $value) {
+    $lines[$index] = "ONBLIDE_TOKEN_SECRET=$secret"
+    Set-Content -LiteralPath $envPath -Value $lines -Encoding UTF8
+  }
+}
+
 function Test-Node {
   $nodePath = $null
   $command = Get-Command node -ErrorAction SilentlyContinue
@@ -171,6 +216,7 @@ try {
   if (Test-Path (Join-Path $InstallRoot '.git')) {
     Fail-Update 'Esta pasta e um checkout de desenvolvimento. Atualize com git pull.'
   }
+  Ensure-OnFrameTokenSecret -Root $InstallRoot
 
   Write-Host 'OnFrame - atualizacao via GitHub Releases' -ForegroundColor Cyan
   Write-Host "Pasta: $InstallRoot"
