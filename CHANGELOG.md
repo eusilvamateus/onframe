@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.1 - 2026-07-26
+
+### Adicionado
+
+- Atributos pendentes da categoria passam a aparecer no editor de
+  caracteristicas quando o contrato da API permite preenchimento seguro.
+
+### Melhorado
+
+- Badges de status das caracteristicas foram simplificados para evitar conflito
+  visual entre `Pendente`, `Leitura` e `Oculto`.
+
+### Corrigido
+
+- Campos de texto pendentes preservam o valor digitado durante a edicao inline.
+
 ## v0.3.0 - 2026-07-26
 
 ### Adicionado
