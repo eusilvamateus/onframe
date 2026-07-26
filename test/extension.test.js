@@ -286,6 +286,12 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.strictEqual(characteristicsSource.includes("closest('.ui-pdp-container__row--highlighted-specs-title')"), true);
   assert.strictEqual(characteristicsSource.includes('const anchor = elements.titleRow || elements.title'), true);
   assert.strictEqual(characteristicsSource.includes("anchor.insertAdjacentElement('afterend', action)"), true);
+  assert.strictEqual(characteristicsSource.includes('syncEditActionState(existingAction, elements.section)'), true);
+  assert.strictEqual(characteristicsSource.includes('function isCharacteristicsCollapsed(section)'), true);
+  assert.strictEqual(characteristicsSource.includes("querySelector('.ui-pdp-collapsable--is-collapsed')"), true);
+  assert.strictEqual(characteristicsSource.includes('action.disabled = collapsed'), true);
+  assert.strictEqual(characteristicsSource.includes("action.setAttribute('aria-disabled', collapsed ? 'true' : 'false')"), true);
+  assert.strictEqual(characteristicsSource.includes('if (elements.section && isCharacteristicsCollapsed(elements.section)) return;'), true);
   assert.strictEqual(characteristicsSource.includes("querySelectorAll('.ui-vpp-striped-specs__table')"), true);
   assert.strictEqual(characteristicsSource.includes("querySelectorAll('tr.andes-table__row, tr.ui-vpp-striped-specs__row')"), true);
   assert.strictEqual(characteristicsSource.includes("querySelector('.andes-table__column--value')"), true);

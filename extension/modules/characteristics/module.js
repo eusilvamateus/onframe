@@ -181,7 +181,12 @@
     }
 
     function injectEditAction(elements) {
-      if (!elements.title || elements.section.querySelector('.onframe-characteristics-action')) return;
+      if (!elements.title) return;
+      const existingAction = elements.section.querySelector('.onframe-characteristics-action');
+      if (existingAction) {
+        syncEditActionState(existingAction, elements.section);
+        return;
+      }
       const anchor = elements.titleRow || elements.title;
       const action = document.createElement('button');
       action.className = 'ob-button ghost onframe-characteristics-action';
@@ -190,13 +195,37 @@
       action.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
+        const section = action.closest('#highlighted_specs_attrs') ||
+          action.closest('.ui-vpp-highlighted-specs') ||
+          elements.section;
+        if (isCharacteristicsCollapsed(section)) {
+          scheduleRender(80);
+          return;
+        }
         void openEditor();
       });
       anchor.insertAdjacentElement('afterend', action);
+      syncEditActionState(action, elements.section);
+    }
+
+    function syncEditActionState(action, section) {
+      const collapsed = isCharacteristicsCollapsed(section);
+      action.disabled = collapsed;
+      action.classList.toggle('is-disabled', collapsed);
+      action.setAttribute('aria-disabled', collapsed ? 'true' : 'false');
+      if (collapsed) action.title = 'Conferir todas as características antes de editar.';
+      else action.removeAttribute('title');
+    }
+
+    function isCharacteristicsCollapsed(section) {
+      if (!section) return false;
+      return Boolean(section.querySelector('.ui-pdp-collapsable--is-collapsed'));
     }
 
     async function openEditor() {
       if (!state.visible || !state.itemId || state.loading || state.saving || !CharacteristicsModel.canEditCharacteristics(state.context)) return;
+      const elements = getCharacteristicsElements();
+      if (elements.section && isCharacteristicsCollapsed(elements.section)) return;
       state.editing = true;
       state.loading = true;
       state.error = '';
