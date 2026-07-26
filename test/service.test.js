@@ -1265,6 +1265,8 @@ test('bootstrap substitui atalhos bat legados', () => {
     assert.strictEqual(script.includes('function Write-OnFrameSuccess'), true);
     assert.strictEqual(script.includes('function Write-OnFrameFailure'), true);
     assert.strictEqual(script.includes('Onblide local toolkit'), true);
+    assert.strictEqual(script.includes('Chrome: chrome://extensions/'), true);
+    assert.strictEqual(script.includes('Edge: edge://extensions/'), true);
     assert.strictEqual(script.includes('Clear-Host'), false);
     assert.strictEqual(script.includes('function Write-Step'), false);
   }

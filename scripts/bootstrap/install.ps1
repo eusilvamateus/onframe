@@ -250,7 +250,10 @@ try {
   Write-OnFrameSuccess 'Instalacao concluida.' @(
     "Versao: $($release.Tag)",
     "Extensao: $((Join-Path $InstallRoot 'extension'))",
-    'Recarregue ou carregue a extensao no Chrome/Edge.'
+    'Gerenciador de extensoes:',
+    'Chrome: chrome://extensions/',
+    'Edge: edge://extensions/',
+    'Recarregue ou carregue a extensao nessa pagina.'
   )
   $global:LASTEXITCODE = 0
 } catch {

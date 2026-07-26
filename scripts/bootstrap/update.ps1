@@ -413,7 +413,10 @@ try {
   Write-OnFrameSuccess 'Atualizacao concluida.' @(
     "Versao: $($release.Tag)",
     "Pasta: $InstallRoot",
-    'Recarregue a extensao no navegador.'
+    'Gerenciador de extensoes:',
+    'Chrome: chrome://extensions/',
+    'Edge: edge://extensions/',
+    'Recarregue a extensao nessa pagina.'
   )
   $global:LASTEXITCODE = 0
 } catch {

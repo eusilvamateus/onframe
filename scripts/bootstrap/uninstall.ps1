@@ -180,7 +180,10 @@ try {
     Write-OnFrameStep 4 4 'Concluindo desinstalacao.'
     Write-OnFrameSubStep 'Remova a extensao manualmente do navegador.' 'info'
     Write-OnFrameSuccess 'Desinstalacao concluida.' @(
-      'Chrome/Edge ainda pode listar a extensao ate voce remove-la ou recarregar a pagina de extensoes.'
+      'Gerenciador de extensoes:',
+      'Chrome: chrome://extensions/',
+      'Edge: edge://extensions/',
+      'Remova ou recarregue a extensao nessa pagina.'
     )
     $global:LASTEXITCODE = 0
   }
