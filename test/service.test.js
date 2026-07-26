@@ -1234,7 +1234,9 @@ test('bootstrap substitui atalhos bat legados', () => {
   const installScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'install.ps1'), 'utf8');
   const startScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'start.ps1'), 'utf8');
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
+  const uninstallScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.ps1'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const visualBootstrapScripts = [installScript, updateScript, uninstallScript];
 
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-start.bat')), false);
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-stop.bat')), false);
@@ -1255,6 +1257,17 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(updateScript.includes('powershell -NoProfile -ExecutionPolicy Bypass -File $startScript'), false);
   assert.strictEqual(updateScript.includes("Join-Path $env:LOCALAPPDATA 'OnFrame'"), true);
   assert.strictEqual(updateScript.includes('(Get-Location).Path'), false);
+  for (const script of visualBootstrapScripts) {
+    assert.strictEqual(script.includes('function Write-OnFrameHeader'), true);
+    assert.strictEqual(script.includes('function Write-OnFrameSection'), true);
+    assert.strictEqual(script.includes('function Write-OnFrameStep'), true);
+    assert.strictEqual(script.includes('function Write-OnFrameSubStep'), true);
+    assert.strictEqual(script.includes('function Write-OnFrameSuccess'), true);
+    assert.strictEqual(script.includes('function Write-OnFrameFailure'), true);
+    assert.strictEqual(script.includes('Onblide local toolkit'), true);
+    assert.strictEqual(script.includes('Clear-Host'), false);
+    assert.strictEqual(script.includes('function Write-Step'), false);
+  }
   assert.strictEqual(installScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(installScript.includes('^onframe-release-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(updateScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);

@@ -4,9 +4,125 @@ $ErrorActionPreference = 'Stop'
 $Repo = if ($env:ONFRAME_UPDATE_REPO) { $env:ONFRAME_UPDATE_REPO } else { 'eusilvamateus/onframe' }
 $InstallRoot = if ($env:ONFRAME_HOME) { $env:ONFRAME_HOME } else { Join-Path $env:LOCALAPPDATA 'OnFrame' }
 
-function Write-Step {
+$script:OnFrameColors = @{
+  Primary = 'Cyan'
+  Success = 'Green'
+  Warning = 'Yellow'
+  Error = 'Red'
+  Muted = 'DarkGray'
+  Text = 'White'
+}
+
+function Write-OnFrameText {
+  param(
+    [string]$Text,
+    [string]$Color = 'White',
+    [switch]$NoNewLine
+  )
+
+  if ($NoNewLine) {
+    Write-Host $Text -ForegroundColor $Color -NoNewline
+  } else {
+    Write-Host $Text -ForegroundColor $Color
+  }
+}
+
+function Write-OnFrameHeader {
+  param(
+    [string]$Mode,
+    [string]$RootPath,
+    [string]$Repository = ''
+  )
+
+  Write-Host ''
+  Write-OnFrameText '  ONFRAME' $script:OnFrameColors.Primary
+  Write-OnFrameText '  Onblide local toolkit' $script:OnFrameColors.Muted
+  Write-OnFrameText ("  " + ('-' * 58)) $script:OnFrameColors.Muted
+  Write-OnFrameText ("  {0,-10} {1}" -f 'Modo', $Mode) $script:OnFrameColors.Text
+  Write-OnFrameText ("  {0,-10} {1}" -f 'Pasta', $RootPath) $script:OnFrameColors.Text
+  if ($Repository) {
+    Write-OnFrameText ("  {0,-10} {1}" -f 'Repo', $Repository) $script:OnFrameColors.Text
+  }
+  Write-OnFrameText ("  " + ('-' * 58)) $script:OnFrameColors.Muted
+}
+
+function Write-OnFrameSection {
+  param([string]$Title)
+
+  Write-Host ''
+  Write-OnFrameText ("  [{0}]" -f $Title.ToUpperInvariant()) $script:OnFrameColors.Primary
+}
+
+function Write-OnFrameStep {
+  param(
+    [int]$Current,
+    [int]$Total,
+    [string]$Message,
+    [string]$Status = 'running'
+  )
+
+  $icon = switch ($Status) {
+    'ok' { '+' }
+    'warning' { '!' }
+    'error' { 'x' }
+    default { '>' }
+  }
+  $color = switch ($Status) {
+    'ok' { $script:OnFrameColors.Success }
+    'warning' { $script:OnFrameColors.Warning }
+    'error' { $script:OnFrameColors.Error }
+    default { $script:OnFrameColors.Primary }
+  }
+  $progress = '{0:00}/{1:00}' -f $Current, $Total
+
+  Write-OnFrameText "  [$icon] " $color -NoNewLine
+  Write-OnFrameText "$progress " $script:OnFrameColors.Muted -NoNewLine
+  Write-OnFrameText $Message $script:OnFrameColors.Text
+}
+
+function Write-OnFrameSubStep {
+  param(
+    [string]$Message,
+    [string]$Type = 'info'
+  )
+
+  $icon = switch ($Type) {
+    'ok' { '+' }
+    'warning' { '!' }
+    'error' { 'x' }
+    default { '-' }
+  }
+  $color = switch ($Type) {
+    'ok' { $script:OnFrameColors.Success }
+    'warning' { $script:OnFrameColors.Warning }
+    'error' { $script:OnFrameColors.Error }
+    default { $script:OnFrameColors.Muted }
+  }
+
+  Write-OnFrameText "       $icon $Message" $color
+}
+
+function Write-OnFrameSuccess {
+  param(
+    [string]$Title,
+    [string[]]$Lines = @()
+  )
+
+  Write-Host ''
+  Write-OnFrameText "  [OK] $Title" $script:OnFrameColors.Success
+  foreach ($line in $Lines) {
+    Write-OnFrameText "       $line" $script:OnFrameColors.Muted
+  }
+  Write-Host ''
+}
+
+function Write-OnFrameFailure {
   param([string]$Message)
-  Write-Host "[OnFrame] $Message" -ForegroundColor Cyan
+
+  Write-Host ''
+  Write-OnFrameText '  [ERRO] O processo nao foi concluido.' $script:OnFrameColors.Error
+  Write-OnFrameText "         $Message" $script:OnFrameColors.Error
+  Write-Host ''
 }
 
 function Fail-Update {
@@ -215,6 +331,10 @@ function Get-Release {
 }
 
 try {
+  Write-OnFrameHeader -Mode 'Atualizacao' -RootPath $InstallRoot -Repository $Repo
+
+  Write-OnFrameSection 'Preparando'
+  Write-OnFrameStep 1 8 'Validando instalacao.'
   $InstallRoot = (Resolve-Path -LiteralPath $InstallRoot).Path
   if (-not (Test-Path (Join-Path $InstallRoot 'package.json'))) {
     Fail-Update "Pasta do OnFrame nao encontrada: $InstallRoot"
@@ -222,26 +342,27 @@ try {
   if (Test-Path (Join-Path $InstallRoot '.git')) {
     Fail-Update 'Esta pasta e um checkout de desenvolvimento. Atualize com git pull.'
   }
+  Write-OnFrameSubStep 'Instalacao valida.' 'ok'
+
+  Write-OnFrameStep 2 8 'Preparando segredo local.'
   Ensure-OnFrameTokenSecret -Root $InstallRoot
+  Write-OnFrameSubStep 'Segredo local preservado ou criado quando necessario.' 'ok'
 
-  Write-Host 'OnFrame - atualizacao via GitHub Releases' -ForegroundColor Cyan
-  Write-Host "Pasta: $InstallRoot"
-  Write-Host "Repo : $Repo"
-  Write-Host ''
-
-  Write-Step 'Consultando ultima release.'
+  Write-OnFrameSection 'Baixando'
+  Write-OnFrameStep 3 8 'Consultando ultima release.'
   $release = Get-Release -Repository $Repo
-  Write-Step "Release encontrada: $($release.Tag) / $($release.AssetName)"
+  Write-OnFrameSubStep "Release encontrada: $($release.Tag) / $($release.AssetName)" 'ok'
 
   $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("onframe-update-" + [guid]::NewGuid().ToString('N'))
   $zipPath = Join-Path $tempRoot 'release.zip'
   $extractPath = Join-Path $tempRoot 'extract'
   New-Item -ItemType Directory -Force -Path $tempRoot, $extractPath | Out-Null
 
-  Write-Step 'Baixando pacote.'
+  Write-OnFrameStep 4 8 'Baixando pacote.'
   Invoke-WebRequest -Uri $release.AssetUrl -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
+  Write-OnFrameSubStep 'Download concluido.' 'ok'
 
-  Write-Step 'Extraindo pacote.'
+  Write-OnFrameStep 5 8 'Extraindo e validando pacote.'
   Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
   $source = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
   if (-not $source) {
@@ -254,11 +375,14 @@ try {
       Fail-Update "Pacote invalido: $required ausente."
     }
   }
+  Write-OnFrameSubStep 'Pacote valido.' 'ok'
 
-  Write-Step 'Encerrando servico local.'
+  Write-OnFrameSection 'Aplicando'
+  Write-OnFrameStep 6 8 'Encerrando servico local.'
   Stop-OnFrameService -Root $InstallRoot
+  Write-OnFrameSubStep 'Servico local parado quando estava ativo.' 'ok'
 
-  Write-Step 'Atualizando arquivos.'
+  Write-OnFrameStep 7 8 'Atualizando arquivos.'
   foreach ($target in @('extension', 'service', 'scripts')) {
     $destination = Join-Path $InstallRoot $target
     Assert-ChildPath -Parent $InstallRoot -Child $destination
@@ -274,18 +398,25 @@ try {
       Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $InstallRoot $file) -Force
     }
   }
+  Write-OnFrameSubStep 'Arquivos atualizados; .env e .onframe preservados.' 'ok'
 
-  Write-Step 'Reiniciando servico.'
+  Write-OnFrameSection 'Finalizando'
+  Write-OnFrameStep 8 8 'Reiniciando e validando servico.'
   Start-OnFrameService -Root $InstallRoot
 
   $port = Get-OnFramePort -Root $InstallRoot
   if (-not (Invoke-OnFrameHealth -Port $port)) {
     Fail-Update 'Arquivos atualizados, mas o servico nao respondeu. Rode scripts\bootstrap\check.ps1.'
   }
+  Write-OnFrameSubStep "Servico ativo em http://127.0.0.1:$port." 'ok'
 
-  Write-Host ''
-  Write-Host 'Atualizacao concluida. Recarregue a extensao no navegador.' -ForegroundColor Green
+  Write-OnFrameSuccess 'Atualizacao concluida.' @(
+    "Versao: $($release.Tag)",
+    "Pasta: $InstallRoot",
+    'Recarregue a extensao no navegador.'
+  )
+  $global:LASTEXITCODE = 0
 } catch {
-  Write-Host "[OnFrame] $($_.Exception.Message)" -ForegroundColor Red
+  Write-OnFrameFailure $_.Exception.Message
   $global:LASTEXITCODE = 1
 }
