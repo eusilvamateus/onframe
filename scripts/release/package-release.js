@@ -6,8 +6,8 @@ const root = path.resolve(__dirname, '..', '..');
 const packageJson = require(path.join(root, 'package.json'));
 const version = packageJson.version;
 const distDir = path.join(root, 'dist');
-const packageDir = path.join(distDir, `onframe-release-v${version}`);
-const zipPath = path.join(distDir, `onframe-release-v${version}.zip`);
+const packageDir = path.join(distDir, `onframe-v${version}`);
+const zipPath = path.join(distDir, `onframe-v${version}.zip`);
 
 const entries = [
   'extension',

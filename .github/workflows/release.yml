@@ -24,4 +24,4 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME "dist/onframe-release-$($env:GITHUB_REF_NAME).zip" --title "$env:GITHUB_REF_NAME" --notes-file "dist/release-notes-$($env:GITHUB_REF_NAME).md"
+        run: gh release create $env:GITHUB_REF_NAME "dist/onframe-$($env:GITHUB_REF_NAME).zip" --title "$env:GITHUB_REF_NAME" --notes-file "dist/release-notes-$($env:GITHUB_REF_NAME).md"

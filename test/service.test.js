@@ -1177,6 +1177,9 @@ test('update manager retorna comando quando existe versao nova', async () => {
 test('release package nao inclui env nem estado gerenciado', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'release', 'package-release.js'), 'utf8');
 
+  assert.match(source, /`onframe-v\$\{version\}`/);
+  assert.match(source, /`onframe-v\$\{version\}\.zip`/);
+  assert.strictEqual(source.includes('onframe-release-v${version}'), false);
   assert.match(source, /'\.env\.example'/);
   assert.strictEqual(source.includes("'.env'"), false);
   assert.strictEqual(source.includes('install.json'), false);
@@ -1224,6 +1227,7 @@ test('release notes usam capa publica e apenas a secao da versao', () => {
 
 test('bootstrap substitui atalhos bat legados', () => {
   const root = path.join(__dirname, '..');
+  const installScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'install.ps1'), 'utf8');
   const startScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'start.ps1'), 'utf8');
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -1247,6 +1251,10 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(updateScript.includes('powershell -NoProfile -ExecutionPolicy Bypass -File $startScript'), false);
   assert.strictEqual(updateScript.includes("Join-Path $env:LOCALAPPDATA 'OnFrame'"), true);
   assert.strictEqual(updateScript.includes('(Get-Location).Path'), false);
+  assert.strictEqual(installScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
+  assert.strictEqual(installScript.includes('^onframe-release-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
+  assert.strictEqual(updateScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
+  assert.strictEqual(updateScript.includes('^onframe-release-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(packageJson.scripts.check.includes('scripts/bootstrap/check.ps1'), true);
   assert.strictEqual(JSON.stringify(packageJson.scripts).includes('doctor'), false);
 });
@@ -1258,7 +1266,7 @@ function release(tag, prerelease) {
     draft: false,
     prerelease,
     assets: [{
-      name: `onframe-release-${tag}.zip`,
+      name: `onframe-${tag}.zip`,
       browser_download_url: `https://github.test/download/${tag}.zip`
     }]
   };

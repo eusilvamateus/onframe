@@ -191,11 +191,17 @@ function Get-Release {
   }
 
   $release = Invoke-RestMethod -Method Get -Uri "https://api.github.com/repos/$Repository/releases/latest" -Headers $headers -TimeoutSec 30
-  $asset = @($release.assets) |
-    Where-Object { $_.name -match '^onframe-release-v?\d+\.\d+\.\d+.*\.zip$' } |
+  $assets = @($release.assets)
+  $asset = $assets |
+    Where-Object { $_.name -match '^onframe-v?\d+\.\d+\.\d+.*\.zip$' } |
     Select-Object -First 1
   if (-not $asset) {
-    $asset = @($release.assets) | Where-Object { $_.name -match '\.zip$' } | Select-Object -First 1
+    $asset = $assets |
+      Where-Object { $_.name -match '^onframe-release-v?\d+\.\d+\.\d+.*\.zip$' } |
+      Select-Object -First 1
+  }
+  if (-not $asset) {
+    $asset = $assets | Where-Object { $_.name -match '\.zip$' } | Select-Object -First 1
   }
   if (-not $asset) {
     throw 'Release sem pacote ZIP.'

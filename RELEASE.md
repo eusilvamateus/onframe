@@ -102,8 +102,9 @@ git push origin dev
 ```
 
 O push da tag publica uma release no GitHub com
-`onframe-release-vMAJOR.MINOR.PATCH.zip`. Esse ZIP e usado pelo bootstrap
-PowerShell remoto.
+`onframe-vMAJOR.MINOR.PATCH.zip`. Esse ZIP e usado pelo bootstrap PowerShell
+remoto. O bootstrap tambem aceita o nome legado
+`onframe-release-vMAJOR.MINOR.PATCH.zip` para atualizar instalacoes antigas.
 
 ## Atualizacao de instalacoes
 
