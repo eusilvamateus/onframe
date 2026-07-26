@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.3.0 - 2026-07-26
+
+### Adicionado
+
+- Edicao inline da descricao diretamente na pagina do produto, com suporte a
+  anuncios comuns e `user_product`.
+- Edicao inline das caracteristicas do produto na ficha tecnica nativa do
+  Mercado Livre.
+- Acao em massa para salvar descricao e caracteristicas nas variacoes ativas de
+  anuncios `user_product`, respeitando falhas individuais.
+- Tratamento separado para dimensoes do pacote dentro do editor de
+  caracteristicas.
+
+### Melhorado
+
+- Editor de descricao preserva a altura visual da pagina ao entrar em edicao.
+- Editor de caracteristicas usa campos do design system local e mantem campos
+  ocultos ou de leitura incorporados a tabela nativa.
+- Botoes de edicao respeitam o estado colapsado das secoes nativas do Mercado
+  Livre antes de abrir o editor.
+- Servico local com origem, erros, diagnosticos, auditoria e armazenamento de
+  tokens mais restritos.
+- Scripts de bootstrap geram segredo local de token de forma compativel com o
+  PowerShell do Windows.
+
+### Corrigido
+
+- Dimensoes de embalagem editaveis deixam de aparecer como somente leitura
+  quando o contrato da API permite alteracao.
+- Campos compostos de dimensao, como largura x comprimento, sao tratados dentro
+  da linha nativa quando possivel.
+
 ## v0.2.0 - 2026-07-25
 
 ### Adicionado
