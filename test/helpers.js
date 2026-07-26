@@ -32,10 +32,12 @@ const {
   estimatePromotionImpact
 } = require('../service/src/promotions');
 const descriptions = require('../service/src/descriptions');
+const characteristics = require('../service/src/characteristics');
 const detection = require('../extension/core/detection');
 const photosModel = require('../extension/modules/photos/model');
 const commerceModel = require('../extension/modules/commerce/model');
 const descriptionModel = require('../extension/modules/description/model');
+const characteristicsModel = require('../extension/modules/characteristics/model');
 const moduleRegistry = require('../extension/core/module-registry');
 const icons = require('../extension/core/icons');
 
@@ -130,10 +132,12 @@ module.exports = {
   deleteOffer,
   estimatePromotionImpact,
   descriptions,
+  characteristics,
   detection,
   photosModel,
   commerceModel,
   descriptionModel,
+  characteristicsModel,
   moduleRegistry,
   icons,
   fakePng,

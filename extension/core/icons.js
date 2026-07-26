@@ -20,6 +20,7 @@
     checkCircle: 'check-circle',
     info: 'info',
     image: 'image',
+    package: 'package',
     pencil: 'pencil-simple',
     price: 'currency-dollar',
     tag: 'tag',

@@ -47,6 +47,8 @@
         "modules/commerce/module.js",
         "modules/description/model.js",
         "modules/description/module.js",
+        "modules/characteristics/model.js",
+        "modules/characteristics/module.js",
         "core/module-registry.js",
         "core/content-shell.js",
         "content.js"
@@ -57,7 +59,8 @@
         "styles/components.css",
         "modules/photos/styles.css",
         "modules/commerce/styles.css",
-        "modules/description/styles.css"
+        "modules/description/styles.css",
+        "modules/characteristics/styles.css"
       ],
       "run_at": "document_idle"
     }

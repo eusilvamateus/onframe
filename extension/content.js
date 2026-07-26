@@ -7,6 +7,8 @@
   const CommerceModule = window.OnFrameCommerceModule;
   const DescriptionModel = window.OnFrameDescriptionModel;
   const DescriptionModule = window.OnFrameDescriptionModule;
+  const CharacteristicsModel = window.OnFrameCharacteristicsModel;
+  const CharacteristicsModule = window.OnFrameCharacteristicsModule;
   const ModuleRegistry = window.OnFrameModuleRegistry;
   const ContentShell = window.OnFrameContentShell;
   const api = Shared.createApi({ offlineMessage: 'Serviço local desligado. Abra o OnFrame.' });
@@ -25,6 +27,8 @@
     CommerceModule,
     DescriptionModel,
     DescriptionModule,
+    CharacteristicsModel,
+    CharacteristicsModule,
     api,
     root,
     requestPageContextReload: (reason) => shell.reloadPageContext(reason)

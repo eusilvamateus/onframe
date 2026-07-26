@@ -84,6 +84,14 @@ class MercadoLivreClient {
     return this.request(`/categories/${encodeURIComponent(categoryId)}`);
   }
 
+  async getCategoryAttributes(categoryId) {
+    return this.request(`/categories/${encodeURIComponent(categoryId)}/attributes`);
+  }
+
+  async getDomainTechnicalSpecs(domainId) {
+    return this.request(`/domains/${encodeURIComponent(domainId)}/technical_specs`);
+  }
+
   async getUserProduct(userProductId) {
     return this.request(`/user-products/${encodeURIComponent(userProductId)}`);
   }

@@ -5,7 +5,10 @@
 .onframe-commerce-popover-root,
 .onframe-commerce-modal-root,
 .onframe-description-root,
-.onframe-description-action {
+.onframe-description-action,
+#highlighted_specs_attrs.onframe-characteristics-is-editing,
+.onframe-characteristics-root,
+.onframe-characteristics-action {
   color: var(--ob-fg);
   font-family: var(--ob-font);
   font-feature-settings: "ss01", "cv11";
@@ -44,7 +47,19 @@
 .onframe-description-action,
 .onframe-description-action *,
 .onframe-description-action *::before,
-.onframe-description-action *::after {
+.onframe-description-action *::after,
+#highlighted_specs_attrs.onframe-characteristics-is-editing,
+#highlighted_specs_attrs.onframe-characteristics-is-editing *,
+#highlighted_specs_attrs.onframe-characteristics-is-editing *::before,
+#highlighted_specs_attrs.onframe-characteristics-is-editing *::after,
+.onframe-characteristics-root,
+.onframe-characteristics-root *,
+.onframe-characteristics-root *::before,
+.onframe-characteristics-root *::after,
+.onframe-characteristics-action,
+.onframe-characteristics-action *,
+.onframe-characteristics-action *::before,
+.onframe-characteristics-action *::after {
   box-sizing: border-box;
 }
 
@@ -402,6 +417,72 @@
   outline: none;
 }
 
+.ob-field-shell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid var(--ob-border);
+  border-radius: var(--ob-r-control);
+  background: var(--ob-surface);
+  color: var(--ob-fg-strong);
+  transition: border-color var(--ob-dur-fast) var(--ob-ease), box-shadow var(--ob-dur-fast) var(--ob-ease), opacity var(--ob-dur-fast) var(--ob-ease);
+}
+
+.ob-field-shell:focus-within {
+  border-color: var(--ob-blue);
+  box-shadow: 0 0 0 4px var(--ob-focus-ring);
+}
+
+.ob-field-shell.is-disabled {
+  background: var(--ob-bg-alt);
+  opacity: 0.6;
+}
+
+.ob-field-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ob-fg-strong);
+  font: var(--ob-w-medium) 14px/1.2 var(--ob-font);
+}
+
+.ob-field-input:disabled {
+  color: var(--ob-fg-mute);
+  cursor: not-allowed;
+}
+
+.ob-field-select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 18px;
+  cursor: pointer;
+}
+
+.ob-field-select:disabled {
+  cursor: not-allowed;
+}
+
+.ob-select-shell {
+  position: relative;
+}
+
+.ob-select-caret {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: inline-flex;
+  color: var(--ob-fg-mute);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .ob-label,
 .onframe-commerce-field span,
 .onframe-commerce-hero small,
@@ -696,6 +777,15 @@
   line-height: 1.3;
 }
 
+.ob-checkbox-description {
+  display: block;
+  margin-top: 2px;
+  color: var(--ob-fg-soft);
+  font-size: 12px;
+  font-weight: var(--ob-w-regular);
+  line-height: var(--ob-lh-normal);
+}
+
 .account-list {
   display: grid;
   gap: var(--ob-gap-sm);
@@ -832,7 +922,8 @@
 .onblide-ml-dialog-root :focus-visible,
 .onframe-commerce-inline :focus-visible,
 .onframe-commerce-popover-root :focus-visible,
-.onframe-commerce-modal-root :focus-visible {
+.onframe-commerce-modal-root :focus-visible,
+.onframe-characteristics-root :focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px var(--ob-focus-ring);
 }

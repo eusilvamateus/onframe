@@ -482,6 +482,11 @@ function summarizeCapabilities(item) {
       editable: true,
       reason: null,
       message: null
+    },
+    characteristics: {
+      editable: Boolean(item && !item.catalog_listing),
+      reason: item && item.catalog_listing ? 'catalog_listing' : null,
+      message: item && item.catalog_listing ? 'Catálogo: características bloqueadas pelo Mercado Livre.' : null
     }
   };
 }

@@ -22,6 +22,26 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
     bodyText.includes('description is not modifiable on catalog listing item')) {
     return 'Catálogo: descrição bloqueada pelo Mercado Livre.';
   }
+  if (text.includes('bulk_characteristics_no_editable_variations')) {
+    return 'Não há variações editáveis para aplicar em massa.';
+  }
+  if (text.includes('catalog_listing_characteristics_read_only') ||
+    text.includes('attributes is not modifiable on catalog listing item') ||
+    bodyText.includes('attributes is not modifiable on catalog listing item')) {
+    return 'Catálogo: características bloqueadas pelo Mercado Livre.';
+  }
+  if (text.includes('characteristics_missing_updates')) {
+    return 'Altere ao menos uma característica.';
+  }
+  if (text.includes('characteristics_attribute_not_editable')) {
+    return 'Essa característica não pode ser editada pelo Mercado Livre.';
+  }
+  if (text.includes('characteristics_invalid_number_unit') || text.includes('characteristics_invalid_value')) {
+    return 'Informe um valor válido para a característica.';
+  }
+  if (text.includes('characteristics_empty_value')) {
+    return 'Informe o valor da característica.';
+  }
   if (text.includes('catalog_listing_pictures_read_only') || text.includes('catalogo') || text.includes('catálogo')) {
     return 'Catálogo: fotos bloqueadas pelo Mercado Livre.';
   }

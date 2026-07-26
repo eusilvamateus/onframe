@@ -1011,6 +1011,11 @@ test('api resolve confirma item proprio de catalogo por denuncia antes de produc
       editable: true,
       reason: null,
       message: null
+    },
+    characteristics: {
+      editable: false,
+      reason: 'catalog_listing',
+      message: 'Catálogo: características bloqueadas pelo Mercado Livre.'
     }
   });
   assert.strictEqual(body.ownerAccount.user_id, 310458346);

@@ -27,6 +27,7 @@ const {
   createOffer,
   deleteOffer,
   descriptions,
+  characteristics,
   updateManager,
   detection,
   photosModel,
@@ -300,6 +301,332 @@ test('descricoes em massa bloqueiam catalogo antes de salvar e seguem nas variac
   assert.strictEqual(result.targets[2].reasonCode, 'catalog_listing_description_read_only');
 });
 
+test('caracteristicas montam ficha com technical specs e respeitam bloqueios do schema', async () => {
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => ({
+      id: itemId,
+      seller_id: 123,
+      category_id: 'MLB123',
+      domain_id: 'MLB-TEST',
+      attributes: [
+        { id: 'BRAND', name: 'Marca', value_name: 'Bogu Store' },
+        { id: 'WIDTH', name: 'Largura', value_name: '2,7 m', value_struct: { number: 2.7, unit: 'm' } },
+        { id: 'COLOR', name: 'Cor', value_id: '52049', value_name: 'Preto' }
+      ]
+    }),
+    getCategoryAttributes: async () => [
+      { id: 'BRAND', name: 'Marca', value_type: 'string', tags: { hierarchy: 'PARENT_PK' } },
+      { id: 'WIDTH', name: 'Largura', value_type: 'number_unit', allowed_units: [{ id: 'm' }, { id: 'cm' }], default_unit: 'm' },
+      { id: 'COLOR', name: 'Cor', value_type: 'list', tags: { variation_attribute: true }, values: [{ id: '52049', name: 'Preto' }] }
+    ],
+    getDomainTechnicalSpecs: async () => ({
+      output: {
+        groups: [{
+          id: 'MAIN',
+          label: 'Características principais',
+          components: [{
+            label: 'Campos',
+            attributes: [
+              { id: 'BRAND', hierarchy: 'PARENT_PK' },
+              { id: 'WIDTH' },
+              { id: 'COLOR' }
+            ]
+          }]
+        }]
+      }
+    })
+  };
+
+  const result = await characteristics.getCharacteristics(client, 'MLB1000000001');
+  const byId = new Map(result.fields.map((field) => [field.id, field]));
+
+  assert.strictEqual(result.meta.editableCount, 1);
+  assert.strictEqual(byId.get('WIDTH').editable, true);
+  assert.strictEqual(byId.get('WIDTH').componentLabel, 'Campos');
+  assert.deepStrictEqual(byId.get('WIDTH').allowedUnits, ['m', 'cm']);
+  assert.strictEqual(byId.get('BRAND').editable, false);
+  assert.strictEqual(byId.get('BRAND').reason, 'product_key');
+  assert.strictEqual(byId.get('COLOR').editable, false);
+  assert.strictEqual(byId.get('COLOR').reason, 'variation_attribute');
+});
+
+test('caracteristicas permitem hidden publico e multivalor publico com contrato seguro', async () => {
+  const payloads = [];
+  const item = {
+    id: 'MLB1000000001',
+    seller_id: 123,
+    category_id: 'MLB123',
+    domain_id: 'MLB-TEST',
+    catalog_listing: false,
+    attributes: [
+      { id: 'IS_KIT', name: 'É kit', value_id: '242084', value_name: 'Não' },
+      {
+        id: 'RECOMMENDED_USES',
+        name: 'Usos recomendados',
+        value_name: 'Casa,Jardim',
+        values: [{ name: 'Casa' }, { name: 'Jardim' }]
+      },
+      { id: 'SELLER_SKU', name: 'SKU', value_name: 'ABC-1' }
+    ]
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => item,
+    getCategoryAttributes: async () => [
+      { id: 'IS_KIT', name: 'É kit', value_type: 'boolean', tags: { hidden: true }, values: [{ id: '242084', name: 'Não' }, { id: '242085', name: 'Sim' }] },
+      { id: 'RECOMMENDED_USES', name: 'Usos recomendados', value_type: 'string', tags: { multivalued: true } },
+      { id: 'SELLER_SKU', name: 'SKU', value_type: 'string', tags: { hidden: true } }
+    ],
+    getDomainTechnicalSpecs: async () => ({
+      output: {
+        groups: [{
+          id: 'OTHERS',
+          label: 'Outros',
+          components: [{ attributes: [{ id: 'IS_KIT' }, { id: 'RECOMMENDED_USES' }] }]
+        }]
+      }
+    }),
+    updateItem: async (itemId, payload) => {
+      payloads.push({ itemId, payload });
+      return { id: itemId };
+    }
+  };
+
+  const snapshot = await characteristics.getCharacteristics(client, 'MLB1000000001');
+  const byId = new Map(snapshot.fields.map((field) => [field.id, field]));
+
+  assert.strictEqual(byId.get('IS_KIT').editable, true);
+  assert.strictEqual(byId.get('IS_KIT').reason, null);
+  assert.strictEqual(byId.get('RECOMMENDED_USES').editable, true);
+  assert.strictEqual(byId.get('RECOMMENDED_USES').multivalued, true);
+  assert.strictEqual(byId.get('SELLER_SKU').editable, false);
+  assert.strictEqual(byId.get('SELLER_SKU').reason, 'hidden');
+
+  await characteristics.updateCharacteristics(client, 'MLB1000000001', {
+    attributes: [{ id: 'RECOMMENDED_USES', valueName: 'Casa, Jardim, Piscina' }]
+  });
+
+  const payloadAttribute = payloads[0].payload.attributes.find((attribute) => attribute.id === 'RECOMMENDED_USES');
+  assert.deepStrictEqual(payloadAttribute, {
+    id: 'RECOMMENDED_USES',
+    values: [{ name: 'Casa' }, { name: 'Jardim' }, { name: 'Piscina' }]
+  });
+});
+
+test('caracteristicas permitem dimensoes de embalagem ocultas quando o contrato permite', async () => {
+  const payloads = [];
+  const item = {
+    id: 'MLB1000000001',
+    seller_id: 123,
+    category_id: 'MLB123',
+    domain_id: 'MLB-TEST',
+    catalog_listing: false,
+    attributes: [
+      { id: 'SELLER_PACKAGE_HEIGHT', name: 'Altura da embalagem do vendedor', value_name: '141 cm', value_struct: { number: 141, unit: 'cm' } },
+      { id: 'SELLER_PACKAGE_LENGTH', name: 'Comprimento da embalagem do vendedor', value_name: '14 cm', value_struct: { number: 14, unit: 'cm' } },
+      { id: 'SELLER_PACKAGE_WEIGHT', name: 'Peso da embalagem do vendedor', value_name: '4026 g', value_struct: { number: 4026, unit: 'g' } },
+      { id: 'SELLER_PACKAGE_WIDTH', name: 'Largura da embalagem do vendedor', value_name: '16 cm', value_struct: { number: 16, unit: 'cm' } },
+      { id: 'PACKAGE_HEIGHT', name: 'Altura da embalagem', value_name: '14.3 cm', value_struct: { number: 14.3, unit: 'cm' } },
+      { id: 'PACKAGE_LENGTH', name: 'Comprimento da embalagem', value_name: '24.8 cm', value_struct: { number: 24.8, unit: 'cm' } },
+      { id: 'PACKAGE_WEIGHT', name: 'Peso da embalagem', value_name: '4420 g', value_struct: { number: 4420, unit: 'g' } },
+      { id: 'PACKAGE_WIDTH', name: 'Largura da embalagem', value_name: '26.5 cm', value_struct: { number: 26.5, unit: 'cm' } },
+      { id: 'SHIPPING_PACKAGE', name: 'Embalagem do envio', value_name: 'Flyer' },
+      { id: 'SELLER_SKU', name: 'SKU', value_name: 'ABC-1' }
+    ]
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => item,
+    getCategoryAttributes: async () => [
+      { id: 'SELLER_PACKAGE_HEIGHT', name: 'Altura da embalagem do vendedor', value_type: 'number_unit', tags: { hidden: true }, allowed_units: [{ id: 'cm' }] },
+      { id: 'SELLER_PACKAGE_LENGTH', name: 'Comprimento da embalagem do vendedor', value_type: 'number_unit', tags: { hidden: true }, allowed_units: [{ id: 'cm' }] },
+      { id: 'SELLER_PACKAGE_WEIGHT', name: 'Peso da embalagem do vendedor', value_type: 'number_unit', tags: { hidden: true }, allowed_units: [{ id: 'g' }] },
+      { id: 'SELLER_PACKAGE_WIDTH', name: 'Largura da embalagem do vendedor', value_type: 'number_unit', tags: { hidden: true }, allowed_units: [{ id: 'cm' }] },
+      { id: 'PACKAGE_HEIGHT', name: 'Altura da embalagem', value_type: 'number_unit', tags: { hidden: true, read_only: true }, allowed_units: [{ id: 'cm' }] },
+      { id: 'PACKAGE_LENGTH', name: 'Comprimento da embalagem', value_type: 'number_unit', tags: { hidden: true, read_only: true }, allowed_units: [{ id: 'cm' }] },
+      { id: 'PACKAGE_WEIGHT', name: 'Peso da embalagem', value_type: 'number_unit', tags: { hidden: true, read_only: true }, allowed_units: [{ id: 'g' }] },
+      { id: 'PACKAGE_WIDTH', name: 'Largura da embalagem', value_type: 'number_unit', tags: { hidden: true, read_only: true }, allowed_units: [{ id: 'cm' }] },
+      { id: 'SHIPPING_PACKAGE', name: 'Embalagem do envio', value_type: 'string', tags: { hidden: true, read_only: true } },
+      { id: 'SELLER_SKU', name: 'SKU', value_type: 'string', tags: { hidden: true } }
+    ],
+    getDomainTechnicalSpecs: async () => ({ output: { groups: [] } }),
+    updateItem: async (itemId, payload) => {
+      payloads.push({ itemId, payload });
+      return { id: itemId };
+    }
+  };
+
+  const snapshot = await characteristics.getCharacteristics(client, 'MLB1000000001');
+  const byId = new Map(snapshot.fields.map((field) => [field.id, field]));
+  const groupedIds = snapshot.groups.flatMap((group) => group.attributes.map((field) => field.id));
+  const packageIds = snapshot.packageDimensions.fields.map((field) => field.id);
+
+  assert.strictEqual(byId.get('SELLER_PACKAGE_HEIGHT').editable, true);
+  assert.strictEqual(byId.get('SELLER_PACKAGE_LENGTH').editable, true);
+  assert.strictEqual(byId.get('SELLER_PACKAGE_WEIGHT').editable, true);
+  assert.strictEqual(byId.get('SELLER_PACKAGE_WIDTH').editable, true);
+  assert.strictEqual(byId.get('SELLER_SKU').editable, false);
+  assert.strictEqual(byId.get('SELLER_SKU').reason, 'hidden');
+  assert.strictEqual(snapshot.packageDimensions.available, true);
+  assert.deepStrictEqual(packageIds, [
+    'SELLER_PACKAGE_HEIGHT',
+    'SELLER_PACKAGE_WIDTH',
+    'SELLER_PACKAGE_LENGTH',
+    'SELLER_PACKAGE_WEIGHT'
+  ]);
+  assert.strictEqual(groupedIds.includes('SELLER_PACKAGE_HEIGHT'), false);
+  assert.strictEqual(groupedIds.includes('SELLER_PACKAGE_LENGTH'), false);
+  assert.strictEqual(groupedIds.includes('SELLER_PACKAGE_WEIGHT'), false);
+  assert.strictEqual(groupedIds.includes('SELLER_PACKAGE_WIDTH'), false);
+  assert.strictEqual(groupedIds.includes('PACKAGE_HEIGHT'), false);
+  assert.strictEqual(groupedIds.includes('PACKAGE_LENGTH'), false);
+  assert.strictEqual(groupedIds.includes('PACKAGE_WEIGHT'), false);
+  assert.strictEqual(groupedIds.includes('PACKAGE_WIDTH'), false);
+  assert.strictEqual(groupedIds.includes('SHIPPING_PACKAGE'), false);
+  assert.strictEqual(byId.has('PACKAGE_HEIGHT'), false);
+  assert.strictEqual(byId.has('SHIPPING_PACKAGE'), false);
+  assert.strictEqual(groupedIds.includes('SELLER_SKU'), true);
+
+  await characteristics.updateCharacteristics(client, 'MLB1000000001', {
+    attributes: [
+      { id: 'SELLER_PACKAGE_WEIGHT', number: '4030', unit: 'g' }
+    ]
+  });
+
+  const payloadAttribute = payloads[0].payload.attributes.find((attribute) => attribute.id === 'SELLER_PACKAGE_WEIGHT');
+  assert.deepStrictEqual(payloadAttribute, {
+    id: 'SELLER_PACKAGE_WEIGHT',
+    value_name: '4030 g'
+  });
+});
+
+test('caracteristicas atualizam atributos preservando payload existente', async () => {
+  const payloads = [];
+  const item = {
+    id: 'MLB1000000001',
+    seller_id: 123,
+    category_id: 'MLB123',
+    domain_id: 'MLB-TEST',
+    catalog_listing: false,
+    attributes: [
+      { id: 'BRAND', name: 'Marca', value_name: 'Bogu Store' },
+      { id: 'WIDTH', name: 'Largura', value_name: '2,7 m', value_struct: { number: 2.7, unit: 'm' } },
+      { id: 'SELLER_SKU', name: 'SKU', value_name: 'ABC-1' }
+    ]
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => item,
+    getCategoryAttributes: async () => [
+      { id: 'BRAND', name: 'Marca', value_type: 'string', tags: { hierarchy: 'PARENT_PK' } },
+      { id: 'WIDTH', name: 'Largura', value_type: 'number_unit', allowed_units: [{ id: 'm' }, { id: 'cm' }], default_unit: 'm' },
+      { id: 'SELLER_SKU', name: 'SKU', value_type: 'string', tags: { hidden: true } }
+    ],
+    getDomainTechnicalSpecs: async () => ({
+      output: {
+        groups: [{
+          id: 'DIMENSIONS',
+          label: 'Dimensões',
+          components: [{ attributes: [{ id: 'WIDTH' }] }]
+        }]
+      }
+    }),
+    updateItem: async (itemId, payload) => {
+      payloads.push({ itemId, payload });
+      return { id: itemId };
+    }
+  };
+
+  const result = await characteristics.updateCharacteristics(client, 'MLB1000000001', {
+    attributes: [{ id: 'WIDTH', number: '3,5', unit: 'm' }]
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(payloads[0].itemId, 'MLB1000000001');
+  assert.deepStrictEqual(payloads[0].payload.attributes, [
+    { id: 'BRAND', value_name: 'Bogu Store' },
+    { id: 'WIDTH', value_name: '3.5 m' },
+    { id: 'SELLER_SKU', value_name: 'ABC-1' }
+  ]);
+});
+
+test('caracteristicas em massa reportam falhas parciais por variacao', async () => {
+  const updated = [];
+  const items = {
+    MLB1000000001: {
+      id: 'MLB1000000001',
+      title: 'Azul',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Guarda-sol',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000001',
+      status: 'active',
+      category_id: 'MLB123',
+      domain_id: 'MLB-TEST',
+      attributes: [{ id: 'WIDTH', name: 'Largura', value_name: '2 m', value_struct: { number: 2, unit: 'm' } }]
+    },
+    MLB1000000002: {
+      id: 'MLB1000000002',
+      title: 'Verde',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Guarda-sol',
+      family_id: 'FAMILY1',
+      user_product_id: 'MLBU100000002',
+      status: 'active',
+      category_id: 'MLB123',
+      domain_id: 'MLB-TEST',
+      attributes: [{ id: 'WIDTH', name: 'Largura', value_name: '2 m', value_struct: { number: 2, unit: 'm' } }]
+    }
+  };
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => items[itemId],
+    getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+    getUserProductFamily: async () => ({
+      user_products: [
+        { id: 'MLBU100000001' },
+        { id: 'MLBU100000002' }
+      ]
+    }),
+    searchItemsByUserProduct: async () => ({ results: Object.keys(items) }),
+    getCategoryAttributes: async () => [
+      { id: 'WIDTH', name: 'Largura', value_type: 'number_unit', allowed_units: [{ id: 'm' }], default_unit: 'm' }
+    ],
+    getDomainTechnicalSpecs: async () => ({
+      output: { groups: [{ id: 'DIMENSIONS', label: 'Dimensões', components: [{ attributes: [{ id: 'WIDTH' }] }] }] }
+    }),
+    updateItem: async (itemId, payload) => {
+      if (itemId === 'MLB1000000002') {
+        const err = new Error('Validation error');
+        err.statusCode = 400;
+        throw err;
+      }
+      updated.push({ itemId, payload });
+      return { id: itemId };
+    }
+  };
+
+  const result = await characteristics.updateCharacteristicsFamily(client, 'MLB1000000001', {
+    scope: 'user_product_family',
+    attributes: [{ id: 'WIDTH', number: '3', unit: 'm' }]
+  });
+
+  assert.strictEqual(result.action, 'characteristics.update');
+  assert.deepStrictEqual(result.counts, {
+    total: 2,
+    eligible: 1,
+    blocked: 0,
+    applied: 1,
+    skipped: 0,
+    failed: 1
+  });
+  assert.strictEqual(updated.length, 1);
+  assert.strictEqual(result.targets[1].status, 'failed');
+});
+
 test('shared toUserError nao registra log tecnico sem debug explicito', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'shared.js'), 'utf8');
   const warnings = [];
@@ -475,6 +802,10 @@ test('userFriendlyError traduz erros comuns para linguagem natural', () => {
   catalogDescription.statusCode = 409;
   assert.match(userFriendlyError(catalogDescription), /descrição bloqueada/i);
 
+  const catalogCharacteristics = new Error('catalog_listing_characteristics_read_only');
+  catalogCharacteristics.statusCode = 409;
+  assert.match(userFriendlyError(catalogCharacteristics), /características bloqueadas/i);
+
   const noBulkDescriptionTargets = new Error('bulk_description_no_editable_variations');
   noBulkDescriptionTargets.statusCode = 409;
   assert.match(userFriendlyError(noBulkDescriptionTargets), /Não há variações editáveis/i);
@@ -519,6 +850,7 @@ test('service separa rotas de item e fotos do servidor HTTP', () => {
   const promotionsRoute = require('../service/src/routes/promotions');
   const bulkRoute = require('../service/src/routes/bulk');
   const descriptionsRoute = require('../service/src/routes/descriptions');
+  const characteristicsRoute = require('../service/src/routes/characteristics');
   const itemContext = require('../service/src/item-context');
 
   assert.strictEqual(typeof itemsRoute.handleResolve, 'function');
@@ -533,6 +865,9 @@ test('service separa rotas de item e fotos do servidor HTTP', () => {
   assert.strictEqual(typeof descriptionsRoute.handleDescriptionGet, 'function');
   assert.strictEqual(typeof descriptionsRoute.handleDescriptionUpdate, 'function');
   assert.strictEqual(typeof descriptionsRoute.handleDescriptionBulkUpdate, 'function');
+  assert.strictEqual(typeof characteristicsRoute.handleCharacteristicsGet, 'function');
+  assert.strictEqual(typeof characteristicsRoute.handleCharacteristicsUpdate, 'function');
+  assert.strictEqual(typeof characteristicsRoute.handleCharacteristicsBulkUpdate, 'function');
   assert.strictEqual(typeof itemContext.resolveItemContext, 'function');
   assert.strictEqual(appSource.includes('async function handlePictureCommit'), false);
   assert.strictEqual(appSource.includes('async function resolveItemContext'), false);
@@ -543,6 +878,7 @@ test('service mantem exports publicos enxutos', () => {
   const pricing = require('../service/src/pricing');
   const promotions = require('../service/src/promotions');
   const descriptions = require('../service/src/descriptions');
+  const characteristics = require('../service/src/characteristics');
   const pictureQuality = require('../service/src/picture-quality');
   const updateManagerModule = require('../service/src/update-manager');
   const itemContextSource = fs.readFileSync(path.join(__dirname, '..', 'service', 'src', 'item-context.js'), 'utf8');
@@ -566,6 +902,14 @@ test('service mantem exports publicos enxutos', () => {
     'normalizePlainText',
     'updateDescriptionFamily',
     'upsertDescription'
+  ]);
+  assert.deepStrictEqual(Object.keys(characteristics).sort(), [
+    'buildCharacteristicsSnapshot',
+    'getCharacteristics',
+    'mergeAttributes',
+    'normalizeAttributeUpdates',
+    'updateCharacteristics',
+    'updateCharacteristicsFamily'
   ]);
   assert.deepStrictEqual(Object.keys(pictureQuality).sort(), [
     'OFFICIAL_TARGET_SIZE',

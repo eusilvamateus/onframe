@@ -28,6 +28,7 @@ const {
   photosModel,
   commerceModel,
   descriptionModel,
+  characteristicsModel,
   moduleRegistry,
   icons,
   fakePng,
@@ -49,7 +50,8 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
     'styles/components.css',
     'modules/photos/styles.css',
     'modules/commerce/styles.css',
-    'modules/description/styles.css'
+    'modules/description/styles.css',
+    'modules/characteristics/styles.css'
   ]);
   assert.ok(manifest.web_accessible_resources[0].resources.includes('vendor/phosphor/*'));
   assert.ok(scripts.indexOf('core/detection.js') < scripts.indexOf('modules/photos/model.js'));
@@ -59,6 +61,9 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
   assert.ok(scripts.indexOf('modules/commerce/model.js') < scripts.indexOf('modules/commerce/module.js'));
   assert.ok(scripts.indexOf('modules/commerce/module.js') < scripts.indexOf('modules/description/model.js'));
   assert.ok(scripts.indexOf('modules/description/model.js') < scripts.indexOf('modules/description/module.js'));
+  assert.ok(scripts.indexOf('modules/description/module.js') < scripts.indexOf('modules/characteristics/model.js'));
+  assert.ok(scripts.indexOf('modules/characteristics/model.js') < scripts.indexOf('modules/characteristics/module.js'));
+  assert.ok(scripts.indexOf('modules/characteristics/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/description/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/commerce/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('core/module-registry.js'));
@@ -114,6 +119,10 @@ test('module registry cria modulos com contrato estavel', () => {
     id: 'description',
     label: 'Descrição'
   });
+  const characteristicsModule = Object.assign({}, photosModule, {
+    id: 'characteristics',
+    label: 'Características'
+  });
   const modules = moduleRegistry.createModules({
     PhotosModule: {
       createPhotoModule(services) {
@@ -133,11 +142,17 @@ test('module registry cria modulos com contrato estavel', () => {
         return descriptionModule;
       }
     },
+    CharacteristicsModule: {
+      createCharacteristicsModule(services) {
+        calls.push(`characteristics:${services.marker}`);
+        return characteristicsModule;
+      }
+    },
     marker: 'ok'
   });
 
-  assert.deepStrictEqual(calls, ['photos:ok', 'commerce:ok', 'description:ok']);
-  assert.deepStrictEqual(modules, [photosModule, commerceModule, descriptionModule]);
+  assert.deepStrictEqual(calls, ['photos:ok', 'commerce:ok', 'description:ok', 'characteristics:ok']);
+  assert.deepStrictEqual(modules, [photosModule, commerceModule, descriptionModule, characteristicsModule]);
   assert.throws(() => moduleRegistry.assertModuleContract({ id: 'bad', label: 'Ruim' }), /sem contrato/);
 });
 
@@ -162,9 +177,10 @@ test('design system nao e redefinido pelos modulos', () => {
   const photosStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'photos', 'styles.css'), 'utf8');
   const commerceStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'commerce', 'styles.css'), 'utf8');
   const descriptionStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'description', 'styles.css'), 'utf8');
+  const characteristicsStyles = fs.readFileSync(path.join(extensionRoot, 'modules', 'characteristics', 'styles.css'), 'utf8');
   const popupStyles = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'popup.css'), 'utf8');
   const optionsStyles = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'options.css'), 'utf8');
-  const moduleStyles = `${photosStyles}\n${commerceStyles}\n${descriptionStyles}`;
+  const moduleStyles = `${photosStyles}\n${commerceStyles}\n${descriptionStyles}\n${characteristicsStyles}`;
 
   assert.strictEqual(fs.existsSync(path.join(extensionRoot, 'styles', 'onblide.css')), false);
   assert.strictEqual(fs.existsSync(path.join(extensionRoot, 'core', 'ui.js')), false);
@@ -172,6 +188,12 @@ test('design system nao e redefinido pelos modulos', () => {
   assert.match(components, /\.onframe-commerce-btn/);
   assert.match(components, /\.account-card/);
   assert.match(components, /\.ob-checkbox/);
+  assert.match(components, /\.ob-field-shell/);
+  assert.match(components, /\.ob-field-input/);
+  assert.match(components, /\.ob-field-select/);
+  assert.match(components, /\.ob-field-shell:focus-within/);
+  assert.match(components, /\.ob-select-caret/);
+  assert.match(components, /\.ob-checkbox-description/);
   assert.match(components, /\.ob-icon-12/);
   assert.match(components, /\.ob-spinner/);
   assert.doesNotMatch(moduleStyles, /--ob-[a-z-]+:\s/);
@@ -184,6 +206,7 @@ test('design system nao e redefinido pelos modulos', () => {
 test('acoes em massa usam componentes do design system e feedback de envio', () => {
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const descriptionSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'module.js'), 'utf8');
+  const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
   const commerceStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
   assert.strictEqual(commerceSource.includes('class="ob-checkbox onframe-commerce-bulk-switch'), true);
@@ -201,7 +224,13 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   assert.strictEqual(descriptionSource.includes('type="checkbox"'), false);
   assert.strictEqual(descriptionSource.includes('/description/bulk'), true);
   assert.strictEqual(descriptionSource.includes('canBulkEditDescription'), true);
+  assert.strictEqual(characteristicsSource.includes('class="ob-checkbox onframe-characteristics-bulk-switch'), true);
+  assert.strictEqual(characteristicsSource.includes('role="checkbox"'), true);
+  assert.strictEqual(characteristicsSource.includes('type="checkbox"'), false);
+  assert.strictEqual(characteristicsSource.includes('/characteristics/bulk'), true);
+  assert.strictEqual(characteristicsSource.includes('canBulkEditCharacteristics'), true);
   assert.strictEqual(descriptionModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Descrição salva em 2 variações. (1 não alterada)');
+  assert.strictEqual(characteristicsModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Características salvas em 2 variações. (1 não alterada)');
   assert.strictEqual(descriptionModel.canBulkEditDescription({
     quick: true,
     mode: 'user_product',
@@ -223,6 +252,16 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
     item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001' },
     family: { user_products: [{ id: 'MLBU100000001' }, { id: 'MLBU100000002' }] }
   }), true);
+  assert.strictEqual(characteristicsModel.canBulkEditCharacteristics({
+    mode: 'user_product',
+    item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001' },
+    family: { user_products: [{ id: 'MLBU100000001' }] }
+  }), false);
+  assert.strictEqual(characteristicsModel.canBulkEditCharacteristics({
+    mode: 'user_product',
+    item: { id: 'MLB1000000001', user_product_id: 'MLBU100000001' },
+    family: { user_products: [{ id: 'MLBU100000001' }, { id: 'MLBU100000002' }] }
+  }), true);
 });
 
 test('editor inline de descricao preserva altura visual ao abrir', () => {
@@ -232,6 +271,112 @@ test('editor inline de descricao preserva altura visual ao abrir', () => {
   assert.strictEqual(descriptionSource.includes('state.editorShellMinHeight = Math.max(320, shellHeight)'), true);
   assert.strictEqual(descriptionSource.includes('style="min-height:${escapeAttribute(state.editorShellMinHeight)}px"'), true);
   assert.strictEqual(descriptionSource.includes('style="min-height:${escapeAttribute(state.editorTextareaMinHeight)}px"'), true);
+});
+
+test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre', () => {
+  const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'styles.css'), 'utf8');
+
+  assert.strictEqual(characteristicsSource.includes("closest('#highlighted_specs_attrs')"), true);
+  assert.strictEqual(characteristicsSource.includes("closest('.ui-vpp-highlighted-specs')"), true);
+  assert.strictEqual(characteristicsSource.includes("closest('.ui-pdp-container__row--highlighted-specs-title')"), true);
+  assert.strictEqual(characteristicsSource.includes('const anchor = elements.titleRow || elements.title'), true);
+  assert.strictEqual(characteristicsSource.includes("anchor.insertAdjacentElement('afterend', action)"), true);
+  assert.strictEqual(characteristicsSource.includes("querySelectorAll('.ui-vpp-striped-specs__table')"), true);
+  assert.strictEqual(characteristicsSource.includes("querySelectorAll('tr.andes-table__row, tr.ui-vpp-striped-specs__row')"), true);
+  assert.strictEqual(characteristicsSource.includes("querySelector('.andes-table__column--value')"), true);
+  assert.strictEqual(characteristicsSource.includes('renderInlineFields(elements.section, disabled)'), true);
+  assert.strictEqual(characteristicsSource.includes('renderPackageDimensionsCard(disabled)'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-package-card'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-package-grid'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-package-control'), true);
+  assert.strictEqual(characteristicsSource.includes("icon('package', 18)"), true);
+  assert.strictEqual(characteristicsSource.includes('insertSyntheticFieldRow(groupTargets, group, field, disabled)'), true);
+  assert.strictEqual(characteristicsSource.includes('renderCompositeFieldTargets(targets, usedTargets, group, fields, disabled, activeIds)'), true);
+  assert.strictEqual(characteristicsSource.includes('isCompositeRenderedFieldTarget(target, group, field)'), true);
+  assert.strictEqual(characteristicsSource.includes('splitCompositeHeading(target.fieldLabel).includes(fieldLabel)'), true);
+  assert.strictEqual(characteristicsSource.includes('renderCompositeFieldControls(matches, disabled)'), true);
+  assert.strictEqual(characteristicsSource.includes('canShareCompositeUnit(fields)'), true);
+  assert.strictEqual(characteristicsSource.includes('renderSharedCompositeNumberUnitControls(fields, disabled)'), true);
+  assert.strictEqual(characteristicsSource.includes('data-select-composite-ids'), true);
+  assert.strictEqual(characteristicsSource.includes('renderSyntheticFieldValue(field, disabled)'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-extra-row'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-row-composite'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-composite-control'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-extra-label-text'), true);
+  assert.strictEqual(characteristicsSource.includes('renderHiddenStatusBadge(field)'), true);
+  assert.strictEqual(characteristicsSource.includes('ob-badge blue onframe-characteristics-status-badge'), true);
+  assert.strictEqual(characteristicsSource.includes('renderMissingFields(disabled)'), false);
+  assert.strictEqual(characteristicsSource.includes('ob-field-shell onframe-characteristics-field-shell'), true);
+  assert.strictEqual(characteristicsSource.includes('ob-field-input onframe-characteristics-compact-field'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-select-trigger'), true);
+  assert.strictEqual(characteristicsSource.includes('ob-select-caret'), true);
+  assert.strictEqual(characteristicsSource.includes('ob-checkbox-label'), true);
+  assert.strictEqual(characteristicsSource.includes('ob-checkbox-description'), true);
+  assert.doesNotMatch(characteristicsSource, /class="ob-field\s/);
+  assert.doesNotMatch(characteristicsSource, /type="checkbox"/);
+  assert.doesNotMatch(characteristicsSource, /<select\b/);
+  assert.strictEqual(characteristicsSource.includes('data-action="characteristics-select"'), true);
+  assert.strictEqual(characteristicsSource.includes('role="listbox"'), true);
+  assert.strictEqual(characteristicsSource.includes('inlineSyntheticRows'), true);
+  assert.strictEqual(characteristicsSource.includes('missingFields.push(field)'), false);
+  assert.strictEqual(characteristicsSource.includes('restoreInlineCells()'), true);
+  assert.strictEqual(characteristicsSource.includes('isInlineControlActive()'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-is-editing'), true);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-groups'), false);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-grid'), false);
+  assert.strictEqual(characteristicsSource.includes('onframe-characteristics-field"'), false);
+  assert.strictEqual(styles.includes('.onframe-characteristics-footer'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-package-card'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-package-grid'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-package-control'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-package-unit-shell'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-package-title span'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-package-head span'), false);
+  assert.strictEqual(styles.includes('.onframe-characteristics-inline-cell'), true);
+  assert.strictEqual(styles.includes('display: inline-flex'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-inline-control .ob-field-shell'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-inline-control .ob-field-input'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-inline-control .ob-field-input:focus'), true);
+  assert.strictEqual(styles.includes('outline: none !important'), true);
+  assert.strictEqual(styles.includes('box-shadow: none !important'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-inline-control .ob-select-shell'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-select-menu'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-select-option'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-row-editable:has(.onframe-characteristics-select.is-open)'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-composite-control'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-composite-separator'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-composite-unit-shell'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-composite-unit-shell .onframe-characteristics-select-trigger'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-row-composite > .andes-table__header'), true);
+  assert.strictEqual(styles.includes('min-height: 64px !important'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-composite-label'), false);
+  assert.strictEqual(styles.includes('overflow: visible !important'), true);
+  assert.strictEqual(styles.includes('height: 26px'), true);
+  assert.strictEqual(styles.includes('height: 48px !important'), true);
+  assert.strictEqual(styles.includes('padding-top: 0 !important'), true);
+  assert.strictEqual(styles.includes('min-height: 34px'), false);
+  assert.strictEqual(styles.includes('.onframe-characteristics-extra-row'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-extra-label'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-extra-label-text'), true);
+  assert.strictEqual(styles.includes('display: flex !important'), true);
+  assert.strictEqual(styles.includes('text-align: left !important'), true);
+  assert.strictEqual(styles.includes('white-space: normal !important'), true);
+  assert.strictEqual(styles.includes('width: 100%'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-status-badge'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-is-editing .onframe-characteristics-inline-cell input'), true);
+  assert.strictEqual(components.includes('#highlighted_specs_attrs.onframe-characteristics-is-editing'), true);
+  assert.strictEqual(styles.includes('.onframe-characteristics-hidden-fields'), false);
+  assert.strictEqual(styles.includes('.onframe-characteristics-groups'), false);
+  assert.strictEqual(styles.includes('.onframe-characteristics-grid'), false);
+  assert.strictEqual(shellSource.includes('.onframe-characteristics-inline-control'), true);
+  assert.strictEqual(shellSource.includes('.onframe-characteristics-inline-cell'), true);
+  assert.strictEqual(shellSource.includes('.onframe-characteristics-extra-row'), true);
+  assert.strictEqual(characteristicsSource.includes("field.reason !== 'hidden'"), true);
+  assert.strictEqual(styles.includes('[data-testid="action-collapsable-target"].ui-vpp-highlighted-specs__striped-collapsed__action'), true);
+  assert.strictEqual(styles.includes('.ui-pdp-collapsable__container'), true);
 });
 
 test('ui exibem comando de atualizacao auditavel', () => {
@@ -317,6 +462,7 @@ test('shell centraliza sincronizacao de contexto da pagina', () => {
   const contentSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'content.js'), 'utf8');
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
   const registrySource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'module-registry.js'), 'utf8');
 
   assert.strictEqual(shellSource.includes('setInterval(syncPageState'), false);
@@ -329,6 +475,7 @@ test('shell centraliza sincronizacao de contexto da pagina', () => {
   assert.strictEqual(commerceSource.includes('services.resolvePageContext'), false);
   assert.strictEqual(photosSource.includes('scheduleContextSync'), false);
   assert.strictEqual(commerceSource.includes('scheduleContextSync'), false);
+  assert.strictEqual(characteristicsSource.includes('services.resolvePageContext'), false);
   assert.strictEqual(registrySource.includes("'handlePageContextChange'"), true);
 });
 
@@ -336,6 +483,7 @@ test('shell usa resolucao rapida antes da hidratacao completa', () => {
   const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
 
   assert.strictEqual(shellSource.includes('/api/resolve/quick'), true);
   assert.strictEqual(shellSource.includes("status: 'quick-ready'"), true);
@@ -355,6 +503,7 @@ test('commerce nao usa degrade verde nos popovers', () => {
 test('modulos propagam conta dona nas chamadas por item', () => {
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
 
   assert.match(photosSource, /ownerAccount/);
   assert.match(photosSource, /owner_user_id/);
@@ -362,6 +511,9 @@ test('modulos propagam conta dona nas chamadas por item', () => {
   assert.match(commerceSource, /ownerAccount/);
   assert.match(commerceSource, /owner_user_id/);
   assert.match(commerceSource, /function itemApiPath/);
+  assert.match(characteristicsSource, /ownerAccount/);
+  assert.match(characteristicsSource, /owner_user_id/);
+  assert.match(characteristicsSource, /function itemApiPath/);
 });
 
 test('qualidade de fotos nao registra falha tecnica sem debug', () => {

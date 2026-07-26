@@ -377,7 +377,7 @@
       if (!node || node.nodeType !== 1) return false;
       if (node.id === 'onblide-ml-root') return true;
       if (typeof node.closest !== 'function') return false;
-      return Boolean(node.closest('#onblide-ml-root, .onblide-ml-tray, .onframe-commerce-inline, .onframe-commerce-popover-root, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-description-root, .onframe-description-action'));
+      return Boolean(node.closest('#onblide-ml-root, .onblide-ml-tray, .onframe-commerce-inline, .onframe-commerce-popover-root, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-description-root, .onframe-description-action, .onframe-characteristics-root, .onframe-characteristics-action, .onframe-characteristics-inline-control, .onframe-characteristics-inline-cell, .onframe-characteristics-extra-row'));
     }
 
     function readEditorVisibility() {
