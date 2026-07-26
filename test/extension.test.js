@@ -334,6 +334,10 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.doesNotMatch(characteristicsSource, /<select\b/);
   assert.strictEqual(characteristicsSource.includes('data-action="characteristics-select"'), true);
   assert.strictEqual(characteristicsSource.includes('role="listbox"'), true);
+  assert.strictEqual(characteristicsSource.includes("querySelectorAll('[data-field-id][data-field-part]')"), true);
+  assert.strictEqual(characteristicsSource.includes('row.dataset.fieldId'), false);
+  assert.strictEqual(characteristicsSource.includes('row.dataset.characteristicsExtraFieldId'), true);
+  assert.strictEqual(characteristicsSource.includes("!('value' in control)"), true);
   assert.strictEqual(characteristicsSource.includes('inlineSyntheticRows'), true);
   assert.strictEqual(characteristicsSource.includes('missingFields.push(field)'), false);
   assert.strictEqual(characteristicsSource.includes('restoreInlineCells()'), true);

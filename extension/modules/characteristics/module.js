@@ -588,7 +588,7 @@
       if (!target || !target.body) return false;
       const row = document.createElement('tr');
       row.className = 'andes-table__row ui-vpp-striped-specs__row onframe-characteristics-extra-row';
-      row.dataset.fieldId = field.id;
+      row.dataset.characteristicsExtraFieldId = field.id;
       row.innerHTML = renderSyntheticFieldRow(field, disabled);
       target.body.appendChild(row);
       state.inlineSyntheticRows.push(row);
@@ -948,7 +948,7 @@
     function bindEditorEvents() {
       if (!state.editorRoot) return;
       [state.sectionElement, state.editorRoot].filter(Boolean).forEach((fieldContainer) => {
-        fieldContainer.querySelectorAll('[data-field-id]').forEach((field) => {
+        fieldContainer.querySelectorAll('[data-field-id][data-field-part]').forEach((field) => {
           if (field.dataset.characteristicsBound === 'true') return;
           field.dataset.characteristicsBound = 'true';
           field.addEventListener('input', () => updateDraftFromControl(field));
@@ -1065,7 +1065,7 @@
     function updateDraftFromControl(control) {
       const id = String(control.dataset.fieldId || '');
       const part = String(control.dataset.fieldPart || 'valueName');
-      if (!id || !state.draft[id]) return;
+      if (!id || !part || !state.draft[id] || !('value' in control)) return;
       state.draft[id] = Object.assign({}, state.draft[id], {
         [part]: control.value
       });
