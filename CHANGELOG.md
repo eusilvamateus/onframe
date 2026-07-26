@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.3 - 2026-07-26
+
+### Melhorado
+
+- Notas de release do GitHub passam a ser geradas com cabecalho publico,
+  release anterior e link de comparacao.
+- A geracao das notas de release foi movida para um script testavel.
+
 ## v0.3.2 - 2026-07-26
 
 ### Corrigido
