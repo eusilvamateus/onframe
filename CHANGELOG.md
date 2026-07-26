@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.6 - 2026-07-26
+
+### Melhorado
+
+- Scripts de instalacao, atualizacao e desinstalacao passam a mostrar atalhos
+  diretos para `chrome://extensions/` e `edge://extensions/` ao concluir o
+  processo.
+
 ## v0.3.5 - 2026-07-26
 
 ### Melhorado
