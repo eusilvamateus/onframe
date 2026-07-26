@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.5 - 2026-07-26
+
+### Melhorado
+
+- Scripts de instalacao, atualizacao e desinstalacao passam a exibir uma
+  experiencia visual OnFrame no PowerShell, com etapas claras, mensagens de
+  progresso e erros destacados.
+- Bootstrap local preserva o contexto do terminal do usuario sem limpar a tela.
+
 ## v0.3.4 - 2026-07-26
 
 ### Melhorado
