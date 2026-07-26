@@ -23,6 +23,14 @@ function main() {
     return json;
   });
 
+  updateJson('package-lock.json', (json) => {
+    json.version = nextVersion;
+    if (json.packages && json.packages['']) {
+      json.packages[''].version = nextVersion;
+    }
+    return json;
+  });
+
   console.log(JSON.stringify({
     ok: true,
     version: nextVersion,

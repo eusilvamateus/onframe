@@ -1176,10 +1176,14 @@ test('update manager retorna comando quando existe versao nova', async () => {
 
 test('release package nao inclui env nem estado gerenciado', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'release', 'package-release.js'), 'utf8');
+  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package-lock.json'), 'utf8'));
 
   assert.match(source, /`onframe-v\$\{version\}`/);
   assert.match(source, /`onframe-v\$\{version\}\.zip`/);
   assert.strictEqual(source.includes('onframe-release-v${version}'), false);
+  assert.strictEqual(packageLock.version, packageJson.version);
+  assert.strictEqual(packageLock.packages[''].version, packageJson.version);
   assert.match(source, /'\.env\.example'/);
   assert.strictEqual(source.includes("'.env'"), false);
   assert.strictEqual(source.includes('install.json'), false);

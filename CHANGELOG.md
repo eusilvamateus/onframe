@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.3.4 - 2026-07-26
+
+### Melhorado
+
+- Pacotes de release passam a usar o nome `onframe-vX.Y.Z.zip`.
+- Bootstrap de instalacao e atualizacao continua aceitando pacotes legados
+  `onframe-release-vX.Y.Z.zip`.
+- Scripts de versionamento passam a manter `package-lock.json` alinhado com a
+  versao publicada.
+
 ## v0.3.3 - 2026-07-26
 
 ### Melhorado

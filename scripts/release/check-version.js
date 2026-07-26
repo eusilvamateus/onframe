@@ -3,6 +3,7 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const packageJson = readJson('package.json');
+const packageLock = readJson('package-lock.json');
 const manifest = readJson(path.join('extension', 'manifest.json'));
 const expectedTag = process.argv[2] || process.env.GITHUB_REF_NAME || '';
 
@@ -17,6 +18,12 @@ function main() {
 
   if (version !== manifestVersion) {
     fail(`Versoes divergentes: package.json=${version}, manifest.json=${manifestVersion}.`);
+  }
+  if (String(packageLock.version || '').trim() !== version) {
+    fail(`Versao divergente: package-lock.json=${packageLock.version || '(vazio)'}, esperado ${version}.`);
+  }
+  if (packageLock.packages && packageLock.packages[''] && String(packageLock.packages[''].version || '').trim() !== version) {
+    fail(`Versao divergente: package-lock.json packages[""]=${packageLock.packages[''].version || '(vazio)'}, esperado ${version}.`);
   }
 
   if (expectedTag) {
