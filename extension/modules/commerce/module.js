@@ -543,9 +543,13 @@
       ].filter(Boolean);
       return `
         <div class="onframe-commerce-promo-summary">
-          ${renderPromotionPeriodLegend(entry)}
-          <small>Promoção aplicada</small>
-          <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
+          <div class="onframe-commerce-promo-summary-head">
+            <div>
+              <small>Promoção aplicada</small>
+              <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
+            </div>
+            ${renderPromotionPeriodLegend(entry)}
+          </div>
           ${renderPromotionMetricGrid(metrics)}
         </div>
       `;
@@ -574,9 +578,13 @@
         ].filter(Boolean);
         return `
           <div class="onframe-commerce-promo-summary">
-            ${renderPromotionPeriodLegend(entry)}
-            <small>Desconto acumulativo</small>
-            <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
+            <div class="onframe-commerce-promo-summary-head">
+              <div>
+                <small>Desconto acumulativo</small>
+                <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
+              </div>
+              ${renderPromotionPeriodLegend(entry)}
+            </div>
             ${renderPromotionMetricGrid(metrics)}
           </div>
         `;
@@ -587,8 +595,12 @@
       const count = Array.isArray(opportunities) ? opportunities.length : 0;
       return `
         <div class="onframe-commerce-promo-summary muted">
-          <small>Promoções</small>
-          <strong>Nenhuma aplicada</strong>
+          <div class="onframe-commerce-promo-summary-head">
+            <div>
+              <small>Promoções</small>
+              <strong>Nenhuma aplicada</strong>
+            </div>
+          </div>
           ${renderPromotionMetricGrid([{ label: 'Disponíveis', value: `${count} promoç${count === 1 ? 'ão' : 'ões'}` }])}
         </div>
       `;
@@ -654,7 +666,7 @@
             <h3>${escapeHtml(title)}</h3>
             <span>${list.length}</span>
           </div>
-          ${list.length ? `<div class="onframe-commerce-card-grid">${list.map((entry, index) => renderPromotionCard(entry, kind, index)).join('')}</div>` : `<div class="onframe-commerce-empty">${escapeHtml(emptyText)}</div>`}
+          ${list.length ? `<div class="onframe-commerce-card-list">${list.map((entry, index) => renderPromotionCard(entry, kind, index)).join('')}</div>` : `<div class="onframe-commerce-empty">${escapeHtml(emptyText)}</div>`}
         </section>
       `;
     }
@@ -676,16 +688,18 @@
       const statusBadge = renderPromotionStatusBadge(status, tone, kind);
 
       return `
-        <article class="onframe-commerce-card ${escapeAttribute(tone)}" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
-          ${renderPromotionPeriodLegend(entry)}
+        <article class="onframe-commerce-card onframe-commerce-promo-row ${escapeAttribute(tone)}" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
           <div class="onframe-commerce-card-main">
-            <div>
-              <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
+            <div class="onframe-commerce-card-copy">
+              <div class="onframe-commerce-card-title">
+                <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
+                ${statusBadge}
+              </div>
               <span>${escapeHtml(hint)}</span>
             </div>
-            ${statusBadge}
+            ${renderPromotionPeriodLegend(entry)}
           </div>
-          ${facts ? `<div class="onframe-commerce-meta">${facts}</div>` : ''}
+          ${facts ? `<div class="onframe-commerce-meta" aria-label="Impacto da promoção">${facts}</div>` : ''}
           ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
           ${renderPromotionReview(key, entry, formOpen, confirm)}
           <div class="onframe-commerce-card-actions">
@@ -781,7 +795,7 @@
         });
       }
       if (entry.stock) metrics.push({ label: 'Estoque', value: `${entry.stock} un.`, tone: 'muted' });
-      if (userFields.includes('deal_price')) metrics.push({ label: 'Preço', value: 'Editável', tone: 'muted' });
+      if (userFields.includes('deal_price')) metrics.push({ label: 'Entrada', value: 'Preço editável', tone: 'muted' });
       return metrics.map(renderMetricChip).join('');
     }
 
@@ -1011,7 +1025,7 @@
     function renderMetricChip(metric) {
       if (!metric || !metric.value) return '';
       return `
-        <span class="${escapeAttribute(metric.tone || 'muted')}">
+        <span class="onframe-commerce-metric ${escapeAttribute(metric.tone || 'muted')}">
           <small>${escapeHtml(metric.label)}</small>
           <b>
             ${escapeHtml(metric.value)}
@@ -1026,8 +1040,8 @@
       const percentageText = formatPercent(percentage);
       return {
         label,
-        value: amountText,
-        badge: percentageText || '',
+        value: [amountText, percentageText].filter(Boolean).join(' · '),
+        badge: '',
         tone
       };
     }

@@ -886,6 +886,193 @@
   white-space: nowrap;
 }
 
+.onframe-commerce-promo-summary {
+  gap: 10px;
+}
+
+.onframe-commerce-promo-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.onframe-commerce-promo-summary-head > div {
+  min-width: 0;
+}
+
+.onframe-commerce-promo-summary-head .onframe-commerce-period-legend {
+  flex: 0 1 auto;
+  text-align: right;
+}
+
+.onframe-commerce-card-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.onframe-commerce-promo-row {
+  display: grid;
+  gap: 9px;
+  min-height: 0;
+  padding: 10px;
+}
+
+.onframe-commerce-promo-row.green {
+  border-color: color-mix(in srgb, var(--ob-green) 26%, var(--ob-border));
+}
+
+.onframe-commerce-promo-row.orange {
+  border-color: color-mix(in srgb, var(--ob-orange) 28%, var(--ob-border));
+}
+
+.onframe-commerce-promo-row.blue {
+  border-color: color-mix(in srgb, var(--ob-blue) 22%, var(--ob-border));
+}
+
+.onframe-commerce-promo-row .onframe-commerce-card-main {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.onframe-commerce-card-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.onframe-commerce-card-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.onframe-commerce-card-title strong {
+  min-width: 0;
+}
+
+.onframe-commerce-card-title .onframe-commerce-status {
+  flex: none;
+  margin: 0;
+}
+
+.onframe-commerce-promo-row .onframe-commerce-period-legend {
+  flex: 0 1 auto;
+  margin-left: auto;
+  text-align: right;
+}
+
+.onframe-commerce-cost-grid,
+.onframe-commerce-promo-metrics,
+.onframe-commerce-meta,
+.onframe-commerce-review-grid,
+.onframe-commerce-estimate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 6px;
+}
+
+.onframe-commerce-cost-grid,
+.onframe-commerce-promo-metrics {
+  margin: 0 0 10px;
+}
+
+.onframe-commerce-meta {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.onframe-commerce-review-grid,
+.onframe-commerce-estimate-grid {
+  margin: 0;
+}
+
+.onframe-commerce-cost-grid > .onframe-commerce-metric,
+.onframe-commerce-promo-metrics > .onframe-commerce-metric,
+.onframe-commerce-meta > .onframe-commerce-metric,
+.onframe-commerce-review-grid > .onframe-commerce-metric,
+.onframe-commerce-estimate-grid > .onframe-commerce-metric {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: 0;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-surface-2);
+  color: var(--ob-ink-soft);
+  font: 600 11px/1.2 var(--ob-font);
+}
+
+.onframe-commerce-cost-grid > .onframe-commerce-metric.primary,
+.onframe-commerce-promo-metrics > .onframe-commerce-metric.primary,
+.onframe-commerce-meta > .onframe-commerce-metric.primary,
+.onframe-commerce-review-grid > .onframe-commerce-metric.primary,
+.onframe-commerce-estimate-grid > .onframe-commerce-metric.primary {
+  background: var(--ob-blue-050);
+  color: var(--ob-blue-700);
+}
+
+.onframe-commerce-cost-grid > .onframe-commerce-metric.green,
+.onframe-commerce-cost-grid > .onframe-commerce-metric.success,
+.onframe-commerce-promo-metrics > .onframe-commerce-metric.green,
+.onframe-commerce-promo-metrics > .onframe-commerce-metric.success,
+.onframe-commerce-meta > .onframe-commerce-metric.green,
+.onframe-commerce-meta > .onframe-commerce-metric.success,
+.onframe-commerce-review-grid > .onframe-commerce-metric.green,
+.onframe-commerce-review-grid > .onframe-commerce-metric.success,
+.onframe-commerce-estimate-grid > .onframe-commerce-metric.green,
+.onframe-commerce-estimate-grid > .onframe-commerce-metric.success {
+  background: var(--ob-green-100);
+  color: var(--ob-green-700);
+}
+
+.onframe-commerce-cost-grid > .onframe-commerce-metric.warning,
+.onframe-commerce-cost-grid > .onframe-commerce-metric.warn,
+.onframe-commerce-promo-metrics > .onframe-commerce-metric.warning,
+.onframe-commerce-promo-metrics > .onframe-commerce-metric.warn,
+.onframe-commerce-meta > .onframe-commerce-metric.warning,
+.onframe-commerce-meta > .onframe-commerce-metric.warn,
+.onframe-commerce-review-grid > .onframe-commerce-metric.warning,
+.onframe-commerce-review-grid > .onframe-commerce-metric.warn,
+.onframe-commerce-estimate-grid > .onframe-commerce-metric.warning,
+.onframe-commerce-estimate-grid > .onframe-commerce-metric.warn {
+  background: var(--ob-orange-100);
+  color: var(--ob-orange-700);
+}
+
+.onframe-commerce-metric small {
+  overflow: hidden;
+  color: currentColor;
+  font: 700 9px/1 var(--ob-font-mono);
+  opacity: 0.7;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.onframe-commerce-metric b {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  color: currentColor;
+  font: 700 12px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-metric-badge {
+  background: color-mix(in srgb, currentColor 10%, var(--ob-surface));
+}
+
+.onframe-commerce-promo-row .onframe-commerce-card-actions {
+  justify-content: flex-start;
+  margin-top: 0;
+}
+
 .onframe-commerce-form-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

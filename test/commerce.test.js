@@ -247,7 +247,7 @@ test('popover de preco mostra valor promocional e custos sem referencia externa'
   assert.match(source, /function buildBenefitMetric/);
   assert.match(source, /onframe-commerce-metric-badge/);
   assert.doesNotMatch(source, /formatBenefitValue/);
-  assert.doesNotMatch(source, / · /);
+  assert.match(source, /join\(' · '\)/);
   assert.doesNotMatch(source, /Bônus Mercado Livre/);
   assert.match(source, /metrics\.splice\(1, 0, buildBenefitMetric\('Mercado Livre paga'/);
   assert.match(source, /Custos/);
@@ -261,6 +261,8 @@ test('popover de preco mostra valor promocional e custos sem referencia externa'
   assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
   assert.doesNotMatch(styles, /grid-column:\s*1 \/ -1/);
   assert.match(styles, /\.onframe-commerce-promo-metrics > span/);
+  assert.match(styles, /\.onframe-commerce-metric b/);
+  assert.match(styles, /grid-template-columns: repeat\(auto-fit, minmax\(128px, 1fr\)\)/);
   assert.match(styles, /\.onframe-commerce-review-grid > span/);
   assert.doesNotMatch(styles, /\.onframe-commerce-(?:cost-grid|promo-metrics|estimate-grid|meta|review-grid) span\b/);
   assert.match(source, /Editar preço base/);
@@ -288,6 +290,8 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /const suppressCostFacts = confirm && confirm\.action !== 'delete'/);
   assert.match(source, /renderPromotionFacts\(entry, kind, key, userFields, \{ suppressCostFacts \}\)/);
   assert.match(source, /function renderPromotionConfirmWarnings\(rangeWarning\)/);
+  assert.match(source, /onframe-commerce-card-list/);
+  assert.match(source, /onframe-commerce-promo-row/);
   assert.doesNotMatch(source, /function renderPromotionConfirmFacts/);
   assert.doesNotMatch(source, /const discount = discountPercent\(entry\.original_price, targetPrice\)/);
   assert.doesNotMatch(source, /if \(targetPrice\) facts\.push\(\{ label: 'Preço final'/);
@@ -308,6 +312,8 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /Você recebe/);
   assert.match(styles, /\.onframe-commerce-estimate/);
   assert.match(styles, /\.onframe-commerce-review/);
+  assert.match(styles, /\.onframe-commerce-card-list/);
+  assert.match(styles, /\.onframe-commerce-promo-row/);
   assert.match(styles, /\.onframe-commerce-estimate-grid > span\s*{[^}]*flex:\s*1 1 150px/s);
   assert.match(styles, /\.onframe-commerce-review-grid > span\s*{[^}]*flex:\s*1 1 132px/s);
   assert.match(styles, /\.onframe-commerce-period-legend/);
@@ -387,7 +393,7 @@ test('promocoes mostram preco principal, acumulativas, programadas e desconto di
   assert.match(source, /function formatCentralDate/);
   assert.doesNotMatch(source, /function formatShortDate/);
   assert.doesNotMatch(source, /renderMetaChip\('Tipo'/);
-  assert.match(styles, /\.onframe-commerce-card\s*{\s*display: flex;/);
+  assert.match(styles, /\.onframe-commerce-promo-row\s*{\s*display: grid;/);
   assert.match(styles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(source, /paused-offer/);
   assert.doesNotMatch(source, /readonly-offer/);
