@@ -937,10 +937,14 @@
       const estimateMarkup = confirm.action === 'delete' ? '' : renderPromotionEstimate(key, 'review');
       return `
         <div class="onframe-commerce-review">
-          <strong>${escapeHtml(confirmationTitle(confirm.action))}</strong>
-          <span>${escapeHtml(confirmationText(confirm.action))}</span>
+          <div class="onframe-commerce-review-head">
+            <div>
+              <strong>${escapeHtml(confirmationTitle(confirm.action))}</strong>
+              <span>${escapeHtml(confirmationText(confirm.action))}</span>
+            </div>
+            ${period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : ''}
+          </div>
           ${renderBulkSwitch('promotion', state.promotionBulkEnabled)}
-          ${period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : ''}
           ${renderPromotionConfirmWarnings(rangeWarning)}
           ${estimateMarkup}
           ${renderBulkBusyStatus()}
@@ -1077,7 +1081,10 @@
       return `
         <button id="${escapeAttribute(id)}" class="ob-checkbox onframe-commerce-bulk-switch ${checked ? 'is-checked' : ''}" data-action="${escapeAttribute(action)}" type="button" role="checkbox" aria-checked="${checked ? 'true' : 'false'}" ${state.busy ? 'disabled' : ''}>
           <span class="ob-checkbox-box" aria-hidden="true">${checked ? icon('check', 12) : ''}</span>
-          <span class="ob-checkbox-label">Aplicar a todas as variações</span>
+          <span>
+            <span class="ob-checkbox-label">Aplicar a todas as variações</span>
+            <span class="ob-checkbox-description">Aplica somente nas variações elegíveis deste user_product.</span>
+          </span>
         </button>
       `;
     }

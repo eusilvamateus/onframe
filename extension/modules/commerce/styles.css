@@ -379,7 +379,32 @@
 }
 
 .onframe-commerce-bulk-switch {
-  margin: 10px 0 0;
+  justify-content: flex-start;
+  gap: var(--ob-gap-sm);
+  width: fit-content;
+  min-height: 0;
+  margin: 2px 0 0;
+  text-align: left;
+}
+
+.onframe-commerce-bulk-switch > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.onframe-commerce-bulk-switch .ob-checkbox-box {
+  margin-top: 0;
+}
+
+.onframe-commerce-bulk-switch .ob-checkbox-label {
+  color: var(--ob-ink-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onframe-commerce-bulk-switch .ob-checkbox-description {
+  color: var(--ob-ink-soft);
+  font-size: 11px;
 }
 
 .onframe-commerce-bulk-status {
@@ -793,12 +818,32 @@
   background: var(--ob-blue-050);
 }
 
+.onframe-commerce-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.onframe-commerce-review-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.onframe-commerce-review-head .onframe-commerce-period-legend {
+  flex: 0 1 auto;
+  margin-top: 0;
+  text-align: right;
+}
+
 .onframe-commerce-review strong {
   color: var(--ob-ink-strong);
   font: 700 12px/1.2 var(--ob-font);
 }
 
-.onframe-commerce-review > span {
+.onframe-commerce-review-head span {
   color: var(--ob-ink-soft);
   font: 400 11px/1.35 var(--ob-font);
 }

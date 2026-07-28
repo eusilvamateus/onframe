@@ -214,6 +214,7 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   assert.strictEqual(commerceSource.includes('class="ob-checkbox onframe-commerce-bulk-switch'), true);
   assert.strictEqual(commerceSource.includes('role="checkbox"'), true);
   assert.strictEqual(commerceSource.includes('aria-checked="${checked ? \'true\' : \'false\'}"'), true);
+  assert.strictEqual(commerceSource.includes('ob-checkbox-description'), true);
   assert.strictEqual(commerceSource.includes('type="checkbox"'), false);
   assert.doesNotMatch(commerceStyles, /\.onframe-commerce-bulk-switch\s*{[^}]*min-height:\s*24px/s);
   assert.strictEqual(commerceSource.includes('Validando variações elegíveis...'), true);
