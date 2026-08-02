@@ -4,7 +4,7 @@ O OnFrame mostra promocoes, descontos, custos e oportunidades direto na pagina
 do anuncio. A ideia e facilitar a revisao antes de aplicar, alterar ou remover
 uma promocao.
 
-<!-- PRINT: inserir popover de promocao proximo ao preco do anuncio. -->
+![Print - Popover de promocao no anuncio](assets/promocoes-popover-anuncio.png)
 
 ## O que voce consegue fazer
 
@@ -34,7 +34,7 @@ Voce pode encontrar:
 - `Voce paga`: sua participacao no desconto, quando a campanha tiver esse tipo
   de divisao.
 
-<!-- PRINT: inserir exemplo de promocao com rebate do Mercado Livre. -->
+![Print - Promocao com rebate do Mercado Livre](assets/promocoes-rebate-mercado-livre.png)
 
 Nem toda promocao tem todos os campos. Quando uma informacao nao existe para
 aquele caso, o OnFrame evita preencher a tela com blocos vazios.
@@ -48,7 +48,7 @@ aquele caso, o OnFrame evita preencher a tela com blocos vazios.
 4. Revise os valores.
 5. Clique em `Confirmar aplicacao`.
 
-<!-- PRINT: inserir modal de aplicacao de promocao. -->
+![Print - Modal de aplicacao de promocao](assets/promocoes-modal-aplicacao.png)
 
 Enquanto o envio esta em andamento, o OnFrame mostra estado de carregamento para
 evitar duvida sobre o que esta acontecendo.
@@ -61,7 +61,7 @@ promocao`, dependendo do tipo de campanha e das regras do Mercado Livre.
 Antes de confirmar, leia a revisao exibida pelo OnFrame. Ela mostra o efeito da
 acao no anuncio.
 
-<!-- PRINT: inserir promocao aplicada com botoes de alterar/remover. -->
+![Print - Promocao aplicada com acoes](assets/promocoes-aplicada-acoes.png)
 
 ## Aplicar em todas as variacoes
 
@@ -72,7 +72,7 @@ Quando fizer sentido, o OnFrame mostra `Aplicar a todas as variacoes`. Ao marcar
 essa opcao, a extensao verifica quais variacoes podem receber a acao e mostra um
 resumo antes ou depois do envio.
 
-<!-- PRINT: inserir revisao de promocao com aplicacao em todas as variacoes. -->
+![Print - Revisao de promocao para todas as variacoes](assets/promocoes-revisao-todas-variacoes.png)
 
 Algumas variacoes podem nao ser elegiveis para a mesma promocao. Outras podem
 ter limites de preco diferentes. Por isso a revisao e importante: ela evita que

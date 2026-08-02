@@ -4,7 +4,7 @@ O OnFrame pode avisar quando existe uma nova versao disponivel. Nas versoes
 recentes, o popup da extensao passou a abrir uma pagina local de atualizacao,
 que tenta iniciar o atualizador automaticamente.
 
-<!-- PRINT: inserir popup da extensao indicando nova versao. -->
+![Print - Popup com nova versao disponivel](assets/atualizacao-popup-nova-versao.png)
 
 ## Atualizacao por um clique
 
@@ -17,7 +17,7 @@ Quando houver uma nova versao:
 5. Aguarde o PowerShell concluir o processo.
 6. Recarregue a extensao no Chrome ou Edge.
 
-<!-- PRINT: inserir pagina local de atualizacao tentando abrir o atualizador. -->
+![Print - Pagina local abrindo o atualizador](assets/atualizacao-pagina-local.png)
 
 ## Se o navegador nao abrir o atualizador
 
@@ -28,7 +28,7 @@ A pagina tambem mostra um comando manual. Nesse caso:
 3. Cole o comando.
 4. Aguarde a atualizacao terminar.
 
-<!-- PRINT: inserir area de fallback manual da pagina de atualizacao. -->
+![Print - Comando manual de atualizacao](assets/atualizacao-comando-manual.png)
 
 ## Depois de atualizar
 

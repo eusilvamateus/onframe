@@ -1,6 +1,6 @@
 # Guias do OnFrame
 
-<!-- Os pontos de insercao de prints ficam em comentarios HTML nos guias. Eles nao aparecem quando o Markdown e renderizado para o usuario final. -->
+<!-- Os prints referenciados pelos guias devem ser salvos em docs/assets usando exatamente os nomes definidos nos links de imagem. -->
 
 Esta pasta reune materiais pensados para quem usa o OnFrame no dia a dia.
 Eles explicam o que a extensao oferece, o que mudou nas versoes recentes e como

@@ -4,7 +4,7 @@ A ficha tecnica mostra as principais informacoes do produto, como marca, modelo,
 cor, medidas, material e outros detalhes importantes. O OnFrame permite editar
 parte dessas caracteristicas direto na tabela exibida pelo Mercado Livre.
 
-<!-- PRINT: inserir a ficha tecnica antes de entrar em edicao. -->
+![Print - Caracteristicas antes da edicao](assets/caracteristicas-antes-edicao.png)
 
 ## Quando usar
 
@@ -24,7 +24,7 @@ entender o produto.
 5. Edite os campos disponiveis.
 6. Clique em `Salvar`.
 
-<!-- PRINT: inserir a ficha tecnica em modo de edicao. -->
+![Print - Caracteristicas em modo de edicao](assets/caracteristicas-modo-edicao.png)
 
 Os campos podem aparecer como texto, selecao de opcoes, botoes de sim ou nao, ou
 campos com unidade de medida.
@@ -38,7 +38,7 @@ Algumas caracteristicas recebem marcadores para ajudar na revisao:
   ficha publica.
 - `Leitura`: o campo nao pode ser alterado pelo OnFrame naquele momento.
 
-<!-- PRINT: inserir exemplo de campos com marcadores Pendente, Oculto e Leitura. -->
+![Print - Marcadores pendente oculto e leitura](assets/caracteristicas-marcadores-status.png)
 
 Esses marcadores ajudam a entender por que um campo aparece de uma forma
 diferente dos outros.
@@ -49,7 +49,7 @@ Medidas de embalagem recebem um bloco proprio chamado `Dimensoes do pacote`.
 Elas sao tratadas separadamente porque afetam frete, envio e validacoes do
 Mercado Livre.
 
-<!-- PRINT: inserir o bloco "Dimensoes do pacote". -->
+![Print - Dimensoes do pacote](assets/caracteristicas-dimensoes-pacote.png)
 
 Antes de salvar, confira altura, largura, comprimento e peso. Pequenos erros
 nesses campos podem alterar calculo de frete ou gerar divergencias na operacao.
@@ -62,7 +62,7 @@ Quando o anuncio possui variacoes independentes, o OnFrame pode mostrar a opcao
 Ao marcar essa opcao, a extensao tenta salvar as mesmas caracteristicas nas
 variacoes ativas que permitem edicao.
 
-<!-- PRINT: inserir a opcao de aplicar caracteristicas em todas as variacoes. -->
+![Print - Aplicar caracteristicas em todas as variacoes](assets/caracteristicas-aplicar-todas-variacoes.png)
 
 Nem todas as variacoes aceitam os mesmos campos. Se uma variacao tiver algum
 bloqueio, o OnFrame mostra o resultado depois do envio.

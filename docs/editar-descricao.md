@@ -4,7 +4,7 @@ A edicao de descricao permite alterar o texto do anuncio diretamente na pagina
 do Mercado Livre. Voce nao precisa abrir outra tela para revisar o conteudo:
 edita, salva e confere tudo no mesmo lugar.
 
-<!-- PRINT: inserir a secao de descricao antes de entrar em edicao. -->
+![Print - Descricao antes da edicao](assets/descricao-antes-edicao.png)
 
 ## Quando usar
 
@@ -23,7 +23,7 @@ maiores.
 5. Altere o texto no campo que aparece no proprio corpo do anuncio.
 6. Clique em `Salvar`.
 
-<!-- PRINT: inserir a descricao em modo de edicao inline. -->
+![Print - Descricao em modo de edicao](assets/descricao-modo-edicao.png)
 
 Se quiser desistir da alteracao, clique em `Cancelar`.
 
@@ -35,7 +35,7 @@ Quando o anuncio possui variacoes independentes, o OnFrame pode mostrar a opcao
 Ao marcar essa opcao, a descricao sera enviada para as variacoes ativas que
 puderem receber a alteracao.
 
-<!-- PRINT: inserir a opcao de aplicar descricao em todas as variacoes. -->
+![Print - Aplicar descricao em todas as variacoes](assets/descricao-aplicar-todas-variacoes.png)
 
 Se alguma variacao nao puder ser alterada, o OnFrame mostra o resultado depois
 do envio. Assim voce sabe exatamente o que foi salvo e o que ficou pendente.
