@@ -5,7 +5,7 @@ pagina do produto. A ideia e simples: voce abre o anuncio como ele aparece para
 o comprador e faz ajustes importantes sem voltar para varias telas do painel do
 vendedor.
 
-![Print - Visao geral do OnFrame na pagina do anuncio](assets/visao-geral-onframe-anuncio.png)
+![Print - Visao geral do OnFrame na pagina do anuncio](assets/caracteristicas-antes-edicao.png)
 
 ## O que o OnFrame oferece
 
@@ -29,7 +29,7 @@ Mercado Livre. Em vez de abrir varias telas separadas, a extensao passa a
 trabalhar dentro das secoes que voce ja conhece: descricao, caracteristicas,
 preco e promocoes.
 
-![Print - Botoes para editar descricao e caracteristicas](assets/botoes-editar-descricao-caracteristicas.png)
+![Print - Botoes para editar descricao e caracteristicas](assets/descricao-antes-edicao.png)
 
 As principais novidades sao:
 
@@ -56,7 +56,7 @@ recolhida e clique em `Editar caracteristicas`.
 Para mexer em preco ou promocoes, use os botoes do OnFrame proximos ao preco do
 anuncio.
 
-![Print - Botoes de preco e promocao no anuncio](assets/botoes-preco-promocao-anuncio.png)
+![Print - Botoes de preco e promocao no anuncio](assets/promocoes-popover-anuncio.png)
 
 ## Quando aparece "Aplicar a todas as variacoes"
 
@@ -67,7 +67,7 @@ Quando o OnFrame identifica que existe mais de uma variacao ativa e editavel, el
 pode mostrar a opcao `Aplicar a todas as variacoes`. Ao marcar essa opcao, a
 extensao tenta repetir a alteracao nas variacoes disponiveis.
 
-![Print - Opcao aplicar a todas as variacoes](assets/opcao-aplicar-todas-variacoes.png)
+![Print - Opcao aplicar a todas as variacoes](assets/promocoes-revisao-todas-variacoes.png)
 
 Antes de confirmar, revise com calma. Algumas variacoes podem ter regras
 diferentes, promocoes diferentes ou campos bloqueados pelo Mercado Livre. Quando
@@ -91,4 +91,4 @@ atualizacao. Essa pagina tenta iniciar o atualizador automaticamente. Se o
 navegador nao permitir, a mesma pagina mostra o comando manual para copiar e
 executar no PowerShell.
 
-![Print - Pagina local de atualizacao do OnFrame](assets/pagina-atualizacao-onframe.png)
+![Print - Pagina local de atualizacao do OnFrame](assets/atualizacao-pagina-local.png)

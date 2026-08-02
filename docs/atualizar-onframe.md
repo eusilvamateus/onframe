@@ -10,22 +10,28 @@ que tenta iniciar o atualizador automaticamente.
 
 Quando houver uma nova versao:
 
-1. Abra o popup do OnFrame.
+1. Abra o popup do OnFrame clicando no icone da extensao.
 2. Clique em `Atualizar agora`.
 3. O navegador abre a pagina local de atualizacao.
 4. Autorize a abertura do atualizador, se o navegador perguntar.
-5. Aguarde o PowerShell concluir o processo.
-6. Recarregue a extensao no Chrome ou Edge.
 
 ![Print - Pagina local abrindo o atualizador](assets/atualizacao-pagina-local.png)
+
+Depois da autorizacao, uma janela do PowerShell abre e executa os comandos da
+atualizacao.
+
+![Print - Pagina local abrindo o PowerShell](assets/atualizacao-abrir-powershell.png)
+
+5. Aguarde o PowerShell concluir o processo.
+6. Recarregue a extensao no Chrome ou Edge.
 
 ## Se o navegador nao abrir o atualizador
 
 A pagina tambem mostra um comando manual. Nesse caso:
 
 1. Clique em `Copiar comando manual`.
-2. Abra o PowerShell.
-3. Cole o comando.
+2. Busque por `PowerShell` no Windows e abra.
+3. Cole o comando copiado e pressione Enter.
 4. Aguarde a atualizacao terminar.
 
 ![Print - Comando manual de atualizacao](assets/atualizacao-comando-manual.png)
@@ -38,6 +44,8 @@ Abra o gerenciador de extensoes do navegador:
 - `edge://extensions/`
 
 Encontre o OnFrame e clique em `Recarregar`.
+
+![Print - Recarregando extensao manualmente](assets/atualizacao-recarregar-extensao.png)
 
 Depois disso, volte para a pagina do anuncio e atualize a pagina do Mercado
 Livre.
