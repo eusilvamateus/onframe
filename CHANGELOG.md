@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.17 - 2026-08-02
+
+### Corrigido
+
+- Atualizador e comandos locais de parada/reinicio passam a tratar melhor casos
+  em que o Windows nega permissao para encerrar um processo `node`, evitando
+  falhas confusas durante a atualizacao.
+
 ## v0.3.16 - 2026-08-02
 
 ### Melhorado
