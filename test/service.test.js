@@ -1275,11 +1275,13 @@ test('bootstrap substitui atalhos bat legados', () => {
   const root = path.join(__dirname, '..');
   const installScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'install.ps1'), 'utf8');
   const startScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'start.ps1'), 'utf8');
+  const stopScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'stop.ps1'), 'utf8');
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
   const uninstallScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.ps1'), 'utf8');
   const protocolScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'onframe-updater.ps1'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const visualBootstrapScripts = [installScript, updateScript, uninstallScript];
+  const serviceStopScripts = [stopScript, updateScript];
 
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-start.bat')), false);
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-stop.bat')), false);
@@ -1293,6 +1295,12 @@ test('bootstrap substitui atalhos bat legados', () => {
   );
   assert.strictEqual(updateScript.includes('.bat'), false);
   assert.strictEqual(updateScript.includes('Start-OnFrameService'), true);
+  for (const script of serviceStopScripts) {
+    assert.strictEqual(script.includes('function Stop-OnFrameProcess'), true);
+    assert.strictEqual(script.includes('Stop-Process -Id $process.Id -Force -ErrorAction Stop'), true);
+    assert.strictEqual(script.includes('Windows recusou encerrar o PID'), true);
+    assert.strictEqual(script.includes('O servico local continua ativo'), true);
+  }
   assert.strictEqual(startScript.includes('RandomNumberGenerator]::Fill'), false);
   assert.strictEqual(updateScript.includes('RandomNumberGenerator]::Fill'), false);
   assert.strictEqual(startScript.includes('RandomNumberGenerator]::Create()'), true);
