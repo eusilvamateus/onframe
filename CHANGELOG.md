@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.12 - 2026-08-02
+
+### Melhorado
+
+- Popup exibe os controles do servico local em uma faixa mais compacta e
+  alinhada ao design system.
+- Pagina de opcoes passa a oferecer os mesmos comandos de iniciar, reiniciar,
+  parar e verificar o OnFrame.
+
 ## v0.3.11 - 2026-08-02
 
 ### Adicionado
