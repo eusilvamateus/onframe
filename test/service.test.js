@@ -1302,7 +1302,15 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(updateScript.includes('register-updater-protocol.ps1'), true);
   assert.strictEqual(uninstallScript.includes('onframe-updater'), true);
   assert.strictEqual(protocolScript.includes('onframe-updater://update'), true);
-  assert.strictEqual(protocolScript.includes('Acao de atualizacao nao suportada'), true);
+  assert.strictEqual(protocolScript.includes("'start' { return 'start' }"), true);
+  assert.strictEqual(protocolScript.includes("'stop' { return 'stop' }"), true);
+  assert.strictEqual(protocolScript.includes("'restart' { return 'restart' }"), true);
+  assert.strictEqual(protocolScript.includes("'check' { return 'check' }"), true);
+  assert.strictEqual(protocolScript.includes('Invoke-OnFrameBootstrapScript'), true);
+  assert.strictEqual(protocolScript.includes("scripts/bootstrap/start.ps1"), true);
+  assert.strictEqual(protocolScript.includes("scripts/bootstrap/stop.ps1"), true);
+  assert.strictEqual(protocolScript.includes("scripts/bootstrap/check.ps1"), true);
+  assert.strictEqual(protocolScript.includes('Acao local nao suportada'), true);
   assert.strictEqual(protocolScript.includes('raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1'), true);
   assert.strictEqual(packageJson.scripts.check.includes('scripts/bootstrap/check.ps1'), true);
   assert.strictEqual(JSON.stringify(packageJson.scripts).includes('doctor'), false);

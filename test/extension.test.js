@@ -88,7 +88,7 @@ test('manifest e telas referenciam arquivos existentes', () => {
     assert.strictEqual(fs.existsSync(path.join(extensionRoot, file)), true, file);
   }
 
-  for (const htmlPath of [manifest.action.default_popup, manifest.options_ui.page]) {
+  for (const htmlPath of [manifest.action.default_popup, manifest.options_ui.page, 'ui/launcher/index.html']) {
     const htmlFile = path.join(extensionRoot, htmlPath);
     const html = fs.readFileSync(htmlFile, 'utf8');
     for (const asset of extractLocalHtmlAssets(html)) {
@@ -161,6 +161,7 @@ test('module registry cria modulos com contrato estavel', () => {
 test('ui carregam phosphor local do design system', () => {
   const popup = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'index.html'), 'utf8');
   const options = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
+  const launcher = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'launcher', 'index.html'), 'utf8');
 
   assert.match(popup, /href="\.\.\/\.\.\/vendor\/phosphor\/phosphor\.css"/);
   assert.match(popup, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
@@ -170,6 +171,10 @@ test('ui carregam phosphor local do design system', () => {
   assert.match(options, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
   assert.match(options, /href="\.\.\/\.\.\/styles\/components\.css"/);
   assert.match(options, /href="\.\.\/\.\.\/styles\/shell\.css"/);
+  assert.match(launcher, /href="\.\.\/\.\.\/vendor\/phosphor\/phosphor\.css"/);
+  assert.match(launcher, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
+  assert.match(launcher, /href="\.\.\/\.\.\/styles\/components\.css"/);
+  assert.match(launcher, /href="\.\.\/\.\.\/styles\/shell\.css"/);
 });
 
 test('design system nao e redefinido pelos modulos', () => {
@@ -404,10 +409,16 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
 test('ui exibem comando de atualizacao auditavel', () => {
   const popupHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'index.html'), 'utf8');
   const popupJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.js'), 'utf8');
+  const launcherHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'launcher', 'index.html'), 'utf8');
+  const launcherJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'launcher', 'launcher.js'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
   const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
 
   assert.strictEqual(popupHtml.includes('update-block'), true);
+  assert.strictEqual(popupHtml.includes('service-start'), true);
+  assert.strictEqual(popupHtml.includes('service-restart'), true);
+  assert.strictEqual(popupHtml.includes('service-stop'), true);
+  assert.strictEqual(popupHtml.includes('service-check'), true);
   assert.strictEqual(popupHtml.includes('version-tag'), true);
   assert.strictEqual(optionsHtml.includes('version-tag'), true);
   assert.strictEqual(optionsHtml.includes('update-title'), false);
@@ -425,6 +436,16 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(optionsJs.includes('/updates/start'), false);
   assert.strictEqual(optionsJs.includes('checkCommand'), false);
   assert.strictEqual(optionsJs.includes('navigator.clipboard.writeText'), false);
+  assert.strictEqual(popupJs.includes('ui/launcher/index.html?action='), true);
+  assert.strictEqual(launcherHtml.includes('launcher-commands'), true);
+  assert.strictEqual(launcherJs.includes('onframe-updater://update'), true);
+  assert.strictEqual(launcherJs.includes('onframe-updater://start'), true);
+  assert.strictEqual(launcherJs.includes('onframe-updater://stop'), true);
+  assert.strictEqual(launcherJs.includes('onframe-updater://restart'), true);
+  assert.strictEqual(launcherJs.includes('onframe-updater://check'), true);
+  assert.strictEqual(launcherJs.includes("scripts/bootstrap/start.ps1"), true);
+  assert.strictEqual(launcherJs.includes("scripts/bootstrap/stop.ps1"), true);
+  assert.strictEqual(launcherJs.includes("scripts/bootstrap/check.ps1"), true);
 });
 
 test('ui usam gerenciamento multi-conta local', () => {
@@ -609,5 +630,5 @@ test('icons registra fonte phosphor com URL absoluta da extensao', () => {
 function extractLocalHtmlAssets(html) {
   return Array.from(html.matchAll(/\b(?:href|src)="([^"]+)"/g))
     .map((match) => match[1])
-    .filter((asset) => asset && !asset.startsWith('http') && !asset.startsWith('#'));
+    .filter((asset) => asset && !/^[a-z][a-z0-9+.-]*:/i.test(asset) && !asset.startsWith('#'));
 }

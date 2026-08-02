@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OnFrame</title>
+  <link rel="stylesheet" href="../../vendor/phosphor/phosphor.css">
+  <link rel="stylesheet" href="../../styles/foundations.css">
+  <link rel="stylesheet" href="../../styles/components.css">
+  <link rel="stylesheet" href="../../styles/shell.css">
+  <link rel="stylesheet" href="launcher.css">
+</head>
+<body class="ob-shell">
+  <main class="launcher">
+    <section class="launcher-hero ob-card">
+      <div class="ob-brand">
+        <img src="../../assets/logomark.svg" alt="">
+        <div>
+          <p class="ob-eyebrow" id="launcher-eyebrow">OnFrame</p>
+          <h1 class="ob-title" id="launcher-title">Controle local</h1>
+        </div>
+      </div>
+      <p class="ob-copy launcher-copy" id="launcher-copy">Abrindo o controle local registrado neste computador.</p>
+      <div class="launcher-status" id="launcher-status">
+        <span class="launcher-dot" aria-hidden="true"></span>
+        <strong id="launcher-status-text">Tentando abrir o OnFrame...</strong>
+      </div>
+      <div class="launcher-actions">
+        <button class="ob-button primary" id="launcher-open" type="button">Abrir novamente</button>
+        <button class="ob-button secondary" data-copy="primary" type="button">Copiar comando</button>
+      </div>
+    </section>
+
+    <section class="launcher-panel ob-card">
+      <div class="launcher-panel-head">
+        <div>
+          <h2 class="ob-card-title">Comando manual</h2>
+          <p class="ob-copy">Use quando o navegador nao abrir o controle local automaticamente.</p>
+        </div>
+      </div>
+      <div class="launcher-commands" id="launcher-commands"></div>
+      <div class="launcher-links">
+        <a class="ob-button ghost compact" href="chrome://extensions/">Chrome extensions</a>
+        <a class="ob-button ghost compact" href="edge://extensions/">Edge extensions</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="../../core/icons.js"></script>
+  <script src="launcher.js"></script>
+</body>
+</html>

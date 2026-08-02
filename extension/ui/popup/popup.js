@@ -22,6 +22,10 @@
     updateStart: document.getElementById('update-start'),
     serviceBadge: document.getElementById('service-badge'),
     serviceText: document.getElementById('service-text'),
+    serviceStart: document.getElementById('service-start'),
+    serviceRestart: document.getElementById('service-restart'),
+    serviceStop: document.getElementById('service-stop'),
+    serviceCheck: document.getElementById('service-check'),
     accountBadge: document.getElementById('account-badge'),
     accountText: document.getElementById('account-text'),
     accountList: document.getElementById('account-list'),
@@ -32,6 +36,7 @@
     updateStatus: null,
     accounts: [],
     canConnect: false,
+    serviceOnline: false,
     editorVisible: true,
     pendingRemoveUserId: ''
   };
@@ -44,6 +49,10 @@
   elements.openOptions.addEventListener('click', openOptions);
   elements.updateOpen.addEventListener('click', () => openUpdatePage());
   elements.updateStart.addEventListener('click', () => void copyUpdateCommand());
+  elements.serviceStart.addEventListener('click', () => openLocalServiceAction('start'));
+  elements.serviceRestart.addEventListener('click', () => openLocalServiceAction('restart'));
+  elements.serviceStop.addEventListener('click', () => openLocalServiceAction('stop'));
+  elements.serviceCheck.addEventListener('click', () => openLocalServiceAction('check'));
 
   void loadPopup();
 
@@ -70,14 +79,18 @@
     elements.updateStart.disabled = true;
     state.updateStatus = null;
     state.canConnect = false;
+    state.serviceOnline = false;
     state.pendingRemoveUserId = '';
     renderVersionTag(null);
     renderEditorToggle();
+    renderServiceControls();
   }
 
   async function loadServiceAndAccount() {
     try {
       const diagnostics = await api('/diagnostics');
+      state.serviceOnline = true;
+      renderServiceControls();
       setBadge(elements.serviceBadge, diagnostics.ready ? 'Pronto' : 'Com avisos', diagnostics.ready ? 'ok' : 'warn');
       elements.serviceText.textContent = diagnostics.ready
         ? 'OnFrame pronto para editar anuncios.'
@@ -107,9 +120,11 @@
       elements.connect.disabled = false;
       state.canConnect = true;
     } catch (err) {
+      state.serviceOnline = false;
+      renderServiceControls();
       setBadge(elements.serviceBadge, 'Fechado', 'error');
       setBadge(elements.accountBadge, 'Indisponivel', 'warn');
-      elements.serviceText.textContent = 'Abra o OnFrame e tente novamente.';
+      elements.serviceText.textContent = 'Use Iniciar para abrir o servico local.';
       elements.accountText.textContent = 'Conta indisponível.';
       renderAccountList([]);
       elements.connect.disabled = true;
@@ -336,6 +351,11 @@
     chrome.tabs.create({ url: target });
   }
 
+  function openLocalServiceAction(action) {
+    openExternalUrl(chrome.runtime.getURL(`ui/launcher/index.html?action=${encodeURIComponent(action)}`));
+    showActionFeedback('Janela de controle aberta.', 'ok');
+  }
+
   function getActiveTab() {
     return new Promise((resolve) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -390,6 +410,10 @@
     elements.refresh.disabled = value;
     elements.toggleEditor.disabled = value;
     elements.connect.disabled = value || !state.canConnect;
+    elements.serviceStart.disabled = value;
+    elements.serviceRestart.disabled = value;
+    elements.serviceStop.disabled = value;
+    elements.serviceCheck.disabled = value;
     elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updatePageUrl;
     elements.updateStart.disabled = value || !state.updateStatus || !state.updateStatus.updateCommand;
     elements.accountList.querySelectorAll('button').forEach((button) => {
@@ -428,6 +452,12 @@
     setIconButton(elements.toggleEditor, state.editorVisible ? 'eyeSlash' : 'eye', state.editorVisible ? 'Ocultar editor' : 'Mostrar editor');
   }
 
+  function renderServiceControls() {
+    elements.serviceStart.classList.toggle('is-hidden', state.serviceOnline);
+    elements.serviceRestart.classList.toggle('is-hidden', !state.serviceOnline);
+    elements.serviceStop.classList.toggle('is-hidden', !state.serviceOnline);
+  }
+
   function showActionFeedback(message, tone) {
     elements.actionFeedback.textContent = message;
     elements.actionFeedback.className = `action-feedback ${tone || 'muted'}`;
@@ -454,6 +484,10 @@
     addIcon(elements.openOptions, 'gear');
     addIcon(elements.updateOpen, 'arrowSquareOut');
     addIcon(elements.updateStart, 'copy');
+    addIcon(elements.serviceStart, 'plug');
+    addIcon(elements.serviceRestart, 'refresh');
+    addIcon(elements.serviceStop, 'x');
+    addIcon(elements.serviceCheck, 'checkCircle');
   }
 
   function icon(name, size) {
