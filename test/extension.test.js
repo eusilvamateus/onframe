@@ -428,11 +428,12 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(optionsHtml.includes('service-stop'), true);
   assert.strictEqual(optionsHtml.includes('service-check'), true);
   assert.strictEqual(optionsHtml.includes('service-danger'), true);
-  assert.strictEqual(optionsHtml.includes('update-title'), false);
+  assert.strictEqual(optionsHtml.includes('update-block'), true);
+  assert.strictEqual(optionsHtml.includes('update-title'), true);
   assert.strictEqual(popupHtml.includes('Atualizar agora'), true);
   assert.strictEqual(popupHtml.includes('Copiar comando'), true);
-  assert.strictEqual(optionsHtml.includes('Copiar atualizacao'), false);
-  assert.strictEqual(optionsHtml.includes('Copiar verificacao'), false);
+  assert.strictEqual(optionsHtml.includes('Atualizar agora'), true);
+  assert.strictEqual(optionsHtml.includes('Copiar comando'), true);
   assert.strictEqual(popupJs.includes('/updates/status'), true);
   assert.strictEqual(popupJs.includes('/updates/status?force=1'), true);
   assert.strictEqual(popupJs.includes('updatePageUrl'), true);
@@ -442,9 +443,11 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupJs.includes('navigator.clipboard.writeText'), true);
   assert.strictEqual(optionsJs.includes('/updates/status'), true);
   assert.strictEqual(optionsJs.includes('/updates/status?force=1'), true);
+  assert.strictEqual(optionsJs.includes('updatePageUrl'), true);
+  assert.strictEqual(optionsJs.includes('releaseUrl'), true);
   assert.strictEqual(optionsJs.includes('/updates/start'), false);
   assert.strictEqual(optionsJs.includes('checkCommand'), false);
-  assert.strictEqual(optionsJs.includes('navigator.clipboard.writeText'), false);
+  assert.strictEqual(optionsJs.includes('navigator.clipboard.writeText'), true);
   assert.strictEqual(popupJs.includes('ui/launcher/index.html?action='), true);
   assert.strictEqual(optionsJs.includes('ui/launcher/index.html?action='), true);
   assert.strictEqual(launcherHtml.includes('launcher-commands'), true);

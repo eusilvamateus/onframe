@@ -18,6 +18,11 @@
     serviceRestart: document.getElementById('service-restart'),
     serviceStop: document.getElementById('service-stop'),
     serviceCheck: document.getElementById('service-check'),
+    updateBlock: document.getElementById('update-block'),
+    updateBadge: document.getElementById('update-badge'),
+    updateText: document.getElementById('update-text'),
+    updateOpen: document.getElementById('update-open'),
+    updateStart: document.getElementById('update-start'),
     accountBadge: document.getElementById('account-badge'),
     accountText: document.getElementById('account-text'),
     accountList: document.getElementById('account-list'),
@@ -25,6 +30,7 @@
   };
 
   const state = {
+    updateStatus: null,
     accounts: [],
     canConnect: false,
     serviceOnline: false,
@@ -39,6 +45,8 @@
   elements.serviceRestart.addEventListener('click', () => openLocalServiceAction('restart'));
   elements.serviceStop.addEventListener('click', () => openLocalServiceAction('stop'));
   elements.serviceCheck.addEventListener('click', () => openLocalServiceAction('check'));
+  elements.updateOpen.addEventListener('click', () => openUpdatePage());
+  elements.updateStart.addEventListener('click', () => void copyUpdateCommand());
 
   void loadOptions();
 
@@ -57,6 +65,12 @@
     elements.accountList.classList.add('is-hidden');
     elements.accountList.innerHTML = '';
     hideActionFeedback();
+    elements.updateBlock.classList.add('is-hidden');
+    setBadge(elements.updateBadge, 'Verificando', 'muted');
+    elements.updateText.textContent = 'Conferindo releases.';
+    elements.updateOpen.disabled = true;
+    elements.updateStart.disabled = true;
+    state.updateStatus = null;
     state.accounts = [];
     state.canConnect = false;
     state.serviceOnline = false;
@@ -83,7 +97,7 @@
       elements.serviceText.textContent = 'Use Iniciar para abrir o servico local.';
       elements.accountText.textContent = 'Contas indisponíveis.';
       renderAccountList([]);
-      renderVersionTag(null);
+      renderUpdateUnavailable();
       state.canConnect = false;
       state.serviceOnline = false;
       elements.connect.disabled = true;
@@ -103,10 +117,40 @@
 
   async function loadUpdateStatus(options = {}) {
     try {
-      renderVersionTag(await api(options.forceUpdate ? '/updates/status?force=1' : '/updates/status'));
+      const status = await api(options.forceUpdate ? '/updates/status?force=1' : '/updates/status');
+      state.updateStatus = status;
+      renderUpdateStatus(status);
     } catch (err) {
-      renderVersionTag(null);
+      renderUpdateUnavailable();
     }
+  }
+
+  function renderUpdateStatus(status) {
+    const visible = Boolean(status && status.updateAvailable);
+    renderVersionTag(status);
+    elements.updateBlock.classList.toggle('is-hidden', !visible);
+    if (!visible) return;
+
+    setBadge(elements.updateBadge, 'Disponível', 'blue');
+    elements.updateText.textContent = status.updatePageUrl
+      ? `${status.message || `Versão ${status.latestVersion} disponível.`} Abra o atualizador ou copie o comando.`
+      : `${status.message || `Versão ${status.latestVersion} disponível.`} Copie e cole no PowerShell.`;
+    elements.updateOpen.disabled = !status.updatePageUrl;
+    elements.updateStart.disabled = !status.updateCommand;
+  }
+
+  function renderUpdateUnavailable() {
+    renderVersionTag(null);
+    elements.updateBlock.classList.add('is-hidden');
+    state.updateStatus = null;
+  }
+
+  function openUpdatePage() {
+    if (!state.updateStatus || !state.updateStatus.updatePageUrl) return;
+    openExternalUrl(state.updateStatus.updatePageUrl);
+    elements.updateBlock.classList.remove('is-hidden');
+    setBadge(elements.updateBadge, 'Abrindo', 'blue');
+    elements.updateText.textContent = 'A pagina de atualizacao foi aberta.';
   }
 
   function renderVersionTag(status) {
@@ -267,6 +311,24 @@
     showActionFeedback('Janela de controle aberta.', 'ok');
   }
 
+  async function copyUpdateCommand() {
+    if (!state.updateStatus || !state.updateStatus.updateCommand) return;
+    setBusy(true);
+    try {
+      await copyText(state.updateStatus.updateCommand);
+      elements.updateBlock.classList.remove('is-hidden');
+      setBadge(elements.updateBadge, 'Copiado', 'ok');
+      elements.updateText.textContent = 'Comando copiado. Cole no PowerShell.';
+      elements.updateStart.disabled = true;
+    } catch (err) {
+      elements.updateBlock.classList.remove('is-hidden');
+      setBadge(elements.updateBadge, 'Erro', 'error');
+      elements.updateText.textContent = toUserError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function setBusy(value) {
     elements.refresh.disabled = value;
     elements.connect.disabled = value || !state.canConnect;
@@ -274,6 +336,8 @@
     elements.serviceRestart.disabled = value;
     elements.serviceStop.disabled = value;
     elements.serviceCheck.disabled = value;
+    elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updatePageUrl;
+    elements.updateStart.disabled = value || !state.updateStatus || !state.updateStatus.updateCommand;
     elements.accountList.querySelectorAll('button').forEach((button) => {
       button.disabled = value;
     });
@@ -315,6 +379,8 @@
     addIcon(elements.serviceRestart, 'refresh');
     addIcon(elements.serviceStop, 'x');
     addIcon(elements.serviceCheck, 'checkCircle');
+    addIcon(elements.updateOpen, 'arrowSquareOut');
+    addIcon(elements.updateStart, 'copy');
   }
 
   function icon(name, size) {
@@ -323,6 +389,22 @@
 
   function getInstalledVersion() {
     return chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : '-';
+  }
+
+  async function copyText(value) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
   }
 
 })();
