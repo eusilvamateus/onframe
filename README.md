@@ -6,6 +6,8 @@ Livre a gerenciar anuncios diretamente pela pagina do produto.
 A ideia e simples: abrir o anuncio como qualquer cliente veria e fazer ajustes
 sem precisar voltar para a ficha do anuncio no painel do vendedor.
 
+Guias para usuario final ficam em [docs/README.md](docs/README.md).
+
 ## O que a extensao faz
 
 - Edita fotos do anuncio pela propria pagina do produto.
@@ -17,6 +19,10 @@ sem precisar voltar para a ficha do anuncio no painel do vendedor.
 - Mostra informacoes de preco.
 - Mostra promocoes aplicadas e oportunidades disponiveis.
 - Permite revisar e aplicar promocoes quando disponiveis para o anuncio.
+- Edita descricao diretamente no corpo do anuncio.
+- Edita caracteristicas diretamente na ficha tecnica do Mercado Livre.
+- Permite aplicar descricao, caracteristicas, preco e promocoes em variacoes
+  elegiveis quando o anuncio permite.
 
 ## Requisitos
 
