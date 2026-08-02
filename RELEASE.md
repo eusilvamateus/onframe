@@ -108,8 +108,12 @@ remoto. O bootstrap tambem aceita o nome legado
 
 ## Atualizacao de instalacoes
 
-Quando a extensao detectar uma release nova, ela mostra um botao para copiar o
-comando:
+Quando a extensao detectar uma release nova, ela abre uma pagina local de
+atualizacao que tenta chamar `onframe-updater://update`. O protocolo e
+registrado pelo bootstrap em `HKCU:\Software\Classes` e o handler local aceita
+somente a acao fixa `update`.
+
+O fallback manual continua sendo:
 
 ```powershell
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex

@@ -132,14 +132,34 @@ function Remove-IfExists {
   }
 }
 
+function Unregister-OnFrameUpdaterProtocol {
+  $protocolRoot = 'HKCU:\Software\Classes\onframe-updater'
+  $updaterRoot = Join-Path $env:LOCALAPPDATA 'OnFrame\Updater'
+
+  try {
+    if (Test-Path -LiteralPath $protocolRoot) {
+      Remove-Item -LiteralPath $protocolRoot -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $updaterRoot) {
+      Remove-Item -LiteralPath $updaterRoot -Recurse -Force
+    }
+    Write-OnFrameSubStep 'Atualizador por um clique removido quando estava registrado.' 'ok'
+    return $true
+  } catch {
+    Write-OnFrameSubStep "Nao foi possivel remover o protocolo local: $($_.Exception.Message)" 'warning'
+    return $false
+  }
+}
+
 try {
   $mode = if ($RemoveData) { 'Desinstalacao total' } else { 'Desinstalacao' }
   Write-OnFrameHeader -Mode $mode -RootPath $InstallRoot
 
   Write-OnFrameSection 'Preparando'
-  Write-OnFrameStep 1 4 'Localizando instalacao.'
+  Write-OnFrameStep 1 5 'Localizando instalacao.'
   if (-not (Test-Path $InstallRoot)) {
     Write-OnFrameSubStep 'OnFrame nao encontrado; nada para remover.' 'warning'
+    Unregister-OnFrameUpdaterProtocol | Out-Null
     Write-OnFrameSuccess 'Nenhuma alteracao foi necessaria.' @(
       "Pasta verificada: $InstallRoot"
     )
@@ -152,7 +172,7 @@ try {
     Write-OnFrameSubStep 'Instalacao encontrada.' 'ok'
 
     Write-OnFrameSection 'Parando'
-    Write-OnFrameStep 2 4 'Parando servico local.'
+    Write-OnFrameStep 2 5 'Parando servico local.'
     $global:LASTEXITCODE = 0
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallRoot 'scripts/bootstrap/stop.ps1') -Root $InstallRoot
     if ($global:LASTEXITCODE -ne 0) {
@@ -161,12 +181,15 @@ try {
     Write-OnFrameSubStep 'Servico parado quando estava ativo.' 'ok'
 
     Write-OnFrameSection 'Removendo'
+    Write-OnFrameStep 3 5 'Removendo atualizador local.'
+    Unregister-OnFrameUpdaterProtocol | Out-Null
+
     if ($RemoveData) {
-      Write-OnFrameStep 3 4 'Removendo instalacao e dados locais.'
+      Write-OnFrameStep 4 5 'Removendo instalacao e dados locais.'
       Remove-IfExists -Path $InstallRoot
       Write-OnFrameSubStep 'Pasta local removida.' 'ok'
     } else {
-      Write-OnFrameStep 3 4 'Removendo aplicativo e preservando dados locais.'
+      Write-OnFrameStep 4 5 'Removendo aplicativo e preservando dados locais.'
       foreach ($target in @('extension', 'service', 'scripts')) {
         Remove-IfExists -Path (Join-Path $InstallRoot $target)
       }
@@ -177,7 +200,7 @@ try {
     }
 
     Write-OnFrameSection 'Finalizando'
-    Write-OnFrameStep 4 4 'Concluindo desinstalacao.'
+    Write-OnFrameStep 5 5 'Concluindo desinstalacao.'
     Write-OnFrameSubStep 'Remova a extensao manualmente do navegador.' 'info'
     Write-OnFrameSuccess 'Desinstalacao concluida.' @(
       'Gerenciador de extensoes:',

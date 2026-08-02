@@ -3,6 +3,8 @@ const packageJson = require('../../package.json');
 
 const DEFAULT_REPO = 'eusilvamateus/onframe';
 const DEFAULT_BRANCH = 'main';
+const DEFAULT_PORT = 4765;
+const UPDATE_PROTOCOL_URL = 'onframe-updater://update';
 const CACHE_MS = 5 * 60 * 1000;
 
 function createUpdateManager(options = {}) {
@@ -19,10 +21,23 @@ function createUpdateManager(options = {}) {
   let cache = null;
 
   return {
+    getOpenPageData,
     getStatus
   };
 
+  function getOpenPageData() {
+    const updatePageUrl = buildUpdatePageUrl(env);
+    return {
+      protocolUrl: UPDATE_PROTOCOL_URL,
+      updatePageUrl,
+      canOpenUpdater: process.platform === 'win32',
+      updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl }),
+      checkCommand: buildBootstrapCommand({ root, scriptUrl: checkScriptUrl })
+    };
+  }
+
   async function getStatus(options = {}) {
+    const openPage = getOpenPageData();
     const base = {
       ok: true,
       currentVersion,
@@ -38,8 +53,11 @@ function createUpdateManager(options = {}) {
       assetName: null,
       updateAvailable: false,
       canUpdate: false,
-      updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl }),
-      checkCommand: buildBootstrapCommand({ root, scriptUrl: checkScriptUrl }),
+      protocolUrl: openPage.protocolUrl,
+      updatePageUrl: openPage.updatePageUrl,
+      canOpenUpdater: openPage.canOpenUpdater,
+      updateCommand: openPage.updateCommand,
+      checkCommand: openPage.checkCommand,
       message: '',
       checkedAt: new Date(nowImpl()).toISOString()
     };
@@ -106,10 +124,16 @@ function buildGitHubHeaders(token) {
 
 function pickReleaseAsset(release) {
   const assets = Array.isArray(release && release.assets) ? release.assets : [];
-  return assets.find((asset) => /^onframe-release-v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.zip$/i.test(asset.name || '')) ||
+  return assets.find((asset) => /^onframe-v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.zip$/i.test(asset.name || '')) ||
+    assets.find((asset) => /^onframe-release-v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\.zip$/i.test(asset.name || '')) ||
     assets.find((asset) => /^onframe-release-.*\.zip$/i.test(asset.name || '')) ||
     assets.find((asset) => /\.zip$/i.test(asset.name || '')) ||
     null;
+}
+
+function buildUpdatePageUrl(env) {
+  const port = normalizePort(env && env.ML_SERVICE_PORT);
+  return `http://127.0.0.1:${port}/updates/open`;
 }
 
 function buildDefaultScriptUrl(repo, branch, scriptName = 'update.ps1') {
@@ -127,6 +151,11 @@ function buildUpdateCommand({ root, scriptUrl }) {
 function normalizeChannel(value) {
   const channel = String(value || 'stable').trim().toLowerCase();
   return channel === 'preview' ? 'preview' : 'stable';
+}
+
+function normalizePort(value) {
+  const port = Number(value || DEFAULT_PORT);
+  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : DEFAULT_PORT;
 }
 
 function tagToVersion(tag) {

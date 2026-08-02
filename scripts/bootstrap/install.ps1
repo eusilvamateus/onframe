@@ -132,6 +132,29 @@ function Fail-Install {
   throw $Message
 }
 
+function Register-OnFrameUpdaterProtocol {
+  param([string]$Root)
+
+  $registerScript = Join-Path $Root 'scripts/bootstrap/register-updater-protocol.ps1'
+  if (-not (Test-Path -LiteralPath $registerScript -PathType Leaf)) {
+    Write-OnFrameSubStep 'Script de protocolo nao encontrado; use o comando manual para atualizar.' 'warning'
+    return $false
+  }
+
+  try {
+    $output = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $registerScript -Root $Root 2>&1)
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+      throw "registro retornou codigo ${exitCode}: $($output -join [Environment]::NewLine)"
+    }
+    Write-OnFrameSubStep 'Atualizador por um clique registrado.' 'ok'
+    return $true
+  } catch {
+    Write-OnFrameSubStep "Atualizador por um clique indisponivel: $($_.Exception.Message)" 'warning'
+    return $false
+  }
+}
+
 function Get-LatestRelease {
   param([string]$Repository)
 
@@ -174,7 +197,7 @@ try {
   Write-OnFrameHeader -Mode $mode -RootPath $InstallRoot -Repository $Repo
 
   Write-OnFrameSection 'Preparando'
-  Write-OnFrameStep 1 7 'Validando destino.'
+  Write-OnFrameStep 1 8 'Validando destino.'
   if (Test-Path $InstallRoot) {
     $existingPackage = Join-Path $InstallRoot 'package.json'
     if (Test-Path $existingPackage) {
@@ -187,7 +210,7 @@ try {
   }
 
   Write-OnFrameSection 'Baixando'
-  Write-OnFrameStep 2 7 'Consultando ultima release.'
+  Write-OnFrameStep 2 8 'Consultando ultima release.'
   $release = Get-LatestRelease -Repository $Repo
   Write-OnFrameSubStep "Release encontrada: $($release.Tag) / $($release.AssetName)" 'ok'
 
@@ -196,11 +219,11 @@ try {
   $extractPath = Join-Path $tempRoot 'extract'
   New-Item -ItemType Directory -Force -Path $tempRoot, $extractPath | Out-Null
 
-  Write-OnFrameStep 3 7 'Baixando pacote.'
+  Write-OnFrameStep 3 8 'Baixando pacote.'
   Invoke-WebRequest -Uri $release.AssetUrl -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
   Write-OnFrameSubStep 'Download concluido.' 'ok'
 
-  Write-OnFrameStep 4 7 'Extraindo e validando pacote.'
+  Write-OnFrameStep 4 8 'Extraindo e validando pacote.'
   Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
   $source = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
   if (-not $source) { Fail-Install 'Pacote vazio.' }
@@ -214,7 +237,7 @@ try {
   Write-OnFrameSubStep 'Pacote valido.' 'ok'
 
   Write-OnFrameSection 'Aplicando'
-  Write-OnFrameStep 5 7 'Copiando arquivos.'
+  Write-OnFrameStep 5 8 'Copiando arquivos.'
   New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
   foreach ($target in @('extension', 'service', 'scripts')) {
     $destination = Join-Path $InstallRoot $target
@@ -229,7 +252,7 @@ try {
   }
   Write-OnFrameSubStep 'Arquivos do aplicativo atualizados.' 'ok'
 
-  Write-OnFrameStep 6 7 'Preparando configuracao local.'
+  Write-OnFrameStep 6 8 'Preparando configuracao local.'
   $envPath = Join-Path $InstallRoot '.env'
   $envExamplePath = Join-Path $InstallRoot '.env.example'
   if (-not (Test-Path $envPath) -and (Test-Path $envExamplePath)) {
@@ -240,7 +263,10 @@ try {
   }
 
   Write-OnFrameSection 'Finalizando'
-  Write-OnFrameStep 7 7 'Iniciando servico local.'
+  Write-OnFrameStep 7 8 'Registrando atualizador local.'
+  Register-OnFrameUpdaterProtocol -Root $InstallRoot | Out-Null
+
+  Write-OnFrameStep 8 8 'Iniciando servico local.'
   $global:LASTEXITCODE = 0
   & (Join-Path $InstallRoot 'scripts/bootstrap/start.ps1') -Root $InstallRoot
   if ($global:LASTEXITCODE -ne 0) {

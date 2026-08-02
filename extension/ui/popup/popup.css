@@ -28,6 +28,13 @@ body {
   margin-top: 10px;
 }
 
+.update-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 10px;
+}
+
 .action-feedback {
   margin-top: 8px;
 }

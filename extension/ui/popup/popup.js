@@ -18,6 +18,7 @@
     updateBlock: document.getElementById('update-block'),
     updateBadge: document.getElementById('update-badge'),
     updateText: document.getElementById('update-text'),
+    updateOpen: document.getElementById('update-open'),
     updateStart: document.getElementById('update-start'),
     serviceBadge: document.getElementById('service-badge'),
     serviceText: document.getElementById('service-text'),
@@ -41,6 +42,7 @@
   elements.connect.addEventListener('click', () => void startAuth());
   elements.toggleEditor.addEventListener('click', () => void toggleEditor());
   elements.openOptions.addEventListener('click', openOptions);
+  elements.updateOpen.addEventListener('click', () => openUpdatePage());
   elements.updateStart.addEventListener('click', () => void copyUpdateCommand());
 
   void loadPopup();
@@ -64,6 +66,7 @@
     elements.updateBlock.classList.add('is-hidden');
     setBadge(elements.updateBadge, 'Verificando', 'muted');
     elements.updateText.textContent = 'Conferindo releases.';
+    elements.updateOpen.disabled = true;
     elements.updateStart.disabled = true;
     state.updateStatus = null;
     state.canConnect = false;
@@ -210,7 +213,10 @@
     if (!visible) return;
 
     setBadge(elements.updateBadge, 'Disponivel', 'blue');
-    elements.updateText.textContent = `${status.message || `Versão ${status.latestVersion} disponível.`} Copie e cole no PowerShell.`;
+    elements.updateText.textContent = status.updatePageUrl
+      ? `${status.message || `Versão ${status.latestVersion} disponível.`} Abra o atualizador ou copie o comando.`
+      : `${status.message || `Versão ${status.latestVersion} disponível.`} Copie e cole no PowerShell.`;
+    elements.updateOpen.disabled = !status.updatePageUrl;
     elements.updateStart.disabled = !status.updateCommand;
   }
 
@@ -218,6 +224,14 @@
     renderVersionTag(null);
     elements.updateBlock.classList.add('is-hidden');
     state.updateStatus = null;
+  }
+
+  function openUpdatePage() {
+    if (!state.updateStatus || !state.updateStatus.updatePageUrl) return;
+    openExternalUrl(state.updateStatus.updatePageUrl);
+    elements.updateBlock.classList.remove('is-hidden');
+    setBadge(elements.updateBadge, 'Abrindo', 'blue');
+    elements.updateText.textContent = 'A pagina de atualizacao foi aberta.';
   }
 
   function renderVersionTag(status) {
@@ -376,6 +390,7 @@
     elements.refresh.disabled = value;
     elements.toggleEditor.disabled = value;
     elements.connect.disabled = value || !state.canConnect;
+    elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updatePageUrl;
     elements.updateStart.disabled = value || !state.updateStatus || !state.updateStatus.updateCommand;
     elements.accountList.querySelectorAll('button').forEach((button) => {
       button.disabled = value;
@@ -437,6 +452,7 @@
     addIcon(elements.connect, 'plus');
     addIcon(elements.toggleEditor, 'eye');
     addIcon(elements.openOptions, 'gear');
+    addIcon(elements.updateOpen, 'arrowSquareOut');
     addIcon(elements.updateStart, 'copy');
   }
 

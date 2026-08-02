@@ -1056,18 +1056,34 @@ test('service mantem exports publicos enxutos', () => {
 test('service expoe status de atualizacao auditavel', async (t) => {
   const appSource = fs.readFileSync(path.join(__dirname, '..', 'service', 'src', 'app.js'), 'utf8');
   const fakeUpdateManager = {
+    getOpenPageData: () => ({
+      protocolUrl: 'onframe-updater://update',
+      canOpenUpdater: true,
+      updateCommand: 'update-command',
+      checkCommand: 'check-command'
+    }),
     getStatus: async () => ({ ok: true, updateAvailable: false })
   };
   const server = await listen(createApp({ updateManager: fakeUpdateManager }));
   t.after(() => server.close());
 
   assert.strictEqual(appSource.includes('/updates/status'), true);
+  assert.strictEqual(appSource.includes('/updates/open'), true);
   assert.strictEqual(appSource.includes('/updates/start'), false);
   assert.strictEqual(fs.existsSync(path.join(__dirname, '..', 'service', 'src', 'update-manager.js')), true);
 
   const status = await fetch(`${server.url}/updates/status`);
   assert.strictEqual(status.status, 200);
   assert.deepStrictEqual(await status.json(), { ok: true, updateAvailable: false });
+
+  const page = await fetch(`${server.url}/updates/open`);
+  const html = await page.text();
+  assert.strictEqual(page.status, 200);
+  assert.match(page.headers.get('content-type'), /text\/html/);
+  assert.match(html, /onframe-updater:\/\/update/);
+  assert.match(html, /update-command/);
+  assert.match(html, /check-command/);
+  assert.doesNotMatch(html, /\/updates\/start/);
 });
 
 test('service restringe origem web e aceita origem da extensao', async (t) => {
@@ -1168,6 +1184,9 @@ test('update manager retorna comando quando existe versao nova', async () => {
   assert.strictEqual(status.updateAvailable, true);
   assert.strictEqual(status.canUpdate, true);
   assert.strictEqual(status.reason, 'copy_command');
+  assert.strictEqual(status.protocolUrl, 'onframe-updater://update');
+  assert.match(status.updatePageUrl, /^http:\/\/127\.0\.0\.1:4765\/updates\/open$/);
+  assert.strictEqual(typeof status.canOpenUpdater, 'boolean');
   assert.match(status.updateCommand, /ONFRAME_HOME='C:\\Users\\Mateus\\onframe'/);
   assert.match(status.updateCommand, /scripts\/bootstrap\/update\.ps1/);
   assert.match(status.checkCommand, /ONFRAME_HOME='C:\\Users\\Mateus\\onframe'/);
@@ -1235,6 +1254,7 @@ test('bootstrap substitui atalhos bat legados', () => {
   const startScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'start.ps1'), 'utf8');
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
   const uninstallScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.ps1'), 'utf8');
+  const protocolScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'onframe-updater.ps1'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const visualBootstrapScripts = [installScript, updateScript, uninstallScript];
 
@@ -1274,6 +1294,15 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(installScript.includes('^onframe-release-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(updateScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(updateScript.includes('^onframe-release-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
+  assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'register-updater-protocol.ps1')), true);
+  assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'unregister-updater-protocol.ps1')), true);
+  assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'onframe-updater.ps1')), true);
+  assert.strictEqual(installScript.includes('register-updater-protocol.ps1'), true);
+  assert.strictEqual(updateScript.includes('register-updater-protocol.ps1'), true);
+  assert.strictEqual(uninstallScript.includes('onframe-updater'), true);
+  assert.strictEqual(protocolScript.includes('onframe-updater://update'), true);
+  assert.strictEqual(protocolScript.includes('Acao de atualizacao nao suportada'), true);
+  assert.strictEqual(protocolScript.includes('raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1'), true);
   assert.strictEqual(packageJson.scripts.check.includes('scripts/bootstrap/check.ps1'), true);
   assert.strictEqual(JSON.stringify(packageJson.scripts).includes('doctor'), false);
 });

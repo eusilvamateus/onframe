@@ -63,7 +63,7 @@ function createApp(options = {}) {
   const store = options.store || new TokenStore({ env });
   const client = options.client || new MercadoLivreClient({ env, store });
   const clientFactory = options.clientFactory || ((account) => createAccountClient({ env, store, client, account }));
-  const updateManager = options.updateManager || createUpdateManager({ env });
+  const updateManager = options.updateManager || createUpdateManager({ env, root: options.root || process.cwd() });
   const itemRouteCache = options.itemRouteCache || createItemRouteCache();
   const accessPolicy = createAccessPolicy({ env, root: options.root });
   const auditLogger = options.auditLogger || createAuditLogger({ env, root: options.root || process.cwd() });
@@ -100,6 +100,10 @@ function createApp(options = {}) {
         return sendJson(res, 200, await updateManager.getStatus({
           force: url.searchParams.get('force') === '1'
         }));
+      }
+
+      if (route === 'GET /updates/open') {
+        return sendRawHtml(res, 200, buildUpdateOpenPage(getUpdateOpenPageData(updateManager)));
       }
 
       if (route === 'GET /auth/status') {
@@ -810,6 +814,241 @@ function sendHtml(res, statusCode, message) {
   res.setHeader('content-type', 'text/html; charset=utf-8');
   res.setHeader('cache-control', 'no-store');
   res.end('<!doctype html><meta charset="utf-8"><title>OnFrame</title><body style="font-family:Poppins,system-ui,-apple-system,Segoe UI,sans-serif;color:#545454;background:#ffffff;padding:32px"><main style="max-width:640px"><p style="margin:0 0 4px;color:#0a4ee4;font:500 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;text-transform:uppercase">OnFrame</p><h1 style="margin:0 0 12px;color:#2a2a2a;font-size:28px;line-height:1.1">Mercado Livre conectado</h1><p style="margin:0;font-size:16px;line-height:1.6">' + escapeHtml(message) + '</p></main></body>');
+}
+
+function sendRawHtml(res, statusCode, html) {
+  res.statusCode = statusCode;
+  res.setHeader('content-type', 'text/html; charset=utf-8');
+  res.setHeader('cache-control', 'no-store');
+  res.end(html);
+}
+
+function getUpdateOpenPageData(updateManager) {
+  if (updateManager && typeof updateManager.getOpenPageData === 'function') {
+    return updateManager.getOpenPageData();
+  }
+  return {
+    protocolUrl: 'onframe-updater://update',
+    canOpenUpdater: process.platform === 'win32',
+    updateCommand: "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex",
+    checkCommand: "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/check.ps1' | iex"
+  };
+}
+
+function buildUpdateOpenPage(data = {}) {
+  const pageData = {
+    protocolUrl: data.protocolUrl || 'onframe-updater://update',
+    canOpenUpdater: data.canOpenUpdater !== false,
+    updateCommand: data.updateCommand || '',
+    checkCommand: data.checkCommand || '',
+    messages: {
+      trying: 'Tentando abrir o atualizador do OnFrame...',
+      fallback: 'Se nenhuma janela abriu, use o comando manual abaixo.',
+      copied: 'Copiado',
+      copy: 'Copiar'
+    }
+  };
+  const serialized = JSON.stringify(pageData).replace(/</g, '\\u003c');
+  const updateCommand = escapeHtml(pageData.updateCommand || 'Comando indisponivel.');
+  const checkCommand = escapeHtml(pageData.checkCommand || 'Comando indisponivel.');
+
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atualizar OnFrame</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8fb;
+      --surface: #fff;
+      --line: #e6e9ef;
+      --line-strong: #d8dde7;
+      --ink: #171a21;
+      --muted: #667085;
+      --blue: #0a4ee4;
+      --blue-soft: #edf3ff;
+      --green: #0a9f4a;
+      --shadow: 0 16px 42px rgba(16, 24, 40, .08), 0 2px 8px rgba(16, 24, 40, .04);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Poppins, Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      letter-spacing: 0;
+    }
+    .page { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .shell { width: min(920px, 100%); display: grid; gap: 14px; }
+    .hero, .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .hero { padding: 28px; display: grid; gap: 22px; }
+    .brand { margin: 0; color: var(--blue); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(32px, 5vw, 52px); line-height: 1.02; letter-spacing: 0; }
+    .copy { margin: 0; max-width: 680px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-weight: 700;
+    }
+    .status.is-fallback { background: #fff7e8; color: #9a5a00; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 0 rgba(10, 78, 228, .34); animation: pulse 1.25s infinite; }
+    @keyframes pulse { 70% { box-shadow: 0 0 0 12px rgba(10, 78, 228, 0); } 100% { box-shadow: 0 0 0 0 rgba(10, 78, 228, 0); } }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    button, a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 9px 12px;
+      border: 1.5px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font: 700 13px/1 Poppins, Inter, system-ui, sans-serif;
+      text-decoration: none;
+    }
+    button.primary { border-color: var(--blue); background: var(--blue); color: #fff; }
+    .panel { overflow: hidden; }
+    .panel-head { padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .panel-head strong { display: block; font-size: 15px; }
+    .panel-head span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .commands { display: grid; grid-template-columns: 1fr 1fr; }
+    .command { padding: 16px 18px; border-right: 1px solid var(--line); }
+    .command:last-child { border-right: 0; }
+    .command-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 13px; font-weight: 800; }
+    code {
+      display: block;
+      min-height: 64px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f0f2f6;
+      color: #283040;
+      font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-wrap: anywhere;
+      user-select: all;
+    }
+    .destinations { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
+    @media (max-width: 720px) {
+      .page { padding: 14px; }
+      .commands { grid-template-columns: 1fr; }
+      .command { border-right: 0; border-bottom: 1px solid var(--line); }
+      .command:last-child { border-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="shell">
+      <section class="hero">
+        <p class="brand">OnFrame</p>
+        <h1>Atualizar OnFrame</h1>
+        <p class="copy">Esta pagina pede ao navegador para abrir o atualizador local registrado neste computador. Se nada abrir, use o comando manual.</p>
+        <div class="status" id="statusBox">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="statusText">Tentando abrir o atualizador do OnFrame...</span>
+        </div>
+        <div class="actions">
+          <button class="primary" type="button" id="openUpdaterButton">Abrir atualizador novamente</button>
+          <button type="button" data-copy="update">Copiar comando manual</button>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <strong>Fallback manual</strong>
+          <span>Copie o comando e execute no PowerShell quando o protocolo local ainda nao estiver registrado.</span>
+        </div>
+        <div class="commands">
+          <div class="command">
+            <div class="command-head"><span>Atualizar</span><button type="button" data-copy="update">Copiar</button></div>
+            <code>${updateCommand}</code>
+          </div>
+          <div class="command">
+            <div class="command-head"><span>Verificar instalacao</span><button type="button" data-copy="check">Copiar</button></div>
+            <code>${checkCommand}</code>
+          </div>
+        </div>
+        <div class="destinations">
+          <a class="button" href="chrome://extensions/">Chrome extensions</a>
+          <a class="button" href="edge://extensions/">Edge extensions</a>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const pageData = ${serialized};
+    const statusBox = document.getElementById('statusBox');
+    const statusText = document.getElementById('statusText');
+    const openUpdaterButton = document.getElementById('openUpdaterButton');
+    let leftPage = false;
+
+    function showFallback() {
+      statusBox.classList.add('is-fallback');
+      statusText.textContent = pageData.messages.fallback;
+    }
+
+    function openUpdater() {
+      if (!pageData.canOpenUpdater) {
+        showFallback();
+        return;
+      }
+      statusBox.classList.remove('is-fallback');
+      statusText.textContent = pageData.messages.trying;
+      leftPage = false;
+      window.setTimeout(() => {
+        window.location.href = pageData.protocolUrl;
+      }, 60);
+      window.setTimeout(() => {
+        if (!leftPage) showFallback();
+      }, 1800);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) leftPage = true;
+    });
+    window.addEventListener('blur', () => {
+      leftPage = true;
+    });
+    openUpdaterButton.addEventListener('click', openUpdater);
+
+    for (const button of document.querySelectorAll('[data-copy]')) {
+      button.addEventListener('click', async () => {
+        const key = button.getAttribute('data-copy') === 'check' ? 'checkCommand' : 'updateCommand';
+        const command = pageData[key] || '';
+        try {
+          await navigator.clipboard.writeText(command);
+          const previous = button.textContent;
+          button.textContent = pageData.messages.copied;
+          window.setTimeout(() => { button.textContent = previous || pageData.messages.copy; }, 1400);
+        } catch (error) {
+          const code = button.closest('.command')?.querySelector('code');
+          if (!code) return;
+          const range = document.createRange();
+          range.selectNodeContents(code);
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      });
+    }
+
+    window.setTimeout(openUpdater, 320);
+  </script>
+</body>
+</html>`;
 }
 
 function escapeHtml(value) {

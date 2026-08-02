@@ -95,11 +95,19 @@ iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/
 
 ## Atualizar
 
-Para atualizar para a ultima versao:
+Quando uma nova versao estiver disponivel, o popup da extensao pode abrir a
+pagina local de atualizacao. Ela tenta iniciar o atualizador registrado no
+Windows e tambem mostra o comando manual como fallback.
+
+Para atualizar manualmente:
 
 ```powershell
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex
 ```
+
+O instalador e o atualizador registram o protocolo local
+`onframe-updater://update`. Ele aceita somente a acao fixa de update e roda o
+script oficial do OnFrame.
 
 Depois da atualizacao, recarregue a extensao no navegador:
 
