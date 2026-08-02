@@ -42,7 +42,7 @@
   };
 
   decorateButtons();
-  elements.refresh.addEventListener('click', () => void loadPopup());
+  elements.refresh.addEventListener('click', () => void loadPopup({ forceUpdate: true }));
   elements.versionTag.addEventListener('click', (event) => openVersionLink(event));
   elements.connect.addEventListener('click', () => void startAuth());
   elements.toggleEditor.addEventListener('click', () => void toggleEditor());
@@ -56,11 +56,11 @@
 
   void loadPopup();
 
-  async function loadPopup() {
+  async function loadPopup(options = {}) {
     setBusy(true);
     resetView();
     await loadEditorPreference();
-    await loadServiceAndAccount();
+    await loadServiceAndAccount(options);
     setBusy(false);
   }
 
@@ -86,7 +86,7 @@
     renderServiceControls();
   }
 
-  async function loadServiceAndAccount() {
+  async function loadServiceAndAccount(options = {}) {
     try {
       const diagnostics = await api('/diagnostics');
       state.serviceOnline = true;
@@ -96,7 +96,7 @@
         ? 'OnFrame pronto para editar anuncios.'
         : firstAction(diagnostics, 'OnFrame precisa de ajuste.');
 
-      await loadUpdateStatus();
+      await loadUpdateStatus(options);
 
       const accountsResult = await api('/auth/accounts');
       const accounts = accountsResult && Array.isArray(accountsResult.accounts) ? accountsResult.accounts : [];
@@ -211,9 +211,9 @@
     }
   }
 
-  async function loadUpdateStatus() {
+  async function loadUpdateStatus(options = {}) {
     try {
-      const status = await api('/updates/status');
+      const status = await api(options.forceUpdate ? '/updates/status?force=1' : '/updates/status');
       state.updateStatus = status;
       renderUpdateStatus(status);
     } catch (err) {

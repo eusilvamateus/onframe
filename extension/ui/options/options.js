@@ -32,7 +32,7 @@
   };
 
   decorateButtons();
-  elements.refresh.addEventListener('click', () => void loadOptions());
+  elements.refresh.addEventListener('click', () => void loadOptions({ forceUpdate: true }));
   elements.versionTag.addEventListener('click', (event) => openVersionLink(event));
   elements.connect.addEventListener('click', () => void startAuth());
   elements.serviceStart.addEventListener('click', () => openLocalServiceAction('start'));
@@ -42,10 +42,10 @@
 
   void loadOptions();
 
-  async function loadOptions() {
+  async function loadOptions(options = {}) {
     setBusy(true);
     resetView();
-    await loadServiceAndAccounts();
+    await loadServiceAndAccounts(options);
     setBusy(false);
   }
 
@@ -65,11 +65,11 @@
     renderVersionTag(null);
   }
 
-  async function loadServiceAndAccounts() {
+  async function loadServiceAndAccounts(options = {}) {
     try {
       const diagnostics = await api('/diagnostics');
       renderServiceStatus(diagnostics);
-      await loadUpdateStatus();
+      await loadUpdateStatus(options);
 
       const result = await api('/auth/accounts');
       const accounts = result && Array.isArray(result.accounts) ? result.accounts : [];
@@ -101,9 +101,9 @@
     renderServiceControls();
   }
 
-  async function loadUpdateStatus() {
+  async function loadUpdateStatus(options = {}) {
     try {
-      renderVersionTag(await api('/updates/status'));
+      renderVersionTag(await api(options.forceUpdate ? '/updates/status?force=1' : '/updates/status'));
     } catch (err) {
       renderVersionTag(null);
     }

@@ -1193,6 +1193,28 @@ test('update manager retorna comando quando existe versao nova', async () => {
   assert.match(status.checkCommand, /scripts\/bootstrap\/check\.ps1/);
 });
 
+test('update manager permite forcar consulta para release recem publicada', async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    return {
+      ok: true,
+      text: async () => JSON.stringify([
+        release(calls === 1 ? 'v0.3.1' : 'v0.3.2', false)
+      ])
+    };
+  };
+  const manager = updateManager.createUpdateManager({
+    currentVersion: '0.3.1',
+    env: {},
+    fetchImpl
+  });
+
+  assert.strictEqual((await manager.getStatus()).updateAvailable, false);
+  assert.strictEqual((await manager.getStatus({ force: true })).latestVersion, '0.3.2');
+  assert.strictEqual(calls, 2);
+});
+
 test('release package nao inclui env nem estado gerenciado', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'release', 'package-release.js'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));

@@ -434,12 +434,14 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(optionsHtml.includes('Copiar atualizacao'), false);
   assert.strictEqual(optionsHtml.includes('Copiar verificacao'), false);
   assert.strictEqual(popupJs.includes('/updates/status'), true);
+  assert.strictEqual(popupJs.includes('/updates/status?force=1'), true);
   assert.strictEqual(popupJs.includes('updatePageUrl'), true);
   assert.strictEqual(popupJs.includes('releaseUrl'), true);
   assert.strictEqual(popupJs.includes('chrome.runtime.getManifest'), true);
   assert.strictEqual(popupJs.includes('/updates/start'), false);
   assert.strictEqual(popupJs.includes('navigator.clipboard.writeText'), true);
   assert.strictEqual(optionsJs.includes('/updates/status'), true);
+  assert.strictEqual(optionsJs.includes('/updates/status?force=1'), true);
   assert.strictEqual(optionsJs.includes('/updates/start'), false);
   assert.strictEqual(optionsJs.includes('checkCommand'), false);
   assert.strictEqual(optionsJs.includes('navigator.clipboard.writeText'), false);

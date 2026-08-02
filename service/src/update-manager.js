@@ -5,7 +5,7 @@ const DEFAULT_REPO = 'eusilvamateus/onframe';
 const DEFAULT_BRANCH = 'main';
 const DEFAULT_PORT = 4765;
 const UPDATE_PROTOCOL_URL = 'onframe-updater://update';
-const CACHE_MS = 5 * 60 * 1000;
+const CACHE_MS = 60 * 1000;
 
 function createUpdateManager(options = {}) {
   const env = options.env || process.env;
