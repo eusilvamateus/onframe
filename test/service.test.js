@@ -1204,6 +1204,7 @@ test('release package nao inclui env nem estado gerenciado', () => {
   assert.strictEqual(packageLock.version, packageJson.version);
   assert.strictEqual(packageLock.packages[''].version, packageJson.version);
   assert.match(source, /'\.env\.example'/);
+  assert.match(source, /'docs'/);
   assert.strictEqual(source.includes("'.env'"), false);
   assert.strictEqual(source.includes('install.json'), false);
   assert.strictEqual(source.includes('.bat'), false);

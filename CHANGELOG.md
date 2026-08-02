@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.3.9 - 2026-08-02
+
+### Adicionado
+
+- Guias de usuario final em `docs/`, cobrindo descricao, caracteristicas,
+  promocoes, acoes em massa e atualizacao.
+- Espacos de imagens nos guias ja apontam para nomes definidos em
+  `docs/assets/`, facilitando a inclusao de prints.
+
+### Melhorado
+
+- Pacote de release passa a incluir a pasta `docs/`.
+
 ## v0.3.8 - 2026-08-02
 
 ### Melhorado

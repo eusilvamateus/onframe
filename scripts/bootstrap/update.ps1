@@ -406,7 +406,7 @@ try {
   Write-OnFrameSubStep 'Servico local parado quando estava ativo.' 'ok'
 
   Write-OnFrameStep 7 9 'Atualizando arquivos.'
-  foreach ($target in @('extension', 'service', 'scripts')) {
+  foreach ($target in @('extension', 'service', 'scripts', 'docs')) {
     $destination = Join-Path $InstallRoot $target
     Assert-ChildPath -Parent $InstallRoot -Child $destination
     if (Test-Path $destination) {

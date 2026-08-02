@@ -239,7 +239,7 @@ try {
   Write-OnFrameSection 'Aplicando'
   Write-OnFrameStep 5 8 'Copiando arquivos.'
   New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
-  foreach ($target in @('extension', 'service', 'scripts')) {
+  foreach ($target in @('extension', 'service', 'scripts', 'docs')) {
     $destination = Join-Path $InstallRoot $target
     if (Test-Path $destination) { Remove-Item -LiteralPath $destination -Recurse -Force }
     Copy-Item -LiteralPath (Join-Path $sourceRoot $target) -Destination $destination -Recurse -Force

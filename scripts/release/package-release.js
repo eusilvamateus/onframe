@@ -13,6 +13,7 @@ const entries = [
   'extension',
   'service',
   'scripts',
+  'docs',
   'package.json',
   'package-lock.json',
   'README.md',

@@ -190,7 +190,7 @@ try {
       Write-OnFrameSubStep 'Pasta local removida.' 'ok'
     } else {
       Write-OnFrameStep 4 5 'Removendo aplicativo e preservando dados locais.'
-      foreach ($target in @('extension', 'service', 'scripts')) {
+      foreach ($target in @('extension', 'service', 'scripts', 'docs')) {
         Remove-IfExists -Path (Join-Path $InstallRoot $target)
       }
       foreach ($file in @('package.json', 'package-lock.json', 'README.md', 'CHANGELOG.md', 'RELEASE.md', '.env.example')) {
