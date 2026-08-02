@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.3.7 - 2026-08-02
+
+### Adicionado
+
+- Popup de atualizacao passa a abrir uma pagina local que aciona o atualizador
+  registrado no Windows via `onframe-updater://update`.
+- Instalacao e atualizacao passam a registrar o protocolo local do atualizador;
+  a desinstalacao remove esse registro.
+
+### Melhorado
+
+- Pagina local de atualizacao mantem comando manual como fallback e atalhos para
+  `chrome://extensions/` e `edge://extensions/`.
+
 ## v0.3.6 - 2026-07-26
 
 ### Melhorado
