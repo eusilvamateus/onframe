@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.13 - 2026-08-02
+
+### Corrigido
+
+- Botao de atualizar do popup e da pagina de opcoes agora forca uma nova
+  consulta de release, evitando esconder uma versao recem-publicada por cache.
+- Verificacao automatica de releases passa a usar cache mais curto.
+
 ## v0.3.12 - 2026-08-02
 
 ### Melhorado
