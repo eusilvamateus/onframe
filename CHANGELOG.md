@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.14 - 2026-08-02
+
+### Melhorado
+
+- Disponibiliza uma nova versao para validar a deteccao de releases
+  recem-publicadas pelo popup e pela pagina de opcoes.
+
 ## v0.3.13 - 2026-08-02
 
 ### Corrigido
