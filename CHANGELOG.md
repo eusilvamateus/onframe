@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.15 - 2026-08-02
+
+### Corrigido
+
+- Pagina de opcoes passa a exibir o card de atualizacao quando uma nova versao
+  esta disponivel, com acao para abrir o atualizador e copiar o comando.
+
 ## v0.3.14 - 2026-08-02
 
 ### Melhorado
