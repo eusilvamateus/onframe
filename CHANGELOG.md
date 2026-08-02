@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.8 - 2026-08-02
+
+### Melhorado
+
+- Disponibiliza uma nova versao para validar o fluxo de atualizacao por um
+  clique introduzido no `v0.3.7`.
+
 ## v0.3.7 - 2026-08-02
 
 ### Adicionado
