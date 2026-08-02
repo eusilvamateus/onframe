@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.3.16 - 2026-08-02
+
+### Melhorado
+
+- Disponibiliza uma nova versao para validar o aviso de atualizacao no popup e
+  na pagina de opcoes.
+
 ## v0.3.15 - 2026-08-02
 
 ### Corrigido
