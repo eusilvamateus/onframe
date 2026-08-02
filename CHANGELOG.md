@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.3.10 - 2026-08-02
+
+### Melhorado
+
+- Guias de usuario final passam a incluir prints reais nas secoes de descricao,
+  caracteristicas, promocoes e atualizacao.
+- Guia de atualizacao foi ajustado para seguir a ordem real do fluxo: popup,
+  pagina local, PowerShell e recarregamento da extensao.
+
 ## v0.3.9 - 2026-08-02
 
 ### Adicionado
