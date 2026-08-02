@@ -419,6 +419,7 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupHtml.includes('service-restart'), true);
   assert.strictEqual(popupHtml.includes('service-stop'), true);
   assert.strictEqual(popupHtml.includes('service-check'), true);
+  assert.strictEqual(popupHtml.includes('service-danger'), true);
   assert.strictEqual(popupHtml.includes('version-tag'), true);
   assert.strictEqual(optionsHtml.includes('version-tag'), true);
   assert.strictEqual(optionsHtml.includes('update-title'), false);
@@ -446,6 +447,10 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(launcherJs.includes("scripts/bootstrap/start.ps1"), true);
   assert.strictEqual(launcherJs.includes("scripts/bootstrap/stop.ps1"), true);
   assert.strictEqual(launcherJs.includes("scripts/bootstrap/check.ps1"), true);
+  const popupCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.css'), 'utf8');
+  assert.strictEqual(popupCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))'), true);
+  assert.strictEqual(popupCss.includes('.service-primary:not(.is-hidden)'), true);
+  assert.strictEqual(popupCss.includes('.service-danger'), true);
 });
 
 test('ui usam gerenciamento multi-conta local', () => {
