@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.3.11 - 2026-08-02
+
+### Adicionado
+
+- Popup passa a oferecer controles diretos para iniciar, reiniciar, parar e
+  verificar o servico local do OnFrame.
+- Nova pagina local da extensao abre comandos seguros via
+  `onframe-updater://start`, `onframe-updater://stop`,
+  `onframe-updater://restart` e `onframe-updater://check`.
+
+### Melhorado
+
+- Controle local agora funciona mesmo quando o servidor esta fechado, com
+  comando manual de fallback para cada acao.
+
 ## v0.3.10 - 2026-08-02
 
 ### Melhorado
