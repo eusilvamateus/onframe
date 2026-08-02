@@ -17,11 +17,49 @@
   margin-top: 12px;
 }
 
+.service-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 116px));
+  gap: 6px;
+  width: min(100%, 374px);
+  margin-top: 12px;
+  padding: 6px;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-bg-alt);
+}
+
+.service-actions .ob-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding-inline: 7px;
+  white-space: nowrap;
+}
+
+.service-primary:not(.is-hidden) {
+  grid-column: span 2;
+}
+
+.service-danger {
+  border-color: color-mix(in srgb, var(--ob-red) 22%, var(--ob-border));
+  background: var(--ob-red-050);
+  color: var(--ob-red-700);
+}
+
+.service-danger:hover {
+  border-color: color-mix(in srgb, var(--ob-red) 46%, var(--ob-border));
+}
+
 @media (max-width: 620px) {
   .header,
   .panel-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .service-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .header-actions,

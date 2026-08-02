@@ -413,6 +413,7 @@ test('ui exibem comando de atualizacao auditavel', () => {
   const launcherJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'launcher', 'launcher.js'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
   const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
+  const optionsCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.css'), 'utf8');
 
   assert.strictEqual(popupHtml.includes('update-block'), true);
   assert.strictEqual(popupHtml.includes('service-start'), true);
@@ -422,6 +423,11 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupHtml.includes('service-danger'), true);
   assert.strictEqual(popupHtml.includes('version-tag'), true);
   assert.strictEqual(optionsHtml.includes('version-tag'), true);
+  assert.strictEqual(optionsHtml.includes('service-start'), true);
+  assert.strictEqual(optionsHtml.includes('service-restart'), true);
+  assert.strictEqual(optionsHtml.includes('service-stop'), true);
+  assert.strictEqual(optionsHtml.includes('service-check'), true);
+  assert.strictEqual(optionsHtml.includes('service-danger'), true);
   assert.strictEqual(optionsHtml.includes('update-title'), false);
   assert.strictEqual(popupHtml.includes('Atualizar agora'), true);
   assert.strictEqual(popupHtml.includes('Copiar comando'), true);
@@ -438,6 +444,7 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(optionsJs.includes('checkCommand'), false);
   assert.strictEqual(optionsJs.includes('navigator.clipboard.writeText'), false);
   assert.strictEqual(popupJs.includes('ui/launcher/index.html?action='), true);
+  assert.strictEqual(optionsJs.includes('ui/launcher/index.html?action='), true);
   assert.strictEqual(launcherHtml.includes('launcher-commands'), true);
   assert.strictEqual(launcherJs.includes('onframe-updater://update'), true);
   assert.strictEqual(launcherJs.includes('onframe-updater://start'), true);
@@ -451,6 +458,9 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))'), true);
   assert.strictEqual(popupCss.includes('.service-primary:not(.is-hidden)'), true);
   assert.strictEqual(popupCss.includes('.service-danger'), true);
+  assert.strictEqual(optionsCss.includes('.service-actions'), true);
+  assert.strictEqual(optionsCss.includes('.service-primary:not(.is-hidden)'), true);
+  assert.strictEqual(optionsCss.includes('.service-danger'), true);
 });
 
 test('ui usam gerenciamento multi-conta local', () => {

@@ -14,6 +14,10 @@
     connect: document.getElementById('connect'),
     serviceBadge: document.getElementById('service-badge'),
     serviceText: document.getElementById('service-text'),
+    serviceStart: document.getElementById('service-start'),
+    serviceRestart: document.getElementById('service-restart'),
+    serviceStop: document.getElementById('service-stop'),
+    serviceCheck: document.getElementById('service-check'),
     accountBadge: document.getElementById('account-badge'),
     accountText: document.getElementById('account-text'),
     accountList: document.getElementById('account-list'),
@@ -23,6 +27,7 @@
   const state = {
     accounts: [],
     canConnect: false,
+    serviceOnline: false,
     pendingRemoveUserId: ''
   };
 
@@ -30,6 +35,10 @@
   elements.refresh.addEventListener('click', () => void loadOptions());
   elements.versionTag.addEventListener('click', (event) => openVersionLink(event));
   elements.connect.addEventListener('click', () => void startAuth());
+  elements.serviceStart.addEventListener('click', () => openLocalServiceAction('start'));
+  elements.serviceRestart.addEventListener('click', () => openLocalServiceAction('restart'));
+  elements.serviceStop.addEventListener('click', () => openLocalServiceAction('stop'));
+  elements.serviceCheck.addEventListener('click', () => openLocalServiceAction('check'));
 
   void loadOptions();
 
@@ -50,7 +59,9 @@
     hideActionFeedback();
     state.accounts = [];
     state.canConnect = false;
+    state.serviceOnline = false;
     state.pendingRemoveUserId = '';
+    renderServiceControls();
     renderVersionTag(null);
   }
 
@@ -69,12 +80,14 @@
     } catch (err) {
       setBadge(elements.serviceBadge, 'Fechado', 'error');
       setBadge(elements.accountBadge, 'Indisponível', 'warn');
-      elements.serviceText.textContent = 'Abra o OnFrame e tente novamente.';
+      elements.serviceText.textContent = 'Use Iniciar para abrir o servico local.';
       elements.accountText.textContent = 'Contas indisponíveis.';
       renderAccountList([]);
       renderVersionTag(null);
       state.canConnect = false;
+      state.serviceOnline = false;
       elements.connect.disabled = true;
+      renderServiceControls();
     }
   }
 
@@ -84,6 +97,8 @@
     elements.serviceText.textContent = ready
       ? 'OnFrame pronto para editar anúncios.'
       : firstSetupAction(diagnostics, 'OnFrame precisa de ajuste.');
+    state.serviceOnline = true;
+    renderServiceControls();
   }
 
   async function loadUpdateStatus() {
@@ -245,12 +260,29 @@
     window.open(target, '_blank', 'noopener,noreferrer');
   }
 
+  function openLocalServiceAction(action) {
+    const path = `ui/launcher/index.html?action=${encodeURIComponent(action)}`;
+    const url = window.chrome && chrome.runtime && chrome.runtime.getURL ? chrome.runtime.getURL(path) : `../launcher/index.html?action=${encodeURIComponent(action)}`;
+    openExternalUrl(url);
+    showActionFeedback('Janela de controle aberta.', 'ok');
+  }
+
   function setBusy(value) {
     elements.refresh.disabled = value;
     elements.connect.disabled = value || !state.canConnect;
+    elements.serviceStart.disabled = value;
+    elements.serviceRestart.disabled = value;
+    elements.serviceStop.disabled = value;
+    elements.serviceCheck.disabled = value;
     elements.accountList.querySelectorAll('button').forEach((button) => {
       button.disabled = value;
     });
+  }
+
+  function renderServiceControls() {
+    elements.serviceStart.classList.toggle('is-hidden', state.serviceOnline);
+    elements.serviceRestart.classList.toggle('is-hidden', !state.serviceOnline);
+    elements.serviceStop.classList.toggle('is-hidden', !state.serviceOnline);
   }
 
   function showActionFeedback(message, tone) {
@@ -279,6 +311,10 @@
   function decorateButtons() {
     addIcon(elements.refresh, 'refresh');
     addIcon(elements.connect, 'plus');
+    addIcon(elements.serviceStart, 'plug');
+    addIcon(elements.serviceRestart, 'refresh');
+    addIcon(elements.serviceStop, 'x');
+    addIcon(elements.serviceCheck, 'checkCircle');
   }
 
   function icon(name, size) {
