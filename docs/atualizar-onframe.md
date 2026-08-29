@@ -17,12 +17,15 @@ Quando houver uma nova versao:
 
 ![Print - Pagina local abrindo o atualizador](assets/atualizacao-pagina-local.png)
 
-Depois da autorizacao, uma janela do PowerShell abre e executa os comandos da
-atualizacao.
+Depois da autorizacao, uma janela do PowerShell no Windows ou do Terminal no
+macOS abre e executa os comandos da atualizacao.
+
+O exemplo abaixo mostra o fluxo no Windows. No Mac, as mesmas etapas aparecem
+no Terminal.
 
 ![Print - Pagina local abrindo o PowerShell](assets/atualizacao-abrir-powershell.png)
 
-5. Aguarde o PowerShell concluir o processo.
+5. Aguarde a janela concluir o processo.
 6. Recarregue a extensao no Chrome ou Edge.
 
 ## Se o navegador nao abrir o atualizador
@@ -30,7 +33,7 @@ atualizacao.
 A pagina tambem mostra um comando manual. Nesse caso:
 
 1. Clique em `Copiar comando manual`.
-2. Busque por `PowerShell` no Windows e abra.
+2. Abra o PowerShell no Windows ou o Terminal no macOS.
 3. Cole o comando copiado e pressione Enter.
 4. Aguarde a atualizacao terminar.
 
@@ -55,7 +58,7 @@ Livre.
 Use o comando manual quando:
 
 - o navegador bloquear a abertura do atualizador;
-- a pagina local nao conseguir abrir o PowerShell;
+- a pagina local nao conseguir abrir o PowerShell ou o Terminal;
 - a instalacao ainda nao tiver registrado o atualizador por um clique;
 - voce preferir acompanhar tudo direto pelo terminal.
 

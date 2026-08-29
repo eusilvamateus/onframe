@@ -827,11 +827,19 @@ function getUpdateOpenPageData(updateManager) {
   if (updateManager && typeof updateManager.getOpenPageData === 'function') {
     return updateManager.getOpenPageData();
   }
+  const isMac = process.platform === 'darwin';
   return {
     protocolUrl: 'onframe-updater://update',
-    canOpenUpdater: process.platform === 'win32',
-    updateCommand: "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex",
-    checkCommand: "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/check.ps1' | iex"
+    platform: process.platform,
+    shell: isMac ? 'terminal' : 'powershell',
+    shellLabel: isMac ? 'Terminal' : 'PowerShell',
+    canOpenUpdater: process.platform === 'win32' || isMac,
+    updateCommand: isMac
+      ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" /bin/sh -c \"$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh')\""
+      : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex",
+    checkCommand: isMac
+      ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" \"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/check.sh\""
+      : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/check.ps1' | iex"
   };
 }
 
@@ -839,6 +847,7 @@ function buildUpdateOpenPage(data = {}) {
   const pageData = {
     protocolUrl: data.protocolUrl || 'onframe-updater://update',
     canOpenUpdater: data.canOpenUpdater !== false,
+    shellLabel: data.shellLabel || 'PowerShell',
     updateCommand: data.updateCommand || '',
     checkCommand: data.checkCommand || '',
     messages: {
@@ -851,6 +860,7 @@ function buildUpdateOpenPage(data = {}) {
   const serialized = JSON.stringify(pageData).replace(/</g, '\\u003c');
   const updateCommand = escapeHtml(pageData.updateCommand || 'Comando indisponivel.');
   const checkCommand = escapeHtml(pageData.checkCommand || 'Comando indisponivel.');
+  const shellLabel = escapeHtml(pageData.shellLabel);
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -969,7 +979,7 @@ function buildUpdateOpenPage(data = {}) {
       <section class="panel">
         <div class="panel-head">
           <strong>Fallback manual</strong>
-          <span>Copie o comando e execute no PowerShell quando o protocolo local ainda nao estiver registrado.</span>
+          <span>Copie o comando e execute no ${shellLabel} quando o protocolo local ainda nao estiver registrado.</span>
         </div>
         <div class="commands">
           <div class="command">

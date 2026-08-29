@@ -89,6 +89,6 @@ bloqueia o campo, a promocao ou a variacao.
 Quando existe uma nova versao, o popup do OnFrame pode abrir uma pagina local de
 atualizacao. Essa pagina tenta iniciar o atualizador automaticamente. Se o
 navegador nao permitir, a mesma pagina mostra o comando manual para copiar e
-executar no PowerShell.
+executar no PowerShell, no Windows, ou no Terminal, no macOS.
 
 ![Print - Pagina local de atualizacao do OnFrame](assets/atualizacao-pagina-local.png)

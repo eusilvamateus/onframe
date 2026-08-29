@@ -1,66 +1,7 @@
 (function () {
-  const UPDATE_SCRIPT_URL = 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1';
-  const rootCommand = "$root=Join-Path $env:LOCALAPPDATA 'OnFrame'";
-  const checkCommand = `${rootCommand}; & (Join-Path $root 'scripts/bootstrap/check.ps1') -Root $root`;
-
-  const ACTIONS = {
-    update: {
-      eyebrow: 'Atualizacao local',
-      title: 'Atualizar OnFrame',
-      copy: 'Esta pagina pede ao navegador para abrir o atualizador local registrado neste computador.',
-      protocolUrl: 'onframe-updater://update',
-      openLabel: 'Abrir atualizador novamente',
-      trying: 'Tentando abrir o atualizador do OnFrame...',
-      fallback: 'Se nenhuma janela abriu, use o comando manual abaixo.',
-      primaryCommandLabel: 'Atualizar',
-      primaryCommand: `$env:ONFRAME_HOME=(Join-Path $env:LOCALAPPDATA 'OnFrame'); iwr -useb '${UPDATE_SCRIPT_URL}' | iex`
-    },
-    start: {
-      eyebrow: 'Servico local',
-      title: 'Iniciar OnFrame',
-      copy: 'Esta pagina pede ao navegador para iniciar o servico local do OnFrame neste computador.',
-      protocolUrl: 'onframe-updater://start',
-      openLabel: 'Iniciar novamente',
-      trying: 'Tentando iniciar o servico local...',
-      fallback: 'Se nenhuma janela abriu, use o comando manual abaixo.',
-      primaryCommandLabel: 'Iniciar servico',
-      primaryCommand: `${rootCommand}; & (Join-Path $root 'scripts/bootstrap/start.ps1') -Root $root`
-    },
-    stop: {
-      eyebrow: 'Servico local',
-      title: 'Parar OnFrame',
-      copy: 'Esta pagina pede ao navegador para encerrar o servico local do OnFrame neste computador.',
-      protocolUrl: 'onframe-updater://stop',
-      openLabel: 'Parar novamente',
-      trying: 'Tentando encerrar o servico local...',
-      fallback: 'Se nenhuma janela abriu, use o comando manual abaixo.',
-      primaryCommandLabel: 'Parar servico',
-      primaryCommand: `${rootCommand}; & (Join-Path $root 'scripts/bootstrap/stop.ps1') -Root $root`
-    },
-    restart: {
-      eyebrow: 'Servico local',
-      title: 'Reiniciar OnFrame',
-      copy: 'Esta pagina pede ao navegador para reiniciar o servico local do OnFrame neste computador.',
-      protocolUrl: 'onframe-updater://restart',
-      openLabel: 'Reiniciar novamente',
-      trying: 'Tentando reiniciar o servico local...',
-      fallback: 'Se nenhuma janela abriu, use o comando manual abaixo.',
-      primaryCommandLabel: 'Reiniciar servico',
-      primaryCommand: `${rootCommand}; & (Join-Path $root 'scripts/bootstrap/stop.ps1') -Root $root; & (Join-Path $root 'scripts/bootstrap/start.ps1') -Root $root`
-    },
-    check: {
-      eyebrow: 'Diagnostico local',
-      title: 'Verificar OnFrame',
-      copy: 'Esta pagina pede ao navegador para abrir a verificacao local do OnFrame neste computador.',
-      protocolUrl: 'onframe-updater://check',
-      openLabel: 'Verificar novamente',
-      trying: 'Tentando abrir a verificacao local...',
-      fallback: 'Se nenhuma janela abriu, use o comando manual abaixo.',
-      primaryCommandLabel: 'Verificar instalacao',
-      primaryCommand: checkCommand,
-      hideCheckCommand: true
-    }
-  };
+  const RAW_ROOT = 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap';
+  const WINDOWS_ROOT_COMMAND = "$root=Join-Path $env:LOCALAPPDATA 'OnFrame'";
+  const MAC_ROOT = '"$HOME/Library/Application Support/OnFrame"';
 
   const elements = {
     eyebrow: document.getElementById('launcher-eyebrow'),
@@ -72,17 +13,78 @@
     commands: document.getElementById('launcher-commands')
   };
 
-  const action = getAction();
+  let action;
+  let checkCommand = '';
   let leftPage = false;
 
-  render();
-  bindEvents();
-  window.setTimeout(openProtocol, 320);
+  void initialize();
 
-  function getAction() {
+  async function initialize() {
+    const platform = await detectPlatform();
+    const actions = buildActions(platform);
+    checkCommand = actions.check.primaryCommand;
+    action = getAction(actions);
+    render();
+    bindEvents();
+    window.setTimeout(openProtocol, 320);
+  }
+
+  function detectPlatform() {
+    return new Promise((resolve) => {
+      if (!window.chrome || !chrome.runtime || typeof chrome.runtime.getPlatformInfo !== 'function') {
+        resolve('windows');
+        return;
+      }
+      chrome.runtime.getPlatformInfo((info) => {
+        resolve(info && info.os === 'mac' ? 'mac' : 'windows');
+      });
+    });
+  }
+
+  function buildActions(platform) {
+    const isMac = platform === 'mac';
+    const shellLabel = isMac ? 'Terminal' : 'PowerShell';
+    const updateCommand = isMac
+      ? `ONFRAME_HOME=${MAC_ROOT} /bin/sh -c "$(/usr/bin/curl -fsSL '${RAW_ROOT}/update.sh')"`
+      : `$env:ONFRAME_HOME=(Join-Path $env:LOCALAPPDATA 'OnFrame'); iwr -useb '${RAW_ROOT}/update.ps1' | iex`;
+    const localCommand = (name) => isMac
+      ? `${MAC_ROOT}/scripts/bootstrap/${name}.sh`
+      : `${WINDOWS_ROOT_COMMAND}; & (Join-Path $root 'scripts/bootstrap/${name}.ps1') -Root $root`;
+    const restartCommand = isMac
+      ? localCommand('restart')
+      : `${WINDOWS_ROOT_COMMAND}; & (Join-Path $root 'scripts/bootstrap/stop.ps1') -Root $root; & (Join-Path $root 'scripts/bootstrap/start.ps1') -Root $root`;
+    const fallback = `Se nenhuma janela abriu, use o comando manual abaixo no ${shellLabel}.`;
+
+    return {
+      update: createAction('Atualizacao local', 'Atualizar OnFrame', 'Esta pagina pede ao navegador para abrir o atualizador local registrado neste computador.', 'update', 'Abrir atualizador novamente', 'Tentando abrir o atualizador do OnFrame...', fallback, 'Atualizar', updateCommand),
+      start: createAction('Servico local', 'Iniciar OnFrame', 'Esta pagina pede ao navegador para iniciar o servico local do OnFrame neste computador.', 'start', 'Iniciar novamente', 'Tentando iniciar o servico local...', fallback, 'Iniciar servico', localCommand('start')),
+      stop: createAction('Servico local', 'Parar OnFrame', 'Esta pagina pede ao navegador para encerrar o servico local do OnFrame neste computador.', 'stop', 'Parar novamente', 'Tentando encerrar o servico local...', fallback, 'Parar servico', localCommand('stop')),
+      restart: createAction('Servico local', 'Reiniciar OnFrame', 'Esta pagina pede ao navegador para reiniciar o servico local do OnFrame neste computador.', 'restart', 'Reiniciar novamente', 'Tentando reiniciar o servico local...', fallback, 'Reiniciar servico', restartCommand),
+      check: Object.assign(
+        createAction('Diagnostico local', 'Verificar OnFrame', 'Esta pagina pede ao navegador para abrir a verificacao local do OnFrame neste computador.', 'check', 'Verificar novamente', 'Tentando abrir a verificacao local...', fallback, 'Verificar instalacao', localCommand('check')),
+        { hideCheckCommand: true }
+      )
+    };
+  }
+
+  function createAction(eyebrow, title, copy, protocolAction, openLabel, trying, fallback, primaryCommandLabel, primaryCommand) {
+    return {
+      eyebrow,
+      title,
+      copy,
+      protocolUrl: `onframe-updater://${protocolAction}`,
+      openLabel,
+      trying,
+      fallback,
+      primaryCommandLabel,
+      primaryCommand
+    };
+  }
+
+  function getAction(actions) {
     const params = new URLSearchParams(window.location.search);
     const value = String(params.get('action') || 'update').toLowerCase();
-    return ACTIONS[value] || ACTIONS.update;
+    return actions[value] || actions.update;
   }
 
   function render() {
@@ -96,19 +98,9 @@
   }
 
   function renderCommands() {
-    const cards = [
-      {
-        key: 'primary',
-        label: action.primaryCommandLabel,
-        command: action.primaryCommand
-      }
-    ];
+    const cards = [{ key: 'primary', label: action.primaryCommandLabel, command: action.primaryCommand }];
     if (!action.hideCheckCommand) {
-      cards.push({
-        key: 'check',
-        label: 'Verificar instalacao',
-        command: checkCommand
-      });
+      cards.push({ key: 'check', label: 'Verificar instalacao', command: checkCommand });
     }
 
     elements.commands.innerHTML = cards.map((card) => `
@@ -155,8 +147,7 @@
   }
 
   async function copyCommand(button) {
-    const key = button.dataset.copy === 'check' ? 'check' : 'primary';
-    const command = key === 'check' ? checkCommand : action.primaryCommand;
+    const command = button.dataset.copy === 'check' ? checkCommand : action.primaryCommand;
     const previous = button.textContent;
     try {
       await navigator.clipboard.writeText(command);

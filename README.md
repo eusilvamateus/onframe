@@ -26,13 +26,14 @@ Guias para usuario final ficam em [docs/README.md](docs/README.md).
 
 ## Requisitos
 
-- Windows.
-- Node.js 20 ou superior.
-- Chrome, Edge ou outro navegador Chromium.
+- Windows com Node.js 20 ou superior; ou
+- macOS 13 Ventura ou superior, com runtime Node.js privado instalado
+  automaticamente pelo OnFrame.
+- Chrome ou Edge.
 - Modo desenvolvedor ativado no navegador.
 - Conta Mercado Livre conectada no OnFrame.
 
-## Instalar
+## Instalar no Windows
 
 Abra o PowerShell e rode:
 
@@ -52,6 +53,24 @@ Normalmente:
 C:\Users\SEU_USUARIO\AppData\Local\OnFrame
 ```
 
+## Instalar no macOS
+
+Abra o Terminal e rode:
+
+```sh
+/bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.sh')"
+```
+
+A instalacao fica em:
+
+```text
+~/Library/Application Support/OnFrame
+```
+
+O instalador baixa um Node.js 24 LTS oficial somente para o OnFrame, valida o
+checksum do arquivo e registra o servico para iniciar junto com a sessao do
+usuario. Nao e necessario instalar Homebrew, usar `sudo` ou alterar particoes.
+
 ## Carregar no Chrome ou Edge
 
 1. Abra `chrome://extensions` ou `edge://extensions`.
@@ -60,7 +79,8 @@ C:\Users\SEU_USUARIO\AppData\Local\OnFrame
 4. Selecione a pasta:
 
 ```text
-%LOCALAPPDATA%\OnFrame\extension
+Windows: %LOCALAPPDATA%\OnFrame\extension
+macOS: ~/Library/Application Support/OnFrame/extension
 ```
 
 ## Conectar o Mercado Livre
@@ -99,11 +119,17 @@ Se a extensao informar que o servico local nao esta aberto, rode:
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/start.ps1' | iex
 ```
 
+No macOS:
+
+```sh
+"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/start.sh"
+```
+
 ## Atualizar
 
 Quando uma nova versao estiver disponivel, o popup da extensao pode abrir a
 pagina local de atualizacao. Ela tenta iniciar o atualizador registrado no
-Windows e tambem mostra o comando manual como fallback.
+computador e tambem mostra o comando manual adequado ao PowerShell ou Terminal.
 
 Para atualizar manualmente:
 
@@ -111,9 +137,15 @@ Para atualizar manualmente:
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex
 ```
 
+No macOS:
+
+```sh
+ONFRAME_HOME="$HOME/Library/Application Support/OnFrame" /bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh')"
+```
+
 O instalador e o atualizador registram o protocolo local
-`onframe-updater://update`. Ele aceita somente a acao fixa de update e roda o
-script oficial do OnFrame.
+`onframe-updater://`. Ele aceita somente as acoes fixas `update`, `start`,
+`stop`, `restart`, `check` e `open-log`.
 
 Depois da atualizacao, recarregue a extensao no navegador:
 
@@ -129,6 +161,12 @@ Para diagnosticar a instalacao:
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/check.ps1' | iex
 ```
 
+No macOS:
+
+```sh
+"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/check.sh"
+```
+
 Use esse comando quando:
 
 - a extensao nao carrega dados;
@@ -142,12 +180,31 @@ Use esse comando quando:
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/stop.ps1' | iex
 ```
 
+No macOS:
+
+```sh
+"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/stop.sh"
+```
+
 ## Desinstalar
 
 Para remover o OnFrame do computador:
 
 ```powershell
 iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.ps1' | iex
+```
+
+No macOS:
+
+```sh
+/bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.sh')"
+```
+
+A desinstalacao comum preserva configuracao e contas. Para remover tambem os
+dados locais no macOS:
+
+```sh
+ONFRAME_REMOVE_DATA=1 /bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.sh')"
 ```
 
 Depois remova a extensao manualmente em `chrome://extensions` ou
@@ -160,3 +217,4 @@ Depois remova a extensao manualmente em `chrome://extensions` ou
 - Alteracoes salvas podem levar alguns minutos para aparecer visualmente no
   Mercado Livre.
 - Produtos de catalogo podem ter limitacoes impostas pelo proprio Mercado Livre.
+- Safari nao faz parte desta distribuicao.

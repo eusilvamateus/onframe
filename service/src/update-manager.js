@@ -10,14 +10,16 @@ const CACHE_MS = 60 * 1000;
 function createUpdateManager(options = {}) {
   const env = options.env || process.env;
   const root = options.root || path.resolve(__dirname, '..', '..');
+  const platform = options.platform || process.platform;
   const fetchImpl = options.fetchImpl || fetch;
   const nowImpl = options.nowImpl || (() => Date.now());
   const currentVersion = options.currentVersion || packageJson.version;
   const repo = env.ONFRAME_UPDATE_REPO || DEFAULT_REPO;
   const branch = env.ONFRAME_UPDATE_BRANCH || DEFAULT_BRANCH;
   const channel = normalizeChannel(env.ONFRAME_UPDATE_CHANNEL);
-  const updateScriptUrl = env.ONFRAME_UPDATE_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, 'update.ps1');
-  const checkScriptUrl = env.ONFRAME_CHECK_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, 'check.ps1');
+  const scriptExtension = platform === 'darwin' ? 'sh' : 'ps1';
+  const updateScriptUrl = env.ONFRAME_UPDATE_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, `update.${scriptExtension}`);
+  const checkScriptUrl = env.ONFRAME_CHECK_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, `check.${scriptExtension}`);
   let cache = null;
 
   return {
@@ -30,9 +32,14 @@ function createUpdateManager(options = {}) {
     return {
       protocolUrl: UPDATE_PROTOCOL_URL,
       updatePageUrl,
-      canOpenUpdater: process.platform === 'win32',
-      updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl }),
-      checkCommand: buildBootstrapCommand({ root, scriptUrl: checkScriptUrl })
+      platform,
+      shell: platform === 'darwin' ? 'terminal' : 'powershell',
+      shellLabel: platform === 'darwin' ? 'Terminal' : 'PowerShell',
+      canOpenUpdater: platform === 'win32' || platform === 'darwin',
+      updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl, platform }),
+      checkCommand: platform === 'darwin'
+        ? buildLocalScriptCommand({ root, scriptName: 'check.sh' })
+        : buildBootstrapCommand({ root, scriptUrl: checkScriptUrl, platform })
     };
   }
 
@@ -56,6 +63,9 @@ function createUpdateManager(options = {}) {
       protocolUrl: openPage.protocolUrl,
       updatePageUrl: openPage.updatePageUrl,
       canOpenUpdater: openPage.canOpenUpdater,
+      platform: openPage.platform,
+      shell: openPage.shell,
+      shellLabel: openPage.shellLabel,
       updateCommand: openPage.updateCommand,
       checkCommand: openPage.checkCommand,
       message: '',
@@ -140,12 +150,20 @@ function buildDefaultScriptUrl(repo, branch, scriptName = 'update.ps1') {
   return `https://raw.githubusercontent.com/${repo}/${branch}/scripts/bootstrap/${scriptName}`;
 }
 
-function buildBootstrapCommand({ root, scriptUrl }) {
+function buildBootstrapCommand({ root, scriptUrl, platform = process.platform }) {
+  if (platform === 'darwin') {
+    return `ONFRAME_HOME='${escapePosixSingleQuoted(root)}' /bin/sh -c "$(/usr/bin/curl -fsSL '${escapePosixSingleQuoted(scriptUrl)}')"`;
+  }
   return `$env:ONFRAME_HOME='${escapePowerShellSingleQuoted(root)}'; iwr -useb '${escapePowerShellSingleQuoted(scriptUrl)}' | iex`;
 }
 
-function buildUpdateCommand({ root, scriptUrl }) {
-  return buildBootstrapCommand({ root, scriptUrl });
+function buildUpdateCommand({ root, scriptUrl, platform = process.platform }) {
+  return buildBootstrapCommand({ root, scriptUrl, platform });
+}
+
+function buildLocalScriptCommand({ root, scriptName }) {
+  const scriptPath = path.join(root, 'scripts', 'bootstrap', scriptName).replace(/\\/g, '/');
+  return `ONFRAME_HOME='${escapePosixSingleQuoted(root)}' '${escapePosixSingleQuoted(scriptPath)}'`;
 }
 
 function normalizeChannel(value) {
@@ -206,6 +224,10 @@ function comparePrerelease(left, right) {
 
 function escapePowerShellSingleQuoted(value) {
   return String(value || '').replace(/'/g, "''");
+}
+
+function escapePosixSingleQuoted(value) {
+  return String(value || '').replace(/'/g, `'"'"'`);
 }
 
 module.exports = {

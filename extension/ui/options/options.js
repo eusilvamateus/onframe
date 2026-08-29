@@ -134,7 +134,7 @@
     setBadge(elements.updateBadge, 'Disponível', 'blue');
     elements.updateText.textContent = status.updatePageUrl
       ? `${status.message || `Versão ${status.latestVersion} disponível.`} Abra o atualizador ou copie o comando.`
-      : `${status.message || `Versão ${status.latestVersion} disponível.`} Copie e cole no PowerShell.`;
+      : `${status.message || `Versão ${status.latestVersion} disponível.`} Copie e cole no ${status.shellLabel || 'PowerShell'}.`;
     elements.updateOpen.disabled = !status.updatePageUrl;
     elements.updateStart.disabled = !status.updateCommand;
   }
@@ -318,7 +318,7 @@
       await copyText(state.updateStatus.updateCommand);
       elements.updateBlock.classList.remove('is-hidden');
       setBadge(elements.updateBadge, 'Copiado', 'ok');
-      elements.updateText.textContent = 'Comando copiado. Cole no PowerShell.';
+      elements.updateText.textContent = `Comando copiado. Cole no ${state.updateStatus.shellLabel || 'PowerShell'}.`;
       elements.updateStart.disabled = true;
     } catch (err) {
       elements.updateBlock.classList.remove('is-hidden');

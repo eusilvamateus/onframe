@@ -32,13 +32,7 @@ for (const entry of entries) {
   copyRecursive(source, path.join(packageDir, entry));
 }
 
-const compress = spawnSync('powershell', [
-  '-NoProfile',
-  '-ExecutionPolicy',
-  'Bypass',
-  '-Command',
-  `Compress-Archive -LiteralPath '${escapePowerShell(packageDir)}' -DestinationPath '${escapePowerShell(zipPath)}' -Force`
-], { cwd: root, stdio: 'inherit' });
+const compress = createZipArchive();
 
 if (compress.status !== 0) {
   process.exit(compress.status || 1);
@@ -60,6 +54,21 @@ function copyRecursive(source, destination) {
   fs.copyFileSync(source, destination);
 }
 
-function escapePowerShell(value) {
-  return String(value).replace(/'/g, "''");
+function createZipArchive() {
+  if (process.platform === 'darwin') {
+    return spawnSync('ditto', ['-c', '-k', '--keepParent', packageDir, zipPath], {
+      cwd: root,
+      stdio: 'inherit'
+    });
+  }
+  if (process.platform === 'win32') {
+    return spawnSync('tar', ['-a', '-c', '-f', zipPath, '-C', distDir, path.basename(packageDir)], {
+      cwd: root,
+      stdio: 'inherit'
+    });
+  }
+  return spawnSync('zip', ['-r', '-q', zipPath, path.basename(packageDir)], {
+    cwd: distDir,
+    stdio: 'inherit'
+  });
 }

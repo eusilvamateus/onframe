@@ -1130,7 +1130,7 @@ test('service retorna erros sanitizados com requestId e sem technicalError', asy
 
 test('update manager compara versoes semver e extrai tags', () => {
   assert.match(
-    updateManager.buildBootstrapCommand({ root: 'C:\\OnFrame', scriptUrl: 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' }),
+    updateManager.buildBootstrapCommand({ root: 'C:\\OnFrame', scriptUrl: 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1', platform: 'win32' }),
     /^\$env:ONFRAME_HOME='C:\\OnFrame'; iwr -useb 'https:\/\/raw\.githubusercontent\.com\/eusilvamateus\/onframe\/main\/scripts\/bootstrap\/update\.ps1' \| iex$/
   );
   assert.strictEqual(updateManager.tagToVersion('v0.3.2'), '0.3.2');
@@ -1177,6 +1177,7 @@ test('update manager retorna comando quando existe versao nova', async () => {
     root,
     currentVersion: '0.3.1',
     env: {},
+    platform: 'win32',
     fetchImpl
   });
 
@@ -1191,6 +1192,34 @@ test('update manager retorna comando quando existe versao nova', async () => {
   assert.match(status.updateCommand, /scripts\/bootstrap\/update\.ps1/);
   assert.match(status.checkCommand, /ONFRAME_HOME='C:\\Users\\Mateus\\onframe'/);
   assert.match(status.checkCommand, /scripts\/bootstrap\/check\.ps1/);
+});
+
+test('update manager produz comandos nativos para macOS', async () => {
+  const root = "/Users/Mateus O'Brien/Library/Application Support/OnFrame";
+  const fetchImpl = async () => ({
+    ok: true,
+    text: async () => JSON.stringify([release('v0.3.2', false)])
+  });
+  const manager = updateManager.createUpdateManager({
+    root,
+    currentVersion: '0.3.1',
+    env: {},
+    platform: 'darwin',
+    fetchImpl
+  });
+
+  const status = await manager.getStatus({ force: true });
+  assert.strictEqual(status.platform, 'darwin');
+  assert.strictEqual(status.shell, 'terminal');
+  assert.strictEqual(status.shellLabel, 'Terminal');
+  assert.strictEqual(status.canOpenUpdater, true);
+  assert.match(status.updateScriptUrl, /scripts\/bootstrap\/update\.sh$/);
+  assert.match(status.updateCommand, /^ONFRAME_HOME=/);
+  assert.match(status.updateCommand, /\/bin\/sh -c/);
+  assert.match(status.updateCommand, /update\.sh/);
+  assert.match(status.updateCommand, /O'"'"'Brien/);
+  assert.match(status.checkCommand, /scripts\/bootstrap\/check\.sh/);
+  assert.doesNotMatch(status.checkCommand, /PowerShell|\.ps1/);
 });
 
 test('update manager permite forcar consulta para release recem publicada', async () => {
@@ -1230,6 +1259,9 @@ test('release package nao inclui env nem estado gerenciado', () => {
   assert.strictEqual(source.includes("'.env'"), false);
   assert.strictEqual(source.includes('install.json'), false);
   assert.strictEqual(source.includes('.bat'), false);
+  assert.strictEqual(source.includes("spawnSync('tar'"), true);
+  assert.strictEqual(source.includes("spawnSync('ditto'"), true);
+  assert.strictEqual(source.includes('Compress-Archive'), false);
 });
 
 test('release notes usam capa publica e apenas a secao da versao', () => {
@@ -1279,6 +1311,9 @@ test('bootstrap substitui atalhos bat legados', () => {
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
   const uninstallScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.ps1'), 'utf8');
   const protocolScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'onframe-updater.ps1'), 'utf8');
+  const macCommon = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'common.sh'), 'utf8');
+  const macInstall = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'install.sh'), 'utf8');
+  const macUninstall = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.sh'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const visualBootstrapScripts = [installScript, updateScript, uninstallScript];
   const serviceStopScripts = [stopScript, updateScript];
@@ -1344,6 +1379,18 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(protocolScript.includes('raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1'), true);
   assert.strictEqual(packageJson.scripts.check.includes('scripts/bootstrap/check.ps1'), true);
   assert.strictEqual(JSON.stringify(packageJson.scripts).includes('doctor'), false);
+  for (const scriptName of ['install', 'update', 'start', 'stop', 'restart', 'check', 'uninstall', 'launcher-action', 'register-updater-protocol', 'unregister-updater-protocol']) {
+    assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', `${scriptName}.sh`)), true, scriptName);
+  }
+  assert.strictEqual(macCommon.includes('com.onblide.onframe.service'), true);
+  assert.strictEqual(macCommon.includes('latest-v$ONFRAME_NODE_MAJOR.x/SHASUMS256.txt'), true);
+  assert.strictEqual(macCommon.includes('/usr/bin/shasum -a 256'), true);
+  assert.strictEqual(macCommon.includes('/bin/launchctl bootstrap'), true);
+  assert.strictEqual(macCommon.includes('CFBundleURLTypes'), true);
+  assert.strictEqual(macCommon.includes('onframe-updater'), true);
+  assert.strictEqual(macInstall.includes('/usr/bin/ditto -x -k'), true);
+  assert.strictEqual(macInstall.includes('onframe_ensure_runtime'), true);
+  assert.strictEqual(macUninstall.includes('ONFRAME_REMOVE_DATA'), true);
 });
 
 function release(tag, prerelease) {
