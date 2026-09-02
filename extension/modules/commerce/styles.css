@@ -1497,6 +1497,11 @@
   font: 600 11px/1.25 var(--ob-font);
 }
 
+.onframe-commerce-promotion-estimate-table .onframe-commerce-promotion-estimate-header {
+  padding: 7px 10px;
+  font-size: 10px;
+}
+
 .onframe-commerce-promotion-estimate-table tbody tr:last-child .ob-table-cell {
   border-bottom: 0;
 }
@@ -1513,6 +1518,10 @@
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
+}
+
+.onframe-commerce-promotion-estimate-header-value {
+  text-align: right;
 }
 
 .onframe-commerce-promotion-estimate-row.review-result .ob-table-cell {

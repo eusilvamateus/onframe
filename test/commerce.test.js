@@ -333,6 +333,7 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(styles, /\.onframe-commerce-review/);
   assert.match(styles, /\.onframe-commerce-promotion-list-row-detail/);
   assert.match(source, /class="ob-table onframe-commerce-promotion-estimate-table"/);
+  assert.match(source, /onframe-commerce-promotion-estimate-header/);
   assert.match(source, /function renderPromotionEstimateTableRow/);
   assert.match(styles, /\.onframe-commerce-promotion-estimate-table-wrap/);
   assert.match(styles, /\.onframe-commerce-promotion-estimate-row\.review-result/);

@@ -1277,6 +1277,12 @@
           </div>
           <div class="ob-table-wrap onframe-commerce-promotion-estimate-table-wrap">
             <table class="ob-table onframe-commerce-promotion-estimate-table" aria-label="Resumo financeiro da promoção">
+              <thead>
+                <tr class="ob-table-row">
+                  <th class="ob-table-header onframe-commerce-promotion-estimate-header" scope="col">Detalhe</th>
+                  <th class="ob-table-header onframe-commerce-promotion-estimate-header onframe-commerce-promotion-estimate-header-value" scope="col">Valor</th>
+                </tr>
+              </thead>
               <tbody>
                 ${metrics.map(renderPromotionEstimateTableRow).join('')}
               </tbody>
@@ -1320,7 +1326,7 @@
       if (!metric || !metric.label || !metric.value) return '';
       return `
         <tr class="ob-table-row onframe-commerce-promotion-estimate-row ${escapeAttribute(metric.tone || 'muted')}">
-          <th class="ob-table-cell onframe-commerce-promotion-estimate-label" scope="row">${escapeHtml(metric.label)}</th>
+          <td class="ob-table-cell onframe-commerce-promotion-estimate-label">${escapeHtml(metric.label)}</td>
           <td class="ob-table-cell onframe-commerce-promotion-estimate-value">${escapeHtml(metric.value)}</td>
         </tr>
       `;
