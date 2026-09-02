@@ -1650,7 +1650,7 @@
       if (isPromotionActionPending(key, action)) return spinner();
       const iconName = confirm && confirm.action === action
         ? 'checkCircle'
-        : formOpen
+        : formOpen && state.promotionFormAction === action
           ? 'checkCircle'
           : action === 'create'
             ? 'tag'

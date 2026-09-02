@@ -430,6 +430,7 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /class="ob-tooltip"/);
   assert.match(source, /role="tooltip"/);
   assert.match(source, /aria-describedby=/);
+  assert.match(source, /formOpen && state\.promotionFormAction === action/);
   assert.match(source, /: 'trash';/);
   assert.doesNotMatch(source, /andes-table/);
   assert.match(componentStyles, /\.ob-table-wrap\s*{[^}]*overflow-x: auto/s);
