@@ -809,7 +809,8 @@
         return payment ? `Benefício no ${payment}` : 'Benefício por pagamento';
       }
       if (type === 'direct') return 'Desconto direto';
-      return entry && entry.typeLabel ? entry.typeLabel : 'Campanha';
+      if (type === 'campaign') return 'Campanha do vendedor';
+      return 'Promoção';
     }
 
     function renderPromotionListCondition(entry, type) {

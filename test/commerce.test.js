@@ -344,10 +344,13 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
 test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const modalSource = source.slice(source.indexOf('function buildPromotionModal'), source.indexOf('function renderPromotionManager'));
+  const typeLabelSource = source.slice(source.indexOf('function promotionTypeLabel'), source.indexOf('function renderPromotionListCondition'));
 
   assert.match(source, /function promotionListType/);
   assert.match(source, /Cupom do vendedor/);
   assert.match(source, /Benefício por pagamento/);
+  assert.match(typeLabelSource, /if \(type === 'campaign'\) return 'Campanha do vendedor';/);
+  assert.doesNotMatch(typeLabelSource, /entry && entry\.typeLabel/);
   assert.match(source, /function promotionAudienceRule/);
   assert.match(source, /function renderPromotionListCondition/);
   assert.doesNotMatch(modalSource, /onframe-commerce-modal-summary/);
