@@ -201,6 +201,7 @@ test('design system nao e redefinido pelos modulos', () => {
   assert.match(components, /\.ob-field-shell:focus-within/);
   assert.match(components, /\.ob-select-caret/);
   assert.match(components, /\.ob-checkbox-description/);
+  assert.match(components, /\.ob-checkbox-box::after/);
   assert.match(components, /\.ob-icon-12/);
   assert.match(components, /\.ob-spinner/);
   assert.doesNotMatch(moduleStyles, /--ob-[a-z-]+:\s/);
@@ -223,9 +224,9 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   assert.strictEqual(commerceSource.includes('type="checkbox"'), false);
   assert.doesNotMatch(commerceStyles, /\.onframe-commerce-bulk-switch\s*{[^}]*min-height:\s*24px/s);
   assert.strictEqual(commerceSource.includes('Validando variações elegíveis...'), true);
-  assert.strictEqual(commerceSource.includes('Aplicando promoção nas variações elegíveis...'), true);
-  assert.strictEqual(commerceSource.includes('Removendo promoção das variações elegíveis...'), true);
-  assert.strictEqual(commerceSource.includes('state.operationPending = \'promotion-bulk-preview\''), true);
+  assert.strictEqual(commerceSource.includes('Aplicando promoção nas variações da família...'), true);
+  assert.strictEqual(commerceSource.includes('Removendo promoção das variações da família...'), true);
+  assert.strictEqual(commerceSource.includes('state.operationPending = \'promotion-bulk-preview\''), false);
   assert.strictEqual(commerceSource.includes('state.operationPending = \'promotion-bulk-commit\''), true);
   assert.strictEqual(descriptionSource.includes('class="ob-checkbox onframe-description-bulk-switch'), true);
   assert.strictEqual(descriptionSource.includes('role="checkbox"'), true);
@@ -237,6 +238,8 @@ test('acoes em massa usam componentes do design system e feedback de envio', () 
   assert.strictEqual(characteristicsSource.includes('type="checkbox"'), false);
   assert.strictEqual(characteristicsSource.includes('/characteristics/bulk'), true);
   assert.strictEqual(characteristicsSource.includes('canBulkEditCharacteristics'), true);
+  assert.strictEqual(descriptionSource.includes('ob-checkbox-box">${state.bulkEnabled ? icon'), false);
+  assert.strictEqual(characteristicsSource.includes('ob-checkbox-box" aria-hidden="true">${state.bulkEnabled ? icon'), false);
   assert.strictEqual(descriptionModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Descrição salva em 2 variações. (1 não alterada)');
   assert.strictEqual(characteristicsModel.bulkResultMessage({ counts: { applied: 2, failed: 1 } }), 'Características salvas em 2 variações. (1 não alterada)');
   assert.strictEqual(descriptionModel.canBulkEditDescription({

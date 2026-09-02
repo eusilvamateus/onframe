@@ -259,7 +259,6 @@ test('popover de preco mostra valor promocional e custos sem referencia externa'
   assert.doesNotMatch(source, /Vs\. referência/);
   assert.doesNotMatch(styles, /onframe-commerce-price-reference/);
   assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
-  assert.doesNotMatch(styles, /grid-column:\s*1 \/ -1/);
   assert.match(styles, /\.onframe-commerce-promo-metrics > span/);
   assert.match(styles, /\.onframe-commerce-metric b/);
   assert.match(styles, /grid-template-columns: repeat\(auto-fit, minmax\(128px, 1fr\)\)/);
@@ -276,7 +275,7 @@ test('modal de promocoes preserva posicao ao revisar oferta', () => {
   assert.match(source, /data-entry-key/);
 });
 
-test('modal de promocoes mostra previa de custos antes de aplicar oferta', () => {
+test('modal de promocoes mostra revisao de custos na lista continua antes de aplicar oferta', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
@@ -287,11 +286,12 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /function renderPromotionReview/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
   assert.match(source, /function promotionBenefitAmount/);
-  assert.match(source, /const suppressCostFacts = confirm && confirm\.action !== 'delete'/);
-  assert.match(source, /renderPromotionFacts\(entry, kind, key, userFields, \{ suppressCostFacts \}\)/);
   assert.match(source, /function renderPromotionConfirmWarnings\(rangeWarning\)/);
-  assert.match(source, /onframe-commerce-card-list/);
-  assert.match(source, /onframe-commerce-promo-row/);
+  assert.match(source, /function renderPromotionListControls/);
+  assert.match(source, /function renderPromotionListRow/);
+  assert.match(source, /onframe-commerce-promotion-table/);
+  assert.match(source, /Buscar promoção ou cupom/);
+  assert.match(source, /Filtros/);
   assert.doesNotMatch(source, /function renderPromotionConfirmFacts/);
   assert.doesNotMatch(source, /const discount = discountPercent\(entry\.original_price, targetPrice\)/);
   assert.doesNotMatch(source, /if \(targetPrice\) facts\.push\(\{ label: 'Preço final'/);
@@ -312,21 +312,21 @@ test('modal de promocoes mostra previa de custos antes de aplicar oferta', () =>
   assert.match(source, /Você recebe/);
   assert.match(styles, /\.onframe-commerce-estimate/);
   assert.match(styles, /\.onframe-commerce-review/);
-  assert.match(styles, /\.onframe-commerce-card-list/);
-  assert.match(styles, /\.onframe-commerce-promo-row/);
-  assert.match(styles, /\.onframe-commerce-estimate-grid > span\s*{[^}]*flex:\s*1 1 150px/s);
-  assert.match(styles, /\.onframe-commerce-review-grid > span\s*{[^}]*flex:\s*1 1 132px/s);
-  assert.match(styles, /\.onframe-commerce-period-legend/);
+  assert.match(styles, /\.onframe-commerce-promotion-list-row-detail/);
+  assert.match(styles, /\.onframe-commerce-promotion-list-row-detail \.onframe-commerce-estimate-grid/);
+  assert.match(styles, /\.onframe-commerce-metric\.review-result/);
 });
 
-test('modal de promocoes separa descontos acumulativos do preco principal', () => {
+test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const modalSource = source.slice(source.indexOf('function buildPromotionModal'), source.indexOf('function renderPromotionManager'));
 
-  assert.match(source, /Descontos acumulativos/);
-  assert.match(source, /Promoção no preço/);
-  assert.match(source, /function stackablePromotionEntries/);
-  assert.match(source, /function isStackablePromotion/);
-  assert.match(source, /Acumula no/);
+  assert.match(source, /function promotionListType/);
+  assert.match(source, /Cupom do vendedor/);
+  assert.match(source, /Benefício por pagamento/);
+  assert.match(source, /function promotionAudienceRule/);
+  assert.match(source, /function renderPromotionListCondition/);
+  assert.doesNotMatch(modalSource, /onframe-commerce-modal-summary/);
 });
 
 test('campo de preco promocional valida faixa localmente', () => {
@@ -372,31 +372,21 @@ test('promocoes preferem oportunidade do item com faixa de preco', () => {
   assert.match(source, /function isPriceDiscountPromotion/);
 });
 
-test('promocoes mostram preco principal, acumulativas, programadas e desconto direto separados', () => {
+test('promocoes formam uma lista ordenada com estado, tipo e resultado claros', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
-  assert.match(source, /Promoção no preço/);
-  assert.match(source, /Descontos acumulativos/);
-  assert.match(source, /Programadas/);
-  assert.match(source, /Desconto do anúncio/);
-  assert.match(source, /Desconto direto/);
-  assert.match(source, /function programmedPromotionEntries/);
-  assert.match(source, /programmed-offer/);
-  assert.match(source, /Ativa/);
-  assert.match(source, /Programada/);
-  assert.match(source, /function currentPromotionEntry/);
-  assert.match(source, /campaignPromotionEntries\(groups\.activeOffers\)/);
-  assert.match(source, /\(kind === 'active-offer' \|\| kind === 'programmed-offer'\) && CommerceModel\.canUpdateOffer/);
-  assert.match(source, /kind === 'active-offer' \|\| kind === 'programmed-offer' \|\| kind === 'stackable-offer'/);
-  assert.match(source, /DE \$\{start\} A \$\{end\}/);
-  assert.match(source, /function formatCentralDate/);
-  assert.doesNotMatch(source, /function formatShortDate/);
-  assert.doesNotMatch(source, /renderMetaChip\('Tipo'/);
-  assert.match(styles, /\.onframe-commerce-promo-row\s*{\s*display: grid;/);
-  assert.match(styles, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
-  assert.doesNotMatch(source, /paused-offer/);
-  assert.doesNotMatch(source, /readonly-offer/);
+  assert.match(source, /function buildPromotionRows/);
+  assert.match(source, /function comparePromotionRows/);
+  assert.match(source, /function promotionListStatusLabel/);
+  assert.match(source, /function renderPromotionListResult/);
+  assert.match(source, /function formatPromotionPeriodShort/);
+  assert.match(source, /ML contribui/);
+  assert.match(styles, /\.onframe-commerce-promotion-table-head/);
+  assert.match(styles, /grid-template-columns: minmax\(210px, 2\.05fr\)/);
+  assert.match(styles, /\.onframe-commerce-promotion-type-icon\.coupon/);
+  assert.match(styles, /\.onframe-commerce-promotion-type-icon\.payment/);
+  assert.match(styles, /@media \(max-width: 760px\)/);
 });
 
 test('remocao de promocao nao exige campos de criacao ou edicao', () => {
@@ -607,6 +597,7 @@ test('pricing update bloqueia anuncio encerrado antes de alterar o item', async 
 
 test('bulk de preco resolve familia user_product e aplica somente elegiveis', async () => {
   const updated = [];
+  const promotionOffers = [];
   const items = {
     MLB1000000001: {
       id: 'MLB1000000001',
@@ -670,6 +661,11 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
     updateItem: async (itemId, payload) => {
       updated.push({ itemId, payload });
       return Object.assign({}, items[itemId], payload);
+    },
+    createPromotionOffer: async (itemId, payload) => {
+      if (itemId === 'MLB1000000003') throw new Error('promotion_rejected');
+      promotionOffers.push({ itemId, payload });
+      return { ok: true };
     }
   };
 
@@ -694,6 +690,28 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
   assert.strictEqual(commit.counts.applied, 2);
   assert.strictEqual(commit.counts.skipped, 1);
   assert.deepStrictEqual(updated.map((entry) => entry.itemId).sort(), ['MLB1000000001', 'MLB1000000002']);
+
+  await assert.rejects(
+    () => commitBulkAction(client, 'MLB1000000001', {
+      scope: 'user_product_family',
+      action: 'pricing.standard.update',
+      payload: { amount: 130 }
+    }),
+    /bulk_missing_targets/
+  );
+
+  const directCommit = await commitBulkAction(client, 'MLB1000000001', {
+    scope: 'user_product_family',
+    action: 'promotion.offer.create',
+    payload: { promotionType: 'DEAL', promotionId: 'PROMO1', dealPrice: 80 }
+  });
+
+  assert.strictEqual(directCommit.counts.total, 3);
+  assert.strictEqual(directCommit.counts.applied, 2);
+  assert.strictEqual(directCommit.counts.failed, 1);
+  assert.strictEqual(directCommit.counts.skipped, 0);
+  assert.strictEqual(directCommit.targets.find((target) => target.itemId === 'MLB1000000003').status, 'failed');
+  assert.deepStrictEqual(promotionOffers.map((entry) => entry.itemId).sort(), ['MLB1000000001', 'MLB1000000002']);
 });
 
 test('promotion adapter exige estoque em oferta relampago e monta payload', async () => {

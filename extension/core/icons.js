@@ -8,6 +8,11 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
   const ICONS = Object.freeze({
     refresh: 'arrows-clockwise',
+    reload: 'arrow-clockwise',
+    search: 'magnifying-glass',
+    sliders: 'sliders-horizontal',
+    ticket: 'ticket',
+    creditCard: 'credit-card',
     gear: 'gear',
     link: 'link',
     eye: 'eye',

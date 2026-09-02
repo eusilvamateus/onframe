@@ -23,8 +23,10 @@ async function buildBulkPreview(client, itemId, input = {}) {
 
 async function commitBulkAction(client, itemId, input = {}) {
   const operation = normalizeOperation(input);
+  const hasTargetSelection = Array.isArray(input.targetItemIds);
+  const commitPromotionFamilyDirectly = operation.type.indexOf('promotion.offer.') === 0 && !hasTargetSelection;
   const selected = normalizeTargetItemIds(input.targetItemIds);
-  if (!selected.length) {
+  if ((!commitPromotionFamilyDirectly && !selected.length) || (hasTargetSelection && !selected.length)) {
     const err = new Error('bulk_missing_targets');
     err.statusCode = 400;
     throw err;
@@ -32,14 +34,33 @@ async function commitBulkAction(client, itemId, input = {}) {
 
   const targets = await resolveFamilyTargets(client, itemId, input);
   const selectedSet = new Set(selected);
-  const candidates = targets.items.filter((target) => selectedSet.has(target.itemId));
-  if (!candidates.length) {
+  const candidates = hasTargetSelection
+    ? targets.items.filter((target) => selectedSet.has(target.itemId))
+    : targets.items;
+  if (hasTargetSelection && !candidates.length) {
     const err = new Error('bulk_targets_not_found');
     err.statusCode = 400;
     throw err;
   }
 
   const results = await mapLimit(candidates, 2, async (target) => {
+    if (commitPromotionFamilyDirectly) {
+      try {
+        const result = await commitTarget(client, operation, target);
+        return {
+          itemId: target.itemId,
+          userProductId: target.userProductId || null,
+          title: target.title || null,
+          current: Boolean(target.current),
+          eligible: true,
+          status: 'applied',
+          result
+        };
+      } catch (err) {
+        return targetError(target, err, 'failed');
+      }
+    }
+
     const preview = await previewTarget(client, operation, target);
     if (!preview.eligible) {
       return Object.assign({}, preview, { status: 'skipped' });

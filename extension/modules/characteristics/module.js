@@ -922,7 +922,7 @@
     function renderBulkSwitch(disabled) {
       return `
         <button class="ob-checkbox onframe-characteristics-bulk-switch ${state.bulkEnabled ? 'is-checked' : ''}" data-action="toggle-characteristics-bulk" type="button" role="checkbox" aria-checked="${state.bulkEnabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
-          <span class="ob-checkbox-box" aria-hidden="true">${state.bulkEnabled ? icon('check', 12) : ''}</span>
+          <span class="ob-checkbox-box" aria-hidden="true"></span>
           <span>
             <span class="ob-checkbox-label">Aplicar a todas as variações</span>
             <span class="ob-checkbox-description">Salva direto nas variações ativas deste user_product.</span>
