@@ -372,7 +372,7 @@ test('promocoes preferem oportunidade do item com faixa de preco', () => {
   assert.match(source, /function isPriceDiscountPromotion/);
 });
 
-test('promocoes formam uma lista ordenada com estado, tipo e resultado claros', () => {
+test('promocoes formam uma tabela Andes com estado, tipo e resultado claros', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
@@ -382,8 +382,12 @@ test('promocoes formam uma lista ordenada com estado, tipo e resultado claros', 
   assert.match(source, /function renderPromotionListResult/);
   assert.match(source, /function formatPromotionPeriodShort/);
   assert.match(source, /ML contribui/);
+  assert.match(source, /class="andes-table onframe-commerce-promotion-table"/);
+  assert.match(source, /andes-table__head/);
+  assert.match(source, /andes-table__column/);
   assert.match(styles, /\.onframe-commerce-promotion-table-head/);
-  assert.match(styles, /grid-template-columns: minmax\(210px, 2\.05fr\)/);
+  assert.match(styles, /\.onframe-commerce-promotion-table\s*{\s*width: 100%;\s*table-layout: fixed/s);
+  assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.coupon/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.payment/);
   assert.match(styles, /@media \(max-width: 760px\)/);
