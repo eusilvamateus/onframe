@@ -301,6 +301,8 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /Resumo da promoção/);
   assert.match(source, /function renderPromotionReview/);
   assert.match(source, /data-action="cancel-promotion-form"/);
+  assert.match(source, /onframe-commerce-btn compact danger/);
+  assert.match(source, /Descartar alterações/);
   assert.match(source, /function cancelPromotionForm/);
   assert.match(source, /delete state\.promotionDraftValues\[key\]/);
   assert.match(source, /function schedulePromotionManagerEstimates/);

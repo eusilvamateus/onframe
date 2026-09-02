@@ -662,11 +662,11 @@
           <tr class="ob-table-row onframe-commerce-promotion-list-detail-row" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
             <td class="ob-table-cell onframe-commerce-promotion-list-detail-cell" colspan="5">
               <div class="onframe-commerce-promotion-list-row-detail">
-              ${formOpen ? `${renderPromotionFields(userFields, key, entry)}
-                <div class="onframe-commerce-promotion-form-actions">
-                  <button class="onframe-commerce-btn compact" data-action="cancel-promotion-form" type="button">${icon('caretLeft', 14)}Cancelar</button>
-                </div>` : ''}
+              ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
               ${renderPromotionReview(key, entry, formOpen, confirm)}
+              ${formOpen ? `<div class="onframe-commerce-promotion-form-actions">
+                <button class="onframe-commerce-btn compact danger" data-action="cancel-promotion-form" type="button">${icon('x', 14)}Descartar alterações</button>
+              </div>` : ''}
               ${confirm ? `<div class="onframe-commerce-promotion-review-actions">${actionMarkup}</div>` : ''}
               </div>
             </td>
