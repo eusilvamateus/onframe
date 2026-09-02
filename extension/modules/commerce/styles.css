@@ -1469,6 +1469,7 @@
 
 .onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate {
   gap: 7px;
+  margin: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -1479,31 +1480,43 @@
   padding: 0;
 }
 
-.onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid {
-  grid-template-columns: minmax(150px, 1.3fr) repeat(3, minmax(105px, 1fr));
-  padding: 10px;
-  border: 1px solid var(--ob-line);
-  border-radius: var(--ob-r-sm);
-  background: var(--ob-surface-2);
+.onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-head small {
+  color: var(--ob-ink-soft);
+  font: 600 10px/1.2 var(--ob-font);
 }
 
-.onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid > .onframe-commerce-metric {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+.onframe-commerce-promotion-estimate-table-wrap {
+  overflow: hidden;
+  border-color: var(--ob-line);
+  border-radius: var(--ob-r-sm);
 }
 
-.onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid > .onframe-commerce-metric.review-result {
-  margin: -4px;
-  padding: 7px 8px;
-  border-radius: var(--ob-r-sm);
+.onframe-commerce-promotion-estimate-table .ob-table-cell {
+  padding: 8px 10px;
+  border-bottom-color: var(--ob-line-soft);
+  font: 600 11px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-promotion-estimate-table tbody tr:last-child .ob-table-cell {
+  border-bottom: 0;
+}
+
+.onframe-commerce-promotion-estimate-label {
+  width: 54%;
+  color: var(--ob-ink-soft);
+  font-weight: 600;
+  text-align: left;
+}
+
+.onframe-commerce-promotion-estimate-value {
+  color: var(--ob-ink-strong);
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.onframe-commerce-promotion-estimate-row.review-result .ob-table-cell {
   background: var(--ob-green-100);
-  color: var(--ob-green-700);
-}
-
-.onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid > .onframe-commerce-metric.review-result small,
-.onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid > .onframe-commerce-metric.review-result b {
   color: var(--ob-green-700);
 }
 
@@ -1600,10 +1613,6 @@
 
   .onframe-commerce-promotion-row-actions-content {
     justify-content: flex-start;
-  }
-
-  .onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .onframe-commerce-promotion-list-detail-cell {

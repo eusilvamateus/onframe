@@ -1231,9 +1231,9 @@
             </div>
             ${period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : ''}
           </div>
-          ${renderBulkSwitch('promotion', state.promotionBulkEnabled)}
           ${renderPromotionConfirmWarnings(rangeWarning)}
           ${estimateMarkup}
+          ${renderBulkSwitch('promotion', state.promotionBulkEnabled)}
           ${renderBulkBusyStatus()}
         </div>
       `;
@@ -1272,11 +1272,15 @@
       return `
         <div class="onframe-commerce-estimate">
           <div class="onframe-commerce-estimate-head">
-            <strong>Revisão antes de enviar</strong>
-            ${estimate.complete === false ? '<span>Incompleto</span>' : ''}
+            <strong>Resumo da promoção</strong>
+            ${estimate.complete === false ? '<small>Dados incompletos</small>' : ''}
           </div>
-          <div class="onframe-commerce-estimate-grid">
-            ${metrics.map(renderReviewMetric).join('')}
+          <div class="ob-table-wrap onframe-commerce-promotion-estimate-table-wrap">
+            <table class="ob-table onframe-commerce-promotion-estimate-table" aria-label="Resumo financeiro da promoção">
+              <tbody>
+                ${metrics.map(renderPromotionEstimateTableRow).join('')}
+              </tbody>
+            </table>
           </div>
         </div>
       `;
@@ -1310,6 +1314,16 @@
 
     function renderReviewMetric(metric) {
       return renderMetricChip(metric);
+    }
+
+    function renderPromotionEstimateTableRow(metric) {
+      if (!metric || !metric.label || !metric.value) return '';
+      return `
+        <tr class="ob-table-row onframe-commerce-promotion-estimate-row ${escapeAttribute(metric.tone || 'muted')}">
+          <th class="ob-table-cell onframe-commerce-promotion-estimate-label" scope="row">${escapeHtml(metric.label)}</th>
+          <td class="ob-table-cell onframe-commerce-promotion-estimate-value">${escapeHtml(metric.value)}</td>
+        </tr>
+      `;
     }
 
     function renderMetricChip(metric) {

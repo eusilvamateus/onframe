@@ -298,7 +298,7 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /\/promotions\/estimate/);
   assert.match(source, /function schedulePromotionEstimate/);
   assert.match(source, /function renderPromotionEstimateResult/);
-  assert.match(source, /Revisão antes de enviar/);
+  assert.match(source, /Resumo da promoção/);
   assert.match(source, /function renderPromotionReview/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
   assert.match(source, /function reviewPromotionFieldDraft/);
@@ -332,8 +332,10 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(styles, /\.onframe-commerce-estimate/);
   assert.match(styles, /\.onframe-commerce-review/);
   assert.match(styles, /\.onframe-commerce-promotion-list-row-detail/);
-  assert.match(styles, /\.onframe-commerce-promotion-list-row-detail \.onframe-commerce-estimate-grid/);
-  assert.match(styles, /\.onframe-commerce-metric\.review-result/);
+  assert.match(source, /class="ob-table onframe-commerce-promotion-estimate-table"/);
+  assert.match(source, /function renderPromotionEstimateTableRow/);
+  assert.match(styles, /\.onframe-commerce-promotion-estimate-table-wrap/);
+  assert.match(styles, /\.onframe-commerce-promotion-estimate-row\.review-result/);
 });
 
 test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {
