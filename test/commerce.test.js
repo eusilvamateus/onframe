@@ -382,6 +382,9 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /function promotionListStatusLabel/);
   assert.match(source, /function renderPromotionListResult/);
   assert.match(source, /function formatPromotionPeriodShort/);
+  assert.match(source, /return `De \$\{start\} a \$\{end\}`/);
+  assert.match(source, /return `\$\{date\.getDate\(\)\} de \$\{month\}`/);
+  assert.match(source, /<small>\$\{escapeHtml\(formatPromotionPeriodShort\(entry\) \|\| 'Sem vigência informada'\)\}<\/small>\s*<span class="onframe-commerce-status/);
   assert.match(source, /ML contribui/);
   assert.match(source, /class="ob-table-wrap onframe-commerce-promotion-table-wrap"/);
   assert.match(source, /class="ob-table onframe-commerce-promotion-table"/);
@@ -399,6 +402,7 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(componentStyles, /\.ob-table-row:hover\s*{[^}]*var\(--ob-bg-warm\)/s);
   assert.match(styles, /\.onframe-commerce-promotion-table\s*{\s*min-width: 760px/s);
   assert.match(styles, /\.onframe-commerce-promotion-column-actions\s*{\s*width: 104px/s);
+  assert.match(styles, /\.onframe-commerce-promotion-column-period\s*{\s*width: 18%;\s*min-width: 184px/s);
   assert.match(styles, /\.onframe-commerce-promotion-action-btn\.danger:hover:not\(:disabled\)[\s\S]*color: var\(--ob-danger\)/);
   assert.match(styles, /\.onframe-commerce-modal-head-action:hover:not\(:disabled\)[\s\S]*color: var\(--ob-blue\)/);
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);

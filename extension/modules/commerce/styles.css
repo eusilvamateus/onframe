@@ -1310,6 +1310,7 @@
 
 .onframe-commerce-promotion-column-period {
   width: 18%;
+  min-width: 184px;
 }
 
 .onframe-commerce-promotion-column-condition {

@@ -623,8 +623,8 @@
           </td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-period" data-label="Estado e vigência">
             <div class="onframe-commerce-promotion-period-content">
-              <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
               <small>${escapeHtml(formatPromotionPeriodShort(entry) || 'Sem vigência informada')}</small>
+              <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
             </div>
           </td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content">${renderPromotionListCondition(entry, type)}</div></td>
@@ -779,7 +779,7 @@
     function formatPromotionPeriodShort(entry) {
       const start = formatShortPromotionDate(entry && (entry.start_date || entry.startDate));
       const end = formatShortPromotionDate(entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate));
-      if (start && end) return `${start} - ${end}`;
+      if (start && end) return `De ${start} a ${end}`;
       if (start) return `A partir de ${start}`;
       if (end) return `Até ${end}`;
       return '';
@@ -788,7 +788,8 @@
     function formatShortPromotionDate(value) {
       const date = parseIsoDate(value) || parseDateValue(value);
       if (!date) return '';
-      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
+      const month = date.toLocaleDateString('pt-BR', { month: 'long' });
+      return `${date.getDate()} de ${month}`;
     }
 
     function promotionAudienceRule(entry) {
