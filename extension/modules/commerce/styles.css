@@ -1627,41 +1627,38 @@
   font: 600 10px/1.2 var(--ob-font);
 }
 
-.onframe-commerce-promotion-estimate-table-wrap {
-  overflow-x: auto;
-  border-color: var(--ob-line);
-  border-radius: var(--ob-r-sm);
+.onframe-commerce-promotion-estimate-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 16px;
+  padding: 16px;
 }
 
-.onframe-commerce-promotion-estimate-table {
-  min-width: 360px;
-  table-layout: fixed;
+.onframe-commerce-promotion-estimate-summary-metric {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
-.onframe-commerce-promotion-estimate-table .ob-table-cell {
-  padding: 8px 10px;
-  border-bottom-color: var(--ob-line-soft);
-  font: 600 11px/1.25 var(--ob-font);
-}
-
-.onframe-commerce-promotion-estimate-table .onframe-commerce-promotion-estimate-header {
-  padding: 7px 10px;
-  font-size: 10px;
-}
-
-.onframe-commerce-promotion-estimate-values-row .ob-table-cell {
-  border-bottom: 0;
-}
-
-.onframe-commerce-promotion-estimate-value {
-  color: var(--ob-ink-strong);
-  font-weight: 700;
-  text-align: left;
+.onframe-commerce-promotion-estimate-summary-metric small {
+  overflow: hidden;
+  color: var(--ob-ink-soft);
+  font: 600 9px/1.2 var(--ob-font-mono);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.onframe-commerce-promotion-estimate-value.review-result {
-  background: var(--ob-green-100);
+.onframe-commerce-promotion-estimate-summary-metric strong {
+  overflow: hidden;
+  color: var(--ob-ink-strong);
+  font: 700 13px/1.2 var(--ob-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onframe-commerce-promotion-estimate-summary-metric.green strong,
+.onframe-commerce-promotion-estimate-summary-metric.review-result strong {
   color: var(--ob-green-700);
 }
 

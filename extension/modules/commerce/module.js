@@ -1359,18 +1359,14 @@
     function renderPromotionConfirmation(key, entry, confirm) {
       const values = confirm.values || {};
       const targetPrice = promotionTargetPrice(entry, values);
-      const period = formatPromotionPeriodFromValues(entry, values);
       const rangeWarning = promotionRangeWarning(entry, targetPrice);
       const estimateMarkup = confirm.action === 'delete' ? '' : renderPromotionEstimate(key, 'review');
+      const removalWarning = confirm.action === 'delete'
+        ? `<div class="onframe-commerce-review-head"><div><strong>Remover esta promoção?</strong><span>A remoção será enviada ao Mercado Livre ao confirmar.</span></div></div>`
+        : '';
       return `
         <div class="onframe-commerce-review">
-          <div class="onframe-commerce-review-head">
-            <div>
-              <strong>${escapeHtml(confirmationTitle(confirm.action))}</strong>
-              <span>${escapeHtml(confirmationText(confirm.action))}</span>
-            </div>
-            ${period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : ''}
-          </div>
+          ${removalWarning}
           ${renderPromotionConfirmWarnings(rangeWarning)}
           ${estimateMarkup}
           ${renderBulkSwitch('promotion', state.promotionBulkEnabled)}
@@ -1415,20 +1411,9 @@
             <strong>Resumo da promoção</strong>
             ${estimate.complete === false ? '<small>Dados incompletos</small>' : ''}
           </div>
-          <div class="ob-table-wrap onframe-commerce-promotion-estimate-table-wrap">
-            <table class="ob-table onframe-commerce-promotion-estimate-table" aria-label="Resumo financeiro da promoção">
-              <thead>
-                <tr class="ob-table-row">
-                  ${metrics.map(renderPromotionEstimateTableHeader).join('')}
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="ob-table-row onframe-commerce-promotion-estimate-values-row">
-                  ${metrics.map(renderPromotionEstimateTableValue).join('')}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <section class="ob-card onframe-commerce-promotion-estimate-summary" aria-label="Resumo financeiro da promoção">
+            ${metrics.map(renderPromotionEstimateSummaryMetric).join('')}
+          </section>
         </div>
       `;
     }
@@ -1463,16 +1448,14 @@
       return renderMetricChip(metric);
     }
 
-    function renderPromotionEstimateTableHeader(metric) {
+    function renderPromotionEstimateSummaryMetric(metric) {
       if (!metric || !metric.label || !metric.value) return '';
       return `
-        <th class="ob-table-header onframe-commerce-promotion-estimate-header" scope="col">${escapeHtml(metric.label)}</th>
+        <div class="onframe-commerce-promotion-estimate-summary-metric ${escapeAttribute(metric.tone || 'muted')}">
+          <small>${escapeHtml(metric.label)}</small>
+          <strong>${escapeHtml(metric.value)}</strong>
+        </div>
       `;
-    }
-
-    function renderPromotionEstimateTableValue(metric) {
-      if (!metric || !metric.label || !metric.value) return '';
-      return `<td class="ob-table-cell onframe-commerce-promotion-estimate-value ${escapeAttribute(metric.tone || 'muted')}">${escapeHtml(metric.value)}</td>`;
     }
 
     function renderMetricChip(metric) {
@@ -1613,17 +1596,6 @@
       return '';
     }
 
-    function confirmationTitle(action) {
-      if (action === 'delete') return 'Remover esta promoção?';
-      if (action === 'update') return 'Confirmar alteração?';
-      return 'Aplicar esta promoção?';
-    }
-
-    function confirmationText(action) {
-      if (action === 'delete') return 'A remoção será enviada ao Mercado Livre ao confirmar.';
-      return 'Nada foi enviado ainda. Revise antes de confirmar.';
-    }
-
     function promotionActionLabel(action, confirm, formOpen, userFields, key) {
       if (isPromotionActionPending(key, action)) return promotionPendingLabel(action);
       if (confirm && confirm.action === action) {
@@ -1728,17 +1700,6 @@
     function formatPromotionPeriod(entry) {
       const start = formatCentralDate(entry && (entry.start_date || entry.startDate));
       const end = formatCentralDate(entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate));
-      if (start && end) return `DE ${start} A ${end}`;
-      if (start) return `A PARTIR DE ${start}`;
-      if (end) return `ATÉ ${end}`;
-      return '';
-    }
-
-    function formatPromotionPeriodFromValues(entry, values) {
-      const startValue = values && values.start_date ? values.start_date : entry && (entry.start_date || entry.startDate);
-      const endValue = values && values.finish_date ? values.finish_date : entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
-      const start = formatCentralDate(startValue);
-      const end = formatCentralDate(endValue);
       if (start && end) return `DE ${start} A ${end}`;
       if (start) return `A PARTIR DE ${start}`;
       if (end) return `ATÉ ${end}`;

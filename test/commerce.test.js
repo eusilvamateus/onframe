@@ -300,6 +300,8 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /function renderPromotionEstimateResult/);
   assert.match(source, /Resumo da promoção/);
   assert.match(source, /function renderPromotionReview/);
+  assert.doesNotMatch(source, /Confirmar alteração\?/);
+  assert.doesNotMatch(source, /Nada foi enviado ainda\. Revise antes de confirmar\./);
   assert.match(source, /data-action="cancel-promotion-form"/);
   assert.match(source, /onframe-commerce-btn compact danger/);
   assert.match(source, /Descartar alterações/);
@@ -337,13 +339,12 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(styles, /\.onframe-commerce-estimate/);
   assert.match(styles, /\.onframe-commerce-review/);
   assert.match(styles, /\.onframe-commerce-promotion-list-row-detail/);
-  assert.match(source, /class="ob-table onframe-commerce-promotion-estimate-table"/);
-  assert.match(source, /onframe-commerce-promotion-estimate-header/);
-  assert.match(source, /function renderPromotionEstimateTableHeader/);
-  assert.match(source, /function renderPromotionEstimateTableValue/);
-  assert.match(source, /onframe-commerce-promotion-estimate-values-row/);
-  assert.match(styles, /\.onframe-commerce-promotion-estimate-table-wrap/);
-  assert.match(styles, /\.onframe-commerce-promotion-estimate-value\.review-result/);
+  assert.match(source, /class="ob-card onframe-commerce-promotion-estimate-summary"/);
+  assert.match(source, /function renderPromotionEstimateSummaryMetric/);
+  assert.doesNotMatch(source, /onframe-commerce-promotion-estimate-table/);
+  assert.match(styles, /\.onframe-commerce-promotion-estimate-summary\s*{\s*display: grid/s);
+  assert.match(styles, /grid-template-columns: repeat\(auto-fit, minmax\(128px, 1fr\)\)/);
+  assert.match(styles, /\.onframe-commerce-promotion-estimate-summary-metric\.review-result strong/);
 });
 
 test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {
