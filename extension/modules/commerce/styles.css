@@ -1619,9 +1619,14 @@
 }
 
 .onframe-commerce-promotion-estimate-table-wrap {
-  overflow: hidden;
+  overflow-x: auto;
   border-color: var(--ob-line);
   border-radius: var(--ob-r-sm);
+}
+
+.onframe-commerce-promotion-estimate-table {
+  min-width: 360px;
+  table-layout: fixed;
 }
 
 .onframe-commerce-promotion-estimate-table .ob-table-cell {
@@ -1635,29 +1640,18 @@
   font-size: 10px;
 }
 
-.onframe-commerce-promotion-estimate-table tbody tr:last-child .ob-table-cell {
+.onframe-commerce-promotion-estimate-values-row .ob-table-cell {
   border-bottom: 0;
-}
-
-.onframe-commerce-promotion-estimate-label {
-  width: 54%;
-  color: var(--ob-ink-soft);
-  font-weight: 600;
-  text-align: left;
 }
 
 .onframe-commerce-promotion-estimate-value {
   color: var(--ob-ink-strong);
   font-weight: 700;
-  text-align: right;
+  text-align: left;
   white-space: nowrap;
 }
 
-.onframe-commerce-promotion-estimate-header-value {
-  text-align: right;
-}
-
-.onframe-commerce-promotion-estimate-row.review-result .ob-table-cell {
+.onframe-commerce-promotion-estimate-value.review-result {
   background: var(--ob-green-100);
   color: var(--ob-green-700);
 }
