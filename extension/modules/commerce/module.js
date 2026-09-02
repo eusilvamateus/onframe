@@ -519,25 +519,18 @@
       return `
         <section class="onframe-commerce-promotion-list" aria-label="Lista de promoções">
           ${renderPromotionListControls()}
-          <div class="onframe-commerce-promotion-table-wrap">
-            <table class="andes-table onframe-commerce-promotion-table" aria-label="Promoções deste anúncio">
-              <colgroup>
-                <col class="onframe-commerce-promotion-column-name">
-                <col class="onframe-commerce-promotion-column-period">
-                <col class="onframe-commerce-promotion-column-condition">
-                <col class="onframe-commerce-promotion-column-result">
-                <col class="onframe-commerce-promotion-column-actions">
-              </colgroup>
-              <thead class="andes-table__head">
-                <tr class="andes-table__head__row onframe-commerce-promotion-table-head">
-                  <th class="andes-table__header andes-table__header--left" scope="col"><div class="andes-table__header__container">Promoção</div></th>
-                  <th class="andes-table__header andes-table__header--left" scope="col"><div class="andes-table__header__container">Estado e vigência</div></th>
-                  <th class="andes-table__header andes-table__header--left" scope="col"><div class="andes-table__header__container">Condição</div></th>
-                  <th class="andes-table__header andes-table__header--left" scope="col"><div class="andes-table__header__container">Resultado</div></th>
-                  <th class="andes-table__header andes-table__header--right onframe-commerce-promotion-action-head" scope="col"><div class="andes-table__header__container">Ação</div></th>
+          <div class="ob-table-wrap onframe-commerce-promotion-table-wrap">
+            <table class="ob-table onframe-commerce-promotion-table" aria-label="Promoções deste anúncio">
+              <thead>
+                <tr class="ob-table-row onframe-commerce-promotion-table-head">
+                  <th class="ob-table-header onframe-commerce-promotion-column-name" scope="col">Promoção</th>
+                  <th class="ob-table-header onframe-commerce-promotion-column-period" scope="col">Estado e vigência</th>
+                  <th class="ob-table-header onframe-commerce-promotion-column-condition" scope="col">Condição</th>
+                  <th class="ob-table-header onframe-commerce-promotion-column-result" scope="col">Resultado</th>
+                  <th class="ob-table-header onframe-commerce-promotion-column-actions onframe-commerce-promotion-action-head" scope="col">Ação</th>
                 </tr>
               </thead>
-              <tbody class="andes-table__body">
+              <tbody>
                 ${rows.length ? rows.map(renderPromotionListRow).join('') : renderPromotionListEmpty()}
               </tbody>
             </table>
@@ -597,8 +590,8 @@
         ? 'Nenhuma promoção corresponde aos filtros atuais.'
         : 'Nenhuma promoção disponível para este anúncio.';
       return `
-        <tr class="andes-table__row onframe-commerce-promotion-list-empty-row">
-          <td class="andes-table__column" colspan="5">
+        <tr class="ob-table-row onframe-commerce-promotion-list-empty-row">
+          <td class="ob-table-cell" colspan="5">
             <div class="onframe-commerce-promotion-list-empty">${escapeHtml(message)}</div>
           </td>
         </tr>
@@ -618,8 +611,8 @@
       const actionMarkup = renderPromotionListActions({ key, kind, canCreate, canUpdate, canDelete, confirm, formOpen, confirmBlocked, userFields });
 
       return `
-        <tr class="andes-table__row onframe-commerce-promotion-list-row ${expanded ? 'is-expanded' : ''}" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
-          <td class="andes-table__column andes-table__column--left onframe-commerce-promotion-cell onframe-commerce-promotion-name" data-label="Promoção">
+        <tr class="ob-table-row onframe-commerce-promotion-list-row ${expanded ? 'is-expanded' : ''}" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-name" data-label="Promoção">
             <div class="onframe-commerce-promotion-name-content">
               <span class="onframe-commerce-promotion-type-icon ${escapeAttribute(type)}" aria-hidden="true">${icon(promotionTypeIcon(type), 16)}</span>
               <div>
@@ -628,17 +621,19 @@
               </div>
             </div>
           </td>
-          <td class="andes-table__column andes-table__column--left onframe-commerce-promotion-cell onframe-commerce-promotion-period" data-label="Estado e vigência">
-            <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
-            <small>${escapeHtml(formatPromotionPeriodShort(entry) || 'Sem vigência informada')}</small>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-period" data-label="Estado e vigência">
+            <div class="onframe-commerce-promotion-period-content">
+              <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
+              <small>${escapeHtml(formatPromotionPeriodShort(entry) || 'Sem vigência informada')}</small>
+            </div>
           </td>
-          <td class="andes-table__column andes-table__column--left onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição">${renderPromotionListCondition(entry, type)}</td>
-          <td class="andes-table__column andes-table__column--left onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado">${renderPromotionListResult(entry, key)}</td>
-          <td class="andes-table__column andes-table__column--right onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação">${confirm ? '' : actionMarkup}</td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content">${renderPromotionListCondition(entry, type)}</div></td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content">${renderPromotionListResult(entry, key)}</div></td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação">${confirm ? '' : actionMarkup}</td>
         </tr>
         ${expanded ? `
-          <tr class="andes-table__row onframe-commerce-promotion-list-detail-row" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
-            <td class="andes-table__column onframe-commerce-promotion-list-detail-cell" colspan="5">
+          <tr class="ob-table-row onframe-commerce-promotion-list-detail-row" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
+            <td class="ob-table-cell onframe-commerce-promotion-list-detail-cell" colspan="5">
               <div class="onframe-commerce-promotion-list-row-detail">
               ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
               ${renderPromotionReview(key, entry, formOpen, confirm)}

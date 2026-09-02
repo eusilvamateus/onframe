@@ -372,9 +372,10 @@ test('promocoes preferem oportunidade do item com faixa de preco', () => {
   assert.match(source, /function isPriceDiscountPromotion/);
 });
 
-test('promocoes formam uma tabela Andes com estado, tipo e resultado claros', () => {
+test('promocoes formam uma tabela do design system com estado, tipo e resultado claros', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const componentStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
 
   assert.match(source, /function buildPromotionRows/);
   assert.match(source, /function comparePromotionRows/);
@@ -382,15 +383,22 @@ test('promocoes formam uma tabela Andes com estado, tipo e resultado claros', ()
   assert.match(source, /function renderPromotionListResult/);
   assert.match(source, /function formatPromotionPeriodShort/);
   assert.match(source, /ML contribui/);
-  assert.match(source, /class="andes-table onframe-commerce-promotion-table"/);
-  assert.match(source, /andes-table__head/);
-  assert.match(source, /andes-table__column/);
-  assert.match(styles, /\.onframe-commerce-promotion-table-head/);
-  assert.match(styles, /\.onframe-commerce-promotion-table\s*{\s*width: 100%;\s*table-layout: fixed/s);
+  assert.match(source, /class="ob-table-wrap onframe-commerce-promotion-table-wrap"/);
+  assert.match(source, /class="ob-table onframe-commerce-promotion-table"/);
+  assert.match(source, /class="ob-table-row onframe-commerce-promotion-table-head"/);
+  assert.match(source, /class="ob-table-header onframe-commerce-promotion-column-name"/);
+  assert.match(source, /class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-name"/);
+  assert.doesNotMatch(source, /andes-table/);
+  assert.match(componentStyles, /\.ob-table-wrap\s*{[^}]*overflow-x: auto/s);
+  assert.match(componentStyles, /\.ob-table-header\s*{[^}]*padding: 10px 14px/s);
+  assert.match(componentStyles, /\.ob-table-cell\s*{[^}]*padding: 12px 14px/s);
+  assert.match(componentStyles, /\.ob-table-row:hover\s*{[^}]*var\(--ob-bg-warm\)/s);
+  assert.match(styles, /\.onframe-commerce-promotion-table\s*{\s*min-width: 760px/s);
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.coupon/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.payment/);
-  assert.match(styles, /@media \(max-width: 760px\)/);
+  assert.match(styles, /@media \(max-width: 639px\)/);
+  assert.doesNotMatch(styles, /andes-table/);
 });
 
 test('remocao de promocao nao exige campos de criacao ou edicao', () => {
