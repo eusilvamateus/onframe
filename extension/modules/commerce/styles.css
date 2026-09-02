@@ -1157,9 +1157,42 @@
   margin-left: 0;
 }
 
-.onframe-commerce-icon-btn.danger {
-  border-color: var(--ob-danger-bg);
-  background: var(--ob-danger-bg);
+.onframe-commerce-modal-head-action,
+.onframe-commerce-promotion-action-btn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin-left: 0;
+  border: 0;
+  border-radius: var(--ob-r-control);
+  background: transparent;
+  color: var(--ob-fg-soft);
+  transition: background var(--ob-dur-fast) var(--ob-ease), color var(--ob-dur-fast) var(--ob-ease), transform var(--ob-dur-fast) var(--ob-ease);
+}
+
+.onframe-commerce-modal-head-action:hover:not(:disabled),
+.onframe-commerce-modal-head-action:focus-visible,
+.onframe-commerce-promotion-action-btn:hover:not(:disabled),
+.onframe-commerce-promotion-action-btn:focus-visible {
+  background: var(--ob-blue-050);
+  color: var(--ob-blue);
+}
+
+.onframe-commerce-modal-head-action:active:not(:disabled),
+.onframe-commerce-promotion-action-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.onframe-commerce-modal-head-action:focus-visible,
+.onframe-commerce-promotion-action-btn:focus-visible {
+  outline: 2px solid var(--ob-focus-ring);
+  outline-offset: 2px;
+}
+
+.onframe-commerce-promotion-action-btn.danger:hover:not(:disabled),
+.onframe-commerce-promotion-action-btn.danger:focus-visible {
+  background: var(--ob-red-050);
   color: var(--ob-danger);
 }
 
@@ -1288,7 +1321,7 @@
 }
 
 .onframe-commerce-promotion-column-actions {
-  width: 152px;
+  width: 104px;
 }
 
 .onframe-commerce-promotion-action-head {
@@ -1387,17 +1420,13 @@
   color: var(--ob-green-700);
 }
 
-.onframe-commerce-promotion-row-actions,
+.onframe-commerce-promotion-row-actions-content,
 .onframe-commerce-promotion-review-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.onframe-commerce-promotion-row-actions .onframe-commerce-icon-btn {
-  margin-left: 0;
 }
 
 .onframe-commerce-promotion-list-row-detail {
@@ -1564,9 +1593,12 @@
   }
 
   .onframe-commerce-promotion-row-actions {
-    justify-content: flex-start;
     padding-top: 10px !important;
     padding-bottom: 12px !important;
+  }
+
+  .onframe-commerce-promotion-row-actions-content {
+    justify-content: flex-start;
   }
 
   .onframe-commerce-promotion-list-row-detail .onframe-commerce-estimate-grid {

@@ -499,8 +499,8 @@
                 <p>Controle ofertas e campanhas deste anúncio.</p>
               </div>
               <div class="onframe-commerce-modal-head-actions">
-                <button class="onframe-commerce-icon-btn" data-action="reload-commerce" type="button" aria-label="Atualizar promoções" title="Atualizar promoções" ${state.promotionLoading ? 'disabled' : ''}>${icon('reload', 16)}</button>
-                <button class="onframe-commerce-icon-btn" data-action="close-promotion-modal" type="button" aria-label="Fechar" title="Fechar">${icon('x', 18)}</button>
+                <button class="onframe-commerce-icon-btn onframe-commerce-modal-head-action" data-action="reload-commerce" type="button" aria-label="Atualizar promoções" title="Atualizar promoções" ${state.promotionLoading ? 'disabled' : ''}>${icon('reload', 16)}</button>
+                <button class="onframe-commerce-icon-btn onframe-commerce-modal-head-action" data-action="close-promotion-modal" type="button" aria-label="Fechar" title="Fechar">${icon('x', 18)}</button>
               </div>
             </header>
             ${renderNotice(state.actionMessage || state.actionError || state.promotionError, state.actionError || state.promotionError ? 'warn' : 'ok')}
@@ -629,7 +629,7 @@
           </td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content">${renderPromotionListCondition(entry, type)}</div></td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content">${renderPromotionListResult(entry, key)}</div></td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação">${confirm ? '' : actionMarkup}</td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação"><div class="onframe-commerce-promotion-row-actions-content">${confirm ? '' : actionMarkup}</div></td>
         </tr>
         ${expanded ? `
           <tr class="ob-table-row onframe-commerce-promotion-list-detail-row" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
@@ -659,10 +659,12 @@
           <button class="onframe-commerce-btn compact" data-action="cancel-promotion-confirm" type="button" ${state.busy ? 'disabled' : ''}>Cancelar</button>
         `;
       }
+      const createLabel = promotionActionLabel('create', null, false, userFields, key);
+      const updateLabel = promotionActionLabel('update', null, false, userFields, key);
       return `
-        ${canCreate ? `<button class="onframe-commerce-btn primary compact" data-action="create-offer" type="button" ${promotionActionDisabled(false)}>${promotionActionIcon('create', key, confirm, formOpen)}${promotionActionLabel('create', confirm, formOpen, userFields, key)}</button>` : ''}
-        ${canUpdate ? `<button class="onframe-commerce-btn compact" data-action="update-offer" type="button" ${promotionActionDisabled(false)}>${promotionActionIcon('update', key, confirm, formOpen)}${promotionActionLabel('update', confirm, formOpen, userFields, key)}</button>` : ''}
-        ${canDelete ? `<button class="onframe-commerce-icon-btn danger" data-action="delete-offer" type="button" aria-label="Remover promoção" title="Remover promoção" ${promotionActionDisabled(false)}>${promotionActionIcon('delete', key, confirm, formOpen)}</button>` : ''}
+        ${canCreate ? `<button class="onframe-commerce-icon-btn onframe-commerce-promotion-action-btn" data-action="create-offer" type="button" aria-label="${escapeAttribute(createLabel)}" title="${escapeAttribute(createLabel)}" ${promotionActionDisabled(false)}>${promotionActionIcon('create', key, confirm, formOpen)}</button>` : ''}
+        ${canUpdate ? `<button class="onframe-commerce-icon-btn onframe-commerce-promotion-action-btn" data-action="update-offer" type="button" aria-label="${escapeAttribute(updateLabel)}" title="${escapeAttribute(updateLabel)}" ${promotionActionDisabled(false)}>${promotionActionIcon('update', key, confirm, formOpen)}</button>` : ''}
+        ${canDelete ? `<button class="onframe-commerce-icon-btn onframe-commerce-promotion-action-btn danger" data-action="delete-offer" type="button" aria-label="Remover promoção" title="Remover promoção" ${promotionActionDisabled(false)}>${promotionActionIcon('delete', key, confirm, formOpen)}</button>` : ''}
       `;
     }
 
@@ -1423,7 +1425,7 @@
             ? 'tag'
             : action === 'update'
               ? 'pencil'
-              : 'x';
+              : 'trash';
       return icon(iconName, 14);
     }
 
