@@ -447,18 +447,17 @@
         `;
       }
 
-      const promoState = CommerceModel.getPromotionState(state.promotionSummary);
       const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
-      const campaignOffers = campaignPromotionEntries(groups.activeOffers);
-      const active = currentPromotionEntry(campaignOffers);
-      const stackables = stackablePromotionEntries(groups);
-      const opportunities = promotionOpportunityEntries(groups);
+      const campaign = promotionPopoverCampaignEntry(groups);
+      const coupons = promotionPopoverCouponEntries(groups);
+      const paymentBenefits = promotionPopoverPaymentEntries(groups);
       return `
         <section class="onframe-commerce-popover">
-          ${renderPopoverHead('Promoções', promoState.label)}
+          ${renderPopoverHead('Promoções')}
           ${renderNotice(state.actionMessage || state.actionError, state.actionError ? 'warn' : 'ok')}
-          ${active ? renderActivePromotionSummary(active) : renderNoActivePromotionSummary(opportunities)}
-          ${renderStackablePromotionSummary(stackables)}
+          ${campaign ? renderPromotionPopoverCampaign(campaign) : renderPromotionPopoverEmptyState()}
+          ${renderPromotionPopoverCouponList(coupons)}
+          ${renderPromotionPopoverPaymentList(paymentBenefits)}
           <div class="onframe-commerce-actions">
             <button class="onframe-commerce-btn primary" data-action="open-promotion-modal" type="button">${icon('tag', 14)}Gerenciar promoções</button>
             ${renderRefreshButton()}
@@ -1011,6 +1010,12 @@
       return date ? date.getTime() : Number.MAX_SAFE_INTEGER;
     }
 
+    function promotionStartTimestamp(entry) {
+      const value = entry && (entry.start_date || entry.startDate);
+      const date = parseIsoDate(value) || parseDateValue(value);
+      return date ? date.getTime() : Number.MAX_SAFE_INTEGER;
+    }
+
     function normalizeSearchText(value) {
       return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
     }
@@ -1030,26 +1035,56 @@
       state.promotionFiltersOpen = false;
     }
 
-    function renderActivePromotionSummary(entry) {
+    function promotionPopoverCampaignEntry(groups) {
+      const active = currentPromotionEntry(campaignPromotionEntries(groups && groups.activeOffers));
+      if (active) return active;
+      return programmedPromotionEntries(groups).slice().sort((left, right) => {
+        const difference = promotionStartTimestamp(left) - promotionStartTimestamp(right);
+        if (difference) return difference;
+        return String(left && left.label || '').localeCompare(String(right && right.label || ''), 'pt-BR');
+      })[0] || null;
+    }
+
+    function promotionPopoverCouponEntries(groups) {
+      return stackablePromotionEntries(groups).filter((entry) => {
+        return promotionListType(entry) === 'coupon' && CommerceModel.isSellerWidePromotion(entry);
+      });
+    }
+
+    function promotionPopoverPaymentEntries(groups) {
+      return stackablePromotionEntries(groups).filter((entry) => promotionListType(entry) === 'payment');
+    }
+
+    function renderPromotionPopoverCampaign(entry) {
       const originalPrice = promotionSummaryOriginalPrice(entry);
       const finalPrice = promotionSummaryDisplayPrice(entry);
       const discount = discountPercent(originalPrice, finalPrice);
-      const metrics = [
-        finalPrice ? { label: 'Preço final', value: CommerceModel.formatMoney(finalPrice, itemCurrency()), tone: 'primary' } : null,
-        discount ? { label: 'Desconto', value: `${discount}% OFF`, tone: 'green' } : null,
-        ...promotionContributionMetrics(entry)
-      ].filter(Boolean);
+      const period = formatPromotionPeriodShort(entry) || 'Sem vigência informada';
+      const status = promotionDisplayStatusLabel(entry);
+      const tone = promotionDisplayTone(entry);
       return `
-        <div class="onframe-commerce-promo-summary">
-          <div class="onframe-commerce-promo-summary-head">
-            <div>
-              <small>Promoção aplicada</small>
+        <section class="ob-card onframe-commerce-popover-campaign">
+          <div class="onframe-commerce-popover-campaign-grid">
+            <div class="onframe-commerce-popover-campaign-field name">
+              <small>Promoção</small>
               <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
             </div>
-            ${renderPromotionPeriodLegend(entry)}
+            <div class="onframe-commerce-popover-campaign-field period">
+              <small>Estado e vigência</small>
+              <span>${escapeHtml(period)}</span>
+              <span class="ob-badge ${escapeAttribute(tone)}">${escapeHtml(status)}</span>
+            </div>
+            <div class="onframe-commerce-popover-campaign-field">
+              <small>Desconto</small>
+              <strong>${discount ? escapeHtml(`${discount}% OFF`) : '—'}</strong>
+            </div>
+            <div class="onframe-commerce-popover-campaign-field">
+              <small>Preço final</small>
+              <strong>${finalPrice ? escapeHtml(CommerceModel.formatMoney(finalPrice, itemCurrency())) : '—'}</strong>
+            </div>
           </div>
-          ${renderPromotionMetricGrid(metrics)}
-        </div>
+          ${renderPromotionPopoverRebate(entry, finalPrice)}
+        </section>
       `;
     }
 
@@ -1066,46 +1101,103 @@
       return moneyOrNull(state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.regular_amount);
     }
 
-    function renderStackablePromotionSummary(entries) {
-      const list = Array.isArray(entries) ? entries : [];
-      if (!list.length) return '';
-      return list.map((entry) => {
-        const metrics = [
-          stackablePromotionContextMetric(entry),
-          ...promotionContributionMetrics(entry)
-        ].filter(Boolean);
-        return `
-          <div class="onframe-commerce-promo-summary">
-            <div class="onframe-commerce-promo-summary-head">
-              <div>
-                <small>Desconto acumulativo</small>
-                <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
-              </div>
-              ${renderPromotionPeriodLegend(entry)}
-            </div>
-            ${renderPromotionMetricGrid(metrics)}
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderNoActivePromotionSummary(opportunities) {
-      const count = Array.isArray(opportunities) ? opportunities.length : 0;
+    function renderPromotionPopoverRebate(entry, finalPrice) {
+      const amount = promotionBenefitAmount(entry, finalPrice);
+      if (amount === null) return '';
       return `
-        <div class="onframe-commerce-promo-summary muted">
-          <div class="onframe-commerce-promo-summary-head">
-            <div>
-              <small>Promoções</small>
-              <strong>Nenhuma aplicada</strong>
-            </div>
-          </div>
-          ${renderPromotionMetricGrid([{ label: 'Disponíveis', value: `${count} promoç${count === 1 ? 'ão' : 'ões'}` }])}
+        <div class="onframe-commerce-popover-rebate">
+          <span>Reduzimos <strong>${escapeHtml(CommerceModel.formatMoney(amount, itemCurrency()))}</strong> da sua tarifa de venda.</span>
         </div>
       `;
     }
 
-    function promotionContributionMetrics(entry) {
-      return promotionBenefitMetrics(entry, { includeAmount: true, basePrice: promotionDisplayPrice(entry) });
+    function renderPromotionPopoverCouponList(entries) {
+      const list = Array.isArray(entries) ? entries : [];
+      if (!list.length) return '';
+      return `
+        <section class="onframe-commerce-popover-conditions" aria-label="Cupons de marketing">
+          <div class="onframe-commerce-popover-conditions-head">
+            <small>Cupons de marketing</small>
+            <span>Válidos para compradores elegíveis</span>
+          </div>
+          <div class="onframe-commerce-popover-condition-list">
+            ${list.map(renderPromotionPopoverCoupon).join('')}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderPromotionPopoverCoupon(entry) {
+      const benefit = promotionPopoverConditionalBenefit(entry);
+      const audience = promotionAudienceRule(entry) || 'Elegibilidade depende do comprador';
+      return `
+        <div class="ob-card onframe-commerce-popover-condition coupon">
+          <span class="onframe-commerce-popover-condition-icon">${icon('ticket', 14)}</span>
+          <div>
+            <strong>${escapeHtml(entry.label || 'Cupom de marketing')}</strong>
+            <span>${escapeHtml(audience)}</span>
+          </div>
+          ${benefit ? `<b>${escapeHtml(benefit)}</b>` : ''}
+        </div>
+      `;
+    }
+
+    function renderPromotionPopoverPaymentList(entries) {
+      const list = Array.isArray(entries) ? entries : [];
+      if (!list.length) return '';
+      return `
+        <section class="onframe-commerce-popover-conditions payment" aria-label="Benefícios por pagamento">
+          <div class="onframe-commerce-popover-conditions-head">
+            <small>Benefícios por pagamento</small>
+          </div>
+          <div class="onframe-commerce-popover-condition-list">
+            ${list.map(renderPromotionPopoverPayment).join('')}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderPromotionPopoverPayment(entry) {
+      const payment = stackablePaymentLabel(entry);
+      const benefit = promotionPopoverConditionalBenefit(entry);
+      return `
+        <div class="ob-card onframe-commerce-popover-condition payment">
+          <span class="onframe-commerce-popover-condition-icon">${icon('creditCard', 14)}</span>
+          <div>
+            <strong>${escapeHtml(entry.label || (payment ? `Benefício no ${payment}` : 'Benefício por pagamento'))}</strong>
+            <span>${escapeHtml(payment ? `Válido em pagamentos no ${payment}` : 'Condição definida no pagamento')}</span>
+          </div>
+          ${benefit ? `<b>${escapeHtml(benefit)}</b>` : ''}
+        </div>
+      `;
+    }
+
+    function promotionPopoverConditionalBenefit(entry) {
+      const displayPrice = promotionDisplayPrice(entry);
+      const discount = discountPercent(entry && entry.original_price, displayPrice);
+      if (discount) return `${discount}% OFF`;
+      const sellerPercentage = Number(entry && entry.seller_percentage);
+      const meliPercentage = Number(entry && entry.meli_percentage);
+      const percentage = (Number.isFinite(sellerPercentage) && sellerPercentage > 0 ? sellerPercentage : 0) +
+        (Number.isFinite(meliPercentage) && meliPercentage > 0 ? meliPercentage : 0);
+      if (percentage) return `${formatPercent(percentage)} OFF`;
+      const boostedPercentage = Number(entry && (entry.discount_meli_boosted_percentage || entry.percentage));
+      if (Number.isFinite(boostedPercentage) && boostedPercentage > 0) return `${formatPercent(boostedPercentage)} OFF`;
+      const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
+      const amount = moneyOrNull(entry && entry.discount_amount || raw.discount_amount);
+      return amount === null ? '' : `${CommerceModel.formatMoney(amount, itemCurrency())} OFF`;
+    }
+
+    function renderPromotionPopoverEmptyState() {
+      return `
+        <div class="ob-card onframe-commerce-popover-empty">
+          <div>
+            <small>Promoções</small>
+            <strong>Nenhuma promoção aplicada</strong>
+          </div>
+          <span>Gerencie campanhas e descontos deste anúncio.</span>
+        </div>
+      `;
     }
 
     function promotionBenefitMetrics(entry, options = {}) {
@@ -1136,11 +1228,6 @@
       const percentage = Number(entry && (entry.meli_percentage || entry.discount_meli_boosted_percentage || entry.percentage));
       if (!price || !Number.isFinite(percentage) || percentage <= 0) return null;
       return Math.round(price * percentage) / 100;
-    }
-
-    function renderPromotionPeriodLegend(entry) {
-      const period = formatPromotionPeriod(entry);
-      return period ? `<div class="onframe-commerce-period-legend">${escapeHtml(period)}</div>` : '';
     }
 
     function renderPromotionMetricGrid(metrics) {
@@ -1915,7 +2002,7 @@
       return `
         <header class="onframe-commerce-popover-head">
           <strong>${escapeHtml(title)}</strong>
-          <span>${escapeHtml(badge || '')}</span>
+          ${badge ? `<span>${escapeHtml(badge)}</span>` : ''}
           <button class="onframe-commerce-icon-btn" data-action="close-popover" type="button" aria-label="Fechar">${icon('x', 14)}</button>
         </header>
       `;

@@ -324,8 +324,6 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
   assert.match(source, /benefitAmount !== null && metric\.label === 'Mercado Livre paga'/);
   assert.match(source, /metric\.label === 'Mercado Livre paga' && hasMetricLabel\(metrics, metric\.label\)/);
-  assert.match(source, /function promotionContributionMetrics/);
-  assert.match(source, /return promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: promotionDisplayPrice\(entry\) \}\)/);
   assert.doesNotMatch(source, /Impacto estimado/);
   assert.doesNotMatch(source, /Prévia de custos/);
   assert.doesNotMatch(source, /function estimateDataForKey/);
@@ -345,6 +343,38 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(styles, /\.onframe-commerce-promotion-estimate-summary\s*{\s*display: grid/s);
   assert.match(styles, /grid-template-columns: repeat\(auto-fit, minmax\(128px, 1fr\)\)/);
   assert.match(styles, /\.onframe-commerce-promotion-estimate-summary-metric\.review-result strong/);
+});
+
+test('popover de promocoes separa campanha, rebate e cupons globais', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const popoverSource = source.slice(source.indexOf('function buildPromotionPopover'), source.indexOf('function renderModal'));
+
+  assert.match(popoverSource, /renderPopoverHead\('Promoções'\)/);
+  assert.match(popoverSource, /renderPromotionPopoverCampaign\(campaign\)/);
+  assert.match(popoverSource, /renderPromotionPopoverCouponList\(coupons\)/);
+  assert.match(popoverSource, /renderPromotionPopoverPaymentList\(paymentBenefits\)/);
+  assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
+  assert.match(source, /function promotionPopoverCampaignEntry/);
+  assert.match(source, /function promotionStartTimestamp/);
+  assert.match(source, /function renderPromotionPopoverCampaign/);
+  assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
+  assert.match(source, /class="ob-badge \$\{escapeAttribute\(tone\)\}"/);
+  assert.match(source, /function renderPromotionPopoverRebate/);
+  assert.match(source, /Reduzimos <strong>/);
+  assert.match(source, /function promotionPopoverCouponEntries/);
+  assert.match(source, /CommerceModel\.isSellerWidePromotion\(entry\)/);
+  assert.match(source, /Válidos para compradores elegíveis/);
+  assert.match(source, /Elegibilidade depende do comprador/);
+  assert.match(source, /function renderPromotionPopoverPaymentList/);
+  assert.match(source, /function promotionPopoverConditionalBenefit/);
+  assert.match(source, /sellerPercentage[^\n]+seller_percentage/);
+  assert.match(source, /meliPercentage[^\n]+meli_percentage/);
+  assert.match(source, /icon\('ticket', 14\)/);
+  assert.match(source, /icon\('creditCard', 14\)/);
+  assert.match(styles, /\.onframe-commerce-popover-campaign-grid\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-rebate\s*{[\s\S]*color: var\(--ob-green-700\)/);
+  assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
 });
 
 test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {
