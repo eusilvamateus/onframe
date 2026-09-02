@@ -615,7 +615,7 @@
 
     function renderPromotionListRow(row) {
       const { entry, kind, index, key, type, status } = row;
-      const canCreate = kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry);
+      const canCreate = !CommerceModel.isSellerWidePromotion(entry) && (kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry));
       const canUpdate = (kind === 'active-offer' || kind === 'programmed-offer') && CommerceModel.canUpdateOffer(entry);
       const canDelete = (kind === 'active-offer' || kind === 'programmed-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
       const userFields = CommerceModel.getUserFields(canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
@@ -805,6 +805,9 @@
       const discount = discountPercent(entry && entry.original_price, displayPrice);
       const rule = promotionAudienceRule(entry);
       if (type === 'coupon') {
+        if (CommerceModel.isSellerWidePromotion(entry)) {
+          return '<strong>Cupom acumulativo</strong><span>Elegibilidade depende do comprador</span>';
+        }
         return `<strong>${escapeHtml(rule || 'Cupom acumulativo')}</strong>${discount ? `<span>${escapeHtml(`${discount}% OFF`)}</span>` : ''}`;
       }
       if (type === 'payment') {
@@ -819,6 +822,9 @@
     }
 
     function renderPromotionListResult(entry, key) {
+      if (!CommerceModel.canEstimatePromotion(entry)) {
+        return '<strong>Depende do comprador</strong><span>Não entra nesta estimativa</span>';
+      }
       const estimate = state.promotionEstimates[key];
       if (!estimate || estimate.status !== 'ready' || !estimate.data || moneyOrNull(estimate.data.youReceive) === null) return '';
       const currency = estimate.data.currency_id || itemCurrency();
@@ -2182,11 +2188,15 @@
           .map((entry, index) => ({ key: `stackable-offer:${index}`, entry })),
         ...(discountEntry && !isCandidatePromotion(discountEntry) ? [{ key: 'discount-offer:0', entry: discountEntry }] : []),
         ...programmedPromotionEntries(groups).map((entry, index) => ({ key: `programmed-offer:${index}`, entry }))
-      ].filter(({ entry }) => moneyOrNull(promotionDisplayPrice(entry)));
+      ].filter(({ entry }) => CommerceModel.canEstimatePromotion(entry) && moneyOrNull(promotionDisplayPrice(entry)));
     }
 
     function schedulePromotionEstimate(key, entry, values) {
       if (!key || !entry || !state.itemId) return;
+      if (!CommerceModel.canEstimatePromotion(entry)) {
+        clearPromotionEstimate(key);
+        return;
+      }
       const targetPrice = promotionTargetPrice(entry, values);
       if (!targetPrice) {
         clearPromotionEstimate(key);

@@ -245,19 +245,28 @@
   }
 
   function canCreateOffer(entry) {
-    return getOfferCreateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
+    return !isSellerWidePromotion(entry) && getOfferCreateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
 
   function canUpdateOffer(entry) {
-    return getOfferUpdateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
+    return !isSellerWidePromotion(entry) && getOfferUpdateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
 
   function canDeleteOffer(entry) {
+    if (isSellerWidePromotion(entry)) return false;
     if (entry && entry.capabilities && entry.capabilities.readonly) return false;
     const fields = getOfferDeleteFields(entry);
     if (fields.length > 0) return true;
     return String(entry && entry.type || '').toUpperCase() === 'PRICE_DISCOUNT' &&
       entry && entry.capabilities && Array.isArray(entry.capabilities.offerDelete);
+  }
+
+  function isSellerWidePromotion(entry) {
+    return String(entry && entry.coverage || '').toLowerCase() === 'seller_wide';
+  }
+
+  function canEstimatePromotion(entry) {
+    return !isSellerWidePromotion(entry) && !(entry && entry.estimate_eligible === false);
   }
 
   function getOfferCreateFields(entry) {
@@ -376,6 +385,7 @@
     buildOfferDeletePayload,
     buildOfferPayload,
     buildOfferUpdatePayload,
+    canEstimatePromotion,
     canCreateOffer,
     canDeleteOffer,
     canUpdateOffer,
@@ -389,6 +399,7 @@
     getPriceState,
     getPromotionState,
     getUserFields,
+    isSellerWidePromotion,
     parseMoneyInput
   };
 });

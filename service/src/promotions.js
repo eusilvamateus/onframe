@@ -151,8 +151,11 @@ async function buildPromotionSummary(client, itemId) {
 
   const itemPromotionEntries = extractEntries(itemPromotions);
   const sellerPromotionEntries = extractEntries(sellerPromotions);
-  const enrichedItemPromotions = await enrichSellerPromotionsForItem(client, item.id, sellerPromotionEntries, itemPromotionEntries);
-  const offers = annotatePriceWinningPromotion(itemPromotionEntries.concat(enrichedItemPromotions).map(normalizePromotionEntry), salePrice);
+  const sellerWideCouponEntries = sellerPromotionEntries.filter(isSellerWideCouponCampaign);
+  const sellerWideCouponKeys = new Set(sellerWideCouponEntries.map(promotionEntryKey).filter(Boolean));
+  const itemScopedPromotionEntries = itemPromotionEntries.filter((entry) => !sellerWideCouponKeys.has(promotionEntryKey(entry)));
+  const enrichedItemPromotions = await enrichSellerPromotionsForItem(client, item.id, sellerPromotionEntries, itemScopedPromotionEntries);
+  const offers = annotatePriceWinningPromotion(itemScopedPromotionEntries.concat(enrichedItemPromotions, sellerWideCouponEntries.map(normalizeSellerWideCouponEntry)).map(normalizePromotionEntry), salePrice);
   const campaigns = sellerPromotionEntries.map(normalizePromotionEntry);
 
   return {
@@ -254,6 +257,7 @@ async function enrichSellerPromotionsForItem(client, itemId, sellerPromotions, i
   const existing = new Set(itemPromotions.map(promotionEntryKey).filter(Boolean));
   const campaigns = extractEntries(sellerPromotions)
     .filter((entry) => entry && entry.id && normalizePromotionType(entry.type || entry.promotion_type))
+    .filter((entry) => !isSellerWideCouponCampaign(entry))
     .filter((entry) => !existing.has(promotionEntryKey(entry)));
 
   const lookups = await Promise.all(campaigns.map((campaign) => optional(() => client.getPromotionItems(
@@ -267,6 +271,22 @@ async function enrichSellerPromotionsForItem(client, itemId, sellerPromotions, i
     return extractEntries(response)
       .filter((entry) => String(entry && entry.id || '') === String(itemId))
       .map((entry) => normalizeCampaignItemEntry(campaign, entry));
+  });
+}
+
+function isSellerWideCouponCampaign(entry) {
+  const type = normalizePromotionType(entry && (entry.type || entry.promotion_type || entry.campaign_type));
+  const status = String(entry && (entry.status || entry.status_item) || '').toLowerCase();
+  return type === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN && ['started', 'active', 'pending', 'programmed', 'sync_requested'].includes(status);
+}
+
+function normalizeSellerWideCouponEntry(campaign) {
+  return Object.assign({}, campaign, {
+    id: campaign.id || campaign.promotion_id || null,
+    promotion_id: campaign.promotion_id || campaign.id || null,
+    type: PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN,
+    coverage: 'seller_wide',
+    estimate_eligible: false
   });
 }
 
@@ -608,6 +628,8 @@ function normalizePromotionEntry(value) {
     sub_type: value.sub_type || null,
     start_date: value.start_date || null,
     end_date: value.end_date || value.finish_date || null,
+    coverage: value.coverage || null,
+    estimate_eligible: value.estimate_eligible !== false,
     candidate: status === 'candidate',
     is_current_price: false,
     price_role: 'unknown',

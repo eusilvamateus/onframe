@@ -115,6 +115,22 @@ test('commerce model nao conta desconto pix acumulativo como promocao de preco',
   assert.strictEqual(state.label, 'Promo ativa');
 });
 
+test('commerce model exclui cupom global de acoes e estimativas', () => {
+  const coupon = {
+    type: 'SELLER_COUPON_CAMPAIGN',
+    coverage: 'seller_wide',
+    estimate_eligible: false,
+    capabilities: { offerCreate: ['promotion_id'], offerDelete: ['promotion_id'] }
+  };
+
+  assert.strictEqual(commerceModel.isSellerWidePromotion(coupon), true);
+  assert.strictEqual(commerceModel.canEstimatePromotion(coupon), false);
+  assert.strictEqual(commerceModel.canCreateOffer(coupon), false);
+  assert.strictEqual(commerceModel.canUpdateOffer(coupon), false);
+  assert.strictEqual(commerceModel.canDeleteOffer(coupon), false);
+  assert.strictEqual(commerceModel.canEstimatePromotion({ type: 'DEAL' }), true);
+});
+
 test('commerce model trata aplicada sem preco vigente como programada', () => {
   const state = commerceModel.getPromotionState({
     offers: {
@@ -979,6 +995,40 @@ test('promotion summary enriquece campanhas com dados do item', async () => {
   assert.strictEqual(summary.offers.eligible[0].min_price, 59.2);
   assert.strictEqual(summary.offers.eligible[0].max_price, 209.94);
   assert.strictEqual(summary.offers.eligible[0].suggested_price, 196.59);
+});
+
+test('promotion summary trata cupons globais como informativos sem usar o candidate do item', async () => {
+  const promotionItemCalls = [];
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+    getItemPromotions: async () => ([
+      { id: 'C-MLB1', type: 'SELLER_COUPON_CAMPAIGN', status: 'candidate', name: 'Cupom para carrinhos abandonados' }
+    ]),
+    getSellerPromotions: async () => ({
+      results: [
+        { id: 'C-MLB1', type: 'SELLER_COUPON_CAMPAIGN', status: 'started', name: 'Cupom para carrinhos abandonados' },
+        { id: 'C-MLB2', type: 'SELLER_COUPON_CAMPAIGN', status: 'pending', name: 'SEGUIDORES' },
+        { id: 'P-MLB1', type: 'DEAL', status: 'started', name: 'Campanha comum' }
+      ]
+    }),
+    getPromotionItems: async (promotionId) => {
+      promotionItemCalls.push(promotionId);
+      return { results: [] };
+    }
+  }, 'MLB7186779490');
+
+  assert.deepStrictEqual(promotionItemCalls, ['P-MLB1']);
+  assert.strictEqual(summary.offers.active.length, 1);
+  assert.strictEqual(summary.offers.active[0].id, 'C-MLB1');
+  assert.strictEqual(summary.offers.active[0].status, 'started');
+  assert.strictEqual(summary.offers.active[0].coverage, 'seller_wide');
+  assert.strictEqual(summary.offers.active[0].estimate_eligible, false);
+  assert.strictEqual(summary.offers.scheduled.length, 1);
+  assert.strictEqual(summary.offers.scheduled[0].id, 'C-MLB2');
+  assert.strictEqual(summary.offers.scheduled[0].status, 'pending');
+  assert.strictEqual(summary.offers.scheduled[0].coverage, 'seller_wide');
+  assert.strictEqual(summary.offers.eligible.length, 0);
 });
 
 test('promotion summary preserva aplicadas e marca preco em vigor pelo sale price', async () => {
