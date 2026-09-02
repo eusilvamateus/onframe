@@ -394,12 +394,18 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /onframe-commerce-promotion-row-actions-content/);
   assert.match(source, /onframe-commerce-promotion-action-btn/);
   assert.match(source, /onframe-commerce-modal-head-action/);
+  assert.match(source, /function renderIconTooltipButton/);
+  assert.match(source, /class="ob-tooltip"/);
+  assert.match(source, /role="tooltip"/);
+  assert.match(source, /aria-describedby=/);
   assert.match(source, /: 'trash';/);
   assert.doesNotMatch(source, /andes-table/);
   assert.match(componentStyles, /\.ob-table-wrap\s*{[^}]*overflow-x: auto/s);
   assert.match(componentStyles, /\.ob-table-header\s*{[^}]*padding: 10px 14px/s);
   assert.match(componentStyles, /\.ob-table-cell\s*{[^}]*padding: 12px 14px/s);
   assert.match(componentStyles, /\.ob-table-row:hover\s*{[^}]*var\(--ob-bg-warm\)/s);
+  assert.match(componentStyles, /\.ob-tooltip-content\s*{[^}]*transition: opacity 140ms var\(--ob-ease-out\)/s);
+  assert.match(componentStyles, /\.ob-tooltip:hover \.ob-tooltip-content,[\s\S]*transition-delay: 120ms/s);
   assert.match(styles, /\.onframe-commerce-promotion-table\s*{\s*min-width: 760px/s);
   assert.match(styles, /\.onframe-commerce-promotion-column-actions\s*{\s*width: 104px/s);
   assert.match(styles, /\.onframe-commerce-promotion-column-period\s*{\s*width: 18%;\s*min-width: 184px/s);

@@ -373,6 +373,113 @@
   margin-left: auto;
 }
 
+.ob-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.ob-tooltip-content {
+  position: absolute;
+  z-index: var(--ob-z-tooltip);
+  max-width: 240px;
+  padding: 8px 11px;
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-ink-strong);
+  color: var(--ob-fg-on-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+  font-weight: var(--ob-w-medium);
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms var(--ob-ease-out), transform 140ms var(--ob-ease-out), visibility 0s linear 140ms;
+}
+
+.ob-tooltip:hover .ob-tooltip-content,
+.ob-tooltip:focus-within .ob-tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 120ms, 120ms, 120ms;
+}
+
+.ob-tooltip[data-placement="top"] .ob-tooltip-content {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, 4px);
+}
+
+.ob-tooltip[data-placement="top"]:hover .ob-tooltip-content,
+.ob-tooltip[data-placement="top"]:focus-within .ob-tooltip-content {
+  transform: translate(-50%, 0);
+}
+
+.ob-tooltip[data-placement="bottom"] .ob-tooltip-content {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, -4px);
+}
+
+.ob-tooltip[data-placement="bottom"]:hover .ob-tooltip-content,
+.ob-tooltip[data-placement="bottom"]:focus-within .ob-tooltip-content {
+  transform: translate(-50%, 0);
+}
+
+.ob-tooltip[data-placement="left"] .ob-tooltip-content {
+  top: 50%;
+  right: calc(100% + 8px);
+  transform: translate(-4px, -50%);
+}
+
+.ob-tooltip[data-placement="left"]:hover .ob-tooltip-content,
+.ob-tooltip[data-placement="left"]:focus-within .ob-tooltip-content {
+  transform: translate(0, -50%);
+}
+
+.ob-tooltip[data-placement="right"] .ob-tooltip-content {
+  top: 50%;
+  left: calc(100% + 8px);
+  transform: translate(4px, -50%);
+}
+
+.ob-tooltip[data-placement="right"]:hover .ob-tooltip-content,
+.ob-tooltip[data-placement="right"]:focus-within .ob-tooltip-content {
+  transform: translate(0, -50%);
+}
+
+.ob-tooltip-arrow {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.ob-tooltip[data-placement="top"] .ob-tooltip-arrow {
+  bottom: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.ob-tooltip[data-placement="bottom"] .ob-tooltip-arrow {
+  top: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.ob-tooltip[data-placement="left"] .ob-tooltip-arrow {
+  top: 50%;
+  right: -4px;
+  margin-top: -4px;
+}
+
+.ob-tooltip[data-placement="right"] .ob-tooltip-arrow {
+  top: 50%;
+  left: -4px;
+  margin-top: -4px;
+}
+
 .ob-badge,
 .onframe-commerce-mini-chip,
 .onframe-commerce-status,

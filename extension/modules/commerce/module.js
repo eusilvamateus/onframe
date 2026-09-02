@@ -499,8 +499,23 @@
                 <p>Controle ofertas e campanhas deste anúncio.</p>
               </div>
               <div class="onframe-commerce-modal-head-actions">
-                <button class="onframe-commerce-icon-btn onframe-commerce-modal-head-action" data-action="reload-commerce" type="button" aria-label="Atualizar promoções" title="Atualizar promoções" ${state.promotionLoading ? 'disabled' : ''}>${icon('reload', 16)}</button>
-                <button class="onframe-commerce-icon-btn onframe-commerce-modal-head-action" data-action="close-promotion-modal" type="button" aria-label="Fechar" title="Fechar">${icon('x', 18)}</button>
+                ${renderIconTooltipButton({
+                  action: 'reload-commerce',
+                  label: 'Atualizar promoções',
+                  iconMarkup: icon('reload', 16),
+                  className: 'onframe-commerce-icon-btn onframe-commerce-modal-head-action',
+                  tooltipId: 'onframe-promotion-modal-reload-tooltip',
+                  placement: 'bottom',
+                  disabled: state.promotionLoading ? 'disabled' : ''
+                })}
+                ${renderIconTooltipButton({
+                  action: 'close-promotion-modal',
+                  label: 'Fechar',
+                  iconMarkup: icon('x', 18),
+                  className: 'onframe-commerce-icon-btn onframe-commerce-modal-head-action',
+                  tooltipId: 'onframe-promotion-modal-close-tooltip',
+                  placement: 'bottom'
+                })}
               </div>
             </header>
             ${renderNotice(state.actionMessage || state.actionError || state.promotionError, state.actionError || state.promotionError ? 'warn' : 'ok')}
@@ -662,10 +677,48 @@
       const createLabel = promotionActionLabel('create', null, false, userFields, key);
       const updateLabel = promotionActionLabel('update', null, false, userFields, key);
       return `
-        ${canCreate ? `<button class="onframe-commerce-icon-btn onframe-commerce-promotion-action-btn" data-action="create-offer" type="button" aria-label="${escapeAttribute(createLabel)}" title="${escapeAttribute(createLabel)}" ${promotionActionDisabled(false)}>${promotionActionIcon('create', key, confirm, formOpen)}</button>` : ''}
-        ${canUpdate ? `<button class="onframe-commerce-icon-btn onframe-commerce-promotion-action-btn" data-action="update-offer" type="button" aria-label="${escapeAttribute(updateLabel)}" title="${escapeAttribute(updateLabel)}" ${promotionActionDisabled(false)}>${promotionActionIcon('update', key, confirm, formOpen)}</button>` : ''}
-        ${canDelete ? `<button class="onframe-commerce-icon-btn onframe-commerce-promotion-action-btn danger" data-action="delete-offer" type="button" aria-label="Remover promoção" title="Remover promoção" ${promotionActionDisabled(false)}>${promotionActionIcon('delete', key, confirm, formOpen)}</button>` : ''}
+        ${canCreate ? renderIconTooltipButton({
+          action: 'create-offer',
+          label: createLabel,
+          iconMarkup: promotionActionIcon('create', key, confirm, formOpen),
+          className: 'onframe-commerce-icon-btn onframe-commerce-promotion-action-btn',
+          tooltipId: promotionTooltipId(key, 'create'),
+          placement: 'left',
+          disabled: promotionActionDisabled(false)
+        }) : ''}
+        ${canUpdate ? renderIconTooltipButton({
+          action: 'update-offer',
+          label: updateLabel,
+          iconMarkup: promotionActionIcon('update', key, confirm, formOpen),
+          className: 'onframe-commerce-icon-btn onframe-commerce-promotion-action-btn',
+          tooltipId: promotionTooltipId(key, 'update'),
+          placement: 'left',
+          disabled: promotionActionDisabled(false)
+        }) : ''}
+        ${canDelete ? renderIconTooltipButton({
+          action: 'delete-offer',
+          label: 'Remover promoção',
+          iconMarkup: promotionActionIcon('delete', key, confirm, formOpen),
+          className: 'onframe-commerce-icon-btn onframe-commerce-promotion-action-btn danger',
+          tooltipId: promotionTooltipId(key, 'delete'),
+          placement: 'left',
+          disabled: promotionActionDisabled(false)
+        }) : ''}
       `;
+    }
+
+    function renderIconTooltipButton({ action, label, iconMarkup, className, tooltipId, placement = 'top', disabled = '' }) {
+      return `
+        <span class="ob-tooltip" data-placement="${escapeAttribute(placement)}">
+          <button class="${escapeAttribute(className)}" data-action="${escapeAttribute(action)}" type="button" aria-label="${escapeAttribute(label)}" aria-describedby="${escapeAttribute(tooltipId)}" ${disabled}>${iconMarkup}</button>
+          <span class="ob-tooltip-content" id="${escapeAttribute(tooltipId)}" role="tooltip">${escapeHtml(label)}<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
+        </span>
+      `;
+    }
+
+    function promotionTooltipId(key, action) {
+      const safeKey = String(key || '').replace(/[^a-z0-9_-]/gi, '-');
+      return `onframe-promotion-${safeKey}-${action}-tooltip`;
     }
 
     function buildPromotionRows() {
