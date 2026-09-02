@@ -21,6 +21,9 @@
       inline: null,
       popoverRoot: null,
       modalRoot: null,
+      promotionResultPopoverRoot: null,
+      promotionResultPopoverKey: '',
+      promotionResultPopoverAnchor: null,
       loaded: false,
       busy: false,
       visible: true,
@@ -485,6 +488,7 @@
       if (markup === state.lastModalMarkup) return;
       state.lastModalMarkup = markup;
       removeDatePicker();
+      removePromotionResultPopover();
       state.renderingPromotionModal = true;
       try {
         state.modalRoot.innerHTML = markup;
@@ -838,9 +842,141 @@
       const currency = estimate.data.currency_id || itemCurrency();
       const benefitAmount = promotionBenefitAmount(estimate.data.promotionBenefit, estimate.data.dealPrice);
       return `
-        <strong>Você recebe ${escapeHtml(CommerceModel.formatMoney(estimate.data.youReceive, currency))}</strong>
+        <div class="onframe-commerce-promotion-result-value">
+          <strong>Você recebe ${escapeHtml(CommerceModel.formatMoney(estimate.data.youReceive, currency))}</strong>
+          ${renderPromotionResultPopoverTrigger(key)}
+        </div>
         ${benefitAmount !== null ? `<span>ML contribui ${escapeHtml(CommerceModel.formatMoney(benefitAmount, currency))}</span>` : ''}
       `;
+    }
+
+    function renderPromotionResultPopoverTrigger(key) {
+      const id = promotionResultPopoverId(key);
+      return `
+        <span class="ob-tooltip onframe-commerce-promotion-result-tooltip" data-placement="top">
+          <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-info" data-action="toggle-promotion-result-popover" type="button" aria-label="Ver detalhes do cálculo" aria-controls="${escapeAttribute(id)}" aria-expanded="false">${icon('info', 14)}</button>
+          <span class="ob-tooltip-content" role="tooltip">Ver detalhes do cálculo<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
+        </span>
+      `;
+    }
+
+    function promotionResultPopoverId(key) {
+      return `onframe-promotion-result-${String(key || '').replace(/[^a-z0-9_-]/gi, '-')}`;
+    }
+
+    function togglePromotionResultPopover(button) {
+      const card = button.closest('[data-entry-key]');
+      const key = card && card.dataset ? card.dataset.entryKey : '';
+      if (!key) return;
+      if (state.promotionResultPopoverKey === key) {
+        removePromotionResultPopover();
+        return;
+      }
+
+      const details = promotionResultPopoverDetails(key);
+      if (!details) return;
+      removePromotionResultPopover();
+      state.promotionResultPopoverKey = key;
+      state.promotionResultPopoverAnchor = button;
+      button.setAttribute('aria-expanded', 'true');
+      renderPromotionResultPopover(details);
+    }
+
+    function renderPromotionResultPopover(details) {
+      if (!details || !state.promotionResultPopoverAnchor) return;
+      if (!state.promotionResultPopoverRoot) {
+        state.promotionResultPopoverRoot = document.createElement('div');
+        state.promotionResultPopoverRoot.className = 'onframe-commerce-promotion-result-popover-root';
+        document.body.appendChild(state.promotionResultPopoverRoot);
+      }
+
+      state.promotionResultPopoverRoot.innerHTML = buildPromotionResultPopover(details);
+      positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
+      bindButton(state.promotionResultPopoverRoot, 'close-promotion-result-popover', removePromotionResultPopover);
+    }
+
+    function buildPromotionResultPopover({ key, entry, estimate }) {
+      const id = promotionResultPopoverId(key);
+      const currency = estimate.currency_id || itemCurrency();
+      const rows = promotionResultPopoverRows(entry, estimate, currency);
+      return `
+        <section class="ob-popover onframe-commerce-promotion-result-popover" id="${escapeAttribute(id)}" role="dialog" aria-label="Detalhes do cálculo da promoção">
+          <header class="onframe-commerce-promotion-result-popover-head">
+            <div>
+              <strong>Detalhes do cálculo</strong>
+              <span>${escapeHtml(entry.label || 'Promoção')}</span>
+            </div>
+            <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-popover-close" data-action="close-promotion-result-popover" type="button" aria-label="Fechar detalhes do cálculo">${icon('x', 14)}</button>
+          </header>
+          <div class="onframe-commerce-promotion-result-popover-rows">
+            ${rows.map(renderPromotionResultPopoverRow).join('')}
+          </div>
+          <p class="onframe-commerce-promotion-result-popover-note">Estimativa calculada com o preço promocional.</p>
+        </section>
+      `;
+    }
+
+    function promotionResultPopoverDetails(key) {
+      const [kind, indexText] = String(key || '').split(':');
+      const entry = getPromotionEntry(kind, Number(indexText));
+      const record = state.promotionEstimates[key];
+      const estimate = record && record.status === 'ready' ? record.data : null;
+      if (!entry || !estimate || moneyOrNull(estimate.youReceive) === null) return null;
+      return { key, entry, estimate };
+    }
+
+    function promotionResultPopoverRows(entry, estimate, currency) {
+      const price = moneyOrNull(estimate.dealPrice);
+      const originalPrice = moneyOrNull(entry && entry.original_price) || moneyOrNull(estimate.item && estimate.item.price);
+      const benefit = promotionBenefitAmount(estimate.promotionBenefit, estimate.dealPrice);
+      const commission = moneyOrNull(estimate.commission && estimate.commission.amount);
+      const shipping = moneyOrNull(estimate.shipping && estimate.shipping.amount);
+      const rows = [];
+
+      if (price !== null) {
+        rows.push({
+          label: 'Preço promocional',
+          description: originalPrice !== null && originalPrice !== price ? `Preço original ${CommerceModel.formatMoney(originalPrice, currency)}` : '',
+          value: CommerceModel.formatMoney(price, currency)
+        });
+      }
+      if (benefit !== null) {
+        rows.push({ label: 'Mercado Livre paga', value: CommerceModel.formatMoney(benefit, currency), tone: 'benefit' });
+      }
+      if (commission !== null) rows.push({ label: 'Comissão', value: formatPromotionCost(commission, currency) });
+      if (shipping !== null) {
+        rows.push({
+          label: 'Frete',
+          description: promotionShippingDescription(estimate.shipping),
+          value: formatPromotionCost(shipping, currency)
+        });
+      }
+      rows.push({ label: 'Você recebe', value: CommerceModel.formatMoney(estimate.youReceive, currency), tone: 'total' });
+      return rows;
+    }
+
+    function renderPromotionResultPopoverRow(row) {
+      if (!row || !row.label || !row.value) return '';
+      return `
+        <div class="onframe-commerce-promotion-result-popover-row ${escapeAttribute(row.tone || '')}">
+          <div>
+            <strong>${escapeHtml(row.label)}</strong>
+            ${row.description ? `<span>${escapeHtml(row.description)}</span>` : ''}
+          </div>
+          <b>${escapeHtml(row.value)}</b>
+        </div>
+      `;
+    }
+
+    function promotionShippingDescription(shipping) {
+      if (!shipping) return '';
+      if (shipping.free_shipping) return 'Grátis para o comprador';
+      return shipping.paid_by === 'seller' ? 'Pago pelo vendedor' : 'Pago pelo comprador';
+    }
+
+    function formatPromotionCost(amount, currency) {
+      const value = moneyOrNull(amount);
+      return value === null ? '' : `-${CommerceModel.formatMoney(value, currency)}`;
     }
 
     function formatPromotionPeriodShort(entry) {
@@ -1857,6 +1993,7 @@
       bindButton(state.modalRoot, 'create-offer', (button) => void performPromotionAction(button, 'create'));
       bindButton(state.modalRoot, 'update-offer', (button) => void performPromotionAction(button, 'update'));
       bindButton(state.modalRoot, 'delete-offer', (button) => void performPromotionAction(button, 'delete'));
+      bindButton(state.modalRoot, 'toggle-promotion-result-popover', togglePromotionResultPopover);
       bindButton(state.modalRoot, 'cancel-promotion-confirm', cancelPromotionConfirm);
       bindButton(state.modalRoot, 'refresh-page', refreshPage);
       bindButton(state.modalRoot, 'toggle-promotion-filters', () => {
@@ -2501,6 +2638,7 @@
     function openPromotionModal() {
       state.popover = null;
       removePopover();
+      removePromotionResultPopover();
       state.promotionModalOpen = true;
       state.actionError = '';
       state.actionMessage = '';
@@ -2748,6 +2886,20 @@
       root.style.top = `${Math.round(top)}px`;
     }
 
+    function positionPromotionResultPopover(root, anchor) {
+      if (!root || !anchor || typeof anchor.getBoundingClientRect !== 'function') return;
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.min(320, window.innerWidth - 24);
+      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+      root.style.left = `${Math.round(left)}px`;
+      root.style.top = `${Math.round(Math.max(12, rect.bottom + 8))}px`;
+
+      const height = root.getBoundingClientRect().height;
+      if (rect.bottom + 8 + height > window.innerHeight - 12 && rect.top - height - 8 >= 12) {
+        root.style.top = `${Math.round(rect.top - height - 8)}px`;
+      }
+    }
+
     function fieldType(field) {
       if (field === 'stock') return 'type="number" min="1" step="1"';
       return 'inputmode="decimal" autocomplete="off"';
@@ -2872,7 +3024,18 @@
       state.lastPopoverMarkup = '';
     }
 
+    function removePromotionResultPopover() {
+      if (state.promotionResultPopoverAnchor && typeof state.promotionResultPopoverAnchor.setAttribute === 'function') {
+        state.promotionResultPopoverAnchor.setAttribute('aria-expanded', 'false');
+      }
+      if (state.promotionResultPopoverRoot) state.promotionResultPopoverRoot.remove();
+      state.promotionResultPopoverRoot = null;
+      state.promotionResultPopoverKey = '';
+      state.promotionResultPopoverAnchor = null;
+    }
+
     function removeModal() {
+      removePromotionResultPopover();
       if (state.modalRoot) state.modalRoot.remove();
       state.modalRoot = null;
       state.lastModalMarkup = '';
@@ -2881,9 +3044,15 @@
     function bindViewportEvents() {
       if (state.viewportEventsReady) return;
       state.viewportEventsReady = true;
-      window.addEventListener('resize', () => scheduleRender(80));
+      window.addEventListener('resize', () => {
+        scheduleRender(80);
+        if (state.promotionResultPopoverRoot) {
+          positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
+        }
+      });
       window.addEventListener('scroll', () => {
         if (state.popover) renderPopover();
+        if (state.promotionResultPopoverRoot) positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
       }, true);
     }
 
@@ -2892,11 +3061,22 @@
       state.documentEventsReady = true;
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
+          if (state.promotionResultPopoverRoot) {
+            removePromotionResultPopover();
+            return;
+          }
           closePopover();
           closePromotionModal();
         }
       });
       document.addEventListener('click', (event) => {
+        if (state.promotionResultPopoverRoot) {
+          const target = event.target;
+          const anchor = state.promotionResultPopoverAnchor;
+          if (!state.promotionResultPopoverRoot.contains(target) && (!anchor || !anchor.contains(target))) {
+            removePromotionResultPopover();
+          }
+        }
         if (!state.popoverRoot || !state.popover) return;
         const target = event.target;
         if (state.popoverRoot.contains(target)) return;

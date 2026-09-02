@@ -4,6 +4,7 @@
 .onframe-commerce-inline,
 .onframe-commerce-popover-root,
 .onframe-commerce-modal-root,
+.onframe-commerce-promotion-result-popover-root,
 .onframe-description-root,
 .onframe-description-action,
 #highlighted_specs_attrs.onframe-characteristics-is-editing,
@@ -40,6 +41,10 @@
 .onframe-commerce-modal-root *,
 .onframe-commerce-modal-root *::before,
 .onframe-commerce-modal-root *::after,
+.onframe-commerce-promotion-result-popover-root,
+.onframe-commerce-promotion-result-popover-root *,
+.onframe-commerce-promotion-result-popover-root *::before,
+.onframe-commerce-promotion-result-popover-root *::after,
 .onframe-description-root,
 .onframe-description-root *,
 .onframe-description-root *::before,
@@ -1093,6 +1098,7 @@
 .onframe-commerce-inline :focus-visible,
 .onframe-commerce-popover-root :focus-visible,
 .onframe-commerce-modal-root :focus-visible,
+.onframe-commerce-promotion-result-popover-root :focus-visible,
 .onframe-characteristics-root :focus-visible {
   outline: none;
   box-shadow: 0 0 0 4px var(--ob-focus-ring);

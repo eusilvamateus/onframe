@@ -440,6 +440,24 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.doesNotMatch(styles, /andes-table/);
 });
 
+test('resultado da promocao abre popover com os custos que formam o valor liquido', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+
+  assert.match(source, /function renderPromotionResultPopoverTrigger/);
+  assert.match(source, /data-action="toggle-promotion-result-popover"/);
+  assert.match(source, /function buildPromotionResultPopover/);
+  assert.match(source, /Detalhes do cálculo/);
+  assert.match(source, /Preço promocional/);
+  assert.match(source, /Mercado Livre paga/);
+  assert.match(source, /function promotionShippingDescription/);
+  assert.match(source, /function formatPromotionCost/);
+  assert.match(source, /function removePromotionResultPopover/);
+  assert.match(source, /event\.key === 'Escape'/);
+  assert.match(styles, /\.onframe-commerce-promotion-result-popover-root/);
+  assert.match(styles, /\.onframe-commerce-promotion-result-popover-row\.total/);
+});
+
 test('remocao de promocao nao exige campos de criacao ou edicao', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
 
