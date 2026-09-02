@@ -301,6 +301,9 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /Revisão antes de enviar/);
   assert.match(source, /function renderPromotionReview/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
+  assert.match(source, /function reviewPromotionFieldDraft/);
+  assert.match(source, /function shouldReviewPromotionFieldOnBlur/);
+  assert.match(source, /event\.key !== 'Enter'/);
   assert.match(source, /function promotionBenefitAmount/);
   assert.match(source, /function renderPromotionConfirmWarnings\(rangeWarning\)/);
   assert.match(source, /function renderPromotionListControls/);

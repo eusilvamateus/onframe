@@ -44,7 +44,9 @@
       operationPendingAction: '',
       detailsOpen: false,
       promotionModalOpen: false,
+      renderingPromotionModal: false,
       promotionFormKey: '',
+      promotionFormAction: '',
       promotionDraftValues: {},
       promotionEstimates: {},
       promotionEstimateTimers: {},
@@ -107,6 +109,7 @@
       state.detailsOpen = false;
       state.promotionModalOpen = false;
       state.promotionFormKey = '';
+      state.promotionFormAction = '';
       state.promotionDraftValues = {};
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
@@ -482,10 +485,15 @@
       if (markup === state.lastModalMarkup) return;
       state.lastModalMarkup = markup;
       removeDatePicker();
-      state.modalRoot.innerHTML = markup;
-      bindModalEvents();
-      restoreModalPosition(modalScrollTop, pageScrollX, pageScrollY);
-      restoreModalFieldFocus(focusedField);
+      state.renderingPromotionModal = true;
+      try {
+        state.modalRoot.innerHTML = markup;
+        bindModalEvents();
+        restoreModalPosition(modalScrollTop, pageScrollX, pageScrollY);
+        restoreModalFieldFocus(focusedField);
+      } finally {
+        state.renderingPromotionModal = false;
+      }
     }
 
     function buildPromotionModal() {
@@ -1937,7 +1945,56 @@
       container.querySelectorAll('[data-field]').forEach((input) => {
         input.addEventListener('input', () => savePromotionFieldDraft(input));
         input.addEventListener('change', () => savePromotionFieldDraft(input));
+        input.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' || input.type === 'hidden') return;
+          event.preventDefault();
+          savePromotionFieldDraft(input);
+          reviewPromotionFieldDraft(input);
+        });
+        input.addEventListener('blur', (event) => {
+          if (input.type === 'hidden' || !shouldReviewPromotionFieldOnBlur(input, event)) return;
+          savePromotionFieldDraft(input);
+          reviewPromotionFieldDraft(input);
+        });
       });
+    }
+
+    function shouldReviewPromotionFieldOnBlur(input, event) {
+      if (state.renderingPromotionModal) return false;
+      const next = event && event.relatedTarget;
+      if (!next || typeof next.closest !== 'function') return true;
+      const card = input.closest('[data-entry-key]');
+      if (card && next.closest('[data-entry-key]') === card && typeof next.matches === 'function' && next.matches('[data-field], [data-date-display]')) return false;
+      return !next.closest('[data-action]');
+    }
+
+    function reviewPromotionFieldDraft(input) {
+      const card = input.closest('[data-entry-key]');
+      const key = card && card.dataset ? card.dataset.entryKey : '';
+      const action = state.promotionFormAction;
+      if (!card || !key || state.promotionFormKey !== key || state.promotionConfirm || !['create', 'update'].includes(action)) return;
+
+      const entry = getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex));
+      if (!entry) return;
+      const values = readPromotionValues(card);
+      const targetPrice = promotionTargetPrice(entry, values);
+      if (!targetPrice || promotionRangeWarning(entry, targetPrice)) return;
+
+      try {
+        if (action === 'update') CommerceModel.buildOfferUpdatePayload(entry, values);
+        else CommerceModel.buildOfferPayload(entry, values);
+      } catch (err) {
+        return;
+      }
+
+      clearPromotionEstimateTimer(key);
+      delete state.promotionEstimates[key];
+      state.promotionConfirm = { key, action, values };
+      state.promotionFocusKey = key;
+      state.actionError = '';
+      state.actionMessage = '';
+      schedulePromotionEstimate(key, entry, values);
+      rerenderModal();
     }
 
     function savePromotionFieldDraft(input) {
@@ -2428,6 +2485,7 @@
       state.actionError = '';
       state.actionMessage = '';
       state.promotionFormKey = '';
+      state.promotionFormAction = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
       resetPromotionListFilters();
@@ -2440,6 +2498,7 @@
     function closePromotionModal() {
       state.promotionModalOpen = false;
       state.promotionFormKey = '';
+      state.promotionFormAction = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
       clearPromotionEstimateTimers();
@@ -2464,6 +2523,7 @@
         : CommerceModel.getUserFields(action === 'update' ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
       if (fields.length && state.promotionFormKey !== key) {
         state.promotionFormKey = key;
+        state.promotionFormAction = action;
         ensurePromotionDraft(key, entry, fields);
         state.promotionConfirm = null;
         state.promotionFocusKey = key;
@@ -2510,6 +2570,7 @@
           });
           state.actionMessage = bulkResultMessage(result, action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
           state.promotionFormKey = '';
+          state.promotionFormAction = '';
           state.promotionDraftValues = {};
           clearPromotionEstimateTimers();
           state.promotionEstimates = {};
@@ -2532,6 +2593,7 @@
         });
         state.actionMessage = action === 'delete' ? 'Promoção removida.' : 'Promoção enviada.';
         state.promotionFormKey = '';
+        state.promotionFormAction = '';
         state.promotionDraftValues = {};
         clearPromotionEstimateTimers();
         state.promotionEstimates = {};
