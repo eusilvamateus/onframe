@@ -662,7 +662,10 @@
           <tr class="ob-table-row onframe-commerce-promotion-list-detail-row" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
             <td class="ob-table-cell onframe-commerce-promotion-list-detail-cell" colspan="5">
               <div class="onframe-commerce-promotion-list-row-detail">
-              ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
+              ${formOpen ? `${renderPromotionFields(userFields, key, entry)}
+                <div class="onframe-commerce-promotion-form-actions">
+                  <button class="onframe-commerce-btn compact" data-action="cancel-promotion-form" type="button">${icon('caretLeft', 14)}Cancelar</button>
+                </div>` : ''}
               ${renderPromotionReview(key, entry, formOpen, confirm)}
               ${confirm ? `<div class="onframe-commerce-promotion-review-actions">${actionMarkup}</div>` : ''}
               </div>
@@ -1998,6 +2001,7 @@
       bindButton(state.modalRoot, 'update-offer', (button) => void performPromotionAction(button, 'update'));
       bindButton(state.modalRoot, 'delete-offer', (button) => void performPromotionAction(button, 'delete'));
       bindButton(state.modalRoot, 'toggle-promotion-result-popover', togglePromotionResultPopover);
+      bindButton(state.modalRoot, 'cancel-promotion-form', cancelPromotionForm);
       bindButton(state.modalRoot, 'cancel-promotion-confirm', cancelPromotionConfirm);
       bindButton(state.modalRoot, 'refresh-page', refreshPage);
       bindButton(state.modalRoot, 'toggle-promotion-filters', () => {
@@ -2778,6 +2782,22 @@
       state.promotionConfirm = null;
       state.promotionFocusKey = state.promotionFormKey || '';
       state.actionError = '';
+      rerenderModal();
+    }
+
+    function cancelPromotionForm() {
+      const key = state.promotionFormKey;
+      if (!key || state.busy) return;
+      clearPromotionEstimateTimer(key);
+      delete state.promotionEstimates[key];
+      delete state.promotionDraftValues[key];
+      state.promotionFormKey = '';
+      state.promotionFormAction = '';
+      state.promotionConfirm = null;
+      state.promotionFocusKey = '';
+      state.promotionBulkEnabled = false;
+      state.actionError = '';
+      state.actionMessage = '';
       rerenderModal();
     }
 

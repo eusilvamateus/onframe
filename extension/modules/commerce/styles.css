@@ -1555,12 +1555,21 @@
 }
 
 .onframe-commerce-promotion-row-actions-content,
-.onframe-commerce-promotion-review-actions {
+.onframe-commerce-promotion-review-actions,
+.onframe-commerce-promotion-form-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.onframe-commerce-promotion-row-actions-content,
+.onframe-commerce-promotion-review-actions {
+  justify-content: flex-end;
+}
+
+.onframe-commerce-promotion-form-actions {
+  justify-content: flex-start;
 }
 
 .onframe-commerce-promotion-list-row-detail {
