@@ -359,6 +359,7 @@
         document.body.appendChild(state.popoverRoot);
       }
 
+      state.popoverRoot.classList.toggle('promotions', state.popover === 'promotions');
       positionFloatingRoot(state.popoverRoot, popoverAnchor());
       const markup = state.popover === 'price' ? buildPricePopover() : buildPromotionPopover();
       if (markup === state.lastPopoverMarkup) return;
@@ -2951,7 +2952,9 @@
     function positionFloatingRoot(root, anchor) {
       if (!root || !anchor || typeof anchor.getBoundingClientRect !== 'function') return;
       const rect = anchor.getBoundingClientRect();
-      const width = 340;
+      const preferredWidth = state.popover === 'promotions' ? 560 : 340;
+      const availableWidth = Math.max(0, window.innerWidth - 24);
+      const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
       const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
       const top = Math.max(12, rect.bottom + 8);
       root.style.left = `${Math.round(left)}px`;

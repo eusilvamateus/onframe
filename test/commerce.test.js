@@ -354,6 +354,8 @@ test('popover de promocoes separa campanha, rebate e cupons globais', () => {
   assert.match(popoverSource, /renderPromotionPopoverCampaign\(campaign\)/);
   assert.match(popoverSource, /renderPromotionPopoverCouponList\(coupons\)/);
   assert.match(popoverSource, /renderPromotionPopoverPaymentList\(paymentBenefits\)/);
+  assert.match(source, /classList\.toggle\('promotions', state\.popover === 'promotions'\)/);
+  assert.match(source, /const preferredWidth = state\.popover === 'promotions' \? 560 : 340/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);
   assert.match(source, /function promotionStartTimestamp/);
@@ -372,9 +374,12 @@ test('popover de promocoes separa campanha, rebate e cupons globais', () => {
   assert.match(source, /meliPercentage[^\n]+meli_percentage/);
   assert.match(source, /icon\('ticket', 14\)/);
   assert.match(source, /icon\('creditCard', 14\)/);
-  assert.match(styles, /\.onframe-commerce-popover-campaign-grid\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-root\.promotions\s*{\s*width: min\(560px/s);
+  assert.match(styles, /\.onframe-commerce-popover-campaign-grid\s*{\s*display: grid[\s\S]*grid-template-columns: minmax\(0, 1\.45fr\)/);
   assert.match(styles, /\.onframe-commerce-popover-rebate\s*{[\s\S]*color: var\(--ob-green-700\)/);
   assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-condition-list\s*{\s*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.onframe-commerce-popover-campaign-grid\s*{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
 test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {

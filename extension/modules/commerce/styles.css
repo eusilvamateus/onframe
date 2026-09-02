@@ -21,6 +21,10 @@
   width: min(340px, calc(100vw - 24px));
 }
 
+.onframe-commerce-popover-root.promotions {
+  width: min(560px, calc(100vw - 24px));
+}
+
 .onframe-commerce-promotion-result-popover-root {
   position: fixed !important;
   z-index: var(--ob-z-extension-modal);
@@ -63,7 +67,7 @@
 
 .onframe-commerce-popover-campaign-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.4fr) minmax(0, .85fr) minmax(0, .9fr);
 }
 
 .onframe-commerce-popover-campaign-field {
@@ -74,12 +78,8 @@
   padding: 10px 12px;
 }
 
-.onframe-commerce-popover-campaign-field:nth-child(even) {
+.onframe-commerce-popover-campaign-field + .onframe-commerce-popover-campaign-field {
   border-left: 1px solid var(--ob-border);
-}
-
-.onframe-commerce-popover-campaign-field:nth-child(n + 3) {
-  border-top: 1px solid var(--ob-border);
 }
 
 .onframe-commerce-popover-campaign-field small,
@@ -145,6 +145,7 @@
 
 .onframe-commerce-popover-condition-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -1932,6 +1933,26 @@
     left: 12px !important;
     right: 12px;
     width: auto;
+  }
+
+  .onframe-commerce-popover-root.promotions {
+    width: auto;
+  }
+
+  .onframe-commerce-popover-campaign-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onframe-commerce-popover-campaign-field:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .onframe-commerce-popover-campaign-field:nth-child(n + 3) {
+    border-top: 1px solid var(--ob-border);
+  }
+
+  .onframe-commerce-popover-condition-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .onframe-commerce-modal {
