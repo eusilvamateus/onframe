@@ -276,6 +276,9 @@
 .onframe-section-edit-action {
   display: inline-flex !important;
   margin: 8px 0 0;
+  position: relative !important;
+  z-index: 2;
+  pointer-events: auto !important;
 }
 
 .ob-button:disabled,

@@ -414,13 +414,15 @@ test('acoes de edicao ficam disponiveis em secoes recolhidas', () => {
   const descriptionStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'styles.css'), 'utf8');
 
   assert.strictEqual(descriptionSource.includes("document.querySelector('.ui-pdp-description__title') ||"), true);
-  assert.strictEqual(descriptionSource.includes(".toLowerCase() === 'descricao'"), true);
-  assert.strictEqual(descriptionSource.includes('if (!elements.title || !elements.section)'), true);
+  assert.strictEqual(descriptionSource.includes(".startsWith('descricao')"), true);
+  assert.strictEqual(descriptionSource.includes('if (!elements.title)'), true);
+  assert.strictEqual(descriptionSource.includes('const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);'), true);
   assert.strictEqual(descriptionSource.includes('ob-button ghost compact onframe-section-edit-action onframe-description-action'), true);
   assert.strictEqual(descriptionSource.includes('state.pendingOpen = true;'), true);
   assert.strictEqual(descriptionSource.includes('function expandDescriptionSection(elements)'), true);
   assert.strictEqual(descriptionSource.includes("querySelector('[data-testid=\"action-collapsable-target\"]')"), true);
   assert.strictEqual(components.includes('.onframe-section-edit-action'), true);
+  assert.strictEqual(components.includes('pointer-events: auto !important;'), true);
   assert.strictEqual(descriptionStyles.includes('.onframe-description-is-editing .onframe-description-action'), true);
 });
 

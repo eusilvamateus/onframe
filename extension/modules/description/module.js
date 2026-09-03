@@ -148,7 +148,7 @@
       }
 
       const elements = getDescriptionElements();
-      if (!elements.title || !elements.section) {
+      if (!elements.title) {
         removeInjectedActions();
         return;
       }
@@ -168,7 +168,8 @@
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .trim()
-          .toLowerCase() === 'descricao');
+          .toLowerCase()
+          .startsWith('descricao'));
       const description = title ? title.closest('.ui-pdp-description') : document.querySelector('.ui-pdp-description');
       const collapsable = (description || title) && (description || title).closest('.ui-pdp-collapsable');
       const container = (description || title) && (description || title).closest('.ui-pdp-collapsable__container');
@@ -188,7 +189,8 @@
     }
 
     function injectEditAction(elements) {
-      if (!elements.title || !elements.section || elements.section.querySelector('.onframe-description-action')) return;
+      const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);
+      if (!elements.title || !scope || document.querySelector('.onframe-description-action')) return;
       const action = document.createElement('button');
       action.className = 'ob-button ghost compact onframe-section-edit-action onframe-description-action';
       action.type = 'button';
@@ -244,7 +246,9 @@
     }
 
     function expandDescriptionSection(elements) {
-      const collapsable = elements && elements.collapsable;
+      const collapsable = elements && (elements.collapsable ||
+        (elements.section && elements.section.querySelector('.ui-pdp-collapsable')) ||
+        (elements.title && elements.title.closest('.ui-pdp-collapsable')));
       if (!collapsable || !collapsable.classList.contains('ui-pdp-collapsable--is-collapsed')) return;
       const nativeAction = collapsable.querySelector('[data-testid="action-collapsable-target"]');
       if (nativeAction && !nativeAction.disabled) nativeAction.click();
