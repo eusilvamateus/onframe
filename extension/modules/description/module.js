@@ -146,7 +146,7 @@
       }
 
       const elements = getDescriptionElements();
-      if (!elements.content || !elements.description) {
+      if (!elements.content || !elements.description || isDescriptionCollapsed(elements)) {
         removeInjectedActions();
         return;
       }
@@ -183,6 +183,16 @@
       };
     }
 
+    function isDescriptionCollapsed(elements) {
+      const candidates = [
+        elements && elements.collapsable,
+        elements && elements.section,
+        elements && elements.description
+      ].filter(Boolean);
+      return candidates.some((element) => element.classList.contains('ui-pdp-collapsable--is-collapsed') ||
+        Boolean(element.querySelector('.ui-pdp-collapsable--is-collapsed')));
+    }
+
     function injectEditAction(elements) {
       const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);
       if (!elements.title || !scope || document.querySelector('.onframe-description-action')) return;
@@ -209,7 +219,7 @@
     async function openEditor() {
       if (!state.visible || !state.itemId || state.loading || state.saving || !DescriptionModel.canEditDescription(state.context)) return;
       const elements = getDescriptionElements();
-      if (!elements.content || !elements.description) return;
+      if (!elements.content || !elements.description || isDescriptionCollapsed(elements)) return;
       state.editing = true;
       state.loading = true;
       state.error = '';

@@ -414,12 +414,15 @@ test('edicao de descricao respeita a secao expandida nativa', () => {
 
   assert.strictEqual(descriptionSource.includes("document.querySelector('.ui-pdp-description__title') ||"), true);
   assert.strictEqual(descriptionSource.includes(".startsWith('descricao')"), true);
-  assert.strictEqual(descriptionSource.includes('if (!elements.content || !elements.description)'), true);
+  assert.strictEqual(descriptionSource.includes('if (!elements.content || !elements.description || isDescriptionCollapsed(elements))'), true);
+  assert.strictEqual(descriptionSource.includes('function isDescriptionCollapsed(elements)'), true);
+  assert.strictEqual(descriptionSource.includes('ui-pdp-collapsable--is-collapsed'), true);
   assert.strictEqual(descriptionSource.includes('ob-button ghost compact onframe-section-edit-action onframe-description-action'), true);
   assert.strictEqual(descriptionSource.includes('pendingOpen'), false);
   assert.strictEqual(descriptionSource.includes('function expandDescriptionSection(elements)'), false);
   assert.strictEqual(descriptionSource.includes("querySelector('[data-testid=\"action-collapsable-target\"]')"), false);
   assert.strictEqual(descriptionStyles.includes('.onframe-description-is-editing .onframe-description-action'), true);
+  assert.strictEqual(descriptionStyles.includes('.ui-pdp-collapsable--is-collapsed .onframe-description-action'), true);
 });
 
 test('ui exibem comando de atualizacao auditavel', () => {

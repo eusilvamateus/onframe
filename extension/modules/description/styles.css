@@ -6,6 +6,10 @@
   margin-top: 12px;
 }
 
+.ui-pdp-collapsable--is-collapsed .onframe-description-action {
+  display: none !important;
+}
+
 .onframe-description-is-editing .onframe-description-action {
   display: none;
 }
