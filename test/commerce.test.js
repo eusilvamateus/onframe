@@ -263,6 +263,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /class="ob-card onframe-commerce-popover-price-edit-card"/);
   assert.match(source, /class="onframe-commerce-popover-price-edit-field"/);
   assert.match(source, /class="onframe-commerce-popover-price-edit-bulk"/);
+  assert.match(source, /priceToggle\.addEventListener\('click', \(event\) => \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/s);
   assert.doesNotMatch(source, /function renderPriceSnapshot/);
   assert.doesNotMatch(source, /function renderPriceCosts/);
   assert.doesNotMatch(source, /function priceCostMetrics/);

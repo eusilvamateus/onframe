@@ -2154,7 +2154,9 @@
     function bindBulkControls(container) {
       const priceToggle = container.querySelector('[data-action="toggle-price-bulk"]');
       if (priceToggle) {
-        priceToggle.addEventListener('click', () => {
+        priceToggle.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           if (state.busy) return;
           state.priceBulkEnabled = priceToggle.getAttribute('aria-checked') !== 'true';
           state.priceBulkPreview = null;
@@ -2168,7 +2170,9 @@
 
       const promotionToggle = container.querySelector('[data-action="toggle-promotion-bulk"]');
       if (promotionToggle) {
-        promotionToggle.addEventListener('click', () => {
+        promotionToggle.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           if (state.busy) return;
           state.promotionBulkEnabled = promotionToggle.getAttribute('aria-checked') !== 'true';
           state.actionError = '';
