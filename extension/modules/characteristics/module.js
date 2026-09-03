@@ -183,13 +183,10 @@
     function injectEditAction(elements) {
       if (!elements.title) return;
       const existingAction = elements.section.querySelector('.onframe-characteristics-action');
-      if (existingAction) {
-        syncEditActionState(existingAction, elements.section);
-        return;
-      }
+      if (existingAction) return;
       const anchor = elements.titleRow || elements.title;
       const action = document.createElement('button');
-      action.className = 'ob-button ghost onframe-characteristics-action';
+      action.className = 'ob-button ghost compact onframe-section-edit-action onframe-characteristics-action';
       action.type = 'button';
       action.innerHTML = `${icon('pencil', 14)}Editar características`;
       action.addEventListener('click', (event) => {
@@ -198,23 +195,10 @@
         const section = action.closest('#highlighted_specs_attrs') ||
           action.closest('.ui-vpp-highlighted-specs') ||
           elements.section;
-        if (isCharacteristicsCollapsed(section)) {
-          scheduleRender(80);
-          return;
-        }
+        expandCharacteristicsSection(section);
         void openEditor();
       });
       anchor.insertAdjacentElement('afterend', action);
-      syncEditActionState(action, elements.section);
-    }
-
-    function syncEditActionState(action, section) {
-      const collapsed = isCharacteristicsCollapsed(section);
-      action.disabled = collapsed;
-      action.classList.toggle('is-disabled', collapsed);
-      action.setAttribute('aria-disabled', collapsed ? 'true' : 'false');
-      if (collapsed) action.title = 'Conferir todas as características antes de editar.';
-      else action.removeAttribute('title');
     }
 
     function isCharacteristicsCollapsed(section) {
@@ -225,7 +209,8 @@
     async function openEditor() {
       if (!state.visible || !state.itemId || state.loading || state.saving || !CharacteristicsModel.canEditCharacteristics(state.context)) return;
       const elements = getCharacteristicsElements();
-      if (elements.section && isCharacteristicsCollapsed(elements.section)) return;
+      if (!elements.section) return;
+      expandCharacteristicsSection(elements.section);
       state.editing = true;
       state.loading = true;
       state.error = '';
@@ -292,6 +277,7 @@
     }
 
     function expandCharacteristicsSection(section) {
+      if (!section || !isCharacteristicsCollapsed(section)) return;
       section.querySelectorAll('.ui-pdp-collapsable--is-collapsed').forEach((node) => {
         node.classList.remove('ui-pdp-collapsable--is-collapsed');
       });

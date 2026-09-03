@@ -273,6 +273,11 @@
   font-size: 11px;
 }
 
+.onframe-section-edit-action {
+  display: inline-flex !important;
+  margin: 8px 0 0;
+}
+
 .ob-button:disabled,
 .onblide-ml-btn:disabled,
 .onframe-commerce-btn:disabled,

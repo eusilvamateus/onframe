@@ -1,13 +1,13 @@
-.onframe-description-action {
-  margin: 8px 0 0;
-}
-
 .ui-pdp-description__content[data-onframe-description-click="true"] {
   cursor: text;
 }
 
 .onframe-description-root {
   margin-top: 12px;
+}
+
+.onframe-description-is-editing .onframe-description-action {
+  display: none;
 }
 
 .onframe-description-is-editing > [data-testid="action-collapsable-target"] {

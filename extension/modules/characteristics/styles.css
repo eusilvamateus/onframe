@@ -1,8 +1,3 @@
-.onframe-characteristics-action {
-  display: inline-flex;
-  margin: 8px 0 0;
-}
-
 .onframe-characteristics-root {
   display: grid;
   gap: var(--ob-gap-md);
