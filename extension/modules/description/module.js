@@ -39,7 +39,6 @@
       editorShellMinHeight: 0,
       editorTextareaMinHeight: 0,
       renderTimer: null,
-      pendingOpen: false,
       requestId: 0,
       pageSignature: ''
     };
@@ -69,7 +68,6 @@
       state.message = '';
       state.error = '';
       state.renderTimer = null;
-      state.pendingOpen = false;
       state.requestId += 1;
       state.pageSignature = readPageSignature();
       removeInjectedActions();
@@ -148,18 +146,15 @@
       }
 
       const elements = getDescriptionElements();
-      if (!elements.title) {
+      if (!elements.content || !elements.description) {
         removeInjectedActions();
         return;
       }
 
+      state.contentElement = elements.content;
       injectEditAction(elements);
-      if (elements.content) {
-        state.contentElement = elements.content;
-        bindContentClick(elements.content);
-      }
-      if (state.pendingOpen && elements.content && !state.editing) void openEditor();
-      if (state.editing && elements.content) renderEditor(elements);
+      bindContentClick(elements.content);
+      if (state.editing) renderEditor(elements);
     }
 
     function getDescriptionElements() {
@@ -214,13 +209,7 @@
     async function openEditor() {
       if (!state.visible || !state.itemId || state.loading || state.saving || !DescriptionModel.canEditDescription(state.context)) return;
       const elements = getDescriptionElements();
-      if (!elements.content) {
-        state.pendingOpen = true;
-        expandDescriptionSection(elements);
-        scheduleRender(80);
-        return;
-      }
-      state.pendingOpen = false;
+      if (!elements.content || !elements.description) return;
       state.editing = true;
       state.loading = true;
       state.error = '';
@@ -243,15 +232,6 @@
         state.error = toUserError(err);
         mountDescription();
       }
-    }
-
-    function expandDescriptionSection(elements) {
-      const collapsable = elements && (elements.collapsable ||
-        (elements.section && elements.section.querySelector('.ui-pdp-collapsable')) ||
-        (elements.title && elements.title.closest('.ui-pdp-collapsable')));
-      if (!collapsable || !collapsable.classList.contains('ui-pdp-collapsable--is-collapsed')) return;
-      const nativeAction = collapsable.querySelector('[data-testid="action-collapsable-target"]');
-      if (nativeAction && !nativeAction.disabled) nativeAction.click();
     }
 
     function renderEditor(elements) {
