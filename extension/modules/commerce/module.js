@@ -1356,14 +1356,11 @@
       const saleAmount = Number(sale && sale.amount || 0);
       const hasPromotionPrice = saleAmount > 0 && (!standardAmount || saleAmount !== standardAmount);
       const activeAmount = hasPromotionPrice ? saleAmount : standardAmount;
-      const discount = hasPromotionPrice ? discountPercent(standardAmount || sale.regular_amount, saleAmount) : 0;
-      const detail = hasPromotionPrice && standardAmount
-        ? `${CommerceModel.formatMoney(standardAmount, currency)} antes${discount ? ` · ${discount}% OFF` : ''}`
-        : '';
+      const originalPrice = hasPromotionPrice && standardAmount ? CommerceModel.formatMoney(standardAmount, currency) : '';
       return {
-        label: hasPromotionPrice ? 'Preço com promoção' : 'Preço atual',
+        label: hasPromotionPrice ? 'Preço promocional' : 'Preço atual',
         value: CommerceModel.formatMoney(activeAmount, currency),
-        detail,
+        originalPrice,
         tone: hasPromotionPrice ? 'primary' : ''
       };
     }
@@ -1396,8 +1393,8 @@
       return `
         <div class="onframe-commerce-popover-price-field ${escapeAttribute(field.tone || '')}">
           <small>${escapeHtml(field.label)}</small>
+          ${field.originalPrice ? `<span class="onframe-commerce-popover-price-transition">De <s>${escapeHtml(field.originalPrice)}</s> por</span>` : ''}
           <strong>${escapeHtml(field.value)}</strong>
-          ${field.detail ? `<span>${escapeHtml(field.detail)}</span>` : ''}
         </div>
       `;
     }

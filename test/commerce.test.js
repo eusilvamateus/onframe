@@ -263,7 +263,9 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.doesNotMatch(source, /function renderPriceCosts/);
   assert.doesNotMatch(source, /function priceCostMetrics/);
   assert.doesNotMatch(source, /function renderPriceReference/);
-  assert.match(source, /Preço com promoção/);
+  assert.match(source, /Preço promocional/);
+  assert.match(source, /originalPrice/);
+  assert.match(source, /De <s>\$\{escapeHtml\(field\.originalPrice\)\}<\/s> por/);
   assert.doesNotMatch(source, /priceMeta/);
   assert.match(source, /Você recebe/);
   assert.match(source, /Comissão/);
@@ -287,6 +289,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
   assert.match(styles, /\.onframe-commerce-popover-root\.price-summary/);
   assert.match(styles, /\.onframe-commerce-popover-price-grid\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-price-transition s\s*{\s*color: var\(--ob-ink-strong\)/s);
   assert.match(styles, /\.onframe-commerce-popover-price-scenario\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-review-grid > span/);
   assert.doesNotMatch(styles, /\.onframe-commerce-(?:cost-grid|promo-metrics|estimate-grid|meta|review-grid) span\b/);

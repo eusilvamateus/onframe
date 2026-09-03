@@ -255,9 +255,14 @@
   overflow-wrap: anywhere;
 }
 
-.onframe-commerce-popover-price-field > span {
-  color: var(--ob-green-700);
-  font: 600 10px/1.25 var(--ob-font);
+.onframe-commerce-popover-price-transition {
+  color: var(--ob-ink-soft);
+  font: 500 10px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-popover-price-transition s {
+  color: var(--ob-ink-strong);
+  text-decoration-color: currentColor;
 }
 
 .onframe-commerce-popover-price-field.primary strong {
