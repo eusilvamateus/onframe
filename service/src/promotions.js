@@ -1,5 +1,6 @@
 const { assertOwnedItem, summarizeItem } = require('./item-context');
 const { buildCostProjection } = require('./pricing');
+const { summarizePromotionFinancial } = require('./promotion-financial');
 
 const PROMOTION_TYPES = Object.freeze({
   DEAL: 'DEAL',
@@ -218,8 +219,12 @@ async function estimatePromotionImpact(client, itemId, input = {}) {
     });
   }
 
-  const promotionBenefit = summarizeEstimatePromotionBenefit(match, dealPrice);
-  const projection = await buildCostProjection(client, item, dealPrice, promotionBenefit);
+  const promotionFinancial = summarizePromotionFinancial(match, {
+    role: 'primary',
+    originalPrice: numberOrNull(match && match.original_price) || numberOrNull(item.price),
+    activePrice: dealPrice
+  });
+  const projection = await buildCostProjection(client, item, dealPrice, promotionFinancial);
 
   return {
     item: summarizePromotionItem(item),
@@ -234,7 +239,7 @@ async function estimatePromotionImpact(client, itemId, input = {}) {
     currency_id: projection.currency_id,
     commission: projection.costBreakdown.commission,
     shipping: projection.costBreakdown.shipping,
-    promotionBenefit: projection.promotionBenefit,
+    promotionFinancial: projection.promotionFinancial,
     youReceive: projection.costBreakdown.you_receive,
     complete: projection.costBreakdown.complete,
     missing: projection.costBreakdown.missing,
@@ -493,34 +498,6 @@ function summarizePromotionRange(entry) {
   };
 }
 
-function summarizeEstimatePromotionBenefit(entry, dealPrice) {
-  if (!entry) return null;
-  const amount = numberOrNull(entry.discount_meli_boost_amount);
-  const percentage = numberOrNull(entry.discount_meli_boosted_percentage);
-  const sellerPercentage = numberOrNull(entry.seller_percentage);
-  const meliPercentage = numberOrNull(entry.meli_percentage);
-  const totalPrice = numberOrNull(entry.total_price_for_boosted_offer);
-  const effectivePercentage = meliPercentage !== null ? meliPercentage : percentage;
-  const basePrice = numberOrNull(dealPrice || totalPrice);
-  const computedAmount = amount !== null ? amount : basePrice !== null && effectivePercentage !== null
-    ? roundMoney(basePrice * effectivePercentage / 100)
-    : null;
-  if (amount === null && percentage === null && sellerPercentage === null && meliPercentage === null && totalPrice === null) return null;
-  return {
-    amount: computedAmount,
-    raw_amount: amount,
-    amount_source: amount !== null ? 'api' : computedAmount !== null ? 'calculated_from_percentage' : null,
-    percentage,
-    seller_percentage: sellerPercentage,
-    meli_percentage: meliPercentage,
-    base_price: basePrice,
-    total_price_for_boosted_offer: totalPrice,
-    promotion_id: entry.id || entry.promotion_id || null,
-    offer_id: entry.offer_id || entry.ref_id || null,
-    source: 'seller_promotions'
-  };
-}
-
 function buildCampaignPayload(input, promotionAdapter) {
   const payload = { promotion_type: promotionAdapter.type };
   copy(input, payload, 'name');
@@ -602,6 +579,7 @@ function normalizePromotionEntry(value) {
   const status = String(value.status || value.status_item || '').toLowerCase();
   const typeLabel = promotionAdapter ? promotionAdapter.label : type || 'Promoção';
   const isStackable = isStackablePromotionType(type);
+  const benefits = value && value.benefits && typeof value.benefits === 'object' ? value.benefits : {};
   return {
     id: value.id || value.promotion_id || null,
     type,
@@ -617,8 +595,9 @@ function normalizePromotionEntry(value) {
     min_price: numberOrNull(value.min_discounted_price || value.min_price),
     max_price: numberOrNull(value.max_discounted_price || value.max_price),
     suggested_price: numberOrNull(value.suggested_discounted_price || value.suggested_price),
-    seller_percentage: numberOrNull(value.seller_percentage),
-    meli_percentage: numberOrNull(value.meli_percentage),
+    seller_percentage: numberOrNull(value.seller_percentage) ?? numberOrNull(benefits.seller_percent),
+    meli_percentage: numberOrNull(value.meli_percentage) ?? numberOrNull(benefits.meli_percent),
+    boosted_offer: value.boosted_offer === true,
     discount_meli_boosted_percentage: numberOrNull(value.discount_meli_boosted_percentage),
     discount_meli_boost_amount: numberOrNull(value.discount_meli_boost_amount),
     total_price_for_boosted_offer: numberOrNull(value.total_price_for_boosted_offer),
@@ -918,10 +897,6 @@ async function optional(load, nullableStatuses = []) {
 function numberOrNull(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function roundMoney(value) {
-  return Math.round(Number(value) * 100) / 100;
 }
 
 function errorOrNull(value) {

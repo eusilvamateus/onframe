@@ -114,14 +114,14 @@
   height: 5px;
 }
 
-.onframe-commerce-popover-rebate {
+.onframe-commerce-popover-fee-reduction {
   padding: 8px 12px;
   border-top: 1px solid var(--ob-border);
   color: var(--ob-green-700);
   font: 600 11px/1.35 var(--ob-font);
 }
 
-.onframe-commerce-popover-rebate strong {
+.onframe-commerce-popover-fee-reduction strong {
   font-weight: 800;
 }
 

@@ -28,13 +28,18 @@ Voce pode encontrar:
 - `Preco`: valor atual ou valor final da promocao.
 - `Desconto`: percentual aplicado.
 - `Voce recebe`: estimativa do valor que fica para o vendedor.
-- `Mercado Livre paga`: parte subsidiada pelo Mercado Livre, quando existir.
+- `Participacao do Mercado Livre`: parcela comercial do desconto assumida pelo Mercado Livre.
+- `Sua participacao`: parcela comercial do desconto assumida pelo vendedor.
+- `Reducao de tarifa`: desconto confirmado pelo Mercado Livre nos custos por venda.
 - `Comissao`: custo da venda.
 - `Frete`: custo relacionado ao envio.
-- `Voce paga`: sua participacao no desconto, quando a campanha tiver esse tipo
-  de divisao.
 
-![Print - Promocao com rebate do Mercado Livre](assets/promocoes-rebate-mercado-livre.png)
+`Reducao de tarifa` so aparece quando a API informa `boosted_offer`. Uma
+participacao do Mercado Livre em campanha cofinanciada nao e reducao de tarifa.
+Cupons e descontos por pagamento continuam condicionais ao comprador ou a forma
+de pagamento e nao entram na estimativa principal.
+
+![Print - Promocao com participacao do Mercado Livre](assets/promocoes-rebate-mercado-livre.png)
 
 Nem toda promocao tem todos os campos. Quando uma informacao nao existe para
 aquele caso, o OnFrame evita preencher a tela com blocos vazios.

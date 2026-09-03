@@ -256,7 +256,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /function renderPriceSummary/);
   assert.match(source, /function priceSnapshot/);
   assert.match(source, /function priceSummaryCosts/);
-  assert.match(source, /function renderPriceSummaryRebate/);
+  assert.match(source, /function renderPriceSummaryFeeReduction/);
   assert.match(source, /class="ob-card onframe-commerce-popover-price-card"/);
   assert.match(source, /class="onframe-commerce-popover-price-grid"/);
   assert.doesNotMatch(source, /function renderPriceSnapshot/);
@@ -270,7 +270,8 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /Você recebe/);
   assert.match(source, /Comissão/);
   assert.match(source, /Frete/);
-  assert.match(source, /Mercado Livre paga/);
+  assert.match(source, /Participação do Mercado Livre/);
+  assert.match(source, /Redução de tarifa/);
   assert.match(source, /function renderPriceStackableScenarios/);
   assert.match(source, /Desconto acumulativo/);
   assert.match(source, /function renderPriceScenarioField/);
@@ -324,7 +325,7 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /function reviewPromotionFieldDraft/);
   assert.match(source, /function shouldReviewPromotionFieldOnBlur/);
   assert.match(source, /event\.key !== 'Enter'/);
-  assert.match(source, /function promotionBenefitAmount/);
+  assert.match(source, /function promotionFinancialFromEntry/);
   assert.match(source, /function renderPromotionConfirmWarnings\(rangeWarning\)/);
   assert.match(source, /function renderPromotionListControls/);
   assert.match(source, /function renderPromotionListRow/);
@@ -335,15 +336,15 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.doesNotMatch(source, /const discount = discountPercent\(entry\.original_price, targetPrice\)/);
   assert.doesNotMatch(source, /if \(targetPrice\) facts\.push\(\{ label: 'Preço final'/);
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
-  assert.match(source, /benefitAmount !== null && metric\.label === 'Mercado Livre paga'/);
-  assert.match(source, /metric\.label === 'Mercado Livre paga' && hasMetricLabel\(metrics, metric\.label\)/);
+  assert.match(source, /function promotionFinancialMetrics/);
+  assert.match(source, /metric\.label !== 'Redução de tarifa'/);
   assert.doesNotMatch(source, /Impacto estimado/);
   assert.doesNotMatch(source, /Prévia de custos/);
   assert.doesNotMatch(source, /function estimateDataForKey/);
   assert.doesNotMatch(source, /Bônus Mercado Livre/);
   assert.doesNotMatch(source, /Benefício ML/);
-  assert.match(source, /Mercado Livre paga/);
-  assert.match(source, /Você paga/);
+  assert.match(source, /Participação do Mercado Livre/);
+  assert.match(source, /Sua participação/);
   assert.doesNotMatch(source, /function renderCardPromotionEstimate/);
   assert.doesNotMatch(source, /Não informado/);
   assert.match(source, /Você recebe/);
@@ -358,7 +359,7 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(styles, /\.onframe-commerce-promotion-estimate-summary-metric\.review-result strong/);
 });
 
-test('popover de promocoes separa campanha, rebate e cupons globais', () => {
+test('popover de promocoes separa campanha, reducao de tarifa e cupons globais', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const popoverSource = source.slice(source.indexOf('function buildPromotionPopover'), source.indexOf('function renderModal'));
@@ -377,8 +378,8 @@ test('popover de promocoes separa campanha, rebate e cupons globais', () => {
   assert.match(source, /function renderPromotionPopoverCampaign/);
   assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
   assert.match(source, /class="ob-badge \$\{escapeAttribute\(tone\)\}"/);
-  assert.match(source, /function renderPromotionPopoverRebate/);
-  assert.match(source, /Reduzimos <strong>/);
+  assert.match(source, /function renderPromotionPopoverFeeReduction/);
+  assert.match(source, /Redução de tarifa de venda/);
   assert.match(source, /function promotionPopoverCouponEntries/);
   assert.match(source, /CommerceModel\.isSellerWidePromotion\(entry\)/);
   assert.match(source, /Válidos para compradores elegíveis/);
@@ -391,20 +392,20 @@ test('popover de promocoes separa campanha, rebate e cupons globais', () => {
   assert.match(source, /icon\('creditCard', 14\)/);
   assert.match(styles, /\.onframe-commerce-popover-root\.promotions,\s*\.onframe-commerce-popover-root\.price-summary\s*{\s*width: min\(560px/s);
   assert.match(styles, /\.onframe-commerce-popover-campaign-grid\s*{\s*display: grid[\s\S]*grid-template-columns: minmax\(0, 1\.45fr\)/);
-  assert.match(styles, /\.onframe-commerce-popover-rebate\s*{[\s\S]*color: var\(--ob-green-700\)/);
+  assert.match(styles, /\.onframe-commerce-popover-fee-reduction\s*{[\s\S]*color: var\(--ob-green-700\)/);
   assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-condition-list\s*{\s*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.onframe-commerce-popover-campaign-grid\s*{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
-test('modal de promocoes diferencia cupons, beneficios e campanhas sem dividir a lista', () => {
+test('modal de promocoes diferencia cupons, descontos por pagamento e campanhas sem dividir a lista', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const modalSource = source.slice(source.indexOf('function buildPromotionModal'), source.indexOf('function renderPromotionManager'));
   const typeLabelSource = source.slice(source.indexOf('function promotionTypeLabel'), source.indexOf('function renderPromotionListCondition'));
 
   assert.match(source, /function promotionListType/);
   assert.match(source, /Cupom do vendedor/);
-  assert.match(source, /Benefício por pagamento/);
+  assert.match(source, /Desconto por pagamento/);
   assert.match(typeLabelSource, /if \(type === 'campaign'\) return 'Campanha do vendedor';/);
   assert.doesNotMatch(typeLabelSource, /entry && entry\.typeLabel/);
   assert.match(source, /function promotionAudienceRule/);
@@ -468,7 +469,10 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /return `De \$\{start\} a \$\{end\}`/);
   assert.match(source, /return `\$\{date\.getDate\(\)\} de \$\{month\}`/);
   assert.match(source, /<small>\$\{escapeHtml\(formatPromotionPeriodShort\(entry\) \|\| 'Sem vigência informada'\)\}<\/small>\s*<span class="onframe-commerce-status/);
-  assert.match(source, /ML contribui/);
+  assert.match(source, /Participação do Mercado Livre/);
+  assert.match(source, /Com redução de tarifa/);
+  assert.match(source, /promotionFinancialFilters/);
+  assert.match(source, /function hasPromotionFeeReduction/);
   assert.match(source, /class="ob-table-wrap onframe-commerce-promotion-table-wrap"/);
   assert.match(source, /class="ob-table onframe-commerce-promotion-table"/);
   assert.match(source, /class="ob-table-row onframe-commerce-promotion-table-head"/);
@@ -511,7 +515,8 @@ test('resultado da promocao abre popover com os custos que formam o valor liquid
   assert.match(source, /function buildPromotionResultPopover/);
   assert.match(source, /Detalhes do cálculo/);
   assert.match(source, /Preço promocional/);
-  assert.match(source, /Mercado Livre paga/);
+  assert.match(source, /Participação do Mercado Livre/);
+  assert.match(source, /Redução de tarifa/);
   assert.match(source, /function promotionShippingDescription/);
   assert.match(source, /function formatPromotionCost/);
   assert.match(source, /function removePromotionResultPopover/);
@@ -625,15 +630,20 @@ test('pricing summary normaliza preco, quantidade, automacao, referencia e catal
   assert.strictEqual(summary.costs[0].sale_fee_amount, 12.35);
   assert.strictEqual(summary.sellerShippingCost.amount, 8.5);
   assert.strictEqual(summary.sellerShippingCost.discount.promoted_amount, 10.62);
-  assert.strictEqual(summary.promotionBenefit.amount, 3);
-  assert.strictEqual(summary.promotionBenefits.primary.amount, 3);
-  assert.strictEqual(summary.promotionBenefits.stackable.length, 1);
-  assert.strictEqual(summary.promotionBenefits.stackable[0].label, 'Desconto no Pix');
-  assert.strictEqual(summary.promotionBenefits.stackable[0].payment_method, 'PIX');
-  assert.strictEqual(summary.promotionBenefits.stackable[0].amount, 0.28);
-  assert.strictEqual(summary.costBreakdown.stackable_benefits[0].amount, 0.28);
+  assert.strictEqual(summary.promotionFinancial.meli_contribution.amount, 3);
+  assert.strictEqual(summary.promotionFinancial.seller_contribution.amount, 7);
+  assert.strictEqual(summary.promotionFinancial.fee_reduction.amount, 3);
+  assert.strictEqual(summary.promotionFinancials.primary.meli_contribution.percentage, 3);
+  assert.strictEqual(summary.promotionFinancials.conditional.length, 1);
+  assert.strictEqual(summary.promotionFinancials.conditional[0].label, 'Desconto no Pix');
+  assert.strictEqual(summary.promotionFinancials.conditional[0].payment_method, 'PIX');
+  assert.strictEqual(summary.promotionFinancials.conditional[0].meli_contribution.percentage, 0.3);
+  assert.strictEqual(summary.promotionFinancials.conditional[0].meli_contribution.amount, null);
+  assert.strictEqual(summary.costBreakdown.conditional_financials[0].meli_contribution.percentage, 0.3);
+  assert.strictEqual(summary.costBreakdown.meli_contribution.amount, 3);
+  assert.strictEqual(summary.costBreakdown.fee_reduction.amount, 3);
   assert.strictEqual(summary.costBreakdown.complete, true);
-  assert.strictEqual(summary.costBreakdown.you_receive, 77.15);
+  assert.strictEqual(summary.costBreakdown.you_receive, 80.15);
   assert.strictEqual(summary.catalogCompetition.price_to_win, 97);
   assert.strictEqual(summary.restrictions[0].code, 'pricing_automation_active');
 });
@@ -957,6 +967,7 @@ test('promotion estimate calcula custos antes de aplicar oferta', async () => {
         min_discounted_price: 70,
         max_discounted_price: 90,
         suggested_discounted_price: 80,
+        boosted_offer: true,
         discount_meli_boost_amount: 2,
         seller_percentage: 8,
         meli_percentage: 2
@@ -984,8 +995,10 @@ test('promotion estimate calcula custos antes de aplicar oferta', async () => {
   assert.strictEqual(result.promotion.range.min, 70);
   assert.strictEqual(result.commission.amount, 10);
   assert.strictEqual(result.shipping.amount, 5);
-  assert.strictEqual(result.promotionBenefit.amount, 2);
-  assert.strictEqual(result.youReceive, 67);
+  assert.strictEqual(result.promotionFinancial.meli_contribution.amount, 2);
+  assert.strictEqual(result.promotionFinancial.seller_contribution.amount, 8);
+  assert.strictEqual(result.promotionFinancial.fee_reduction.amount, 2);
+  assert.strictEqual(result.youReceive, 69);
   assert.strictEqual(result.complete, true);
   assert.deepStrictEqual(result.warnings, []);
 });
@@ -1017,7 +1030,8 @@ test('promotion estimate usa preco fixo da campanha quando oferta nao tem campo 
         price: 75,
         original_price: 100,
         seller_percentage: 10,
-        meli_percentage: 5
+        meli_percentage: 5,
+        discount_meli_boost_amount: 2
       }]
     }),
     getListingPrices: async (siteId, params) => {
@@ -1037,11 +1051,12 @@ test('promotion estimate usa preco fixo da campanha quando oferta nao tem campo 
   assert.strictEqual(shippingParams.params.item_price, 75);
   assert.strictEqual(result.dealPrice, 75);
   assert.strictEqual(result.promotion.label, 'Tudo de Jardim e Piscina');
-  assert.strictEqual(result.promotionBenefit.amount, 3.75);
-  assert.strictEqual(result.promotionBenefit.amount_source, 'calculated_from_percentage');
-  assert.strictEqual(result.promotionBenefit.seller_percentage, 10);
-  assert.strictEqual(result.promotionBenefit.meli_percentage, 5);
-  assert.strictEqual(result.youReceive, 63.75);
+  assert.strictEqual(result.promotionFinancial.meli_contribution.amount, 5);
+  assert.strictEqual(result.promotionFinancial.meli_contribution.amount_source, 'calculated_from_original_price');
+  assert.strictEqual(result.promotionFinancial.seller_contribution.amount, 10);
+  assert.strictEqual(result.promotionFinancial.meli_contribution.percentage, 5);
+  assert.strictEqual(result.promotionFinancial.fee_reduction, null);
+  assert.strictEqual(result.youReceive, 65);
   assert.deepStrictEqual(result.warnings, []);
 });
 
@@ -1158,8 +1173,7 @@ test('promotion summary preserva aplicadas e marca preco em vigor pelo sale pric
         ref_id: 'OFFER-MLB7186779490-PIX',
         status: 'started',
         original_price: 220.99,
-        seller_percentage: 1.68,
-        meli_percentage: 0.32,
+        benefits: { seller_percent: 1.68, meli_percent: 0.32 },
         sub_type: 'COFINANCED',
         payment_method: 'PIX',
         start_date: '2021-07-20T00:00:00-03:00',

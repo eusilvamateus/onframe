@@ -1,5 +1,6 @@
 const { assertOwnedItem, summarizeItem } = require('./item-context');
 const { sanitizeError } = require('./errors');
+const { isStackablePromotionEntry, summarizePromotionFinancial } = require('./promotion-financial');
 
 const MARKETPLACE_CONTEXT = 'channel_marketplace';
 const BUSINESS_CONTEXT = 'channel_marketplace,user_type_business';
@@ -32,8 +33,11 @@ async function buildPriceSummary(client, itemId) {
   ]);
   const summarizedCosts = summarizeCosts(costs);
   const summarizedShippingCost = summarizeSellerShippingCost(shippingCost, item);
-  const promotionBenefits = summarizePromotionBenefits(promotions, summarizedSalePrice, activePrice);
-  const promotionBenefit = promotionBenefits.primary;
+  const promotionFinancials = summarizePromotionFinancials(promotions, summarizedSalePrice, {
+    activePrice,
+    originalPrice: standardPrice.amount
+  });
+  const promotionFinancial = promotionFinancials.primary;
 
   return {
     item: summarizePricingItem(item),
@@ -46,15 +50,15 @@ async function buildPriceSummary(client, itemId) {
     reference: summarizeReference(reference),
     costs: summarizedCosts,
     sellerShippingCost: summarizedShippingCost,
-    promotionBenefit,
-    promotionBenefits,
+    promotionFinancial,
+    promotionFinancials,
     costBreakdown: buildCostBreakdown({
       activePrice,
       currency: item.currency_id || standardPrice.currency_id || summarizedSalePrice && summarizedSalePrice.currency_id || 'BRL',
       costs: summarizedCosts,
       shippingCost: summarizedShippingCost,
-      promotionBenefit,
-      stackableBenefits: promotionBenefits.stackable
+      promotionFinancial,
+      conditionalFinancials: promotionFinancials.conditional
     }),
     catalogCompetition: summarizeCatalogCompetition(catalogCompetition),
     catalogSync: summarizeCatalogSync(catalogSync),
@@ -62,7 +66,7 @@ async function buildPriceSummary(client, itemId) {
   };
 }
 
-async function buildCostProjection(client, item, price, promotionBenefit = null) {
+async function buildCostProjection(client, item, price, promotionFinancial = null) {
   const activePrice = normalizeAmount(price);
   if (!activePrice) {
     const err = new Error('pricing_invalid_amount');
@@ -82,7 +86,7 @@ async function buildCostProjection(client, item, price, promotionBenefit = null)
     currency,
     costs: summarizedCosts,
     shippingCost: summarizedShippingCost,
-    promotionBenefit
+    promotionFinancial
   });
 
   return {
@@ -90,7 +94,7 @@ async function buildCostProjection(client, item, price, promotionBenefit = null)
     currency_id: currency,
     costs: summarizedCosts,
     sellerShippingCost: summarizedShippingCost,
-    promotionBenefit: promotionBenefit || null,
+    promotionFinancial: promotionFinancial || null,
     costBreakdown
   };
 }
@@ -416,78 +420,57 @@ function summarizeShippingDiscount(value) {
   };
 }
 
-function summarizePromotionBenefits(promotions, salePrice, activePrice) {
+function summarizePromotionFinancials(promotions, salePrice, options = {}) {
   const entries = extractPromotionEntries(promotions);
   const primaryEntry = findSalePricePromotionEntry(entries, salePrice) ||
     entries.find((candidate) => candidate && candidate.boosted_offer === true) ||
     null;
-  const primary = summarizePromotionBenefit(primaryEntry, activePrice, 'primary');
-  const stackable = entries
+  const primary = summarizePromotionFinancial(primaryEntry, {
+    role: 'primary',
+    originalPrice: options.originalPrice,
+    activePrice: options.activePrice
+  });
+  const conditional = entries
     .filter((entry) => entry !== primaryEntry && isStackablePromotionEntry(entry))
-    .map((entry) => summarizePromotionBenefit(entry, stackableBenefitBasePrice(entry, activePrice), 'stackable'))
+    .map((entry) => summarizePromotionFinancial(entry, {
+      role: 'conditional',
+      originalPrice: entry && entry.original_price,
+      activePrice: stackableFinancialActivePrice(entry, options.activePrice)
+    }))
     .filter(Boolean);
 
   return {
     primary,
-    stackable,
-    all: [primary].concat(stackable).filter(Boolean)
+    conditional,
+    all: [primary].concat(conditional).filter(Boolean)
   };
 }
 
-function summarizePromotionBenefit(entry, basePrice, role = 'primary') {
-  if (!entry) return null;
-  const amount = amountOrNull(entry.discount_meli_boost_amount);
-  const percentage = amountOrNull(entry.discount_meli_boosted_percentage);
-  const sellerPercentage = amountOrNull(entry.seller_percentage);
-  const meliPercentage = amountOrNull(entry.meli_percentage);
-  const effectivePercentage = meliPercentage !== null ? meliPercentage : percentage;
-  const baseAmount = amountOrNull(basePrice);
-  const computedAmount = amount !== null ? amount : baseAmount !== null && effectivePercentage !== null
-    ? roundMoney(baseAmount * effectivePercentage / 100)
-    : null;
-  if (amount === null && percentage === null && sellerPercentage === null && meliPercentage === null) return null;
-
-  return {
-    amount: computedAmount,
-    raw_amount: amount,
-    amount_source: amount !== null ? 'api' : computedAmount !== null ? 'calculated_from_percentage' : null,
-    percentage,
-    seller_percentage: sellerPercentage,
-    meli_percentage: meliPercentage,
-    base_price: baseAmount,
-    role,
-    label: entry.name || entry.label || null,
-    type: String(entry.type || entry.promotion_type || '').toUpperCase() || null,
-    is_stackable: isStackablePromotionEntry(entry),
-    payment_method: entry.payment_method || null,
-    total_price_for_boosted_offer: amountOrNull(entry.total_price_for_boosted_offer),
-    promotion_id: entry.id || entry.promotion_id || null,
-    offer_id: entry.offer_id || entry.ref_id || null,
-    source: 'seller_promotions'
-  };
-}
-
-function stackableBenefitBasePrice(entry, activePrice) {
+function stackableFinancialActivePrice(entry, activePrice) {
   return amountOrNull(entry && entry.total_price_for_boosted_offer) || amountOrNull(activePrice);
 }
 
-function isStackablePromotionEntry(entry) {
-  const type = String(entry && (entry.type || entry.promotion_type || entry.campaign_type) || '').toUpperCase();
-  return Boolean(entry && entry.is_stackable === true || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN');
-}
-
-function buildCostBreakdown({ activePrice, currency, costs, shippingCost, promotionBenefit, stackableBenefits = [] }) {
+function buildCostBreakdown({ activePrice, currency, costs, shippingCost, promotionFinancial, conditionalFinancials = [] }) {
   const commission = summarizeCommissionCost(costs);
   const shipping = shippingCost && !shippingCost.error ? shippingCost : null;
-  const benefitAmount = amountOrNull(promotionBenefit && promotionBenefit.amount) || 0;
+  const meliContribution = promotionFinancial && promotionFinancial.meli_contribution || null;
+  const feeReduction = promotionFinancial && promotionFinancial.fee_reduction || null;
+  const meliContributionAmount = amountOrNull(meliContribution && meliContribution.amount) || 0;
+  const feeReductionAmount = amountOrNull(feeReduction && feeReduction.amount) || 0;
   const missing = [];
   if (amountOrNull(activePrice) === null) missing.push('active_price');
   if (!commission) missing.push('commission');
   if (!shipping || shipping.amount === null || shipping.amount === undefined) missing.push('shipping');
+  if (meliContribution && amountOrNull(meliContribution.amount) === null && meliContribution.percentage > 0) {
+    missing.push('meli_contribution');
+  }
+  if (feeReduction && amountOrNull(feeReduction.amount) === null && feeReduction.percentage > 0) {
+    missing.push('fee_reduction');
+  }
 
   const complete = missing.length === 0;
   const youReceive = complete
-    ? roundMoney(activePrice - commission.amount - shipping.amount + benefitAmount)
+    ? roundMoney(activePrice - commission.amount - shipping.amount + meliContributionAmount + feeReductionAmount)
     : null;
 
   return {
@@ -495,12 +478,14 @@ function buildCostBreakdown({ activePrice, currency, costs, shippingCost, promot
     currency_id: currency || 'BRL',
     commission,
     shipping,
-    promotion_benefit: promotionBenefit || null,
-    stackable_benefits: Array.isArray(stackableBenefits) ? stackableBenefits : [],
+    promotion_financial: promotionFinancial || null,
+    conditional_financials: Array.isArray(conditionalFinancials) ? conditionalFinancials : [],
+    meli_contribution: meliContribution,
+    fee_reduction: feeReduction,
     you_receive: complete && youReceive >= 0 ? youReceive : null,
     complete,
     missing,
-    formula: complete ? 'active_price - commission - shipping + promotion_benefit' : null
+    formula: complete ? 'active_price - commission - shipping + meli_contribution + fee_reduction' : null
   };
 }
 
