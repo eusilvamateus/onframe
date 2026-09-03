@@ -360,6 +360,7 @@
       }
 
       state.popoverRoot.classList.toggle('promotions', state.popover === 'promotions');
+      state.popoverRoot.classList.toggle('price-summary', state.popover === 'price' && !state.priceEditing);
       positionFloatingRoot(state.popoverRoot, popoverAnchor());
       const markup = state.popover === 'price' ? buildPricePopover() : buildPromotionPopover();
       if (markup === state.lastPopoverMarkup) return;
@@ -393,10 +394,9 @@
 
       return `
         <section class="onframe-commerce-popover">
-          ${renderPopoverHead('Preço', priceState.label)}
+          ${renderPopoverHead('Preço')}
           ${renderNotice(state.actionMessage || state.actionError, state.actionError ? 'warn' : 'ok')}
-          ${renderPriceSnapshot(state.priceSummary, priceState)}
-          ${renderPriceCosts(state.priceSummary)}
+          ${renderPriceSummary(state.priceSummary, priceState)}
           ${renderPriceStackableScenarios(state.priceSummary)}
           ${state.detailsOpen ? `<p class="onframe-commerce-detail">${escapeHtml(priceState.detail)}</p>` : ''}
           <div class="onframe-commerce-actions">
@@ -1334,7 +1334,21 @@
       return `<span class="onframe-commerce-status ${escapeAttribute(tone)}">${escapeHtml(status)}</span>`;
     }
 
-    function renderPriceSnapshot(summary, priceState) {
+    function renderPriceSummary(summary, priceState) {
+      const snapshot = priceSnapshot(summary, priceState);
+      const costs = priceSummaryCosts(summary);
+      return `
+        <section class="ob-card onframe-commerce-popover-price-card">
+          <div class="onframe-commerce-popover-price-grid">
+            ${renderPriceSummaryField(snapshot)}
+            ${costs.fields.map(renderPriceSummaryField).join('')}
+          </div>
+          ${renderPriceSummaryRebate(costs.benefit)}
+        </section>
+      `;
+    }
+
+    function priceSnapshot(summary, priceState) {
       const standard = summary && summary.standardPrice ? summary.standardPrice : {};
       const sale = summary && summary.salePrice ? summary.salePrice : null;
       const currency = itemCurrency();
@@ -1343,57 +1357,61 @@
       const hasPromotionPrice = saleAmount > 0 && (!standardAmount || saleAmount !== standardAmount);
       const activeAmount = hasPromotionPrice ? saleAmount : standardAmount;
       const discount = hasPromotionPrice ? discountPercent(standardAmount || sale.regular_amount, saleAmount) : 0;
-
-      return `
-        <div class="onframe-commerce-price-summary">
-          <div class="onframe-commerce-price-main ${hasPromotionPrice ? 'promo' : ''}">
-            <small>${hasPromotionPrice ? 'Preço com promoção' : 'Preço atual'}</small>
-            <strong>${escapeHtml(CommerceModel.formatMoney(activeAmount, currency))}</strong>
-            ${discount ? `<span>${discount}% OFF</span>` : ''}
-          </div>
-        </div>
-      `;
+      const detail = hasPromotionPrice && standardAmount
+        ? `${CommerceModel.formatMoney(standardAmount, currency)} antes${discount ? ` · ${discount}% OFF` : ''}`
+        : '';
+      return {
+        label: hasPromotionPrice ? 'Preço com promoção' : 'Preço atual',
+        value: CommerceModel.formatMoney(activeAmount, currency),
+        detail,
+        tone: hasPromotionPrice ? 'primary' : ''
+      };
     }
 
-    function renderPriceCosts(summary) {
-      const metrics = priceCostMetrics(summary);
-      if (!metrics.length) return '';
-      return `
-        <div class="onframe-commerce-cost-grid">
-          ${metrics.map((metric) => `
-            ${renderMetricChip(metric)}
-          `).join('')}
-        </div>
-      `;
-    }
-
-    function priceCostMetrics(summary) {
-      if (!summary) return [];
+    function priceSummaryCosts(summary) {
       const currency = itemCurrency();
-      const breakdown = summary.costBreakdown || null;
-      const metrics = [];
+      const breakdown = summary && summary.costBreakdown ? summary.costBreakdown : null;
+      const fields = [];
+      const benefit = breakdown && breakdown.promotion_benefit ? breakdown.promotion_benefit : null;
+      if (!breakdown) return { fields, benefit: null };
 
-      if (!breakdown) return metrics;
       const commission = breakdown.commission || null;
       const shipping = breakdown.shipping || null;
-      const benefit = breakdown.promotion_benefit || null;
       if (breakdown.complete && moneyOrNull(breakdown.you_receive) !== null) {
-        metrics.push({ label: 'Você recebe', value: CommerceModel.formatMoney(breakdown.you_receive, currency), tone: 'green' });
+        fields.push({ label: 'Você recebe', value: CommerceModel.formatMoney(breakdown.you_receive, currency), tone: 'success' });
       } else {
-        metrics.push({ label: 'Custos', value: 'Incompletos', tone: 'warning' });
+        fields.push({ label: 'Custos', value: 'Incompletos', tone: 'warning' });
       }
       if (commission && moneyOrNull(commission.amount) !== null) {
-        metrics.push({ label: 'Comissão ML', value: CommerceModel.formatMoney(commission.amount, commission.currency_id || currency) });
+        fields.push({ label: 'Comissão', value: CommerceModel.formatMoney(commission.amount, commission.currency_id || currency) });
       }
       if (shipping && moneyOrNull(shipping.amount) !== null) {
-        metrics.push({ label: 'Frete vendedor', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
+        fields.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
       }
-      if (benefit && moneyOrNull(benefit.amount) !== null) {
-        metrics.splice(1, 0, buildBenefitMetric('Mercado Livre paga', benefit.amount, promotionBenefitPercentage(benefit), currency, 'green'));
-      } else if (benefit && Number(benefit.meli_percentage) > 0) {
-        metrics.splice(1, 0, { label: 'Mercado Livre paga', value: formatPercent(benefit.meli_percentage), tone: 'green' });
+      return { fields, benefit };
+    }
+
+    function renderPriceSummaryField(field) {
+      if (!field || !field.label || !field.value) return '';
+      return `
+        <div class="onframe-commerce-popover-price-field ${escapeAttribute(field.tone || '')}">
+          <small>${escapeHtml(field.label)}</small>
+          <strong>${escapeHtml(field.value)}</strong>
+          ${field.detail ? `<span>${escapeHtml(field.detail)}</span>` : ''}
+        </div>
+      `;
+    }
+
+    function renderPriceSummaryRebate(benefit) {
+      if (!benefit) return '';
+      const currency = itemCurrency();
+      const amount = moneyOrNull(benefit.amount);
+      if (amount !== null) {
+        return `<div class="onframe-commerce-popover-rebate"><span>Reduzimos <strong>${escapeHtml(CommerceModel.formatMoney(amount, currency))}</strong> da sua tarifa de venda.</span></div>`;
       }
-      return metrics;
+      const percentage = promotionBenefitPercentage(benefit);
+      if (!percentage) return '';
+      return `<div class="onframe-commerce-popover-rebate"><span>Reduzimos <strong>${escapeHtml(formatPercent(percentage))}</strong> da sua tarifa de venda.</span></div>`;
     }
 
     function renderPriceStackableScenarios(summary) {
@@ -1406,34 +1424,49 @@
       const list = benefits.filter((benefit) => benefit && (moneyOrNull(benefit.amount) !== null || promotionBenefitPercentage(benefit)));
       if (!list.length) return '';
       return `
-        <div class="onframe-commerce-price-scenarios">
-          ${list.map(renderPriceStackableScenario).join('')}
-        </div>
+        <section class="onframe-commerce-popover-price-conditions" aria-label="Descontos condicionais">
+          <div class="onframe-commerce-popover-conditions-head">
+            <small>Descontos condicionais</small>
+          </div>
+          <div class="onframe-commerce-popover-price-scenario-list">
+            ${list.map(renderPriceStackableScenario).join('')}
+          </div>
+        </section>
       `;
     }
 
     function renderPriceStackableScenario(benefit) {
       const currency = itemCurrency();
       const payment = stackablePaymentLabel(benefit);
-      const metrics = [];
+      const fields = [];
       if (moneyOrNull(benefit.total_price_for_boosted_offer) !== null) {
-        metrics.push({ label: `Preço ${payment ? `no ${payment}` : 'acumulativo'}`, value: CommerceModel.formatMoney(benefit.total_price_for_boosted_offer, currency), tone: 'primary' });
+        fields.push({ label: `Preço ${payment ? `no ${payment}` : 'acumulativo'}`, value: CommerceModel.formatMoney(benefit.total_price_for_boosted_offer, currency), tone: 'primary' });
       }
       if (moneyOrNull(benefit.amount) !== null) {
-        metrics.push(buildBenefitMetric('Mercado Livre paga', benefit.amount, promotionBenefitPercentage(benefit), currency, 'green'));
+        fields.push({ label: 'Mercado Livre paga', value: CommerceModel.formatMoney(benefit.amount, currency), tone: 'success' });
       } else if (promotionBenefitPercentage(benefit)) {
-        metrics.push({ label: 'Mercado Livre paga', value: formatPercent(promotionBenefitPercentage(benefit)), tone: 'green' });
+        fields.push({ label: 'Mercado Livre paga', value: formatPercent(promotionBenefitPercentage(benefit)), tone: 'success' });
       }
       if (Number(benefit.seller_percentage) > 0) {
-        metrics.push({ label: 'Você paga', value: formatPercent(benefit.seller_percentage), tone: 'muted' });
+        fields.push({ label: 'Você paga', value: formatPercent(benefit.seller_percentage) });
       }
       return `
-        <div class="onframe-commerce-price-scenario">
+        <div class="ob-card onframe-commerce-popover-price-scenario">
           <div>
             <small>Desconto acumulativo</small>
             <strong>${escapeHtml(benefit.label || (payment ? `No ${payment}` : 'Acumulativo'))}</strong>
           </div>
-          ${renderPromotionMetricGrid(metrics)}
+          ${fields.map(renderPriceScenarioField).join('')}
+        </div>
+      `;
+    }
+
+    function renderPriceScenarioField(field) {
+      if (!field || !field.label || !field.value) return '';
+      return `
+        <div class="onframe-commerce-popover-price-scenario-field ${escapeAttribute(field.tone || '')}">
+          <small>${escapeHtml(field.label)}</small>
+          <strong>${escapeHtml(field.value)}</strong>
         </div>
       `;
     }
@@ -2952,7 +2985,8 @@
     function positionFloatingRoot(root, anchor) {
       if (!root || !anchor || typeof anchor.getBoundingClientRect !== 'function') return;
       const rect = anchor.getBoundingClientRect();
-      const preferredWidth = state.popover === 'promotions' ? 560 : 340;
+      const isSummaryPopover = state.popover === 'promotions' || state.popover === 'price' && !state.priceEditing;
+      const preferredWidth = isSummaryPopover ? 560 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
       const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
       const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));

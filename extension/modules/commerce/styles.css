@@ -21,7 +21,8 @@
   width: min(340px, calc(100vw - 24px));
 }
 
-.onframe-commerce-popover-root.promotions {
+.onframe-commerce-popover-root.promotions,
+.onframe-commerce-popover-root.price-summary {
   width: min(560px, calc(100vw - 24px));
 }
 
@@ -216,6 +217,92 @@
 .onframe-commerce-popover-empty > span {
   color: var(--ob-ink-soft);
   font: 500 11px/1.35 var(--ob-font);
+}
+
+.onframe-commerce-popover-price-card {
+  margin: 0 0 10px;
+  overflow: hidden;
+}
+
+.onframe-commerce-popover-price-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.onframe-commerce-popover-price-field {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.onframe-commerce-popover-price-field + .onframe-commerce-popover-price-field {
+  border-left: 1px solid var(--ob-border);
+}
+
+.onframe-commerce-popover-price-field small,
+.onframe-commerce-popover-price-scenario small {
+  color: var(--ob-ink-soft);
+  font: 600 9px/1.2 var(--ob-font-mono);
+  text-transform: uppercase;
+}
+
+.onframe-commerce-popover-price-field strong,
+.onframe-commerce-popover-price-scenario strong {
+  color: var(--ob-ink-strong);
+  font: 700 12px/1.25 var(--ob-font);
+  overflow-wrap: anywhere;
+}
+
+.onframe-commerce-popover-price-field > span {
+  color: var(--ob-green-700);
+  font: 600 10px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-popover-price-field.primary strong {
+  color: var(--ob-blue-700);
+}
+
+.onframe-commerce-popover-price-field.success strong,
+.onframe-commerce-popover-price-scenario-field.success strong {
+  color: var(--ob-green-700);
+}
+
+.onframe-commerce-popover-price-field.warning strong {
+  color: var(--ob-orange-700);
+}
+
+.onframe-commerce-popover-price-conditions {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.onframe-commerce-popover-price-scenario-list {
+  display: grid;
+  gap: 6px;
+}
+
+.onframe-commerce-popover-price-scenario {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-template-columns: minmax(0, 1.35fr);
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.onframe-commerce-popover-price-scenario > div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.onframe-commerce-popover-price-scenario > div + div {
+  border-left: 1px solid var(--ob-border);
 }
 
 .onframe-commerce-hero {
@@ -1939,6 +2026,10 @@
     width: auto;
   }
 
+  .onframe-commerce-popover-root.price-summary {
+    width: auto;
+  }
+
   .onframe-commerce-popover-campaign-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1953,6 +2044,37 @@
 
   .onframe-commerce-popover-condition-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .onframe-commerce-popover-price-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onframe-commerce-popover-price-field:nth-child(odd) {
+    border-left: 0;
+  }
+
+  .onframe-commerce-popover-price-field:nth-child(n + 3) {
+    border-top: 1px solid var(--ob-border);
+  }
+
+  .onframe-commerce-popover-price-scenario {
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onframe-commerce-popover-price-scenario > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .onframe-commerce-popover-price-scenario > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--ob-border);
+  }
+
+  .onframe-commerce-popover-price-scenario > div:nth-child(even) {
+    border-right: 1px solid var(--ob-border);
   }
 
   .onframe-commerce-modal {
