@@ -259,6 +259,10 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /function renderPriceSummaryFeeReduction/);
   assert.match(source, /class="ob-card onframe-commerce-popover-price-card"/);
   assert.match(source, /class="onframe-commerce-popover-price-grid"/);
+  assert.match(source, /function renderPriceEdit/);
+  assert.match(source, /class="ob-card onframe-commerce-popover-price-edit-card"/);
+  assert.match(source, /class="onframe-commerce-popover-price-edit-field"/);
+  assert.match(source, /class="onframe-commerce-popover-price-edit-bulk"/);
   assert.doesNotMatch(source, /function renderPriceSnapshot/);
   assert.doesNotMatch(source, /function renderPriceCosts/);
   assert.doesNotMatch(source, /function priceCostMetrics/);
@@ -289,6 +293,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.doesNotMatch(styles, /onframe-commerce-price-reference/);
   assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
   assert.match(styles, /\.onframe-commerce-popover-root\.price-summary/);
+  assert.match(styles, /\.onframe-commerce-popover-price-edit-card/);
   assert.match(styles, /\.onframe-commerce-popover-price-grid\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-price-transition s\s*{\s*color: var\(--ob-ink-strong\)/s);
   assert.match(styles, /\.onframe-commerce-popover-price-scenario\s*{\s*display: grid/s);
@@ -369,8 +374,8 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(popoverSource, /renderPromotionPopoverCouponList\(coupons\)/);
   assert.match(popoverSource, /renderPromotionPopoverPaymentList\(paymentBenefits\)/);
   assert.match(source, /classList\.toggle\('promotions', state\.popover === 'promotions'\)/);
-  assert.match(source, /classList\.toggle\('price-summary', state\.popover === 'price' && !state\.priceEditing\)/);
-  assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price' && !state\.priceEditing/);
+  assert.match(source, /classList\.toggle\('price-summary', state\.popover === 'price'\)/);
+  assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price';/);
   assert.match(source, /const preferredWidth = isSummaryPopover \? 560 : 340/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);

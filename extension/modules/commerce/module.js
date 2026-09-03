@@ -361,7 +361,7 @@
       }
 
       state.popoverRoot.classList.toggle('promotions', state.popover === 'promotions');
-      state.popoverRoot.classList.toggle('price-summary', state.popover === 'price' && !state.priceEditing);
+      state.popoverRoot.classList.toggle('price-summary', state.popover === 'price');
       positionFloatingRoot(state.popoverRoot, popoverAnchor());
       const markup = state.popover === 'price' ? buildPricePopover() : buildPromotionPopover();
       if (markup === state.lastPopoverMarkup) return;
@@ -410,15 +410,20 @@
     }
 
     function renderPriceEdit(priceState) {
+      const bulkSwitch = renderBulkSwitch('price', state.priceBulkEnabled);
       return `
         <section class="onframe-commerce-popover">
           ${renderPopoverHead('Editar preço', priceState.label)}
           ${renderNotice(state.actionError, 'warn')}
-          <label class="onframe-commerce-field">
-            <span>Novo preço</span>
-            <input data-field="price" inputmode="decimal" autocomplete="off" value="${escapeAttribute(state.priceDraft)}">
-          </label>
-          ${renderBulkSwitch('price', state.priceBulkEnabled)}
+          <section class="ob-card onframe-commerce-popover-price-edit-card">
+            <div class="onframe-commerce-popover-price-edit-field">
+              <label class="onframe-commerce-field">
+                <span>Novo preço</span>
+                <input data-field="price" inputmode="decimal" autocomplete="off" value="${escapeAttribute(state.priceDraft)}">
+              </label>
+            </div>
+            ${bulkSwitch ? `<div class="onframe-commerce-popover-price-edit-bulk">${bulkSwitch}</div>` : ''}
+          </section>
           ${renderBulkBusyStatus()}
           ${renderBulkStatus(state.priceBulkPreview, state.priceBulkError)}
           <div class="onframe-commerce-actions">
@@ -3008,7 +3013,7 @@
     function positionFloatingRoot(root, anchor) {
       if (!root || !anchor || typeof anchor.getBoundingClientRect !== 'function') return;
       const rect = anchor.getBoundingClientRect();
-      const isSummaryPopover = state.popover === 'promotions' || state.popover === 'price' && !state.priceEditing;
+      const isSummaryPopover = state.popover === 'promotions' || state.popover === 'price';
       const preferredWidth = isSummaryPopover ? 560 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
       const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);

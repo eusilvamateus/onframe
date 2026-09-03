@@ -224,6 +224,25 @@
   overflow: hidden;
 }
 
+.onframe-commerce-popover-price-edit-card {
+  margin: 0 0 10px;
+  overflow: hidden;
+}
+
+.onframe-commerce-popover-price-edit-field {
+  padding: 10px 12px;
+}
+
+.onframe-commerce-popover-price-edit-bulk {
+  padding: 10px 12px;
+  border-top: 1px solid var(--ob-border);
+}
+
+.onframe-commerce-popover-price-edit-bulk .onframe-commerce-bulk-switch {
+  width: 100%;
+  margin: 0;
+}
+
 .onframe-commerce-popover-price-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
