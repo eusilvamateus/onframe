@@ -275,7 +275,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /Você recebe/);
   assert.match(source, /Comissão/);
   assert.match(source, /Frete/);
-  assert.match(source, /Participação do Mercado Livre/);
+  assert.match(source, /Redução de tarifa do Mercado Livre/);
   assert.match(source, /Redução de tarifa/);
   assert.match(source, /function renderPriceStackableScenarios/);
   assert.match(source, /Desconto acumulativo/);
@@ -343,14 +343,14 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.doesNotMatch(source, /if \(targetPrice\) facts\.push\(\{ label: 'Preço final'/);
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
   assert.match(source, /function promotionFinancialMetrics/);
-  assert.match(source, /metric\.label !== 'Redução de tarifa'/);
+  assert.match(source, /metric\.kind !== 'fee-reduction'/);
   assert.doesNotMatch(source, /Impacto estimado/);
   assert.doesNotMatch(source, /Prévia de custos/);
   assert.doesNotMatch(source, /function estimateDataForKey/);
   assert.doesNotMatch(source, /Bônus Mercado Livre/);
   assert.doesNotMatch(source, /Benefício ML/);
-  assert.match(source, /Participação do Mercado Livre/);
-  assert.match(source, /Sua participação/);
+  assert.match(source, /Redução de tarifa do Mercado Livre/);
+  assert.match(source, /Desconto do vendedor/);
   assert.doesNotMatch(source, /function renderCardPromotionEstimate/);
   assert.doesNotMatch(source, /Não informado/);
   assert.match(source, /Você recebe/);
@@ -385,7 +385,7 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
   assert.match(source, /class="ob-badge \$\{escapeAttribute\(tone\)\}"/);
   assert.match(source, /function renderPromotionPopoverFeeReduction/);
-  assert.match(source, /Redução de tarifa de venda/);
+  assert.match(source, /Redução de tarifa por venda/);
   assert.match(source, /function promotionPopoverCouponEntries/);
   assert.match(source, /CommerceModel\.isSellerWidePromotion\(entry\)/);
   assert.match(source, /Válidos para compradores elegíveis/);
@@ -475,7 +475,7 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /return `De \$\{start\} a \$\{end\}`/);
   assert.match(source, /return `\$\{date\.getDate\(\)\} de \$\{month\}`/);
   assert.match(source, /<small>\$\{escapeHtml\(formatPromotionPeriodShort\(entry\) \|\| 'Sem vigência informada'\)\}<\/small>\s*<span class="onframe-commerce-status/);
-  assert.match(source, /Participação do Mercado Livre/);
+  assert.match(source, /Redução de tarifa do Mercado Livre/);
   assert.match(source, /Com redução de tarifa/);
   assert.match(source, /promotionFinancialFilters/);
   assert.match(source, /function hasPromotionFeeReduction/);
@@ -521,8 +521,8 @@ test('resultado da promocao abre popover com os custos que formam o valor liquid
   assert.match(source, /function buildPromotionResultPopover/);
   assert.match(source, /Detalhes do cálculo/);
   assert.match(source, /Preço promocional/);
-  assert.match(source, /Participação do Mercado Livre/);
-  assert.match(source, /Redução de tarifa/);
+  assert.match(source, /Redução de tarifa do Mercado Livre/);
+  assert.match(source, /Redução de tarifa por venda/);
   assert.match(source, /function promotionShippingDescription/);
   assert.match(source, /function formatPromotionCost/);
   assert.match(source, /function removePromotionResultPopover/);

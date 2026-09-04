@@ -15,7 +15,7 @@ Quando o Mercado Livre disponibiliza a acao para o anuncio, o OnFrame permite:
 - alterar valores antes da promocao entrar;
 - remover uma promocao;
 - revisar quanto voce recebe;
-- revisar descontos, comissao, frete e participacao do Mercado Livre;
+- revisar descontos, comissao, frete e reducao de tarifa do Mercado Livre;
 - aplicar a mesma acao em variacoes elegiveis.
 
 ## Entendendo os blocos de informacao
@@ -28,18 +28,17 @@ Voce pode encontrar:
 - `Preco`: valor atual ou valor final da promocao.
 - `Desconto`: percentual aplicado.
 - `Voce recebe`: estimativa do valor que fica para o vendedor.
-- `Participacao do Mercado Livre`: parcela comercial do desconto assumida pelo Mercado Livre.
-- `Sua participacao`: parcela comercial do desconto assumida pelo vendedor.
-- `Reducao de tarifa`: desconto confirmado pelo Mercado Livre nos custos por venda.
+- `Reducao de tarifa do Mercado Livre`: beneficio concedido pelo Mercado Livre na promocao.
+- `Desconto do vendedor`: parcela do desconto comercial assumida pelo vendedor.
+- `Reducao de tarifa por venda`: desconto confirmado pelo Mercado Livre nos custos por venda.
 - `Comissao`: custo da venda.
 - `Frete`: custo relacionado ao envio.
 
-`Reducao de tarifa` so aparece quando a API informa `boosted_offer`. Uma
-participacao do Mercado Livre em campanha cofinanciada nao e reducao de tarifa.
+`Reducao de tarifa por venda` so aparece quando a API informa `boosted_offer`.
 Cupons e descontos por pagamento continuam condicionais ao comprador ou a forma
 de pagamento e nao entram na estimativa principal.
 
-![Print - Promocao com participacao do Mercado Livre](assets/promocoes-rebate-mercado-livre.png)
+![Print - Promocao com reducao de tarifa do Mercado Livre](assets/promocoes-rebate-mercado-livre.png)
 
 Nem toda promocao tem todos os campos. Quando uma informacao nao existe para
 aquele caso, o OnFrame evita preencher a tela com blocos vazios.

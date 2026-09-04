@@ -1125,7 +1125,7 @@
       if (!value) return '';
       return `
         <div class="onframe-commerce-popover-fee-reduction">
-          <span>Redução de tarifa de venda: <strong>${escapeHtml(value)}</strong>.</span>
+          <span>Redução de tarifa por venda: <strong>${escapeHtml(value)}</strong>.</span>
         </div>
       `;
     }
@@ -1267,13 +1267,13 @@
       const feeReduction = value.fee_reduction;
 
       if (meli && financialPercentage(meli.percentage) !== null) {
-        metrics.push(buildFinancialMetric('Participação do Mercado Livre', meli.amount, meli.percentage, currency, 'green'));
+        metrics.push(buildFinancialMetric('Redução de tarifa do Mercado Livre', meli.amount, meli.percentage, currency, 'green', 'meli-contribution'));
       }
       if (seller && financialPercentage(seller.percentage) !== null) {
-        metrics.push(buildFinancialMetric('Sua participação', seller.amount, seller.percentage, currency));
+        metrics.push(buildFinancialMetric('Desconto do vendedor', seller.amount, seller.percentage, currency, 'muted', 'seller-contribution'));
       }
       if (feeReduction && (moneyOrNull(feeReduction.amount) !== null || financialPercentage(feeReduction.percentage) !== null)) {
-        metrics.push(buildFinancialMetric('Redução de tarifa', feeReduction.amount, feeReduction.percentage, currency, 'green'));
+        metrics.push(buildFinancialMetric('Redução de tarifa por venda', feeReduction.amount, feeReduction.percentage, currency, 'green', 'fee-reduction'));
       }
       return metrics;
     }
@@ -1439,7 +1439,7 @@
       if (shipping && moneyOrNull(shipping.amount) !== null) {
         fields.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
       }
-      promotionFinancialMetrics(financial).filter((metric) => metric.label !== 'Redução de tarifa').forEach((metric) => fields.push(metric));
+      promotionFinancialMetrics(financial).filter((metric) => metric.kind !== 'fee-reduction').forEach((metric) => fields.push(metric));
       return { fields, feeReduction };
     }
 
@@ -1459,7 +1459,7 @@
       const currency = itemCurrency();
       const value = formatFinancialValue(feeReduction, currency);
       if (!value) return '';
-      return `<div class="onframe-commerce-popover-fee-reduction"><span>Redução de tarifa de venda: <strong>${escapeHtml(value)}</strong>.</span></div>`;
+      return `<div class="onframe-commerce-popover-fee-reduction"><span>Redução de tarifa por venda: <strong>${escapeHtml(value)}</strong>.</span></div>`;
     }
 
     function renderPriceStackableScenarios(summary) {
@@ -1626,14 +1626,15 @@
       `;
     }
 
-    function buildFinancialMetric(label, amount, percentage, currency, tone = 'muted') {
+    function buildFinancialMetric(label, amount, percentage, currency, tone = 'muted', kind = '') {
       const amountText = moneyOrNull(amount) !== null ? CommerceModel.formatMoney(amount, currency || itemCurrency()) : '';
       const percentageText = financialPercentage(percentage) !== null ? formatPercent(percentage) : '';
       return {
         label,
         value: [amountText, percentageText].filter(Boolean).join(' · '),
         badge: '',
-        tone
+        tone,
+        kind
       };
     }
 
