@@ -115,10 +115,17 @@
 }
 
 .onframe-commerce-popover-fee-reduction {
+  display: grid;
+  gap: 8px;
   padding: 8px 12px;
   border-top: 1px solid var(--ob-border);
   color: var(--ob-green-700);
   font: 600 11px/1.35 var(--ob-font);
+}
+
+.onframe-commerce-popover-fee-reduction > div {
+  display: grid;
+  gap: 2px;
 }
 
 .onframe-commerce-popover-fee-reduction strong {
@@ -1822,6 +1829,15 @@
 }
 
 .onframe-commerce-promotion-result-popover-row.benefit b {
+  color: var(--ob-green-700);
+}
+
+.onframe-commerce-promotion-result-popover-row.narrative {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.onframe-commerce-promotion-result-popover-row.narrative strong,
+.onframe-commerce-promotion-result-popover-row.narrative span {
   color: var(--ob-green-700);
 }
 

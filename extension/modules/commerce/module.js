@@ -864,7 +864,7 @@
           <strong>Você recebe ${escapeHtml(CommerceModel.formatMoney(estimate.data.youReceive, currency))}</strong>
           ${renderPromotionResultPopoverTrigger(key)}
         </div>
-        ${financialMetrics.map((metric) => `<span>${escapeHtml(`${metric.label}: ${metric.value}`)}</span>`).join('')}
+        ${financialMetrics.map((metric) => `<span>${escapeHtml(promotionFinancialListText(metric))}</span>`).join('')}
       `;
     }
 
@@ -958,11 +958,7 @@
           value: CommerceModel.formatMoney(price, currency)
         });
       }
-      financialMetrics.forEach((metric) => rows.push({
-        label: metric.label,
-        value: metric.value,
-        tone: metric.tone === 'green' ? 'benefit' : ''
-      }));
+      financialMetrics.forEach((metric) => rows.push(promotionFinancialPopoverRow(metric)));
       if (commission !== null) rows.push({ label: 'Comissão', value: formatPromotionCost(commission, currency) });
       if (shipping !== null) {
         rows.push({
@@ -976,14 +972,14 @@
     }
 
     function renderPromotionResultPopoverRow(row) {
-      if (!row || !row.label || !row.value) return '';
+      if (!row || !row.label) return '';
       return `
         <div class="onframe-commerce-promotion-result-popover-row ${escapeAttribute(row.tone || '')}">
           <div>
             <strong>${escapeHtml(row.label)}</strong>
             ${row.description ? `<span>${escapeHtml(row.description)}</span>` : ''}
           </div>
-          <b>${escapeHtml(row.value)}</b>
+          ${row.value ? `<b>${escapeHtml(row.value)}</b>` : ''}
         </div>
       `;
     }
@@ -1103,7 +1099,7 @@
               <strong>${finalPrice ? escapeHtml(CommerceModel.formatMoney(finalPrice, itemCurrency())) : '—'}</strong>
             </div>
           </div>
-          ${renderPromotionPopoverFeeReduction(entry)}
+          ${renderPromotionPopoverFinancialBenefits(entry)}
         </section>
       `;
     }
@@ -1121,13 +1117,18 @@
       return moneyOrNull(state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.regular_amount);
     }
 
-    function renderPromotionPopoverFeeReduction(entry) {
-      const reduction = promotionFinancialFromEntry(entry).fee_reduction;
-      const value = formatFinancialValue(reduction, itemCurrency());
-      if (!value) return '';
+    function renderPromotionPopoverFinancialBenefits(entry) {
+      const benefits = promotionFinancialMetrics(entry, { originalPrice: promotionSummaryOriginalPrice(entry) })
+        .filter((metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction');
+      if (!benefits.length) return '';
       return `
         <div class="onframe-commerce-popover-fee-reduction">
-          <span>Redução de tarifa por venda: <strong>${escapeHtml(value)}</strong>.</span>
+          ${benefits.map((metric) => `
+            <div>
+              <strong>${escapeHtml(metric.label)}</strong>
+              <span>${escapeHtml(metric.copy || metric.value)}</span>
+            </div>
+          `).join('')}
         </div>
       `;
     }
@@ -1273,22 +1274,37 @@
       const feeReduction = value.fee_reduction;
 
       if (meli && financialPercentage(meli.percentage) !== null) {
-        metrics.push(buildFinancialMetric('Redução de tarifa do Mercado Livre', meli.amount, meli.percentage, currency, 'green', 'meli-contribution'));
+        metrics.push(buildPromotionBenefitMetric('Com redução de tarifas', meli.amount, meli.percentage, currency, 'meli-contribution'));
       }
       if (seller && financialPercentage(seller.percentage) !== null) {
         metrics.push(buildFinancialMetric('Desconto do vendedor', seller.amount, seller.percentage, currency, 'muted', 'seller-contribution'));
       }
       if (feeReduction && (moneyOrNull(feeReduction.amount) !== null || financialPercentage(feeReduction.percentage) !== null)) {
-        metrics.push(buildFinancialMetric('Redução de tarifa por venda', feeReduction.amount, feeReduction.percentage, currency, 'green', 'fee-reduction'));
+        metrics.push(buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, currency, 'fee-reduction'));
       }
       return metrics;
     }
 
-    function formatFinancialValue(value, currency) {
-      if (!value) return '';
-      const amount = moneyOrNull(value.amount);
-      const percentage = financialPercentage(value.percentage);
-      return [amount !== null ? CommerceModel.formatMoney(amount, currency || itemCurrency()) : '', percentage !== null ? formatPercent(percentage) : ''].filter(Boolean).join(' · ');
+    function promotionFinancialListText(metric) {
+      if (!metric) return '';
+      if (metric.kind === 'fee-reduction') return `${metric.label}. ${metric.copy || metric.value}`;
+      return metric.copy || `${metric.label}: ${metric.value}`;
+    }
+
+    function promotionFinancialPopoverRow(metric) {
+      if (!metric) return null;
+      if (metric.copy) {
+        return {
+          label: metric.label,
+          description: metric.copy,
+          tone: `${metric.tone === 'green' ? 'benefit ' : ''}narrative`
+        };
+      }
+      return {
+        label: metric.label,
+        value: metric.value,
+        tone: metric.tone === 'green' ? 'benefit' : ''
+      };
     }
 
     function renderPromotionMetricGrid(metrics) {
@@ -1402,7 +1418,7 @@
             ${renderPriceSummaryField(snapshot)}
             ${costs.fields.map(renderPriceSummaryField).join('')}
           </div>
-          ${renderPriceSummaryFeeReduction(costs.feeReduction)}
+          ${renderPriceSummaryBonus(costs.feeReduction)}
         </section>
       `;
     }
@@ -1460,12 +1476,18 @@
       `;
     }
 
-    function renderPriceSummaryFeeReduction(feeReduction) {
+    function renderPriceSummaryBonus(feeReduction) {
       if (!feeReduction) return '';
-      const currency = itemCurrency();
-      const value = formatFinancialValue(feeReduction, currency);
-      if (!value) return '';
-      return `<div class="onframe-commerce-popover-fee-reduction"><span>Redução de tarifa por venda: <strong>${escapeHtml(value)}</strong>.</span></div>`;
+      const benefit = buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, itemCurrency(), 'fee-reduction');
+      if (!benefit.value) return '';
+      return `
+        <div class="onframe-commerce-popover-fee-reduction">
+          <div>
+            <strong>${escapeHtml(benefit.label)}</strong>
+            <span>${escapeHtml(benefit.copy || benefit.value)}</span>
+          </div>
+        </div>
+      `;
     }
 
     function renderPriceStackableScenarios(summary) {
@@ -1638,10 +1660,27 @@
       return {
         label,
         value: [amountText, percentageText].filter(Boolean).join(' · '),
+        amountText,
+        percentageText,
         badge: '',
         tone,
         kind
       };
+    }
+
+    function buildPromotionBenefitMetric(label, amount, percentage, currency, kind) {
+      const metric = buildFinancialMetric(label, amount, percentage, currency, 'green', kind);
+      return Object.assign(metric, { copy: formatPromotionBenefitCopy(metric) });
+    }
+
+    function formatPromotionBenefitCopy(metric) {
+      if (!metric) return '';
+      if (metric.amountText && metric.percentageText) {
+        return `Reduzimos ${metric.amountText} das suas tarifas por cada venda (${metric.percentageText}).`;
+      }
+      if (metric.amountText) return `Reduzimos ${metric.amountText} das suas tarifas por cada venda.`;
+      if (metric.percentageText) return `Reduzimos ${metric.percentageText} das suas tarifas por cada venda.`;
+      return '';
     }
 
     function hasMetric(metrics, candidate) {
