@@ -1419,7 +1419,11 @@
 
 .onframe-commerce-modal {
   width: min(980px, calc(100vw - 36px));
+  height: min(780px, calc(100vh - 36px));
   max-height: min(780px, calc(100vh - 36px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .onframe-commerce-modal-head {
@@ -1427,6 +1431,12 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.onframe-commerce-modal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .onframe-commerce-modal-head-actions {
@@ -2103,6 +2113,7 @@
 
   .onframe-commerce-modal {
     width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
     max-height: calc(100vh - 24px);
     padding: 14px;
   }

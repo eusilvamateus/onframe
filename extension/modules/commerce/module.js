@@ -536,8 +536,10 @@
                 })}
               </div>
             </header>
-            ${renderNotice(state.actionMessage || state.actionError || state.promotionError, state.actionError || state.promotionError ? 'warn' : 'ok')}
-            ${state.promotionLoading ? '<div class="onframe-commerce-empty">Lendo promoções...</div>' : renderPromotionManager()}
+            <div class="onframe-commerce-modal-content">
+              ${renderNotice(state.actionMessage || state.actionError || state.promotionError, state.actionError || state.promotionError ? 'warn' : 'ok')}
+              ${state.promotionLoading ? '<div class="onframe-commerce-empty">Lendo promoções...</div>' : renderPromotionManager()}
+            </div>
             <footer class="onframe-commerce-modal-foot">
               <button class="onframe-commerce-btn" data-action="close-promotion-modal" type="button">Fechar</button>
             </footer>
@@ -1255,7 +1257,11 @@
 
     function hasPromotionFeeReduction(entry) {
       const financial = promotionFinancialFromEntry(entry);
-      return Boolean(financial.fee_reduction && financial.fee_reduction.boosted_offer === true);
+      return hasPromotionFinancialValue(financial.meli_contribution) || hasPromotionFinancialValue(financial.fee_reduction);
+    }
+
+    function hasPromotionFinancialValue(value) {
+      return Boolean(value && (moneyOrNull(value.amount) !== null || financialPercentage(value.percentage) !== null));
     }
 
     function promotionFinancialMetrics(financial, options = {}) {

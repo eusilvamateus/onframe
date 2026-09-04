@@ -479,6 +479,9 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /Com redução de tarifa/);
   assert.match(source, /promotionFinancialFilters/);
   assert.match(source, /function hasPromotionFeeReduction/);
+  assert.match(source, /function hasPromotionFinancialValue/);
+  assert.match(source, /financial\.meli_contribution/);
+  assert.match(source, /financial\.fee_reduction/);
   assert.match(source, /class="ob-table-wrap onframe-commerce-promotion-table-wrap"/);
   assert.match(source, /class="ob-table onframe-commerce-promotion-table"/);
   assert.match(source, /class="ob-table-row onframe-commerce-promotion-table-head"/);
@@ -506,6 +509,8 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(styles, /\.onframe-commerce-promotion-action-btn\.danger:hover:not\(:disabled\)[\s\S]*color: var\(--ob-danger\)/);
   assert.match(styles, /\.onframe-commerce-modal-head-action:hover:not\(:disabled\)[\s\S]*color: var\(--ob-blue\)/);
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
+  assert.match(styles, /\.onframe-commerce-modal\s*{[^}]*height: min\(780px, calc\(100vh - 36px\)\)[^}]*display: flex[^}]*overflow: hidden/s);
+  assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*flex: 1 1 auto[^}]*min-height: 0[^}]*overflow: auto/s);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.coupon/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.payment/);
   assert.match(styles, /@media \(max-width: 639px\)/);
