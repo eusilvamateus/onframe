@@ -29,7 +29,8 @@ const {
   createCampaign,
   createOffer,
   deleteOffer,
-  estimatePromotionImpact
+  estimatePromotionImpact,
+  estimatePromotionImpacts
 } = require('../service/src/promotions');
 const descriptions = require('../service/src/descriptions');
 const characteristics = require('../service/src/characteristics');
@@ -131,6 +132,7 @@ module.exports = {
   createOffer,
   deleteOffer,
   estimatePromotionImpact,
+  estimatePromotionImpacts,
   descriptions,
   characteristics,
   detection,

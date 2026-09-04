@@ -25,6 +25,7 @@ const {
   createOffer,
   deleteOffer,
   estimatePromotionImpact,
+  estimatePromotionImpacts,
   detection,
   photosModel,
   commerceModel,
@@ -1075,6 +1076,60 @@ test('promotion estimate usa preco fixo da campanha quando oferta nao tem campo 
   assert.deepStrictEqual(result.warnings, []);
 });
 
+test('promotion estimates reutiliza item, promocoes e custos para preco repetido', async () => {
+  let itemCalls = 0;
+  let promotionCalls = 0;
+  let listingCalls = 0;
+  let shippingCalls = 0;
+  const results = await estimatePromotionImpacts({
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => {
+      itemCalls += 1;
+      return {
+        id: 'MLB1234567890',
+        seller_id: 123,
+        site_id: 'MLB',
+        category_id: 'MLB1055',
+        status: 'active',
+        price: 100,
+        currency_id: 'BRL',
+        listing_type_id: 'gold_special',
+        shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+        condition: 'new',
+        pictures: []
+      };
+    },
+    getItemPromotions: async () => {
+      promotionCalls += 1;
+      return {
+        results: [
+          { id: 'P-MLB1', type: 'DEAL', name: 'Oferta 1', price: 80, original_price: 100, seller_percentage: 10 },
+          { id: 'P-MLB2', type: 'DEAL', name: 'Oferta 2', price: 80, original_price: 100, seller_percentage: 12 }
+        ]
+      };
+    },
+    getListingPrices: async () => {
+      listingCalls += 1;
+      return [{ listing_type_id: 'gold_special', sale_fee_amount: 10, sale_fee_details: { percentage_fee: 12.5 } }];
+    },
+    getSellerShippingCost: async () => {
+      shippingCalls += 1;
+      return { coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } } };
+    }
+  }, 'MLB1234567890', [
+    { promotionType: 'DEAL', promotionId: 'P-MLB1', dealPrice: 80 },
+    { promotionType: 'DEAL', promotionId: 'P-MLB2', dealPrice: 80 }
+  ]);
+
+  assert.strictEqual(results.length, 2);
+  assert.strictEqual(results[0].promotion.label, 'Oferta 1');
+  assert.strictEqual(results[1].promotion.label, 'Oferta 2');
+  assert.strictEqual(itemCalls, 1);
+  assert.strictEqual(promotionCalls, 1);
+  assert.strictEqual(listingCalls, 1);
+  assert.strictEqual(shippingCalls, 1);
+});
+
 test('promotion summary enriquece campanhas com dados do item', async () => {
   const calls = [];
   const summary = await buildPromotionSummary({
@@ -1337,6 +1392,20 @@ test('api pricing e promotions expõem rotas locais', async (t) => {
   assert.strictEqual(estimateBody.dealPrice, 90);
   assert.strictEqual(estimateBody.promotion.type, 'SMART');
   assert.strictEqual(estimateBody.promotion.label, 'Campanha Smart');
+
+  const estimatesResponse = await fetch(`${server.url}/api/items/MLB1234567890/promotions/estimates`, {
+    method: 'POST',
+    body: JSON.stringify({
+      estimates: [
+        { promotionType: 'SMART', promotionId: 'P-MLB1', dealPrice: 90 },
+        { promotionType: 'SMART', promotionId: 'P-MLB1', dealPrice: 90 }
+      ]
+    })
+  });
+  const estimatesBody = await estimatesResponse.json();
+  assert.strictEqual(estimatesResponse.status, 200);
+  assert.strictEqual(estimatesBody.estimates.length, 2);
+  assert.strictEqual(estimatesBody.estimates[0].dealPrice, 90);
 });
 
 test('api bulk preview expõe contrato local por item', async (t) => {

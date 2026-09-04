@@ -66,7 +66,27 @@ async function buildPriceSummary(client, itemId) {
   };
 }
 
-async function buildCostProjection(client, item, price, promotionFinancial = null) {
+async function buildCostProjection(client, item, price, promotionFinancial = null, baseProjection = null) {
+  const base = baseProjection || await buildBaseCostProjection(client, item, price);
+  const costBreakdown = buildCostBreakdown({
+    activePrice: base.activePrice,
+    currency: base.currency_id,
+    costs: base.costs,
+    shippingCost: base.sellerShippingCost,
+    promotionFinancial
+  });
+
+  return {
+    activePrice: base.activePrice,
+    currency_id: base.currency_id,
+    costs: base.costs,
+    sellerShippingCost: base.sellerShippingCost,
+    promotionFinancial: promotionFinancial || null,
+    costBreakdown
+  };
+}
+
+async function buildBaseCostProjection(client, item, price) {
   const activePrice = normalizeAmount(price);
   if (!activePrice) {
     const err = new Error('pricing_invalid_amount');
@@ -78,24 +98,12 @@ async function buildCostProjection(client, item, price, promotionFinancial = nul
     optional(() => loadListingCosts(client, item, activePrice), { nullableStatuses: [400, 404] }),
     optional(() => loadSellerShippingCost(client, item, activePrice), { nullableStatuses: [400, 404] })
   ]);
-  const summarizedCosts = summarizeCosts(costs);
-  const summarizedShippingCost = summarizeSellerShippingCost(shippingCost, item);
-  const currency = item.currency_id || 'BRL';
-  const costBreakdown = buildCostBreakdown({
-    activePrice,
-    currency,
-    costs: summarizedCosts,
-    shippingCost: summarizedShippingCost,
-    promotionFinancial
-  });
 
   return {
     activePrice,
-    currency_id: currency,
-    costs: summarizedCosts,
-    sellerShippingCost: summarizedShippingCost,
-    promotionFinancial: promotionFinancial || null,
-    costBreakdown
+    currency_id: item.currency_id || 'BRL',
+    costs: summarizeCosts(costs),
+    sellerShippingCost: summarizeSellerShippingCost(shippingCost, item)
   };
 }
 

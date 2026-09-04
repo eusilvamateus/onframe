@@ -187,6 +187,40 @@ async function createOffer(client, itemId, input = {}) {
 
 async function estimatePromotionImpact(client, itemId, input = {}) {
   const item = await assertOwnedItem(client, itemId);
+  const current = await optional(() => client.getItemPromotions(item.id), [400, 404]);
+  return estimatePromotionImpactForContext(client, item, current, input);
+}
+
+async function estimatePromotionImpacts(client, itemId, inputs = []) {
+  if (!Array.isArray(inputs) || !inputs.length || inputs.length > 50) {
+    const err = new Error('promotion_estimates_invalid');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const item = await assertOwnedItem(client, itemId);
+  const current = await optional(() => client.getItemPromotions(item.id), [400, 404]);
+  const baseProjections = new Map();
+  const getBaseProjection = (dealPrice) => {
+    const key = String(Number(dealPrice).toFixed(2));
+    if (!baseProjections.has(key)) {
+      baseProjections.set(key, buildCostProjection(client, item, dealPrice));
+    }
+    return baseProjections.get(key);
+  };
+
+  return Promise.all(inputs.map((input) => estimatePromotionImpactForContext(client, item, current, input, getBaseProjection)));
+}
+
+async function estimatePromotionImpactForContext(client, item, current, input = {}, getBaseProjection = null) {
+  const estimate = preparePromotionEstimate(item, current, input);
+  const baseProjection = getBaseProjection ? await getBaseProjection(estimate.dealPrice) : null;
+  const projection = await buildCostProjection(client, item, estimate.dealPrice, estimate.promotionFinancial, baseProjection);
+
+  return buildPromotionEstimateResult(item, estimate, projection);
+}
+
+function preparePromotionEstimate(item, current, input = {}) {
   const promotionType = normalizePromotionType(input.promotionType || input.promotion_type);
   const promotionAdapter = requireAdapter(promotionType);
 
@@ -197,7 +231,6 @@ async function estimatePromotionImpact(client, itemId, input = {}) {
   copy(input, payload, 'offer_id');
   copyAliases(input, payload);
 
-  const current = await optional(() => client.getItemPromotions(item.id), [400, 404]);
   const match = findPromotionEntryForPayload(current, payload);
   const dealPrice = resolvePromotionEstimatePrice(input, match);
   if (!dealPrice || dealPrice <= 0) {
@@ -224,18 +257,29 @@ async function estimatePromotionImpact(client, itemId, input = {}) {
     originalPrice: numberOrNull(match && match.original_price) || numberOrNull(item.price),
     activePrice: dealPrice
   });
-  const projection = await buildCostProjection(client, item, dealPrice, promotionFinancial);
 
+  return {
+    payload,
+    promotionAdapter,
+    match,
+    dealPrice,
+    promotionFinancial,
+    warnings,
+    range
+  };
+}
+
+function buildPromotionEstimateResult(item, estimate, projection) {
   return {
     item: summarizePromotionItem(item),
     promotion: {
-      id: payload.promotion_id || match && (match.id || match.promotion_id) || null,
-      offer_id: payload.offer_id || match && (match.offer_id || match.ref_id) || null,
-      type: promotionAdapter.type,
-      label: match ? promotionDisplayName(match, promotionAdapter.label) : promotionAdapter.label,
-      range
+      id: estimate.payload.promotion_id || estimate.match && (estimate.match.id || estimate.match.promotion_id) || null,
+      offer_id: estimate.payload.offer_id || estimate.match && (estimate.match.offer_id || estimate.match.ref_id) || null,
+      type: estimate.promotionAdapter.type,
+      label: estimate.match ? promotionDisplayName(estimate.match, estimate.promotionAdapter.label) : estimate.promotionAdapter.label,
+      range: estimate.range
     },
-    dealPrice,
+    dealPrice: estimate.dealPrice,
     currency_id: projection.currency_id,
     commission: projection.costBreakdown.commission,
     shipping: projection.costBreakdown.shipping,
@@ -243,7 +287,7 @@ async function estimatePromotionImpact(client, itemId, input = {}) {
     youReceive: projection.costBreakdown.you_receive,
     complete: projection.costBreakdown.complete,
     missing: projection.costBreakdown.missing,
-    warnings
+    warnings: estimate.warnings
   };
 }
 
@@ -912,6 +956,7 @@ module.exports = {
   deleteCampaign,
   deleteOffer,
   estimatePromotionImpact,
+  estimatePromotionImpacts,
   listCampaigns,
   previewOfferAction,
   updateCampaign,

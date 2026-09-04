@@ -1013,6 +1013,7 @@ test('service mantem exports publicos enxutos', () => {
     'deleteCampaign',
     'deleteOffer',
     'estimatePromotionImpact',
+    'estimatePromotionImpacts',
     'listCampaigns',
     'previewOfferAction',
     'updateCampaign',

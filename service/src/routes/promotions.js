@@ -5,6 +5,7 @@ const {
   deleteCampaign,
   deleteOffer,
   estimatePromotionImpact,
+  estimatePromotionImpacts,
   listCampaigns,
   updateCampaign,
   updateOffer
@@ -17,6 +18,13 @@ async function handlePromotionSummary({ client, itemId }) {
 async function handlePromotionEstimate({ req, client, itemId, readJson }) {
   const body = await readJson(req);
   return estimatePromotionImpact(client, itemId, body);
+}
+
+async function handlePromotionEstimates({ req, client, itemId, readJson }) {
+  const body = await readJson(req);
+  return {
+    estimates: await estimatePromotionImpacts(client, itemId, body && body.estimates)
+  };
 }
 
 async function handleCreateOffer({ req, client, itemId, readJson }) {
@@ -60,6 +68,7 @@ module.exports = {
   handleDeleteCampaign,
   handleDeleteOffer,
   handlePromotionEstimate,
+  handlePromotionEstimates,
   handlePromotionSummary,
   handleUpdateCampaign,
   handleUpdateOffer

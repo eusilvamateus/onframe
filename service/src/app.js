@@ -49,6 +49,7 @@ const {
   handleDeleteCampaign,
   handleDeleteOffer,
   handlePromotionEstimate,
+  handlePromotionEstimates,
   handlePromotionSummary,
   handleUpdateCampaign,
   handleUpdateOffer
@@ -212,6 +213,12 @@ function createApp(options = {}) {
       if (req.method === 'GET' && promotionSummaryMatch) {
         const itemClient = await resolveClientForItemRequest(url, promotionSummaryMatch[1]);
         return sendJson(res, 200, await handlePromotionSummary({ client: itemClient, itemId: promotionSummaryMatch[1] }));
+      }
+
+      const promotionEstimatesMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/promotions\/estimates$/);
+      if (req.method === 'POST' && promotionEstimatesMatch) {
+        const itemClient = await resolveClientForItemRequest(url, promotionEstimatesMatch[1]);
+        return sendJson(res, 200, await handlePromotionEstimates({ req, client: itemClient, itemId: promotionEstimatesMatch[1], readJson }));
       }
 
       const promotionEstimateMatch = url.pathname.match(/^\/api\/items\/(MLB\d+)\/promotions\/estimate$/);

@@ -841,7 +841,14 @@
         return '<strong>Depende do comprador</strong><span>Não entra nesta estimativa</span>';
       }
       const estimate = state.promotionEstimates[key];
-      if (!estimate || estimate.status !== 'ready' || !estimate.data || moneyOrNull(estimate.data.youReceive) === null) return '';
+      if (!estimate) {
+        return moneyOrNull(promotionDisplayPrice(entry))
+          ? '<span>Calculando valores...</span>'
+          : '<span>Preço ainda não informado.</span>';
+      }
+      if (estimate.status === 'loading') return '<span>Calculando valores...</span>';
+      if (estimate.status === 'error') return `<span>${escapeHtml(estimate.message || 'Valores indisponíveis.')}</span>`;
+      if (estimate.status !== 'ready' || !estimate.data || moneyOrNull(estimate.data.youReceive) === null) return '<span>Valores indisponíveis.</span>';
       const currency = estimate.data.currency_id || itemCurrency();
       const financialMetrics = promotionFinancialMetrics(estimate.data.promotionFinancial);
       return `
@@ -2540,22 +2547,20 @@
 
     function schedulePromotionManagerEstimates() {
       if (!state.promotionModalOpen || !state.promotionSummary) return;
-      promotionEstimateCandidates().forEach(({ key, entry }) => {
-        schedulePromotionEstimate(key, entry, state.promotionDraftValues[key] || {});
+      const candidates = promotionEstimateCandidates().flatMap(({ key, entry }) => {
+        const values = state.promotionDraftValues[key] || {};
+        const targetPrice = promotionTargetPrice(entry, values);
+        if (!targetPrice || promotionRangeWarning(entry, targetPrice)) return [];
+        const payload = buildPromotionEstimatePayload(entry, values, targetPrice);
+        return [{ key, hash: JSON.stringify(payload), payload }];
       });
+      if (candidates.length) void loadPromotionEstimateBatch(candidates);
     }
 
     function promotionEstimateCandidates() {
-      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
-      const discountEntry = buildDiscountEntry();
-      return [
-        ...currentPromotionEntries(campaignPromotionEntries(groups.activeOffers)).map((entry, index) => ({ key: `active-offer:${index}`, entry })),
-        ...stackablePromotionEntries(groups)
-          .filter((entry) => !isCandidatePromotion(entry))
-          .map((entry, index) => ({ key: `stackable-offer:${index}`, entry })),
-        ...(discountEntry && !isCandidatePromotion(discountEntry) ? [{ key: 'discount-offer:0', entry: discountEntry }] : []),
-        ...programmedPromotionEntries(groups).map((entry, index) => ({ key: `programmed-offer:${index}`, entry }))
-      ].filter(({ entry }) => CommerceModel.canEstimatePromotion(entry) && moneyOrNull(promotionDisplayPrice(entry)));
+      return buildPromotionRows()
+        .filter(({ entry }) => CommerceModel.canEstimatePromotion(entry) && moneyOrNull(promotionDisplayPrice(entry)))
+        .map(({ key, entry }) => ({ key, entry }));
     }
 
     function schedulePromotionEstimate(key, entry, values) {
@@ -2608,6 +2613,39 @@
       }
     }
 
+    async function loadPromotionEstimateBatch(candidates) {
+      if (!state.itemId || !Array.isArray(candidates) || !candidates.length) return;
+      const requestId = ++state.promotionEstimateRequestId;
+      candidates.forEach(({ key, hash }) => {
+        state.promotionEstimates[key] = { status: 'loading', hash, requestId };
+      });
+      rerenderModal();
+
+      try {
+        const response = await api(itemApiPath('/promotions/estimates'), {
+          method: 'POST',
+          body: JSON.stringify({ estimates: candidates.map(({ payload }) => payload) })
+        });
+        const estimates = Array.isArray(response && response.estimates) ? response.estimates : [];
+        candidates.forEach(({ key, hash }, index) => {
+          const current = state.promotionEstimates[key];
+          if (!current || current.requestId !== requestId || current.hash !== hash) return;
+          const data = estimates[index];
+          state.promotionEstimates[key] = data
+            ? { status: 'ready', hash, data }
+            : { status: 'error', hash, message: 'Valores indisponíveis.' };
+        });
+      } catch (err) {
+        candidates.forEach(({ key, hash }) => {
+          const current = state.promotionEstimates[key];
+          if (!current || current.requestId !== requestId || current.hash !== hash) return;
+          state.promotionEstimates[key] = { status: 'error', hash, message: CommerceModel.friendlyError(err) };
+        });
+      } finally {
+        rerenderModal();
+      }
+    }
+
     function buildPromotionEstimatePayload(entry, values, targetPrice) {
       return {
         promotionType: entry && entry.type ? entry.type : '',
@@ -2629,7 +2667,14 @@
     }
 
     function promotionDisplayPrice(entry) {
-      return entry && (entry.price || entry.suggested_price || entry.total_price_for_boosted_offer) || null;
+      return entry && (
+        entry.price ||
+        entry.new_price ||
+        entry.deal_price ||
+        entry.suggested_discounted_price ||
+        entry.suggested_price ||
+        entry.total_price_for_boosted_offer
+      ) || null;
     }
 
     function clearPromotionEstimate(key) {
