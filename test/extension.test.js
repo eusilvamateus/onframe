@@ -428,9 +428,13 @@ test('acoes de edicao respeitam a secao expandida nativa', () => {
   assert.strictEqual(descriptionStyles.includes('.onframe-description-is-editing .onframe-description-action'), true);
   assert.strictEqual(descriptionStyles.includes('.ui-pdp-collapsable--is-collapsed .onframe-description-action'), false);
   assert.strictEqual(sharedSource.includes('function setDisabledButtonTooltip(button, options = {})'), true);
+  assert.strictEqual(sharedSource.includes('function positionDisabledButtonTooltip(wrapper, state)'), true);
+  assert.strictEqual(sharedSource.includes('removeDisabledButtonTooltip,'), true);
+  assert.strictEqual(sharedSource.includes("onframe-floating-tooltip"), true);
   assert.strictEqual(sharedSource.includes("tooltipWrapper.setAttribute('aria-disabled', 'true')"), true);
   assert.strictEqual(components.includes('.onframe-section-edit-tooltip'), true);
   assert.strictEqual(components.includes('.onframe-section-edit-action:disabled'), true);
+  assert.strictEqual(components.includes('.ob-tooltip-content.onframe-floating-tooltip'), true);
   assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8').includes('.onframe-section-edit-tooltip'), true);
 });
 

@@ -1216,6 +1216,7 @@
       restoreInlineCells();
       document.querySelectorAll('.onframe-characteristics-action').forEach((node) => {
         const wrapper = node.closest('.onframe-section-edit-tooltip');
+        if (wrapper) Shared.removeDisabledButtonTooltip(wrapper);
         (wrapper || node).remove();
       });
       document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));

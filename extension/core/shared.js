@@ -146,7 +146,10 @@
     if (!disabled) {
       button.removeAttribute('aria-disabled');
       button.removeAttribute('aria-describedby');
-      if (wrapper) wrapper.replaceWith(button);
+      if (wrapper) {
+        removeDisabledButtonTooltip(wrapper);
+        wrapper.replaceWith(button);
+      }
       return button;
     }
 
@@ -167,21 +170,96 @@
     tooltipWrapper.setAttribute('aria-disabled', 'true');
     tooltipWrapper.setAttribute('aria-describedby', tooltipId);
 
-    let tooltip = tooltipWrapper.querySelector('.ob-tooltip-content');
-    if (!tooltip) {
-      tooltip = document.createElement('span');
-      tooltip.className = 'ob-tooltip-content';
+    updateDisabledButtonTooltip(tooltipWrapper, {
+      document,
+      tooltipId,
+      tooltipText
+    });
+
+    return button;
+  }
+
+  function updateDisabledButtonTooltip(wrapper, options) {
+    const document = options.document;
+    const window = document.defaultView;
+    let state = wrapper.__onframeDisabledTooltip;
+
+    if (!state) {
+      const tooltip = document.createElement('span');
+      tooltip.className = 'ob-tooltip-content onframe-floating-tooltip';
       tooltip.setAttribute('role', 'tooltip');
-      tooltipWrapper.appendChild(tooltip);
+      document.body.appendChild(tooltip);
+
+      state = {
+        tooltip,
+        show: null,
+        hide: null,
+        reposition: null,
+        window
+      };
+      state.show = () => {
+        positionDisabledButtonTooltip(wrapper, state);
+        tooltip.classList.add('is-open');
+      };
+      state.hide = () => tooltip.classList.remove('is-open');
+      state.reposition = () => {
+        if (tooltip.classList.contains('is-open')) positionDisabledButtonTooltip(wrapper, state);
+      };
+      wrapper.addEventListener('mouseenter', state.show);
+      wrapper.addEventListener('mouseleave', state.hide);
+      wrapper.addEventListener('focus', state.show);
+      wrapper.addEventListener('blur', state.hide);
+      if (window) {
+        window.addEventListener('resize', state.reposition);
+        window.addEventListener('scroll', state.reposition, true);
+      }
+      wrapper.__onframeDisabledTooltip = state;
     }
-    tooltip.id = tooltipId;
-    tooltip.textContent = tooltipText;
+
+    state.tooltip.id = options.tooltipId;
+    state.tooltip.textContent = options.tooltipText;
     const arrow = document.createElement('span');
     arrow.className = 'ob-tooltip-arrow';
     arrow.setAttribute('aria-hidden', 'true');
-    tooltip.appendChild(arrow);
+    state.tooltip.appendChild(arrow);
+  }
 
-    return button;
+  function positionDisabledButtonTooltip(wrapper, state) {
+    const tooltip = state.tooltip;
+    const window = state.window;
+    if (!wrapper.isConnected || !window) return;
+
+    const gap = 8;
+    const viewportPadding = 8;
+    const anchor = wrapper.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const placement = anchor.bottom + tooltipRect.height + gap <= window.innerHeight - viewportPadding ? 'bottom' : 'top';
+    const left = Math.min(
+      Math.max(viewportPadding, anchor.left + (anchor.width - tooltipRect.width) / 2),
+      window.innerWidth - tooltipRect.width - viewportPadding
+    );
+    const top = placement === 'bottom'
+      ? Math.min(anchor.bottom + gap, window.innerHeight - tooltipRect.height - viewportPadding)
+      : Math.max(viewportPadding, anchor.top - tooltipRect.height - gap);
+
+    tooltip.dataset.placement = placement;
+    tooltip.style.left = `${Math.round(left)}px`;
+    tooltip.style.top = `${Math.round(top)}px`;
+  }
+
+  function removeDisabledButtonTooltip(wrapper) {
+    const state = wrapper && wrapper.__onframeDisabledTooltip;
+    if (!state) return;
+    wrapper.removeEventListener('mouseenter', state.show);
+    wrapper.removeEventListener('mouseleave', state.hide);
+    wrapper.removeEventListener('focus', state.show);
+    wrapper.removeEventListener('blur', state.hide);
+    if (state.window) {
+      state.window.removeEventListener('resize', state.reposition);
+      state.window.removeEventListener('scroll', state.reposition, true);
+    }
+    state.tooltip.remove();
+    delete wrapper.__onframeDisabledTooltip;
   }
 
   function escapeAttribute(value) {
@@ -205,6 +283,7 @@
     escapeAttribute,
     escapeHtml,
     isDebugLoggingEnabled,
+    removeDisabledButtonTooltip,
     setBadge,
     setDisabledButtonTooltip,
     toUserError

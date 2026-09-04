@@ -523,6 +523,34 @@
   margin-top: -4px;
 }
 
+.ob-tooltip-content.onframe-floating-tooltip {
+  position: fixed;
+  display: block;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 16px));
+  text-align: left;
+  white-space: normal;
+  transform: none;
+}
+
+.ob-tooltip-content.onframe-floating-tooltip.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 120ms, 120ms, 120ms;
+}
+
+.ob-tooltip-content.onframe-floating-tooltip[data-placement="top"] .ob-tooltip-arrow {
+  bottom: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
+.ob-tooltip-content.onframe-floating-tooltip[data-placement="bottom"] .ob-tooltip-arrow {
+  top: -4px;
+  left: 50%;
+  margin-left: -4px;
+}
+
 .ob-badge,
 .onframe-commerce-mini-chip,
 .onframe-commerce-status,

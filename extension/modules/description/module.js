@@ -451,6 +451,7 @@
     function removeInjectedActions() {
       document.querySelectorAll('.onframe-description-action').forEach((node) => {
         const wrapper = node.closest('.onframe-section-edit-tooltip');
+        if (wrapper) Shared.removeDisabledButtonTooltip(wrapper);
         (wrapper || node).remove();
       });
     }
