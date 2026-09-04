@@ -652,7 +652,7 @@
             </div>
           </td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content">${renderPromotionListCondition(entry, type)}</div></td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content">${renderPromotionListResult(entry, key)}</div></td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content">${renderPromotionListResult(entry, key, kind)}</div></td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação"><div class="onframe-commerce-promotion-row-actions-content">${confirm ? '' : actionMarkup}</div></td>
         </tr>
         ${expanded ? `
@@ -836,7 +836,7 @@
       return '<span>Condição informada ao revisar</span>';
     }
 
-    function renderPromotionListResult(entry, key) {
+    function renderPromotionListResult(entry, key, kind) {
       if (!CommerceModel.canEstimatePromotion(entry)) {
         return '<strong>Depende do comprador</strong><span>Não entra nesta estimativa</span>';
       }
@@ -856,7 +856,7 @@
           <strong>Você recebe ${escapeHtml(CommerceModel.formatMoney(estimate.data.youReceive, currency))}</strong>
           ${renderPromotionResultPopoverTrigger(key)}
         </div>
-        ${financialMetrics.map((metric) => `<span>${escapeHtml(promotionFinancialListText(metric))}</span>`).join('')}
+        ${financialMetrics.map((metric) => `<span>${escapeHtml(promotionFinancialListText(metric, promotionBenefitState(entry, kind)))}</span>`).join('')}
       `;
     }
 
@@ -1262,14 +1262,10 @@
       const currency = itemCurrency();
       const value = promotionFinancialFromEntry(financial, options);
       const meli = value.meli_contribution;
-      const seller = value.seller_contribution;
       const feeReduction = value.fee_reduction;
 
       if (meli && financialPercentage(meli.percentage) !== null) {
         metrics.push(buildPromotionBenefitMetric('Com redução de tarifas', meli.amount, meli.percentage, currency, 'meli-contribution'));
-      }
-      if (seller && financialPercentage(seller.percentage) !== null) {
-        metrics.push(buildFinancialMetric('Desconto do vendedor', seller.amount, seller.percentage, currency, 'muted', 'seller-contribution'));
       }
       if (feeReduction && (moneyOrNull(feeReduction.amount) !== null || financialPercentage(feeReduction.percentage) !== null)) {
         metrics.push(buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, currency, 'fee-reduction'));
@@ -1277,10 +1273,17 @@
       return metrics;
     }
 
-    function promotionFinancialListText(metric) {
+    function promotionFinancialListText(metric, state = 'active') {
       if (!metric) return '';
-      if (metric.kind === 'fee-reduction') return `${metric.label}. ${metric.copy || metric.value}`;
-      return metric.copy || `${metric.label}: ${metric.value}`;
+      const copy = promotionBenefitMessage(metric, state) || metric.copy || metric.value;
+      if (metric.kind === 'fee-reduction') return `${metric.label}. ${copy}`;
+      return copy || `${metric.label}: ${metric.value}`;
+    }
+
+    function promotionBenefitState(entry, kind) {
+      if (kind === 'eligible-offer' || isCandidatePromotion(entry)) return 'available';
+      if (kind === 'programmed-offer' || String(entry && entry.display_status || '').toLowerCase() === 'programmed') return 'programmed';
+      return 'active';
     }
 
     function promotionFinancialPopoverRow(metric) {
@@ -1666,13 +1669,19 @@
     }
 
     function formatPromotionBenefitCopy(metric) {
+      return promotionBenefitMessage(metric, 'active');
+    }
+
+    function promotionBenefitMessage(metric, state = 'active') {
       if (!metric) return '';
-      if (metric.amountText && metric.percentageText) {
-        return `Reduzimos ${metric.amountText} das suas tarifas por cada venda (${metric.percentageText}).`;
-      }
-      if (metric.amountText) return `Reduzimos ${metric.amountText} das suas tarifas por cada venda.`;
-      if (metric.percentageText) return `Reduzimos ${metric.percentageText} das suas tarifas por cada venda.`;
-      return '';
+      const benefit = [
+        metric.amountText,
+        metric.percentageText ? `(${metric.percentageText})` : ''
+      ].filter(Boolean).join(' ');
+      if (!benefit) return '';
+      if (state === 'available') return `Redução de ${benefit} nas suas tarifas por venda ao participar.`;
+      if (state === 'programmed') return `Reduziremos ${benefit} nas suas tarifas por venda.`;
+      return `Reduzimos ${benefit} nas suas tarifas por venda.`;
     }
 
     function hasMetric(metrics, candidate) {

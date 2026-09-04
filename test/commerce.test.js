@@ -284,7 +284,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /onframe-commerce-popover-price-scenario/);
   assert.doesNotMatch(source, /formatBenefitValue/);
   assert.match(source, /join\(' · '\)/);
-  assert.match(source, /Reduzimos \$\{metric\.amountText\} das suas tarifas por cada venda/);
+  assert.match(source, /Reduzimos \$\{benefit\} nas suas tarifas por venda/);
   assert.match(source, /Custos/);
   assert.strictEqual(source.includes('onframe-commerce-price-secondary'), false);
   assert.doesNotMatch(source, /label: 'Preço base'/);
@@ -350,8 +350,12 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.doesNotMatch(source, /function estimateDataForKey/);
   assert.doesNotMatch(source, /Benefício ML/);
   assert.match(source, /Com redução de tarifas/);
-  assert.match(source, /Desconto do vendedor/);
+  assert.doesNotMatch(source, /Desconto do vendedor/);
   assert.match(source, /Bônus do Mercado Livre/);
+  assert.match(source, /function promotionBenefitState/);
+  assert.match(source, /Redução de \$\{benefit\} nas suas tarifas por venda ao participar/);
+  assert.match(source, /Reduziremos \$\{benefit\} nas suas tarifas por venda/);
+  assert.match(source, /metric\.amountText,[\s\S]*metric\.percentageText/);
   assert.doesNotMatch(source, /function renderCardPromotionEstimate/);
   assert.doesNotMatch(source, /Não informado/);
   assert.match(source, /Você recebe/);
