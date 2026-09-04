@@ -526,14 +526,7 @@
                   placement: 'bottom',
                   disabled: state.promotionLoading ? 'disabled' : ''
                 })}
-                ${renderIconTooltipButton({
-                  action: 'close-promotion-modal',
-                  label: 'Fechar',
-                  iconMarkup: icon('x', 18),
-                  className: 'onframe-commerce-icon-btn onframe-commerce-modal-head-action',
-                  tooltipId: 'onframe-promotion-modal-close-tooltip',
-                  placement: 'bottom'
-                })}
+                <button class="ob-icon-button" data-action="close-promotion-modal" type="button" aria-label="Fechar">${icon('x', 18)}</button>
               </div>
             </header>
             <div class="onframe-commerce-modal-content">

@@ -490,6 +490,8 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /onframe-commerce-promotion-row-actions-content/);
   assert.match(source, /onframe-commerce-promotion-action-btn/);
   assert.match(source, /onframe-commerce-modal-head-action/);
+  assert.match(source, /<button class="ob-icon-button" data-action="close-promotion-modal" type="button" aria-label="Fechar">/);
+  assert.doesNotMatch(source, /onframe-promotion-modal-close-tooltip/);
   assert.match(source, /function renderIconTooltipButton/);
   assert.match(source, /class="ob-tooltip"/);
   assert.match(source, /role="tooltip"/);
