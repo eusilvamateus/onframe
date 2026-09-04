@@ -160,7 +160,7 @@
       }
 
       state.sectionElement = elements.section;
-      injectEditAction(elements);
+      injectEditAction(elements, isCharacteristicsCollapsed(elements.section));
       if (state.editing) renderEditor(elements);
     }
 
@@ -180,25 +180,28 @@
       };
     }
 
-    function injectEditAction(elements) {
+    function injectEditAction(elements, disabled) {
       if (!elements.title) return;
-      const existingAction = elements.section.querySelector('.onframe-characteristics-action');
-      if (existingAction) return;
-      const anchor = elements.titleRow || elements.title;
-      const action = document.createElement('button');
-      action.className = 'ob-button ghost compact onframe-section-edit-action onframe-characteristics-action';
-      action.type = 'button';
-      action.innerHTML = `${icon('pencil', 14)}Editar características`;
-      action.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const section = action.closest('#highlighted_specs_attrs') ||
-          action.closest('.ui-vpp-highlighted-specs') ||
-          elements.section;
-        expandCharacteristicsSection(section);
-        void openEditor();
+      let action = elements.section.querySelector('.onframe-characteristics-action');
+      if (!action) {
+        const anchor = elements.titleRow || elements.title;
+        action = document.createElement('button');
+        action.className = 'ob-button ghost compact onframe-section-edit-action onframe-characteristics-action';
+        action.type = 'button';
+        action.innerHTML = `${icon('pencil', 14)}Editar características`;
+        action.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void openEditor();
+        });
+        anchor.insertAdjacentElement('afterend', action);
+      }
+      Shared.setDisabledButtonTooltip(action, {
+        disabled,
+        label: 'Editar características',
+        tooltipId: 'onframe-characteristics-edit-disabled-tooltip',
+        tooltipText: 'Expanda esta seção para editar as características.'
       });
-      anchor.insertAdjacentElement('afterend', action);
     }
 
     function isCharacteristicsCollapsed(section) {
@@ -209,8 +212,7 @@
     async function openEditor() {
       if (!state.visible || !state.itemId || state.loading || state.saving || !CharacteristicsModel.canEditCharacteristics(state.context)) return;
       const elements = getCharacteristicsElements();
-      if (!elements.section) return;
-      expandCharacteristicsSection(elements.section);
+      if (!elements.section || isCharacteristicsCollapsed(elements.section)) return;
       state.editing = true;
       state.loading = true;
       state.error = '';
@@ -245,7 +247,6 @@
       if (!anchor) return;
       if (elements.section) {
         elements.section.classList.add('onframe-characteristics-is-editing');
-        expandCharacteristicsSection(elements.section);
       }
 
       const disabled = state.loading || state.saving;
@@ -274,17 +275,6 @@
         section.querySelector('.ui-pdp-collapsable') ||
         elements.titleRow ||
         elements.title;
-    }
-
-    function expandCharacteristicsSection(section) {
-      if (!section || !isCharacteristicsCollapsed(section)) return;
-      section.querySelectorAll('.ui-pdp-collapsable--is-collapsed').forEach((node) => {
-        node.classList.remove('ui-pdp-collapsable--is-collapsed');
-      });
-      section.querySelectorAll('.ui-pdp-collapsable__container').forEach((container) => {
-        container.style.maxHeight = 'none';
-        container.style.overflow = 'visible';
-      });
     }
 
     function renderFooterMarkup() {
@@ -1224,7 +1214,10 @@
 
     function removeInjectedActions() {
       restoreInlineCells();
-      document.querySelectorAll('.onframe-characteristics-action').forEach((node) => node.remove());
+      document.querySelectorAll('.onframe-characteristics-action').forEach((node) => {
+        const wrapper = node.closest('.onframe-section-edit-tooltip');
+        (wrapper || node).remove();
+      });
       document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;

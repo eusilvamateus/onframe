@@ -7,6 +7,7 @@
 .onframe-commerce-promotion-result-popover-root,
 .onframe-description-root,
 .onframe-description-action,
+.onframe-section-edit-tooltip,
 #highlighted_specs_attrs.onframe-characteristics-is-editing,
 .onframe-characteristics-root,
 .onframe-characteristics-action {
@@ -53,6 +54,10 @@
 .onframe-description-action *,
 .onframe-description-action *::before,
 .onframe-description-action *::after,
+.onframe-section-edit-tooltip,
+.onframe-section-edit-tooltip *,
+.onframe-section-edit-tooltip *::before,
+.onframe-section-edit-tooltip *::after,
 #highlighted_specs_attrs.onframe-characteristics-is-editing,
 #highlighted_specs_attrs.onframe-characteristics-is-editing *,
 #highlighted_specs_attrs.onframe-characteristics-is-editing *::before,
@@ -279,6 +284,31 @@
   position: relative !important;
   z-index: 2;
   pointer-events: auto !important;
+}
+
+.onframe-section-edit-tooltip {
+  display: inline-flex;
+  margin: 8px 0 0;
+  position: relative;
+  z-index: 2;
+}
+
+.onframe-section-edit-tooltip .onframe-section-edit-action {
+  margin: 0;
+}
+
+.onframe-section-edit-tooltip:focus-visible {
+  border-radius: var(--ob-r-control);
+  box-shadow: 0 0 0 3px var(--ob-focus-ring);
+  outline: none;
+}
+
+.onframe-section-edit-action:disabled {
+  color: var(--ob-fg-disabled);
+}
+
+.onframe-section-edit-action:disabled:hover {
+  background: transparent;
 }
 
 .ob-button:disabled,

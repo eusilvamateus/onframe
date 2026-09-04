@@ -298,8 +298,9 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.strictEqual(characteristicsSource.includes('function isCharacteristicsCollapsed(section)'), true);
   assert.strictEqual(characteristicsSource.includes("querySelector('.ui-pdp-collapsable--is-collapsed')"), true);
   assert.strictEqual(characteristicsSource.includes('ob-button ghost compact onframe-section-edit-action onframe-characteristics-action'), true);
-  assert.strictEqual(characteristicsSource.includes('expandCharacteristicsSection(section);'), true);
-  assert.strictEqual(characteristicsSource.includes('if (!elements.section) return;'), true);
+  assert.strictEqual(characteristicsSource.includes("tooltipText: 'Expanda esta seção para editar as características.'"), true);
+  assert.strictEqual(characteristicsSource.includes('expandCharacteristicsSection'), false);
+  assert.strictEqual(characteristicsSource.includes('if (!elements.section || isCharacteristicsCollapsed(elements.section)) return;'), true);
   assert.strictEqual(characteristicsSource.includes("querySelectorAll('.ui-vpp-striped-specs__table')"), true);
   assert.strictEqual(characteristicsSource.includes("querySelectorAll('tr.andes-table__row, tr.ui-vpp-striped-specs__row')"), true);
   assert.strictEqual(characteristicsSource.includes("querySelector('.andes-table__column--value')"), true);
@@ -408,21 +409,29 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.strictEqual(styles.includes('.ui-pdp-collapsable__container'), true);
 });
 
-test('edicao de descricao respeita a secao expandida nativa', () => {
+test('acoes de edicao respeitam a secao expandida nativa', () => {
   const descriptionSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'module.js'), 'utf8');
   const descriptionStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'styles.css'), 'utf8');
+  const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'shared.js'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
 
   assert.strictEqual(descriptionSource.includes("document.querySelector('.ui-pdp-description__title') ||"), true);
   assert.strictEqual(descriptionSource.includes(".startsWith('descricao')"), true);
-  assert.strictEqual(descriptionSource.includes('if (!elements.content || !elements.description || isDescriptionCollapsed(elements))'), true);
+  assert.strictEqual(descriptionSource.includes('if (!elements.content || !elements.description)'), true);
   assert.strictEqual(descriptionSource.includes('function isDescriptionCollapsed(elements)'), true);
   assert.strictEqual(descriptionSource.includes('ui-pdp-collapsable--is-collapsed'), true);
   assert.strictEqual(descriptionSource.includes('ob-button ghost compact onframe-section-edit-action onframe-description-action'), true);
+  assert.strictEqual(descriptionSource.includes("tooltipText: 'Expanda esta seção para editar a descrição.'"), true);
   assert.strictEqual(descriptionSource.includes('pendingOpen'), false);
   assert.strictEqual(descriptionSource.includes('function expandDescriptionSection(elements)'), false);
   assert.strictEqual(descriptionSource.includes("querySelector('[data-testid=\"action-collapsable-target\"]')"), false);
   assert.strictEqual(descriptionStyles.includes('.onframe-description-is-editing .onframe-description-action'), true);
-  assert.strictEqual(descriptionStyles.includes('.ui-pdp-collapsable--is-collapsed .onframe-description-action'), true);
+  assert.strictEqual(descriptionStyles.includes('.ui-pdp-collapsable--is-collapsed .onframe-description-action'), false);
+  assert.strictEqual(sharedSource.includes('function setDisabledButtonTooltip(button, options = {})'), true);
+  assert.strictEqual(sharedSource.includes("tooltipWrapper.setAttribute('aria-disabled', 'true')"), true);
+  assert.strictEqual(components.includes('.onframe-section-edit-tooltip'), true);
+  assert.strictEqual(components.includes('.onframe-section-edit-action:disabled'), true);
+  assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8').includes('.onframe-section-edit-tooltip'), true);
 });
 
 test('ui exibem comando de atualizacao auditavel', () => {

@@ -130,6 +130,60 @@
     return 'grey';
   }
 
+  function setDisabledButtonTooltip(button, options = {}) {
+    if (!button || !button.ownerDocument) return button;
+
+    const disabled = Boolean(options.disabled);
+    const wrapperClass = options.wrapperClass || 'onframe-section-edit-tooltip';
+    const tooltipId = String(options.tooltipId || 'onframe-disabled-button-tooltip');
+    const tooltipText = String(options.tooltipText || 'Esta ação não está disponível agora.');
+    const label = String(options.label || button.textContent || '').trim();
+    const document = button.ownerDocument;
+    const parent = button.parentElement;
+    const wrapper = parent && parent.classList.contains(wrapperClass) ? parent : null;
+
+    button.disabled = disabled;
+    if (!disabled) {
+      button.removeAttribute('aria-disabled');
+      button.removeAttribute('aria-describedby');
+      if (wrapper) wrapper.replaceWith(button);
+      return button;
+    }
+
+    button.setAttribute('aria-disabled', 'true');
+    button.setAttribute('aria-describedby', tooltipId);
+
+    const tooltipWrapper = wrapper || document.createElement('span');
+    if (!wrapper) {
+      tooltipWrapper.className = `ob-tooltip ${wrapperClass}`;
+      tooltipWrapper.dataset.placement = 'top';
+      button.parentNode.insertBefore(tooltipWrapper, button);
+      tooltipWrapper.appendChild(button);
+    }
+
+    tooltipWrapper.tabIndex = 0;
+    tooltipWrapper.setAttribute('role', 'button');
+    tooltipWrapper.setAttribute('aria-label', label);
+    tooltipWrapper.setAttribute('aria-disabled', 'true');
+    tooltipWrapper.setAttribute('aria-describedby', tooltipId);
+
+    let tooltip = tooltipWrapper.querySelector('.ob-tooltip-content');
+    if (!tooltip) {
+      tooltip = document.createElement('span');
+      tooltip.className = 'ob-tooltip-content';
+      tooltip.setAttribute('role', 'tooltip');
+      tooltipWrapper.appendChild(tooltip);
+    }
+    tooltip.id = tooltipId;
+    tooltip.textContent = tooltipText;
+    const arrow = document.createElement('span');
+    arrow.className = 'ob-tooltip-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    tooltip.appendChild(arrow);
+
+    return button;
+  }
+
   function escapeAttribute(value) {
     return escapeHtml(value).replace(/`/g, '&#96;');
   }
@@ -152,6 +206,7 @@
     escapeHtml,
     isDebugLoggingEnabled,
     setBadge,
+    setDisabledButtonTooltip,
     toUserError
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

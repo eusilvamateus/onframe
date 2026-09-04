@@ -146,13 +146,13 @@
       }
 
       const elements = getDescriptionElements();
-      if (!elements.content || !elements.description || isDescriptionCollapsed(elements)) {
+      if (!elements.content || !elements.description) {
         removeInjectedActions();
         return;
       }
 
       state.contentElement = elements.content;
-      injectEditAction(elements);
+      injectEditAction(elements, isDescriptionCollapsed(elements));
       bindContentClick(elements.content);
       if (state.editing) renderEditor(elements);
     }
@@ -193,19 +193,28 @@
         Boolean(element.querySelector('.ui-pdp-collapsable--is-collapsed')));
     }
 
-    function injectEditAction(elements) {
+    function injectEditAction(elements, disabled) {
       const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);
-      if (!elements.title || !scope || document.querySelector('.onframe-description-action')) return;
-      const action = document.createElement('button');
-      action.className = 'ob-button ghost compact onframe-section-edit-action onframe-description-action';
-      action.type = 'button';
-      action.innerHTML = `${icon('pencil', 14)}Editar descrição`;
-      action.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void openEditor();
+      if (!elements.title || !scope) return;
+      let action = scope.querySelector('.onframe-description-action');
+      if (!action) {
+        action = document.createElement('button');
+        action.className = 'ob-button ghost compact onframe-section-edit-action onframe-description-action';
+        action.type = 'button';
+        action.innerHTML = `${icon('pencil', 14)}Editar descrição`;
+        action.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void openEditor();
+        });
+        elements.title.insertAdjacentElement('afterend', action);
+      }
+      Shared.setDisabledButtonTooltip(action, {
+        disabled,
+        label: 'Editar descrição',
+        tooltipId: 'onframe-description-edit-disabled-tooltip',
+        tooltipText: 'Expanda esta seção para editar a descrição.'
       });
-      elements.title.insertAdjacentElement('afterend', action);
     }
 
     function bindContentClick(content) {
@@ -440,7 +449,10 @@
     }
 
     function removeInjectedActions() {
-      document.querySelectorAll('.onframe-description-action').forEach((node) => node.remove());
+      document.querySelectorAll('.onframe-description-action').forEach((node) => {
+        const wrapper = node.closest('.onframe-section-edit-tooltip');
+        (wrapper || node).remove();
+      });
     }
 
     function hideDescription() {
