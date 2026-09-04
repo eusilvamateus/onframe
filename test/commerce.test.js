@@ -489,9 +489,10 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-name"/);
   assert.match(source, /onframe-commerce-promotion-row-actions-content/);
   assert.match(source, /onframe-commerce-promotion-action-btn/);
-  assert.match(source, /onframe-commerce-modal-head-action/);
   assert.match(source, /<button class="ob-icon-button" data-action="close-promotion-modal" type="button" aria-label="Fechar">/);
   assert.doesNotMatch(source, /onframe-promotion-modal-close-tooltip/);
+  assert.match(source, /<button class="onframe-commerce-btn" data-action="reload-commerce" type="button"/);
+  assert.match(source, /Atualizar promoções<\/button>\s*<button class="onframe-commerce-btn" data-action="close-promotion-modal"/);
   assert.match(source, /function renderIconTooltipButton/);
   assert.match(source, /class="ob-tooltip"/);
   assert.match(source, /role="tooltip"/);
@@ -509,7 +510,6 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(styles, /\.onframe-commerce-promotion-column-actions\s*{\s*width: 104px/s);
   assert.match(styles, /\.onframe-commerce-promotion-column-period\s*{\s*width: 18%;\s*min-width: 184px/s);
   assert.match(styles, /\.onframe-commerce-promotion-action-btn\.danger:hover:not\(:disabled\)[\s\S]*color: var\(--ob-danger\)/);
-  assert.match(styles, /\.onframe-commerce-modal-head-action:hover:not\(:disabled\)[\s\S]*color: var\(--ob-blue\)/);
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
   assert.match(styles, /\.onframe-commerce-modal\s*{[^}]*height: min\(780px, calc\(100vh - 36px\)\)[^}]*display: flex[^}]*overflow: hidden/s);
   assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*flex: 1 1 auto[^}]*min-height: 0[^}]*overflow: auto/s);

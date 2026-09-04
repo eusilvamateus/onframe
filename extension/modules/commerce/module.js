@@ -517,15 +517,6 @@
                 <p>Controle ofertas e campanhas deste anúncio.</p>
               </div>
               <div class="onframe-commerce-modal-head-actions">
-                ${renderIconTooltipButton({
-                  action: 'reload-commerce',
-                  label: 'Atualizar promoções',
-                  iconMarkup: icon('reload', 16),
-                  className: 'onframe-commerce-icon-btn onframe-commerce-modal-head-action',
-                  tooltipId: 'onframe-promotion-modal-reload-tooltip',
-                  placement: 'bottom',
-                  disabled: state.promotionLoading ? 'disabled' : ''
-                })}
                 <button class="ob-icon-button" data-action="close-promotion-modal" type="button" aria-label="Fechar">${icon('x', 18)}</button>
               </div>
             </header>
@@ -534,6 +525,7 @@
               ${state.promotionLoading ? '<div class="onframe-commerce-empty">Lendo promoções...</div>' : renderPromotionManager()}
             </div>
             <footer class="onframe-commerce-modal-foot">
+              <button class="onframe-commerce-btn" data-action="reload-commerce" type="button" ${state.promotionLoading ? 'disabled' : ''}>${icon('refresh', 14)}Atualizar promoções</button>
               <button class="onframe-commerce-btn" data-action="close-promotion-modal" type="button">Fechar</button>
             </footer>
           </section>

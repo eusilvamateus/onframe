@@ -1453,11 +1453,6 @@
   gap: 6px;
 }
 
-.onframe-commerce-modal-head-actions .onframe-commerce-icon-btn {
-  margin-left: 0;
-}
-
-.onframe-commerce-modal-head-action,
 .onframe-commerce-promotion-action-btn {
   width: 32px;
   min-width: 32px;
@@ -1471,20 +1466,16 @@
   transition: background var(--ob-dur-fast) var(--ob-ease), color var(--ob-dur-fast) var(--ob-ease), transform var(--ob-dur-fast) var(--ob-ease);
 }
 
-.onframe-commerce-modal-head-action:hover:not(:disabled),
-.onframe-commerce-modal-head-action:focus-visible,
 .onframe-commerce-promotion-action-btn:hover:not(:disabled),
 .onframe-commerce-promotion-action-btn:focus-visible {
   background: var(--ob-blue-050);
   color: var(--ob-blue);
 }
 
-.onframe-commerce-modal-head-action:active:not(:disabled),
 .onframe-commerce-promotion-action-btn:active:not(:disabled) {
   transform: scale(0.94);
 }
 
-.onframe-commerce-modal-head-action:focus-visible,
 .onframe-commerce-promotion-action-btn:focus-visible {
   outline: 2px solid var(--ob-focus-ring);
   outline-offset: 2px;
