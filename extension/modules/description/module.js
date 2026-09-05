@@ -8,6 +8,7 @@
     const Detection = services.Detection;
     const DescriptionModel = services.DescriptionModel;
     const api = services.api;
+    const toast = services.toast;
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
@@ -28,7 +29,6 @@
       originalText: '',
       bulkEnabled: false,
       bulkResult: null,
-      message: '',
       error: '',
       editorRoot: null,
       contentElement: null,
@@ -65,7 +65,6 @@
       state.originalText = '';
       state.bulkEnabled = false;
       state.bulkResult = null;
-      state.message = '';
       state.error = '';
       state.renderTimer = null;
       state.requestId += 1;
@@ -93,7 +92,6 @@
       if (status === 'loading' || status === 'identifying') {
         state.pageSignature = pageSignature;
         state.busy = true;
-        state.message = '';
         state.error = '';
         mountDescription();
         return;
@@ -232,7 +230,6 @@
       state.editing = true;
       state.loading = true;
       state.error = '';
-      state.message = '';
       state.bulkEnabled = false;
       const requestId = ++state.requestId;
       mountDescription();
@@ -314,7 +311,6 @@
           <textarea class="onframe-description-textarea" data-action="description-input"${textareaStyle} ${disabled ? 'disabled' : ''}>${escapeHtml(state.text)}</textarea>
           ${canBulk ? renderBulkSwitch() : ''}
           ${state.error ? `<div class="onframe-description-alert error">${escapeHtml(state.error)}</div>` : ''}
-          ${state.message ? `<div class="onframe-description-alert success">${escapeHtml(state.message)}</div>` : ''}
           ${renderBulkFailures()}
           <div class="onframe-description-actions">
             <button class="ob-button primary" data-action="save-description" type="button" ${disabled ? 'disabled' : ''}>${icon('checkCircle', 14)}Salvar</button>
@@ -383,7 +379,6 @@
 
       state.saving = true;
       state.error = '';
-      state.message = '';
       state.bulkResult = null;
       mountDescription();
 
@@ -403,13 +398,13 @@
         state.exists = true;
         if (state.contentElement) state.contentElement.textContent = plainText;
         state.bulkResult = state.bulkEnabled ? result : null;
-        state.message = state.bulkEnabled ? DescriptionModel.bulkResultMessage(result) : 'Descrição salva.';
         state.saving = false;
-        if (state.bulkEnabled && countNotChanged(result) > 0) {
+        const saved = notifySaveResult(result, 'Descrição salva', state.bulkEnabled);
+        if (!saved || (state.bulkEnabled && countNotChanged(result) > 0)) {
           mountDescription();
           return;
         }
-        closeEditor({ restoreText: false, keepMessage: true });
+        closeEditor({ restoreText: false });
         mountDescription();
       } catch (err) {
         state.saving = false;
@@ -444,8 +439,31 @@
       state.editing = false;
       state.loading = false;
       state.saving = false;
-      if (!options.keepMessage) state.message = '';
       state.error = '';
+    }
+
+    function notifySaveResult(result, title, bulk) {
+      if (!bulk) {
+        showToast('success', title);
+        return true;
+      }
+      const counts = result && result.counts ? result.counts : {};
+      const applied = Number(counts.applied || 0);
+      const notChanged = countNotChanged(result);
+      if (!applied) {
+        state.error = 'Nenhuma variação foi alterada.';
+        return false;
+      }
+      const body = notChanged
+        ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${notChanged} não foi${notChanged === 1 ? '' : 'ram'} alterada${notChanged === 1 ? '' : 's'}.`
+        : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
+      showToast(notChanged ? 'warning' : 'success', title, body);
+      return true;
+    }
+
+    function showToast(tone, title, body) {
+      if (!toast || typeof toast.show !== 'function') return;
+      toast.show({ tone, title, body });
     }
 
     function removeInjectedActions() {

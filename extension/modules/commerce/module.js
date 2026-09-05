@@ -8,6 +8,7 @@
     const Detection = services.Detection;
     const CommerceModel = services.CommerceModel;
     const api = services.api;
+    const toast = services.toast;
     const requestPageContextReload = services.requestPageContextReload || (() => Promise.resolve(null));
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
@@ -44,7 +45,6 @@
       listingMutationObserver: null,
       listingScanTimer: null,
       listingActiveRecord: null,
-      actionMessage: '',
       actionError: '',
       popover: null,
       priceEditing: false,
@@ -120,7 +120,6 @@
       state.surface = 'pdp';
       state.popoverAnchor = null;
       state.listingActiveRecord = null;
-      state.actionMessage = '';
       state.actionError = '';
       state.popover = null;
       state.priceEditing = false;
@@ -193,7 +192,6 @@
         state.pageSignature = pageSignature;
         state.busy = true;
         state.loaded = false;
-        state.actionMessage = '';
         state.actionError = '';
         state.popover = null;
         state.priceEditing = false;
@@ -236,7 +234,6 @@
       }
 
       state.pageSignature = pageSignature;
-      state.actionMessage = '';
       state.actionError = '';
       state.popover = null;
       state.priceEditing = false;
@@ -255,7 +252,6 @@
       state.busy = true;
       state.loaded = false;
       state.actionError = '';
-      state.actionMessage = '';
       const requestId = ++state.requestId;
 
       try {
@@ -691,7 +687,6 @@
       state.priceLoading = record.priceLoading;
       state.promotionLoading = record.promotionLoading;
       state.actionError = '';
-      state.actionMessage = '';
       state.priceEditing = false;
       state.detailsOpen = false;
       openPopover(type);
@@ -858,14 +853,13 @@
       return `
         <section class="onframe-commerce-popover">
           ${renderPopoverHead('Preço')}
-          ${renderNotice(state.actionMessage || state.actionError, state.actionError ? 'warn' : 'ok')}
+          ${renderNotice(state.actionError, 'warn')}
           ${renderPriceSummary(state.priceSummary, priceState)}
           ${renderPriceStackableScenarios(state.priceSummary)}
           ${state.detailsOpen ? `<p class="onframe-commerce-detail">${escapeHtml(priceState.detail)}</p>` : ''}
           <div class="onframe-commerce-actions">
             <button class="onframe-commerce-btn primary" data-action="edit-price" type="button" ${priceState.canEdit ? '' : 'disabled'}>${icon('pencil', 14)}Editar preço base</button>
             ${priceState.blocker ? '<button class="onframe-commerce-btn" data-action="toggle-details" type="button">Ver motivo</button>' : ''}
-            ${renderRefreshButton()}
           </div>
         </section>
       `;
@@ -923,13 +917,12 @@
       return `
         <section class="onframe-commerce-popover">
           ${renderPopoverHead('Promoções')}
-          ${renderNotice(state.actionMessage || state.actionError, state.actionError ? 'warn' : 'ok')}
+          ${renderNotice(state.actionError, 'warn')}
           ${campaign ? renderPromotionPopoverCampaign(campaign) : renderPromotionPopoverEmptyState()}
           ${renderPromotionPopoverCouponList(coupons)}
           ${renderPromotionPopoverPaymentList(paymentBenefits)}
           <div class="onframe-commerce-actions">
             <button class="onframe-commerce-btn primary" data-action="open-promotion-modal" type="button">${icon('tag', 14)}Gerenciar promoções</button>
-            ${renderRefreshButton()}
           </div>
         </section>
       `;
@@ -1022,7 +1015,7 @@
               </div>
             </header>
             <div class="onframe-commerce-modal-content">
-              ${renderNotice(state.actionMessage || state.actionError || state.promotionError, state.actionError || state.promotionError ? 'warn' : 'ok')}
+              ${renderNotice(state.actionError || state.promotionError, 'warn')}
               ${state.promotionLoading ? '<div class="onframe-commerce-empty">Lendo promoções...</div>' : renderPromotionManager()}
             </div>
             <footer class="onframe-commerce-modal-foot">
@@ -2835,12 +2828,12 @@
 
     function renderNotice(message, tone) {
       if (!message) return '';
-      return `<div class="onframe-commerce-notice ${escapeAttribute(tone || 'ok')}">${escapeHtml(shortMessage(message))}</div>`;
-    }
-
-    function renderRefreshButton() {
-      if (!state.actionMessage) return '';
-      return `<button class="onframe-commerce-btn" data-action="refresh-page" type="button">${icon('refresh', 14)}Atualizar página</button>`;
+      return `
+        <div class="onframe-commerce-alert ${escapeAttribute(tone === 'warn' ? 'danger' : 'info')}" role="alert">
+          ${icon(tone === 'warn' ? 'warning' : 'info', 16)}
+          <span>${escapeHtml(shortMessage(message))}</span>
+        </div>
+      `;
     }
 
     function bindInlineEvents() {
@@ -2862,7 +2855,6 @@
       bindButton(state.popoverRoot, 'save-price', () => void savePrice());
       bindButton(state.popoverRoot, 'reload-commerce', () => void reloadCommerce());
       bindButton(state.popoverRoot, 'open-promotion-modal', openPromotionModal);
-      bindButton(state.popoverRoot, 'refresh-page', refreshPage);
       bindBulkControls(state.popoverRoot);
     }
 
@@ -2877,7 +2869,6 @@
       bindButton(state.modalRoot, 'open-direct-discount', openDirectDiscountForm);
       bindButton(state.modalRoot, 'cancel-promotion-form', cancelPromotionForm);
       bindButton(state.modalRoot, 'cancel-promotion-confirm', cancelPromotionConfirm);
-      bindButton(state.modalRoot, 'refresh-page', refreshPage);
       bindButton(state.modalRoot, 'toggle-promotion-filters', () => {
         state.promotionFiltersOpen = !state.promotionFiltersOpen;
         rerenderModal();
@@ -2976,7 +2967,6 @@
           state.priceBulkHash = '';
           state.priceBulkError = '';
           state.actionError = '';
-          state.actionMessage = '';
           rerenderPopover();
         });
       }
@@ -2989,7 +2979,6 @@
           if (state.busy) return;
           state.promotionBulkEnabled = promotionToggle.getAttribute('aria-checked') !== 'true';
           state.actionError = '';
-          state.actionMessage = '';
           rerenderModal();
         });
       }
@@ -3127,7 +3116,6 @@
       state.promotionConfirm = { key, action, values };
       state.promotionFocusKey = key;
       state.actionError = '';
-      state.actionMessage = '';
       schedulePromotionEstimate(key, entry, values);
       rerenderModal();
     }
@@ -3238,12 +3226,6 @@
 
     function clearPromotionActionFeedback() {
       state.actionError = '';
-      state.actionMessage = '';
-      const modalRoot = activeModalRoot();
-      if (!modalRoot) return;
-      modalRoot.querySelectorAll('.onframe-commerce-notice').forEach((notice) => {
-        notice.remove();
-      });
     }
 
     function openDatePicker(input) {
@@ -3801,7 +3783,6 @@
     function openPopover(type) {
       state.popover = type;
       state.actionError = '';
-      state.actionMessage = '';
       state.detailsOpen = false;
       if (type !== 'price') state.priceEditing = false;
       rerenderPopover();
@@ -3824,7 +3805,6 @@
       state.priceBulkHash = '';
       state.priceBulkError = '';
       state.actionError = '';
-      state.actionMessage = '';
       rerenderPopover();
     }
 
@@ -3857,7 +3837,6 @@
       state.busy = true;
       state.operationPending = 'price-single';
       state.actionError = '';
-      state.actionMessage = '';
       rerenderPopover();
       try {
         await api(itemApiPath('/pricing/standard'), {
@@ -3866,7 +3845,7 @@
         });
         state.priceEditing = false;
         state.priceDraft = '';
-        state.actionMessage = 'Preço salvo.';
+        showToast('success', 'Preço salvo');
         await loadSummaries(state.requestId);
       } catch (err) {
         state.actionError = toUserError(err);
@@ -3893,7 +3872,6 @@
             body: JSON.stringify(bulkRequest('pricing.standard.update', payload))
           });
           const eligible = bulkEligibleTargets(state.priceBulkPreview).length;
-          state.actionMessage = eligible ? 'Revise as variações antes de confirmar.' : '';
           state.priceBulkError = eligible ? '' : 'Nenhuma variação elegível.';
         } catch (err) {
           state.priceBulkError = toUserError(err);
@@ -3915,7 +3893,6 @@
       state.busy = true;
       state.operationPending = 'price-bulk-commit';
       state.actionError = '';
-      state.actionMessage = '';
       rerenderPopover();
       try {
         const result = await api(itemApiPath('/bulk/commit'), {
@@ -3927,7 +3904,7 @@
         state.priceBulkPreview = null;
         state.priceBulkHash = '';
         state.priceBulkError = '';
-        state.actionMessage = bulkResultMessage(result, 'Preço salvo');
+        notifyBulkResult(result, 'Preço salvo');
         await loadSummaries(state.requestId);
       } catch (err) {
         state.actionError = toUserError(err);
@@ -3945,7 +3922,6 @@
       state.promotionModalOpen = true;
       state.directDiscountModalOpen = false;
       state.actionError = '';
-      state.actionMessage = '';
       state.promotionFormKey = '';
       state.promotionFormAction = '';
       state.promotionConfirm = null;
@@ -3983,7 +3959,6 @@
       state.directDiscountDateErrors = {};
       ensureDirectDiscountDraft(key, entry);
       state.actionError = '';
-      state.actionMessage = '';
       state.promotionModalOpen = false;
       state.directDiscountModalOpen = true;
       removeModal();
@@ -4030,7 +4005,6 @@
         state.promotionConfirm = null;
         state.promotionFocusKey = key;
         state.actionError = '';
-        state.actionMessage = '';
         rerenderModal();
         schedulePromotionEstimate(key, entry, state.promotionDraftValues[key] || {});
         return;
@@ -4039,7 +4013,6 @@
       try {
         if (fields.length) ensurePromotionDraft(key, entry, fields);
         state.actionError = '';
-        state.actionMessage = '';
         const values = readPromotionValues(card);
         const draftWarning = action === 'delete' ? '' : promotionDraftWarning(entry, values);
         if (draftWarning) {
@@ -4058,7 +4031,6 @@
           state.promotionConfirm = { key, action, values };
           state.promotionFocusKey = key;
           state.actionError = '';
-          state.actionMessage = '';
           if (action !== 'delete') schedulePromotionEstimate(key, entry, values);
           rerenderModal();
           return;
@@ -4070,13 +4042,12 @@
           state.operationPendingKey = key;
           state.operationPendingAction = action;
           state.actionError = '';
-          state.actionMessage = '';
           rerenderModal();
           const result = await api(itemApiPath('/bulk/commit'), {
             method: 'POST',
             body: JSON.stringify(bulkRequest(`promotion.offer.${action}`, payload))
           });
-          state.actionMessage = bulkResultMessage(result, action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
+          notifyBulkResult(result, action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
           state.promotionFormKey = '';
           state.promotionFormAction = '';
           state.promotionDraftValues = {};
@@ -4093,14 +4064,13 @@
         state.operationPendingKey = key;
         state.operationPendingAction = action;
         state.actionError = '';
-        state.actionMessage = '';
         rerenderModal();
         await api(itemApiPath('/promotions/offers'), {
           method,
           body: JSON.stringify(payload)
         });
         const createdDirectDiscount = Boolean(entry.direct_discount_draft);
-        state.actionMessage = action === 'delete' ? 'Promoção removida.' : 'Promoção enviada.';
+        showToast('success', action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
         state.promotionFormKey = '';
         state.promotionFormAction = '';
         state.promotionDraftValues = {};
@@ -4148,7 +4118,6 @@
       state.directDiscountDateErrors = {};
       state.promotionBulkEnabled = false;
       state.actionError = '';
-      state.actionMessage = '';
       removeDatePicker();
       if (returningFromDirectDiscount) {
         state.directDiscountModalOpen = false;
@@ -4160,7 +4129,6 @@
 
     async function reloadCommerce() {
       state.actionError = '';
-      state.actionMessage = '';
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
       state.promotionDraftValues = {};
@@ -4173,10 +4141,6 @@
       }
       await loadSummaries(state.requestId);
       schedulePromotionManagerEstimates();
-    }
-
-    function refreshPage() {
-      location.reload();
     }
 
     function getPromotionEntry(kind, index) {
@@ -4392,15 +4356,26 @@
       return `${action}:${JSON.stringify(payload || {})}`;
     }
 
-    function bulkResultMessage(result, fallback) {
+    function notifyBulkResult(result, title) {
       const counts = result && result.counts ? result.counts : {};
       const applied = Number(counts.applied || 0);
       const failed = Number(counts.failed || 0);
       const blocked = Number(counts.blocked || 0);
       const skipped = Number(counts.skipped || 0);
       const unchanged = failed + blocked + skipped;
-      const suffix = unchanged ? ` (${unchanged} não alterada${unchanged === 1 ? '' : 's'})` : '';
-      return `${fallback} em ${applied} variação${applied === 1 ? '' : 's'}.${suffix}`;
+      if (!applied) {
+        state.actionError = 'Nenhuma variação foi alterada.';
+        return;
+      }
+      const body = unchanged
+        ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterada${unchanged === 1 ? '' : 's'}.`
+        : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
+      showToast(unchanged ? 'warning' : 'success', title, body);
+    }
+
+    function showToast(tone, title, body) {
+      if (!toast || typeof toast.show !== 'function') return;
+      toast.show({ tone, title, body });
     }
 
     function isoDateOnly(value) {

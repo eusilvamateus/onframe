@@ -6,6 +6,7 @@
   const escapeHtml = Shared.escapeHtml;
   const setBadge = Shared.setBadge;
   const toUserError = Shared.toUserError;
+  const toast = window.OnFrameToast;
   const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
 
   const elements = {
@@ -25,8 +26,7 @@
     updateStart: document.getElementById('update-start'),
     accountBadge: document.getElementById('account-badge'),
     accountText: document.getElementById('account-text'),
-    accountList: document.getElementById('account-list'),
-    actionFeedback: document.getElementById('action-feedback')
+    accountList: document.getElementById('account-list')
   };
 
   const state = {
@@ -64,7 +64,6 @@
     elements.accountText.textContent = 'Buscando conta conectada.';
     elements.accountList.classList.add('is-hidden');
     elements.accountList.innerHTML = '';
-    hideActionFeedback();
     elements.updateBlock.classList.add('is-hidden');
     setBadge(elements.updateBadge, 'Verificando', 'muted');
     elements.updateText.textContent = 'Conferindo releases.';
@@ -242,7 +241,7 @@
       renderAccounts(accounts);
       showActionFeedback(enabled ? 'Conta habilitada.' : 'Conta desativada.', 'ok');
     } catch (err) {
-      showActionFeedback(toUserError(err), 'warn');
+      showActionFeedback(toUserError(err), 'danger');
     } finally {
       setBusy(false);
     }
@@ -264,7 +263,7 @@
       showActionFeedback('Conta removida.', 'ok');
       await loadServiceAndAccounts();
     } catch (err) {
-      showActionFeedback(toUserError(err), 'warn');
+      showActionFeedback(toUserError(err), 'danger');
     } finally {
       setBusy(false);
     }
@@ -278,7 +277,7 @@
       elements.accountText.textContent = 'Autorize e atualize os dados.';
       state.canConnect = true;
     } catch (err) {
-      showActionFeedback(toUserError(err), 'warn');
+      showActionFeedback(toUserError(err), 'danger');
     } finally {
       setBusy(false);
     }
@@ -350,13 +349,8 @@
   }
 
   function showActionFeedback(message, tone) {
-    elements.actionFeedback.textContent = message;
-    elements.actionFeedback.className = `action-feedback ${tone || 'muted'}`;
-  }
-
-  function hideActionFeedback() {
-    elements.actionFeedback.textContent = '';
-    elements.actionFeedback.className = 'action-feedback is-hidden';
+    const mappedTone = tone === 'ok' ? 'success' : tone === 'danger' ? 'danger' : 'warning';
+    toast.show({ tone: mappedTone, title: message });
   }
 
   function hasSetupIssue(diagnostics) {

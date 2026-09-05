@@ -57,6 +57,7 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
   assert.ok(manifest.web_accessible_resources[0].resources.includes('vendor/phosphor/*'));
   assert.ok(scripts.indexOf('core/detection.js') < scripts.indexOf('modules/photos/model.js'));
   assert.ok(scripts.indexOf('core/shared.js') < scripts.indexOf('modules/photos/model.js'));
+  assert.ok(scripts.indexOf('core/toast.js') < scripts.indexOf('modules/photos/model.js'));
   assert.ok(scripts.indexOf('modules/photos/model.js') < scripts.indexOf('modules/photos/module.js'));
   assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('modules/commerce/model.js'));
   assert.ok(scripts.indexOf('modules/commerce/model.js') < scripts.indexOf('modules/commerce/module.js'));
@@ -167,14 +168,35 @@ test('ui carregam phosphor local do design system', () => {
   assert.match(popup, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
   assert.match(popup, /href="\.\.\/\.\.\/styles\/components\.css"/);
   assert.match(popup, /href="\.\.\/\.\.\/styles\/shell\.css"/);
+  assert.match(popup, /src="\.\.\/\.\.\/core\/toast\.js"/);
   assert.match(options, /href="\.\.\/\.\.\/vendor\/phosphor\/phosphor\.css"/);
   assert.match(options, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
   assert.match(options, /href="\.\.\/\.\.\/styles\/components\.css"/);
   assert.match(options, /href="\.\.\/\.\.\/styles\/shell\.css"/);
+  assert.match(options, /src="\.\.\/\.\.\/core\/toast\.js"/);
   assert.match(launcher, /href="\.\.\/\.\.\/vendor\/phosphor\/phosphor\.css"/);
   assert.match(launcher, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
   assert.match(launcher, /href="\.\.\/\.\.\/styles\/components\.css"/);
   assert.match(launcher, /href="\.\.\/\.\.\/styles\/shell\.css"/);
+});
+
+test('feedback efemero usa o toast compartilhado', () => {
+  const extensionRoot = path.join(__dirname, '..', 'extension');
+  const toast = require(path.join(extensionRoot, 'core', 'toast'));
+  const source = fs.readFileSync(path.join(extensionRoot, 'core', 'toast.js'), 'utf8');
+  const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'popup.js'), 'utf8');
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'options.js'), 'utf8');
+
+  assert.strictEqual(typeof toast.show, 'function');
+  assert.strictEqual(typeof toast.dismiss, 'function');
+  assert.match(source, /const MAX_VISIBLE = 3/);
+  assert.match(source, /DEFAULT_DURATION = 4800/);
+  assert.match(source, /data-toast-action/);
+  assert.match(source, /role', 'status'/);
+  assert.match(popup, /toast\.show/);
+  assert.match(options, /toast\.show/);
+  assert.doesNotMatch(popup, /action-feedback/);
+  assert.doesNotMatch(options, /action-feedback/);
 });
 
 test('design system nao e redefinido pelos modulos', () => {

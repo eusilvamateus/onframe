@@ -148,9 +148,10 @@
   --ob-z-modal: 400;
   --ob-z-toast: 500;
   --ob-z-system: 9000;
-  --ob-z-extension-popover: 2147483645;
-  --ob-z-extension-overlay: 2147483646;
-  --ob-z-extension-modal: 2147483647;
+  --ob-z-extension-popover: 2147483644;
+  --ob-z-extension-overlay: 2147483645;
+  --ob-z-extension-modal: 2147483646;
+  --ob-z-extension-toast: 2147483647;
   --ob-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ob-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ob-dur-fast: 120ms;

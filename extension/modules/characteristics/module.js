@@ -8,6 +8,7 @@
     const Detection = services.Detection;
     const CharacteristicsModel = services.CharacteristicsModel;
     const api = services.api;
+    const toast = services.toast;
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
@@ -28,7 +29,6 @@
       originalDraft: {},
       bulkEnabled: false,
       bulkResult: null,
-      message: '',
       error: '',
       editorRoot: null,
       sectionElement: null,
@@ -67,7 +67,6 @@
       state.originalDraft = {};
       state.bulkEnabled = false;
       state.bulkResult = null;
-      state.message = '';
       state.error = '';
       state.inlineCellRecords = new Map();
       state.inlineSyntheticRows = [];
@@ -101,7 +100,6 @@
       if (status === 'loading' || status === 'identifying') {
         state.pageSignature = pageSignature;
         state.busy = true;
-        state.message = '';
         state.error = '';
         mountCharacteristics();
         return;
@@ -216,7 +214,6 @@
       state.editing = true;
       state.loading = true;
       state.error = '';
-      state.message = '';
       state.bulkEnabled = false;
       state.bulkResult = null;
       const requestId = ++state.requestId;
@@ -291,7 +288,6 @@
           ${renderInlineNotice()}
           ${canBulk ? renderBulkSwitch(disabled) : ''}
           ${state.error ? `<div class="onframe-characteristics-alert error">${escapeHtml(state.error)}</div>` : ''}
-          ${state.message ? `<div class="onframe-characteristics-alert success">${escapeHtml(state.message)}</div>` : ''}
           ${renderBulkFailures()}
           <div class="onframe-characteristics-actions">
             <button class="ob-button primary" data-action="save-characteristics" type="button" ${disabled ? 'disabled' : ''}>${icon('checkCircle', 14)}Salvar</button>
@@ -969,7 +965,6 @@
           if (state.saving || state.loading) return;
           state.bulkEnabled = !state.bulkEnabled;
           state.bulkResult = null;
-          state.message = '';
           state.error = '';
           mountCharacteristics();
         });
@@ -1058,7 +1053,6 @@
 
       state.saving = true;
       state.error = '';
-      state.message = '';
       state.bulkResult = null;
       mountCharacteristics();
 
@@ -1075,26 +1069,47 @@
 
         if (state.bulkEnabled) {
           state.bulkResult = result;
-          state.message = CharacteristicsModel.bulkResultMessage(result);
           if (isCurrentTargetApplied(result)) {
             state.originalDraft = cloneDraft(state.draft);
             applyDraftToSnapshotFields(updates);
           }
         } else if (result && result.characteristics) {
           setSnapshot(result.characteristics);
-          state.message = 'Características salvas.';
         } else {
-          state.message = 'Características salvas.';
           state.originalDraft = cloneDraft(state.draft);
           applyDraftToSnapshotFields(updates);
         }
         state.saving = false;
+        notifySaveResult(result, 'Características salvas', state.bulkEnabled);
         mountCharacteristics();
       } catch (err) {
         state.saving = false;
         state.error = toUserError(err);
         mountCharacteristics();
       }
+    }
+
+    function notifySaveResult(result, title, bulk) {
+      if (!bulk) {
+        showToast('success', title);
+        return;
+      }
+      const counts = result && result.counts ? result.counts : {};
+      const applied = Number(counts.applied || 0);
+      const notChanged = Number(counts.failed || 0) + Number(counts.blocked || 0) + Number(counts.skipped || 0);
+      if (!applied) {
+        state.error = 'Nenhuma variação foi alterada.';
+        return;
+      }
+      const body = notChanged
+        ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${notChanged} não foi${notChanged === 1 ? '' : 'ram'} alterada${notChanged === 1 ? '' : 's'}.`
+        : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
+      showToast(notChanged ? 'warning' : 'success', title, body);
+    }
+
+    function showToast(tone, title, body) {
+      if (!toast || typeof toast.show !== 'function') return;
+      toast.show({ tone, title, body });
     }
 
     function buildChangedUpdates() {
@@ -1203,7 +1218,6 @@
       state.originalDraft = {};
       state.bulkEnabled = false;
       state.bulkResult = null;
-      state.message = '';
       state.error = '';
       state.openSelectKey = '';
       state.inlineCellRecords = new Map();

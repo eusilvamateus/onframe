@@ -44,6 +44,7 @@
         "core/icons.js",
         "core/detection.js",
         "core/shared.js",
+        "core/toast.js",
         "modules/photos/model.js",
         "modules/photos/module.js",
         "modules/commerce/model.js",

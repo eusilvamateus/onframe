@@ -63,28 +63,6 @@ body {
   min-height: 30px;
 }
 
-.action-feedback {
-  margin: 12px 0 0;
-  padding: 8px 10px;
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-sm);
-  background: var(--ob-bg-alt);
-  color: var(--ob-fg);
-  font: var(--ob-w-medium) 12px/1.35 var(--ob-font);
-}
-
-.action-feedback.ok {
-  border-color: color-mix(in srgb, var(--ob-green) 34%, var(--ob-border));
-  background: var(--ob-green-100);
-  color: var(--ob-green-700);
-}
-
-.action-feedback.warn {
-  border-color: color-mix(in srgb, var(--ob-orange) 34%, var(--ob-border));
-  background: var(--ob-orange-050);
-  color: var(--ob-orange-700);
-}
-
 .is-hidden {
   display: none;
 }

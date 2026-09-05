@@ -6,6 +6,7 @@
   const escapeHtml = Shared.escapeHtml;
   const setBadge = Shared.setBadge;
   const toUserError = Shared.toUserError;
+  const toast = window.OnFrameToast;
   const EDITOR_VISIBLE_KEY = 'onframeEditorVisible';
   const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
 
@@ -28,8 +29,7 @@
     serviceCheck: document.getElementById('service-check'),
     accountBadge: document.getElementById('account-badge'),
     accountText: document.getElementById('account-text'),
-    accountList: document.getElementById('account-list'),
-    actionFeedback: document.getElementById('action-feedback')
+    accountList: document.getElementById('account-list')
   };
 
   const state = {
@@ -71,7 +71,6 @@
     elements.accountText.textContent = 'Buscando conta conectada.';
     elements.accountList.classList.add('is-hidden');
     elements.accountList.innerHTML = '';
-    hideActionFeedback();
     elements.updateBlock.classList.add('is-hidden');
     setBadge(elements.updateBadge, 'Verificando', 'muted');
     elements.updateText.textContent = 'Conferindo releases.';
@@ -205,7 +204,7 @@
         : `${enabledCount}/${accounts.length} contas habilitadas.`;
       showActionFeedback(enabled ? 'Conta habilitada.' : 'Conta desativada.', 'ok');
     } catch (err) {
-      showActionFeedback(toUserError(err), 'warn');
+      showActionFeedback(toUserError(err), 'danger');
     } finally {
       setBusy(false);
     }
@@ -304,7 +303,7 @@
       ensureProductStatus(nextStatus);
       showActionFeedback(nextVisible ? 'Editor visível.' : 'Editor oculto.', 'ok');
     } catch (err) {
-      showActionFeedback(toActionError(err), 'warn');
+      showActionFeedback(toActionError(err), 'danger');
     } finally {
       setBusy(false);
     }
@@ -326,7 +325,7 @@
       showActionFeedback('Conta removida.', 'ok');
       await loadServiceAndAccount();
     } catch (err) {
-      showActionFeedback(toUserError(err), 'warn');
+      showActionFeedback(toUserError(err), 'danger');
     } finally {
       setBusy(false);
     }
@@ -459,13 +458,8 @@
   }
 
   function showActionFeedback(message, tone) {
-    elements.actionFeedback.textContent = message;
-    elements.actionFeedback.className = `action-feedback ${tone || 'muted'}`;
-  }
-
-  function hideActionFeedback() {
-    elements.actionFeedback.textContent = '';
-    elements.actionFeedback.className = 'action-feedback is-hidden';
+    const mappedTone = tone === 'ok' ? 'success' : tone === 'danger' ? 'danger' : 'warning';
+    toast.show({ tone: mappedTone, title: message });
   }
 
   function firstAction(diagnostics, fallback) {

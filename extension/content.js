@@ -11,6 +11,7 @@
   const CharacteristicsModule = window.OnFrameCharacteristicsModule;
   const ModuleRegistry = window.OnFrameModuleRegistry;
   const ContentShell = window.OnFrameContentShell;
+  const toast = window.OnFrameToast;
   const api = Shared.createApi({ offlineMessage: 'Serviço local desligado. Abra o OnFrame.' });
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const root = document.createElement('div');
@@ -31,6 +32,7 @@
     CharacteristicsModule,
     api,
     root,
+    toast,
     requestPageContextReload: (reason) => shell.reloadPageContext(reason)
   });
 

@@ -842,8 +842,7 @@
 
 .ob-status,
 .onblide-ml-status,
-.onblide-ml-tray-feedback,
-.onframe-commerce-notice {
+.onblide-ml-tray-feedback {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -865,8 +864,7 @@
 }
 
 .onblide-ml-status.error,
-.onblide-ml-tray-feedback.error,
-.onframe-commerce-notice.warn {
+.onblide-ml-tray-feedback.error {
   background: var(--ob-danger-bg);
   color: var(--ob-danger);
 }
@@ -876,16 +874,173 @@
   color: var(--ob-fg-soft);
 }
 
-.onframe-commerce-notice.ok {
+.onblide-ml-tray-feedback {
+  margin: 0 0 10px;
+  border-radius: var(--ob-r-control);
+  white-space: normal;
+}
+
+.onframe-commerce-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ob-blue) 28%, transparent);
+  border-radius: var(--ob-r-md);
+  background: var(--ob-blue-050);
+  color: var(--ob-fg);
+  font: var(--ob-w-medium) 12px/1.45 var(--ob-font);
+}
+
+.onframe-commerce-alert .ob-icon {
+  flex: 0 0 auto;
+  color: var(--ob-blue);
+}
+
+.onframe-commerce-alert.danger {
+  border-color: color-mix(in srgb, var(--ob-danger) 28%, transparent);
+  background: var(--ob-danger-bg);
+  color: var(--ob-danger-700);
+}
+
+.onframe-commerce-alert.danger .ob-icon { color: var(--ob-danger); }
+
+.onframe-toast-stack {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: var(--ob-z-extension-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  width: min(400px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.onframe-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-surface);
+  background: var(--ob-surface);
+  box-shadow: var(--ob-shadow-lg);
+  color: var(--ob-fg);
+  pointer-events: auto;
+  animation: onframe-toast-in 200ms var(--ob-ease-out) both;
+}
+
+.onframe-toast.is-leaving {
+  animation: onframe-toast-out 200ms var(--ob-ease-out) both;
+}
+
+.onframe-toast-icon {
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-blue-100);
+  color: var(--ob-blue);
+  font-size: 17px;
+}
+
+.onframe-toast-success .onframe-toast-icon {
   background: var(--ob-green-100);
   color: var(--ob-green-700);
 }
 
-.onblide-ml-tray-feedback,
-.onframe-commerce-notice {
-  margin: 0 0 10px;
-  border-radius: var(--ob-r-control);
-  white-space: normal;
+.onframe-toast-warning .onframe-toast-icon {
+  background: var(--ob-orange-100);
+  color: var(--ob-orange-700);
+}
+
+.onframe-toast-danger .onframe-toast-icon {
+  background: var(--ob-red-100);
+  color: var(--ob-red-700);
+}
+
+.onframe-toast-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.onframe-toast-title {
+  color: var(--ob-fg-strong);
+  font: var(--ob-w-semibold) 14px/1.4 var(--ob-font);
+}
+
+.onframe-toast-body {
+  margin-top: 3px;
+  color: var(--ob-fg-soft);
+  font: var(--ob-w-regular) 13px/1.5 var(--ob-font);
+}
+
+.onframe-toast-action,
+.onframe-toast-close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--ob-font);
+}
+
+.onframe-toast-action {
+  margin-top: 8px;
+  padding: 0;
+  color: var(--ob-blue-700);
+  font-size: 13px;
+  font-weight: var(--ob-w-bold);
+}
+
+.onframe-toast-warning .onframe-toast-action { color: var(--ob-orange-700); }
+.onframe-toast-danger .onframe-toast-action { color: var(--ob-red-700); }
+
+.onframe-toast-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  color: var(--ob-fg-mute);
+  font-size: 16px;
+}
+
+.onframe-toast-action:hover,
+.onframe-toast-close:hover { opacity: 0.75; }
+
+.onframe-toast-action:focus-visible,
+.onframe-toast-close:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px var(--ob-focus-ring);
+}
+
+@keyframes onframe-toast-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes onframe-toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(16px); }
+}
+
+@media (max-width: 600px) {
+  .onframe-toast-stack {
+    right: auto;
+    bottom: 16px;
+    left: 50%;
+    align-items: stretch;
+    width: calc(100vw - 24px);
+    transform: translateX(-50%);
+  }
 }
 
 .ob-modal-backdrop,

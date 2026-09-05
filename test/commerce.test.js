@@ -578,7 +578,9 @@ test('modal de promocoes limpa erro antigo ao editar campos', () => {
 
   assert.match(source, /function savePromotionFieldDraft/);
   assert.match(source, /clearPromotionActionFeedback\(\)/);
-  assert.match(source, /querySelectorAll\('\.onframe-commerce-notice'\)/);
+  assert.match(source, /onframe-commerce-alert/);
+  assert.match(source, /showToast\('success', action === 'delete'/);
+  assert.doesNotMatch(source, /actionMessage/);
 });
 
 test('modal de promocoes nao redesenha enquanto usuario digita', () => {
