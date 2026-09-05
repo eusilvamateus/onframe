@@ -316,6 +316,38 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /Editar preço base/);
 });
 
+test('listagens reutilizam popovers apenas para anuncios da conta conectada', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
+
+  assert.match(source, /supportsNonProduct: true/);
+  assert.match(source, /function isListingPageUrl/);
+  assert.match(source, /function extractListingItemId/);
+  assert.match(source, /params\.get\('wid'\)/);
+  assert.ok(source.includes("if (/\\/p\\/MLB\\d+/i.test(url.pathname)) return null;"));
+  assert.match(source, /IntersectionObserver/);
+  assert.match(source, /state\.listingResolving < 3/);
+  assert.match(source, /pageIdentity: \{ canonicalItemId: itemId \}/);
+  assert.match(source, /onframe-commerce-listing-badge/);
+  assert.match(source, /badge\.className = 'ob-badge green onframe-commerce-listing-badge'/);
+  assert.match(source, /Seu anúncio/);
+  assert.doesNotMatch(source, /listingReadonly/);
+  assert.doesNotMatch(source, /if \(state\.surface === 'listing'\) return;/);
+  assert.match(source, /data-action="edit-price"/);
+  assert.match(source, /data-action="open-promotion-modal"/);
+  assert.match(source, /function listingPriceTone/);
+  assert.match(source, /function listingPromotionTone/);
+  assert.match(source, /\['pointerdown', 'mousedown', 'touchstart'\]/);
+  assert.match(source, /function listingControlButton/);
+  assert.match(styles, /\.onframe-commerce-listing-controls\s*\{/);
+  assert.match(styles, /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: 3;[\s\S]*pointer-events: auto !important;/);
+  assert.match(styles, /\.onframe-commerce-listing-controls \.onframe-commerce-chip\s*\{[\s\S]*cursor: pointer !important;/);
+  assert.match(styles, /\.onframe-commerce-listing-badge\s*\{[\s\S]*pointer-events: none;/);
+  assert.match(components, /\.onframe-commerce-listing-controls/);
+  assert.match(components, /\.onframe-commerce-listing-badge/);
+});
+
 test('modal de promocoes preserva posicao ao revisar oferta', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
 

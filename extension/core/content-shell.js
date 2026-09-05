@@ -29,7 +29,7 @@
       bindStorageEvents();
       bindPageEvents();
       editorVisible = await readEditorVisibility();
-      if (editorVisible && isProductPage()) startModules();
+      if (editorVisible) startModules();
       if (editorVisible) schedulePageSync('start', { force: true, delay: 0 });
       if (!editorVisible) setModulesVisible(false);
       window.addEventListener('resize', scheduleRender);
@@ -68,7 +68,15 @@
         currentSelectionKey = '';
         currentContext = null;
         for (const module of modules) {
-          if (shouldResetModule(module)) module.reset();
+          if (module && module.supportsNonProduct === true) {
+            syncModule(module, {
+              status: 'not_product',
+              signature: readPageSignature(),
+              reason
+            });
+          } else if (shouldResetModule(module)) {
+            module.reset();
+          }
         }
         return;
       }
@@ -223,8 +231,12 @@
 
     function startModules() {
       for (const module of modules) {
-        if (module && typeof module.start === 'function') module.start();
+        if (module && moduleSupportsCurrentPage(module) && typeof module.start === 'function') module.start();
       }
+    }
+
+    function moduleSupportsCurrentPage(module) {
+      return isProductPage() || Boolean(module && module.supportsNonProduct === true);
     }
 
     async function setEditorVisibility(visible) {
@@ -238,6 +250,7 @@
       for (const module of modules) {
         if (!module) continue;
         if (visible) {
+          if (!moduleSupportsCurrentPage(module)) continue;
           if (!module.isLoaded() && !module.isBusy()) module.start();
           else if (typeof module.show === 'function') module.show();
           continue;
@@ -377,7 +390,7 @@
       if (!node || node.nodeType !== 1) return false;
       if (node.id === 'onblide-ml-root') return true;
       if (typeof node.closest !== 'function') return false;
-      return Boolean(node.closest('#onblide-ml-root, .onblide-ml-tray, .onframe-commerce-inline, .onframe-commerce-popover-root, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-description-root, .onframe-description-action, .onframe-section-edit-tooltip, .onframe-characteristics-root, .onframe-characteristics-action, .onframe-characteristics-inline-control, .onframe-characteristics-inline-cell, .onframe-characteristics-extra-row'));
+      return Boolean(node.closest('#onblide-ml-root, .onblide-ml-tray, .onframe-commerce-inline, .onframe-commerce-listing-controls, .onframe-commerce-listing-badge, .onframe-commerce-popover-root, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-description-root, .onframe-description-action, .onframe-section-edit-tooltip, .onframe-characteristics-root, .onframe-characteristics-action, .onframe-characteristics-inline-control, .onframe-characteristics-inline-cell, .onframe-characteristics-extra-row'));
     }
 
     function readEditorVisibility() {

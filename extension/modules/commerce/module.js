@@ -34,6 +34,16 @@
       promotionSummary: null,
       priceError: '',
       promotionError: '',
+      surface: 'pdp',
+      popoverAnchor: null,
+      listingRecords: new Map(),
+      listingCache: new Map(),
+      listingQueue: [],
+      listingResolving: 0,
+      listingObserver: null,
+      listingMutationObserver: null,
+      listingScanTimer: null,
+      listingActiveRecord: null,
       actionMessage: '',
       actionError: '',
       popover: null,
@@ -88,7 +98,8 @@
       if (state.visible) mountCommerce();
     }
 
-    function resetState() {
+    function resetState(options = {}) {
+      const preserveListing = options.preserveListing === true;
       removeInline();
       removePopover();
       removeModal();
@@ -106,6 +117,9 @@
       state.promotionSummary = null;
       state.priceError = '';
       state.promotionError = '';
+      state.surface = 'pdp';
+      state.popoverAnchor = null;
+      state.listingActiveRecord = null;
       state.actionMessage = '';
       state.actionError = '';
       state.popover = null;
@@ -142,6 +156,7 @@
       state.lastPopoverMarkup = '';
       state.lastModalMarkup = '';
       state.lastDirectDiscountModalMarkup = '';
+      if (!preserveListing) resetListingState();
     }
 
     function scheduleRender(delay = 120) {
@@ -161,8 +176,17 @@
       const pageSignature = update && update.signature ? update.signature : readPageSignature();
 
       if (status === 'not_product') {
-        resetState();
+        if (state.surface !== 'listing') {
+          resetState({ preserveListing: true });
+          state.surface = 'listing';
+        }
+        mountCommerce();
         return;
+      }
+
+      if (state.surface === 'listing') {
+        resetListingState();
+        state.surface = 'pdp';
       }
 
       if (status === 'loading') {
@@ -292,17 +316,48 @@
 
       state.priceLoading = false;
       state.promotionLoading = false;
+      syncActiveListingSummaries();
       mountCommerce();
     }
 
+    function syncActiveListingSummaries() {
+      const record = state.listingActiveRecord;
+      if (state.surface !== 'listing' || !record || record.itemId !== state.itemId) return;
+      record.priceSummary = state.priceSummary;
+      record.promotionSummary = state.promotionSummary;
+      record.priceError = state.priceError;
+      record.promotionError = state.promotionError;
+      record.priceLoading = state.priceLoading;
+      record.promotionLoading = state.promotionLoading;
+      mountListingControls(record);
+    }
+
     function mountCommerce() {
-      if (!state.visible || !isProductPageUrl(location.href)) {
+      if (!state.visible) {
         removeInline();
         removePopover();
         removeModal();
         removeDirectDiscountModal();
         return;
       }
+
+      if (isProductPageUrl(location.href)) {
+        mountProductCommerce();
+        return;
+      }
+
+      if (isListingPageUrl()) {
+        mountListingCommerce();
+        return;
+      }
+
+      removeInline();
+      removePopover();
+      removeModal();
+      removeDirectDiscountModal();
+    }
+
+    function mountProductCommerce() {
 
       const anchor = findPriceAnchor();
       if (!anchor || !state.loaded || (!state.context && !state.actionError)) {
@@ -326,6 +381,394 @@
       renderPopover();
       renderModal();
       renderDirectDiscountModal();
+    }
+
+    function mountListingCommerce() {
+      removeInline();
+      startListingObserver();
+
+      if (state.listingActiveRecord && !state.listingActiveRecord.card.isConnected) {
+        closePopover();
+        state.listingActiveRecord = null;
+      }
+
+      renderPopover();
+      renderModal();
+      renderDirectDiscountModal();
+    }
+
+    function isListingPageUrl() {
+      const host = String(location.hostname || '').toLowerCase();
+      const path = String(location.pathname || '');
+      if (host === 'lista.mercadolivre.com.br') return true;
+      return /(^|\.)mercadolivre\.com\.br$/.test(host) && /^\/(?:loja|perfil)(?:\/|$)/.test(path);
+    }
+
+    function isStorefrontListingPage() {
+      return String(location.hostname || '').toLowerCase() !== 'lista.mercadolivre.com.br';
+    }
+
+    function startListingObserver() {
+      if (!isListingPageUrl()) return;
+
+      if (!state.listingObserver && typeof IntersectionObserver === 'function') {
+        state.listingObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const record = state.listingRecords.get(entry.target);
+            if (record) queueListingResolution(record.itemId);
+            state.listingObserver.unobserve(entry.target);
+          });
+        }, { rootMargin: '180px 0px' });
+      }
+
+      if (!state.listingMutationObserver && typeof MutationObserver === 'function' && document.body) {
+        state.listingMutationObserver = new MutationObserver((mutations) => {
+          if (mutations.some((mutation) => mutation.type === 'childList')) scheduleListingScan();
+        });
+        state.listingMutationObserver.observe(document.body, { childList: true, subtree: true });
+      }
+
+      scheduleListingScan(0);
+    }
+
+    function stopListingObserver() {
+      if (state.listingObserver) state.listingObserver.disconnect();
+      if (state.listingMutationObserver) state.listingMutationObserver.disconnect();
+      state.listingObserver = null;
+      state.listingMutationObserver = null;
+      if (state.listingScanTimer) clearTimeout(state.listingScanTimer);
+      state.listingScanTimer = null;
+    }
+
+    function resetListingState() {
+      stopListingObserver();
+      state.listingRecords.forEach((record) => removeListingRecord(record));
+      state.listingRecords.clear();
+      state.listingCache.clear();
+      state.listingQueue = [];
+      state.listingResolving = 0;
+      state.listingActiveRecord = null;
+    }
+
+    function scheduleListingScan(delay = 120) {
+      if (state.listingScanTimer) return;
+      state.listingScanTimer = setTimeout(() => {
+        state.listingScanTimer = null;
+        scanListingCards();
+      }, delay);
+    }
+
+    function scanListingCards() {
+      if (!state.visible || !isListingPageUrl()) return;
+      const selector = isStorefrontListingPage() ? '.poly-card' : 'li.ui-search-layout__item';
+      const cards = Array.from(document.querySelectorAll(selector));
+      const currentCards = new Set(cards);
+
+      state.listingRecords.forEach((record, card) => {
+        if (!card.isConnected || !currentCards.has(card)) {
+          removeListingRecord(record);
+          state.listingRecords.delete(card);
+        }
+      });
+
+      cards.forEach((card) => {
+        if (!card || !card.isConnected || card.closest('#onblide-ml-root')) return;
+        const link = card.querySelector('a.poly-component__title[href]');
+        const itemId = extractListingItemId(link && link.href);
+        const current = state.listingRecords.get(card);
+
+        if (!itemId || !link) {
+          if (current) {
+            removeListingRecord(current);
+            state.listingRecords.delete(card);
+          }
+          return;
+        }
+
+        if (current && current.itemId === itemId) return;
+        if (current) removeListingRecord(current);
+
+        const record = {
+          card,
+          link,
+          itemId,
+          controls: null,
+          badge: null,
+          media: null,
+          context: null,
+          priceSummary: null,
+          promotionSummary: null,
+          priceError: '',
+          promotionError: '',
+          priceLoading: false,
+          promotionLoading: false
+        };
+        state.listingRecords.set(card, record);
+        observeListingRecord(record);
+      });
+    }
+
+    function observeListingRecord(record) {
+      const cached = state.listingCache.get(record.itemId);
+      if (cached && cached.status === 'owned') {
+        applyListingOwnership(record, cached.context);
+        return;
+      }
+      if (cached && (cached.status === 'not-owned' || cached.status === 'error')) return;
+      if (state.listingObserver) {
+        state.listingObserver.observe(record.card);
+        return;
+      }
+      queueListingResolution(record.itemId);
+    }
+
+    function queueListingResolution(itemId) {
+      const current = state.listingCache.get(itemId);
+      if (current && (current.status === 'queued' || current.status === 'loading' || current.status === 'owned' || current.status === 'not-owned' || current.status === 'error')) return;
+      state.listingCache.set(itemId, { status: 'queued', context: null });
+      state.listingQueue.push(itemId);
+      drainListingQueue();
+    }
+
+    function drainListingQueue() {
+      while (state.listingResolving < 3 && state.listingQueue.length) {
+        const itemId = state.listingQueue.shift();
+        const entry = state.listingCache.get(itemId);
+        if (!entry || entry.status !== 'queued') continue;
+        state.listingResolving += 1;
+        entry.status = 'loading';
+        void resolveListingItem(itemId).finally(() => {
+          state.listingResolving = Math.max(0, state.listingResolving - 1);
+          drainListingQueue();
+        });
+      }
+    }
+
+    async function resolveListingItem(itemId) {
+      const entry = state.listingCache.get(itemId);
+      if (!entry) return;
+
+      try {
+        const context = await api('/api/resolve/quick', {
+          method: 'POST',
+          body: JSON.stringify({
+            url: location.href,
+            html: '',
+            pageIdentity: { canonicalItemId: itemId }
+          })
+        });
+        if (!context || !context.item || String(context.item.id || '') !== itemId) throw new Error('Não foi possível confirmar este anúncio.');
+        entry.status = 'owned';
+        entry.context = context;
+      } catch (err) {
+        entry.status = Number(err && err.status) === 403 || Number(err && err.status) === 404 ? 'not-owned' : 'error';
+        entry.error = toUserError(err);
+      }
+
+      state.listingRecords.forEach((record) => {
+        if (record.itemId !== itemId) return;
+        if (entry.status === 'owned') applyListingOwnership(record, entry.context);
+        else removeListingDecorations(record);
+      });
+    }
+
+    function applyListingOwnership(record, context) {
+      if (!record || !record.card.isConnected || !context) return;
+      record.context = context;
+      mountListingBadge(record);
+      mountListingControls(record);
+    }
+
+    function mountListingBadge(record) {
+      const media = record.card.querySelector('.poly-card__portada') || record.card;
+      if (!record.badge) {
+        const badge = document.createElement('span');
+        badge.className = 'ob-badge green onframe-commerce-listing-badge';
+        badge.textContent = 'Seu anúncio';
+        media.appendChild(badge);
+        record.badge = badge;
+        record.media = media;
+        media.classList.add('onframe-commerce-listing-media');
+      }
+    }
+
+    function mountListingControls(record) {
+      const price = record.card.querySelector('.poly-component__price');
+      if (!price) return;
+      if (!record.controls) {
+        const controls = document.createElement('div');
+        controls.className = 'onframe-commerce-listing-controls';
+        controls.setAttribute('aria-label', 'Ações OnFrame para este anúncio');
+        ['pointerdown', 'mousedown', 'touchstart'].forEach((eventName) => {
+          controls.addEventListener(eventName, (event) => {
+            if (!listingControlButton(event.target)) return;
+            event.stopPropagation();
+          });
+        });
+        controls.addEventListener('click', (event) => {
+          const button = listingControlButton(event.target);
+          if (!button) return;
+          event.preventDefault();
+          event.stopPropagation();
+          activateListingPopover(record, button.dataset.listingAction === 'open-price' ? 'price' : 'promotions', button);
+        });
+        price.insertAdjacentElement('afterend', controls);
+        record.controls = controls;
+      }
+      renderListingControls(record);
+    }
+
+    function listingControlButton(target) {
+      return target && typeof target.closest === 'function'
+        ? target.closest('[data-listing-action]')
+        : null;
+    }
+
+    function renderListingControls(record) {
+      if (!record || !record.controls) return;
+      const markup = `
+        <div class="onframe-commerce-chipbar">
+          <button class="onframe-commerce-chip ${escapeAttribute(listingPriceTone(record))}" data-listing-action="open-price" type="button">${icon('price', 14)}<span>Preço</span></button>
+          <button class="onframe-commerce-chip ${escapeAttribute(listingPromotionTone(record))}" data-listing-action="open-promotions" type="button">${icon('tag', 14)}<span>Promoção</span></button>
+        </div>
+      `;
+      if (record.controls.innerHTML !== markup) record.controls.innerHTML = markup;
+    }
+
+    function listingPriceTone(record) {
+      if (record.priceError) return 'warn';
+      if (record.priceSummary) {
+        const state = CommerceModel.getPriceState(record.priceSummary);
+        if (state.blocker) return 'warn';
+        return state.label === 'Com promoção' ? 'green' : '';
+      }
+      return record.card.querySelector('s') ? 'green' : '';
+    }
+
+    function listingPromotionTone(record) {
+      if (record.promotionError) return 'warn';
+      if (!record.promotionSummary) return '';
+      const state = CommerceModel.getPromotionState(record.promotionSummary);
+      return state.tone === 'green' || state.tone === 'orange' ? state.tone : '';
+    }
+
+    function removeListingRecord(record) {
+      if (!record) return;
+      if (state.listingObserver && record.card) state.listingObserver.unobserve(record.card);
+      if (state.listingActiveRecord === record) {
+        closePopover();
+        state.listingActiveRecord = null;
+      }
+      removeListingDecorations(record);
+    }
+
+    function removeListingDecorations(record) {
+      if (!record) return;
+      if (record.controls) record.controls.remove();
+      if (record.badge) record.badge.remove();
+      if (record.media) record.media.classList.remove('onframe-commerce-listing-media');
+      record.controls = null;
+      record.badge = null;
+      record.media = null;
+    }
+
+    function activateListingPopover(record, type, anchor) {
+      if (!record || !record.context) return;
+      state.requestId += 1;
+      state.surface = 'listing';
+      state.listingActiveRecord = record;
+      state.popoverAnchor = anchor;
+      state.context = record.context;
+      state.itemId = record.itemId;
+      state.ownerUserId = record.context.ownerAccount && record.context.ownerAccount.user_id ? record.context.ownerAccount.user_id : null;
+      state.loaded = true;
+      state.busy = false;
+      state.priceSummary = record.priceSummary;
+      state.promotionSummary = record.promotionSummary;
+      state.priceError = record.priceError;
+      state.promotionError = record.promotionError;
+      state.priceLoading = record.priceLoading;
+      state.promotionLoading = record.promotionLoading;
+      state.actionError = '';
+      state.actionMessage = '';
+      state.priceEditing = false;
+      state.detailsOpen = false;
+      openPopover(type);
+
+      if (type === 'price' && !record.priceSummary && !record.priceLoading) void loadListingSummary(record, 'price');
+      if (type === 'promotions' && !record.promotionSummary && !record.promotionLoading) void loadListingSummary(record, 'promotions');
+    }
+
+    async function loadListingSummary(record, type) {
+      if (!record || !record.context) return;
+      const isPrice = type === 'price';
+      const summaryKey = isPrice ? 'priceSummary' : 'promotionSummary';
+      const errorKey = isPrice ? 'priceError' : 'promotionError';
+      const loadingKey = isPrice ? 'priceLoading' : 'promotionLoading';
+      if (record[loadingKey]) return;
+
+      record[loadingKey] = true;
+      record[errorKey] = '';
+      syncListingPopoverState(record);
+      try {
+        record[summaryKey] = await api(listingItemApiPath(record, isPrice ? '/pricing/summary' : '/promotions/summary'));
+      } catch (err) {
+        record[summaryKey] = null;
+        record[errorKey] = toUserError(err);
+      } finally {
+        record[loadingKey] = false;
+        syncListingPopoverState(record);
+      }
+    }
+
+    function listingItemApiPath(record, suffix) {
+      const query = new URLSearchParams();
+      const ownerUserId = record && record.context && record.context.ownerAccount && record.context.ownerAccount.user_id;
+      if (ownerUserId) query.set('owner_user_id', String(ownerUserId));
+      const search = query.toString();
+      return `/api/items/${encodeURIComponent(record.itemId)}${suffix}${search ? `?${search}` : ''}`;
+    }
+
+    function syncListingPopoverState(record) {
+      if (state.listingActiveRecord !== record) return;
+      state.priceSummary = record.priceSummary;
+      state.promotionSummary = record.promotionSummary;
+      state.priceError = record.priceError;
+      state.promotionError = record.promotionError;
+      state.priceLoading = record.priceLoading;
+      state.promotionLoading = record.promotionLoading;
+      state.lastPopoverMarkup = '';
+      mountListingControls(record);
+      mountCommerce();
+    }
+
+    function extractListingItemId(href) {
+      if (!href) return null;
+      try {
+        const url = new URL(href, location.href);
+        const hash = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
+        const sources = [hash, url.searchParams];
+        for (const params of sources) {
+          const wid = normalizeListingItemId(params.get('wid'));
+          if (wid) return wid;
+        }
+        for (const params of sources) {
+          const filter = String(params.get('pdp_filters') || '');
+          const match = filter.match(/(?:^|,)item_id:(MLB\d+)(?:,|$)/i);
+          const itemId = normalizeListingItemId(match && match[1]);
+          if (itemId) return itemId;
+        }
+        if (/\/p\/MLB\d+/i.test(url.pathname)) return null;
+        return normalizeListingItemId((url.href.match(/\b(MLB-?\d+)\b/i) || [])[1]);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function normalizeListingItemId(value) {
+      const normalized = String(value || '').toUpperCase().replace('-', '');
+      return /^MLB\d+$/.test(normalized) ? normalized : null;
     }
 
     function renderInline() {
@@ -3332,6 +3775,7 @@
 
     function closePopover() {
       state.popover = null;
+      state.popoverAnchor = null;
       state.priceEditing = false;
       removePopover();
     }
@@ -3807,6 +4251,7 @@
     }
 
     function popoverAnchor() {
+      if (state.popoverAnchor && state.popoverAnchor.isConnected) return state.popoverAnchor;
       if (!state.inline) return null;
       const action = state.popover === 'price' ? 'open-price' : 'open-promotions';
       return state.inline.querySelector(`[data-action="${action}"]`);
@@ -4049,9 +4494,9 @@
         if (!state.popoverRoot || !state.popover) return;
         const target = event.target;
         if (state.popoverRoot.contains(target)) return;
+        if (state.popoverAnchor && state.popoverAnchor.contains(target)) return;
         if (state.inline && state.inline.contains(target)) return;
-        state.popover = null;
-        removePopover();
+        closePopover();
       });
     }
 
@@ -4059,6 +4504,7 @@
       return {
         ok: true,
         isProductPage: isProductPageUrl(location.href),
+        isListingPage: isListingPageUrl(),
         loaded: state.loaded,
         busy: state.busy || state.priceLoading || state.promotionLoading,
         editorVisible: state.visible,
@@ -4074,6 +4520,11 @@
 
     async function showCommerce() {
       state.visible = true;
+      if (isListingPageUrl()) {
+        state.surface = 'listing';
+        mountCommerce();
+        return getCommerceStatus();
+      }
       if (!state.loaded && !state.busy) {
         state.busy = true;
         mountCommerce();
@@ -4089,6 +4540,7 @@
       removePopover();
       removeModal();
       removeDirectDiscountModal();
+      resetListingState();
       return getCommerceStatus();
     }
 
@@ -4098,6 +4550,8 @@
         state.busy = true;
         mountCommerce();
         await requestPageContextReload('manual');
+      } else if (isListingPageUrl() && state.listingActiveRecord) {
+        await reloadCommerce();
       }
       return getCommerceStatus();
     }
@@ -4113,6 +4567,7 @@
     return {
       id: 'commerce',
       label: 'Preço e promoções',
+      supportsNonProduct: true,
       getMode: () => state.context && state.context.mode ? state.context.mode : null,
       getPageSignature: () => state.pageSignature,
       getStatus: getCommerceStatus,

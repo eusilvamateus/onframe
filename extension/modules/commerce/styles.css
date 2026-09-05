@@ -15,6 +15,37 @@
   gap: 6px;
 }
 
+.onframe-commerce-listing-controls {
+  position: relative;
+  z-index: 3;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px 0 4px;
+  line-height: 1;
+  pointer-events: auto !important;
+}
+
+.onframe-commerce-listing-controls .onframe-commerce-chip {
+  position: relative;
+  z-index: 1;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+}
+
+.onframe-commerce-listing-media {
+  position: relative !important;
+}
+
+.onframe-commerce-listing-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  pointer-events: none;
+}
+
 .onframe-commerce-popover-root {
   position: fixed !important;
   z-index: var(--ob-z-extension-popover);

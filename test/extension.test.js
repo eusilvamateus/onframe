@@ -580,6 +580,18 @@ test('shell centraliza sincronizacao de contexto da pagina', () => {
   assert.strictEqual(registrySource.includes("'handlePageContextChange'"), true);
 });
 
+test('shell mantem o modulo de comercio ativo nas listagens', () => {
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
+  const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+
+  assert.match(shellSource, /module\.supportsNonProduct === true/);
+  assert.match(shellSource, /function moduleSupportsCurrentPage/);
+  assert.match(shellSource, /onframe-commerce-listing-controls/);
+  assert.match(shellSource, /onframe-commerce-listing-badge/);
+  assert.match(commerceSource, /status === 'not_product'/);
+  assert.match(commerceSource, /state\.surface !== 'listing'/);
+});
+
 test('shell usa resolucao rapida antes da hidratacao completa', () => {
   const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
