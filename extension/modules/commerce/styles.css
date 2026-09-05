@@ -351,8 +351,7 @@
 }
 
 .onframe-commerce-hero small,
-.onframe-commerce-row span,
-.onframe-commerce-field span {
+.onframe-commerce-row span {
   color: var(--ob-ink-soft);
   font: 600 10px/1.2 var(--ob-font-mono);
   text-transform: uppercase;
@@ -664,8 +663,16 @@
 
 .onframe-commerce-field {
   display: grid;
+  align-content: start;
   gap: 6px;
   margin: 0;
+}
+
+.onframe-commerce-field > .onframe-commerce-field-label,
+.onframe-commerce-field > span:first-child:not(.ob-field-shell) {
+  color: var(--ob-fg-strong);
+  font: var(--ob-w-semibold) 12px/1.2 var(--ob-font);
+  text-transform: none;
 }
 
 .onframe-commerce-bulk-switch {
@@ -745,17 +752,17 @@
   position: relative;
 }
 
-.onframe-commerce-field.warn input {
+.onframe-commerce-field.warn > input:not([type="hidden"]) {
   border-color: color-mix(in srgb, var(--ob-red) 70%, var(--ob-border));
   background: var(--ob-red-100);
 }
 
-.onframe-commerce-field.warn input:focus {
+.onframe-commerce-field.warn > input:not([type="hidden"]):focus {
   border-color: var(--ob-red);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ob-red) 16%, transparent);
 }
 
-.onframe-commerce-field.ok input {
+.onframe-commerce-field.ok > input:not([type="hidden"]) {
   border-color: color-mix(in srgb, var(--ob-green) 55%, var(--ob-border));
 }
 
@@ -887,6 +894,18 @@
   color: var(--ob-fg-on-color);
 }
 
+.onframe-commerce-date-day.range-start,
+.onframe-commerce-date-day.range-end {
+  background: var(--ob-blue);
+  color: var(--ob-fg-on-color);
+}
+
+.onframe-commerce-date-day.in-range {
+  border-radius: 0;
+  background: var(--ob-blue-100);
+  color: var(--ob-blue-700);
+}
+
 .onframe-commerce-datepicker-foot {
   display: flex;
   justify-content: space-between;
@@ -906,7 +925,9 @@
 }
 
 .onframe-commerce-modal-head {
-  margin-bottom: 14px;
+  height: auto;
+  max-height: none;
+  margin-bottom: var(--ob-gap-md);
 }
 
 .onframe-commerce-modal-head span {
@@ -1424,10 +1445,15 @@
   border-top: 1px solid var(--ob-line);
 }
 
+.onframe-commerce-datepicker-range .onframe-commerce-datepicker-foot {
+  justify-content: flex-start;
+}
+
 .onframe-commerce-modal {
   width: min(980px, calc(100vw - 36px));
   height: min(780px, calc(100vh - 36px));
   max-height: min(780px, calc(100vh - 36px));
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1435,6 +1461,7 @@
 
 .onframe-commerce-modal-head {
   display: flex;
+  flex: 0 0 auto;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
@@ -1535,6 +1562,184 @@
   min-height: 36px;
   height: 36px;
   padding: 0 12px;
+}
+
+.onframe-commerce-direct-discount-trigger {
+  flex: none;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 12px;
+}
+
+.onframe-commerce-direct-discount-overlay {
+  position: fixed !important;
+  z-index: var(--ob-z-extension-overlay);
+  padding: var(--ob-s-4);
+  background: var(--ob-scrim);
+  backdrop-filter: blur(2px);
+}
+
+.onframe-commerce-direct-discount {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ob-r-overlay);
+  background: var(--ob-surface);
+  box-shadow: var(--ob-shadow-lg);
+}
+
+.onframe-commerce-direct-discount-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex: none;
+  gap: var(--ob-gap-md);
+  padding: var(--ob-s-5);
+  border-bottom: 1px solid var(--ob-border);
+}
+
+.onframe-commerce-direct-discount-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.onframe-commerce-direct-discount-head h2 {
+  margin: 0;
+  color: var(--ob-ink-strong);
+  font: var(--ob-w-bold) 18px/1.2 var(--ob-font);
+}
+
+.onframe-commerce-direct-discount-head > div > span {
+  color: var(--ob-ink-soft);
+  font: 400 11px/1.35 var(--ob-font);
+}
+
+.onframe-commerce-direct-discount-body {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: var(--ob-gap-md);
+  padding: var(--ob-s-5);
+  overflow-y: auto;
+}
+
+.onframe-commerce-direct-discount-body > .onframe-commerce-notice {
+  margin: 0;
+}
+
+.onframe-commerce-direct-discount-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--ob-gap-md);
+}
+
+.onframe-commerce-direct-discount .onframe-commerce-field {
+  grid-template-rows: 14px 44px minmax(14px, auto);
+}
+
+.onframe-commerce-direct-discount .ob-field-shell > .ob-field-input,
+.onframe-commerce-direct-discount .ob-field-shell > .ob-field-input:focus,
+.onframe-commerce-direct-discount .ob-field-shell > .ob-field-input:focus-visible {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  appearance: none;
+}
+
+.onframe-commerce-direct-discount-date-range {
+  position: relative;
+}
+
+.onframe-commerce-direct-discount-date-range-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--ob-gap-md);
+}
+
+.onframe-commerce-direct-discount-date-range .onframe-commerce-datepicker {
+  width: min(300px, calc(100vw - 72px));
+}
+
+.onframe-commerce-direct-discount-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--ob-gap-sm);
+  padding: var(--ob-s-3) var(--ob-s-5);
+  border-top: 1px solid var(--ob-border);
+  background: var(--ob-bg-alt);
+}
+
+.onframe-commerce-direct-discount-summary {
+  display: grid;
+  min-height: 88px;
+  gap: var(--ob-gap-sm);
+  padding: var(--ob-s-3);
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-surface);
+  background: var(--ob-surface);
+}
+
+.onframe-commerce-direct-discount-summary.warn {
+  border-color: color-mix(in srgb, var(--ob-danger) 40%, var(--ob-border));
+}
+
+.onframe-commerce-direct-discount-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 42px;
+  overflow: hidden;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-control);
+}
+
+.onframe-commerce-direct-discount-summary-grid > * + * {
+  border-left: 1px solid var(--ob-border);
+}
+
+.onframe-commerce-direct-discount-summary-grid .onframe-commerce-promotion-estimate-summary-metric {
+  align-content: center;
+  padding: var(--ob-s-2) var(--ob-s-3);
+}
+
+.onframe-commerce-direct-discount-summary-message {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  margin: 0;
+  padding: 0 var(--ob-s-3);
+  border-radius: var(--ob-r-control);
+  background: var(--ob-bg-alt);
+  color: var(--ob-fg-soft);
+  font: var(--ob-w-regular) 12px/1.4 var(--ob-font);
+}
+
+.onframe-commerce-direct-discount-summary.warn .onframe-commerce-direct-discount-summary-message {
+  background: var(--ob-danger-bg);
+  color: var(--ob-danger);
+}
+
+.onframe-commerce-direct-discount-summary-skeleton {
+  min-height: 42px;
+  background: var(--ob-bg-alt);
+  animation: onframe-commerce-skeleton 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes onframe-commerce-skeleton {
+  to { opacity: 0.55; }
 }
 
 .onframe-commerce-promotion-filter-panel {
@@ -2140,6 +2345,46 @@
 
   .onframe-commerce-promotion-search {
     flex-basis: 100%;
+  }
+
+  .onframe-commerce-direct-discount-trigger {
+    flex: 1 1 auto;
+  }
+
+  .onframe-commerce-direct-discount-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .onframe-commerce-direct-discount {
+    width: 100%;
+    max-height: calc(100vh - var(--ob-s-4));
+    border-radius: var(--ob-r-overlay) var(--ob-r-overlay) 0 0;
+  }
+
+  .onframe-commerce-direct-discount-head,
+  .onframe-commerce-direct-discount-body {
+    padding: var(--ob-s-4);
+  }
+
+  .onframe-commerce-direct-discount-grid,
+  .onframe-commerce-direct-discount-date-range-fields,
+  .onframe-commerce-direct-discount-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .onframe-commerce-direct-discount-summary-grid > * + * {
+    border-top: 1px solid var(--ob-border);
+    border-left: 0;
+  }
+
+  .onframe-commerce-direct-discount-actions {
+    justify-content: stretch;
+    padding: var(--ob-s-3) var(--ob-s-4);
+  }
+
+  .onframe-commerce-direct-discount-actions .ob-button {
+    flex: 1 1 140px;
   }
 
 }

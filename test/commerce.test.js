@@ -181,6 +181,15 @@ test('commerce model permite remover desconto direto sem campos extras', () => {
   });
 });
 
+test('commerce model sincroniza percentual e preco do desconto direto', () => {
+  assert.strictEqual(commerceModel.parsePercentageInput('15,5'), 15.5);
+  assert.strictEqual(commerceModel.parsePercentageInput('0'), null);
+  assert.strictEqual(commerceModel.parsePercentageInput('100'), null);
+  assert.strictEqual(commerceModel.calculateDiscountedPrice(220.9, '15,5'), 186.66);
+  assert.strictEqual(commerceModel.calculateDiscountPercentage(220.9, 186.66), 15.5);
+  assert.strictEqual(commerceModel.calculateDiscountPercentage(220.9, 220.9), null);
+});
+
 test('commerce model bloqueia preco promocional fora da faixa conhecida', () => {
   const payload = commerceModel.buildOfferPayload({
     type: 'DEAL',
@@ -245,6 +254,9 @@ test('promocoes usam datepicker OnFrame em vez do calendario nativo', () => {
   assert.strictEqual(source.includes('type="date"'), false);
   assert.match(source, /onframe-commerce-datepicker/);
   assert.match(source, /data-date-display/);
+  assert.match(source, /data-direct-discount-date-range-display/);
+  assert.match(source, /function buildDirectDiscountDateRangePickerMarkup/);
+  assert.match(source, /data-action="date-range-clear"/);
   assert.strictEqual(icons.resolve('calendar'), 'calendar');
 });
 
@@ -309,7 +321,74 @@ test('modal de promocoes preserva posicao ao revisar oferta', () => {
 
   assert.match(source, /restoreModalPosition/);
   assert.match(source, /promotionFocusKey/);
+  assert.match(source, /contentScrollTop/);
+  assert.match(source, /onframe-commerce-modal-content/);
+  assert.match(source, /state\.modalPositionFrame = requestAnimationFrame/);
+  assert.match(source, /function cancelModalPositionRestore/);
+  assert.match(source, /card\.contains\(next\)/);
+  assert.match(source, /state\.datePickerRoot/);
   assert.match(source, /data-entry-key/);
+});
+
+test('modal cria desconto direto em dialogo separado da tabela', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const directDiscountSource = source.slice(source.indexOf('function buildDirectDiscountModal'), source.indexOf('function renderDirectDiscountDateRange'));
+
+  assert.match(source, /function renderDirectDiscountModal/);
+  assert.match(source, /function buildDirectDiscountModal/);
+  assert.match(source, /Criar desconto por porcentagem/);
+  assert.match(source, /onframe-commerce-direct-discount-modal-root/);
+  assert.match(source, /onframe-commerce-direct-discount-overlay/);
+  assert.match(source, /state\.promotionModalOpen = false;\s*state\.directDiscountModalOpen = true;/s);
+  assert.match(source, /state\.directDiscountModalOpen = false;\s*state\.promotionModalOpen = true;/s);
+  assert.match(source, /data-action="open-direct-discount"/);
+  assert.match(source, /function buildDirectDiscountDraftEntry/);
+  assert.match(source, /function ensureDirectDiscountDraft/);
+  assert.match(source, /data-direct-discount-field="percentage"/);
+  assert.match(source, /function saveDirectDiscountPercentageDraft/);
+  assert.match(source, /function syncDirectDiscountFromPrice/);
+  assert.match(directDiscountSource, /renderPromotionEstimate\(key, 'direct'\)/);
+  assert.match(directDiscountSource, /Criar desconto/);
+  assert.match(directDiscountSource, /ob-field-shell/);
+  assert.match(directDiscountSource, /ob-field-help/);
+  assert.match(directDiscountSource, /ob-field-suffix/);
+  assert.match(directDiscountSource, /<button class="ob-button secondary"[\s\S]*Cancelar[\s\S]*<button class="ob-button primary"/);
+  assert.doesNotMatch(directDiscountSource, />Período</);
+  assert.doesNotMatch(directDiscountSource, /Revisar desconto/);
+  assert.doesNotMatch(directDiscountSource, /cancel-promotion-confirm/);
+  assert.match(source, /if \(!confirming && !entry\.direct_discount_draft\)/);
+  assert.match(source, /function renderDirectDiscountDateRange/);
+  assert.match(source, /function selectDirectDiscountDateRange/);
+  assert.match(source, /function positionDirectDiscountDateRangePicker/);
+  assert.match(source, /onframe-commerce-datepicker-floating/);
+  assert.match(source, /applyDirectDiscountDateRange\(range, start\.value, iso\);[\s\S]{0,80}removeDatePicker\(\);/);
+  assert.match(source, /date-range-clear/);
+  assert.doesNotMatch(source.slice(source.indexOf('function buildDirectDiscountDateRangePickerMarkup'), source.indexOf('function selectDirectDiscountDateRange')), /Hoje/);
+  assert.match(source, /function promotionDraftWarning/);
+  assert.match(source, /const draftWarning = promotionDraftWarning\(entry, values\);/);
+  assert.match(source, /groups\.activeOffers,[\s\S]*groups\.scheduledOffers[\s\S]*\.flat\(\)\.find\(isPriceDiscountPromotion\)/);
+  assert.doesNotMatch(source, /status: 'candidate',[\s\S]{0,300}type: 'PRICE_DISCOUNT'/);
+  assert.match(styles, /\.onframe-commerce-direct-discount\s*{[\s\S]{0,240}display: flex/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount\s*{[\s\S]{0,180}width: min\(720px, calc\(100vw - 32px\)\)/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-overlay\s*{\s*position: fixed !important/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-grid\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount \.onframe-commerce-field\s*{\s*grid-template-rows: 14px 44px minmax\(14px, auto\)/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount \.ob-field-shell > \.ob-field-input:focus-visible[\s\S]*?border: 0;[\s\S]*?outline: 0;[\s\S]*?box-shadow: none;/);
+  assert.match(styles, /\.onframe-commerce-direct-discount-summary\s*{[\s\S]*min-height: 88px/s);
+  assert.match(styles, /\.onframe-commerce-date-day\.in-range/);
+  assert.match(styles, /\.onframe-commerce-datepicker-range .onframe-commerce-datepicker-foot/);
+});
+
+test('filtro de promocoes fecha fora do painel e antes do desconto direto', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const directDiscountSource = source.slice(source.indexOf('function openDirectDiscountForm'), source.indexOf('function closePromotionModal'));
+
+  assert.match(source, /onframe-commerce-promotion-filter-wrap/);
+  assert.match(source, /if \(state\.promotionFiltersOpen && state\.modalRoot\)/);
+  assert.match(source, /!filterWrap \|\| !filterWrap\.contains\(event\.target\)/);
+  assert.match(source, /if \(state\.promotionFiltersOpen\) \{\s*state\.promotionFiltersOpen = false;\s*rerenderModal\(\);\s*return;/s);
+  assert.match(directDiscountSource, /state\.promotionFiltersOpen = false;/);
 });
 
 test('modal de promocoes mostra revisao de custos na lista continua antes de aplicar oferta', () => {
@@ -337,6 +416,8 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /function renderPromotionListControls/);
   assert.match(source, /function renderPromotionListRow/);
   assert.match(source, /onframe-commerce-promotion-table/);
+  assert.match(styles, /\.onframe-commerce-modal-head\s*\{\s*height: auto;\s*max-height: none;\s*margin-bottom: var\(--ob-gap-md\);/s);
+  assert.match(styles, /\.onframe-commerce-modal-head\s*\{\s*display: flex;\s*flex: 0 0 auto;/s);
   assert.match(source, /Buscar promoção ou cupom/);
   assert.match(source, /Filtros/);
   assert.doesNotMatch(source, /function renderPromotionConfirmFacts/);
@@ -427,17 +508,19 @@ test('modal de promocoes diferencia cupons, descontos por pagamento e campanhas 
 test('campo de preco promocional valida faixa localmente', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
 
   assert.match(source, /function promotionPriceFieldValidation/);
   assert.match(source, /function updatePromotionPriceFieldFeedback/);
   assert.match(source, /help\.textContent = validation\.message/);
   assert.match(source, /Preço máximo:/);
-  assert.match(source, /Preço dentro da faixa permitida/);
+  assert.doesNotMatch(source, /Preço dentro da faixa permitida/);
   assert.doesNotMatch(source, /Preço mínimo:/);
   assert.doesNotMatch(source, /function promotionPriceBounds/);
   assert.doesNotMatch(source, /renderMetaChip\('Faixa'/);
-  assert.match(styles, /\.onframe-commerce-field\.warn input/);
+  assert.match(styles, /\.onframe-commerce-field\.warn > input/);
   assert.match(styles, /\.onframe-commerce-field-help/);
+  assert.match(components, /\.ob-field-shell\.is-error/);
   assert.match(styles, /\.onframe-commerce-form-grid\s*{\s*display: grid;\s*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
 });
 

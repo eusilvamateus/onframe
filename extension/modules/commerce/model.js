@@ -136,6 +136,26 @@
     return Number.isFinite(amount) && amount > 0 ? roundMoney(amount) : null;
   }
 
+  function parsePercentageInput(value) {
+    const percentage = parseMoneyInput(value);
+    if (percentage === null || percentage <= 0 || percentage >= 100) return null;
+    return roundPercentage(percentage);
+  }
+
+  function calculateDiscountedPrice(basePrice, percentage) {
+    const base = moneyAmount(basePrice);
+    const discount = parsePercentageInput(percentage);
+    if (!base || discount === null) return null;
+    return roundMoney(base * (1 - discount / 100));
+  }
+
+  function calculateDiscountPercentage(basePrice, dealPrice) {
+    const base = moneyAmount(basePrice);
+    const price = moneyAmount(dealPrice);
+    if (!base || !price || price >= base) return null;
+    return roundPercentage((1 - price / base) * 100);
+  }
+
   function currentOfferCount(entries) {
     const offers = list(entries).filter((entry) => !isStackablePromotion(entry));
     const current = offers.filter((entry) => entry && (entry.is_current_price === true || entry.display_status === 'active')).length;
@@ -377,6 +397,10 @@
     return Math.round(Number(value) * 100) / 100;
   }
 
+  function roundPercentage(value) {
+    return Math.round(Number(value) * 100) / 100;
+  }
+
   function list(value) {
     return Array.isArray(value) ? value : [];
   }
@@ -385,6 +409,8 @@
     buildOfferDeletePayload,
     buildOfferPayload,
     buildOfferUpdatePayload,
+    calculateDiscountedPrice,
+    calculateDiscountPercentage,
     canEstimatePromotion,
     canCreateOffer,
     canDeleteOffer,
@@ -400,6 +426,7 @@
     getPromotionState,
     getUserFields,
     isSellerWidePromotion,
+    parsePercentageInput,
     parseMoneyInput
   };
 });
