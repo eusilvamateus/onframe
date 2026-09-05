@@ -7,7 +7,7 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (root) {
   const ICONS = Object.freeze({
-    refresh: 'arrows-clockwise',
+    refresh: 'arrow-clockwise',
     reload: 'arrow-clockwise',
     search: 'magnifying-glass',
     sliders: 'sliders-horizontal',

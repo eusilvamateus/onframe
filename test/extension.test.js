@@ -635,6 +635,8 @@ test('icons usam classes phosphor e nao svg manual', () => {
 
   assert.strictEqual(source.includes('<path'), false);
   assert.strictEqual(source.includes('<svg'), false);
+  assert.strictEqual(icons.resolve('refresh'), 'arrow-clockwise');
+  assert.strictEqual(Object.values(icons.names).includes('arrows-clockwise'), false);
   assert.match(components, /\.ob-icon\s*\{[^}]*place-items:\s*center/s);
   assert.match(components, /\.ob-icon\s+\.ph::before\s*\{[^}]*line-height:\s*1/s);
 
