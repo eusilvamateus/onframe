@@ -487,6 +487,13 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(styles, /\.onframe-commerce-popover-fee-reduction\s*{[\s\S]*color: var\(--ob-green-700\)/);
   assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-condition-list\s*{\s*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-campaign-field \+ \.onframe-commerce-popover-campaign-field/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-field \+ \.onframe-commerce-popover-price-field/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-scenario > div \+ div/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-scenario > div:nth-child/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-(?:campaign|price)-field:nth-child/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-fee-reduction\s*{[^}]*border-top:/s);
+  assert.match(styles, /\.onframe-commerce-popover-root \.onframe-commerce-popover-campaign-field small,[\s\S]*font-family: var\(--ob-font-mono\) !important;/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.onframe-commerce-popover-campaign-grid\s*{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
@@ -601,6 +608,9 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
   assert.match(styles, /\.onframe-commerce-modal\s*{[^}]*height: min\(780px, calc\(100vh - 36px\)\)[^}]*display: flex[^}]*overflow: hidden/s);
   assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*flex: 1 1 auto[^}]*min-height: 0[^}]*overflow: auto/s);
+  assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-table \.ob-table-header,[\s\S]*font-family: var\(--ob-font-mono\) !important;/);
+  assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-estimate-summary-metric small,/);
+  assert.match(styles, /\.onframe-commerce-direct-discount-modal-root \.onframe-commerce-promotion-estimate-summary-metric small/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.coupon/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.payment/);
   assert.match(styles, /@media \(max-width: 639px\)/);
