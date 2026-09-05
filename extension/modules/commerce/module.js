@@ -821,10 +821,10 @@
               <div class="onframe-commerce-promotion-list-row-detail">
               ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
               ${renderPromotionReview(key, entry, formOpen, confirm)}
-              ${formOpen ? `<div class="onframe-commerce-promotion-form-actions">
-                <button class="onframe-commerce-btn compact danger" data-action="cancel-promotion-form" type="button">${icon('x', 14)}Descartar alterações</button>
+              ${formOpen || confirm ? `<div class="onframe-commerce-promotion-form-actions${confirm ? ' has-review' : ''}">
+                ${formOpen ? `<button class="onframe-commerce-btn compact danger onframe-commerce-promotion-discard-btn" data-action="cancel-promotion-form" type="button">${icon('trash', 14)}Descartar alterações</button>` : ''}
+                ${confirm ? `<div class="onframe-commerce-promotion-review-actions">${actionMarkup}</div>` : ''}
               </div>` : ''}
-              ${confirm ? `<div class="onframe-commerce-promotion-review-actions">${actionMarkup}</div>` : ''}
               </div>
             </td>
           </tr>

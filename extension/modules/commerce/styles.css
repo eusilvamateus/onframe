@@ -917,6 +917,7 @@
 
 .onframe-commerce-backdrop {
   position: fixed !important;
+  overscroll-behavior: contain;
 }
 
 .onframe-commerce-modal {
@@ -1471,6 +1472,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .onframe-commerce-modal-head-actions {
@@ -1577,6 +1579,7 @@
   padding: var(--ob-s-4);
   background: var(--ob-scrim);
   backdrop-filter: blur(2px);
+  overscroll-behavior: contain;
 }
 
 .onframe-commerce-direct-discount {
@@ -1625,6 +1628,7 @@
   gap: var(--ob-gap-md);
   padding: var(--ob-s-5);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .onframe-commerce-direct-discount-body > .onframe-commerce-notice {
@@ -2069,6 +2073,29 @@
 
 .onframe-commerce-promotion-form-actions {
   justify-content: flex-end;
+  width: 100%;
+}
+
+.onframe-commerce-promotion-form-actions.has-review {
+  justify-content: space-between;
+}
+
+.onframe-commerce-promotion-form-actions .onframe-commerce-promotion-review-actions {
+  flex: none;
+  margin-left: auto;
+}
+
+.onframe-commerce-promotion-discard-btn:hover:not(:disabled),
+.onframe-commerce-promotion-discard-btn:focus-visible {
+  border-color: var(--ob-danger);
+  background: var(--ob-danger);
+  color: var(--ob-fg-on-color);
+  box-shadow: var(--ob-shadow-sm);
+}
+
+.onframe-commerce-promotion-discard-btn:focus-visible {
+  outline: 2px solid var(--ob-focus-ring);
+  outline-offset: 2px;
 }
 
 .onframe-commerce-promotion-list-row-detail {
@@ -2254,6 +2281,18 @@
 
   .onframe-commerce-promotion-row-actions-content {
     justify-content: flex-start;
+  }
+
+  .onframe-commerce-promotion-form-actions.has-review {
+    flex-wrap: wrap;
+  }
+
+  .onframe-commerce-promotion-form-actions.has-review .onframe-commerce-promotion-discard-btn {
+    flex: 1 1 100%;
+  }
+
+  .onframe-commerce-promotion-form-actions.has-review .onframe-commerce-promotion-review-actions {
+    width: 100%;
   }
 
   .onframe-commerce-promotion-list-detail-cell {

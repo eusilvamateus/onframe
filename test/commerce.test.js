@@ -405,8 +405,12 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /data-action="cancel-promotion-form"/);
   assert.match(source, /onframe-commerce-btn compact danger/);
   assert.match(source, /Descartar alterações/);
+  assert.match(source, /onframe-commerce-promotion-discard-btn" data-action="cancel-promotion-form" type="button">\$\{icon\('trash', 14\)\}Descartar alterações/);
+  assert.match(source, /onframe-commerce-promotion-form-actions\$\{confirm \? ' has-review' : ''\}[\s\S]*onframe-commerce-promotion-review-actions/);
   assert.match(source, /function cancelPromotionForm/);
   assert.match(source, /delete state\.promotionDraftValues\[key\]/);
+  assert.match(styles, /\.onframe-commerce-promotion-form-actions\.has-review\s*{\s*justify-content: space-between;/s);
+  assert.match(styles, /\.onframe-commerce-promotion-discard-btn:hover:not\(:disabled\),[\s\S]*background: var\(--ob-danger\);[\s\S]*color: var\(--ob-fg-on-color\);/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
   assert.match(source, /function reviewPromotionFieldDraft/);
   assert.match(source, /function shouldReviewPromotionFieldOnBlur/);
@@ -608,6 +612,8 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
   assert.match(styles, /\.onframe-commerce-modal\s*{[^}]*height: min\(780px, calc\(100vh - 36px\)\)[^}]*display: flex[^}]*overflow: hidden/s);
   assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*flex: 1 1 auto[^}]*min-height: 0[^}]*overflow: auto/s);
+  assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*overscroll-behavior: contain;/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-body\s*{[^}]*overscroll-behavior: contain;/s);
   assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-table \.ob-table-header,[\s\S]*font-family: var\(--ob-font-mono\) !important;/);
   assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-estimate-summary-metric small,/);
   assert.match(styles, /\.onframe-commerce-direct-discount-modal-root \.onframe-commerce-promotion-estimate-summary-metric small/);
