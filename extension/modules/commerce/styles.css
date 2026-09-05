@@ -107,12 +107,16 @@
 
 .onframe-commerce-popover-campaign {
   margin: 0 0 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .onframe-commerce-popover-campaign-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.4fr) minmax(0, .85fr) minmax(0, .9fr);
+}
+
+.onframe-commerce-popover-campaign-grid.with-benefit {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1.4fr) minmax(0, .85fr) minmax(0, .9fr) minmax(0, 1.25fr);
 }
 
 .onframe-commerce-popover-campaign-field {
@@ -131,15 +135,31 @@
   text-transform: uppercase;
 }
 
+.onframe-commerce-popover-campaign-field small,
+.onframe-commerce-popover-price-field small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .onframe-commerce-popover-campaign-field > strong {
   color: var(--ob-ink-strong);
   font: 700 12px/1.25 var(--ob-font);
   overflow-wrap: anywhere;
 }
 
-.onframe-commerce-popover-campaign-field.period > span:not(.ob-badge) {
+.onframe-commerce-popover-campaign-field .onframe-commerce-compact-tooltip > strong {
+  color: var(--ob-ink-strong);
+  font: 700 12px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-popover-campaign-field.period > .onframe-commerce-compact-tooltip > strong {
   color: var(--ob-ink-soft);
   font: 600 11px/1.3 var(--ob-font);
+}
+
+.onframe-commerce-popover-campaign-field.financial > .onframe-commerce-compact-tooltip > strong {
+  color: var(--ob-green-700);
 }
 
 .onframe-commerce-popover-campaign-field .ob-badge {
@@ -152,23 +172,6 @@
 .onframe-commerce-popover-campaign-field .ob-badge::before {
   width: 5px;
   height: 5px;
-}
-
-.onframe-commerce-popover-fee-reduction {
-  display: grid;
-  gap: 8px;
-  padding: 8px 12px;
-  color: var(--ob-green-700);
-  font: 600 11px/1.35 var(--ob-font);
-}
-
-.onframe-commerce-popover-fee-reduction > div {
-  display: grid;
-  gap: 2px;
-}
-
-.onframe-commerce-popover-fee-reduction strong {
-  font-weight: 800;
 }
 
 .onframe-commerce-popover-conditions {
@@ -267,7 +270,7 @@
 
 .onframe-commerce-popover-price-card {
   margin: 0 0 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .onframe-commerce-popover-price-edit-card {
@@ -294,12 +297,27 @@
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
 }
 
+.onframe-commerce-popover-price-grid.with-benefit {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.28fr);
+}
+
 .onframe-commerce-popover-price-field {
   display: grid;
   align-content: start;
   gap: 4px;
   min-width: 0;
   padding: 10px 12px;
+}
+
+.onframe-commerce-popover-price-field.with-transition {
+  gap: 2px;
+}
+
+.onframe-commerce-popover-price-field.with-transition > strong {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .onframe-commerce-popover-price-field small,
@@ -316,6 +334,28 @@
   overflow-wrap: anywhere;
 }
 
+.onframe-commerce-compact-tooltip {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.onframe-commerce-compact-tooltip > strong {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onframe-commerce-compact-tooltip .ob-tooltip-content {
+  width: max-content;
+  max-width: 240px;
+  text-align: left;
+  white-space: normal;
+}
+
 .onframe-commerce-popover-price-transition {
   color: var(--ob-ink-soft);
   font: 500 10px/1.25 var(--ob-font);
@@ -324,6 +364,10 @@
 .onframe-commerce-popover-price-transition s {
   color: var(--ob-ink-strong);
   text-decoration-color: currentColor;
+}
+
+.onframe-commerce-popover-price-transition-prefix {
+  font: 600 10px/1.25 var(--ob-font);
 }
 
 .onframe-commerce-popover-price-field.primary strong {

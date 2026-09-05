@@ -269,9 +269,9 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /function renderPriceSummary/);
   assert.match(source, /function priceSnapshot/);
   assert.match(source, /function priceSummaryCosts/);
-  assert.match(source, /function renderPriceSummaryBonus/);
+  assert.match(source, /function renderCompactPopoverTooltip/);
   assert.match(source, /class="ob-card onframe-commerce-popover-price-card"/);
-  assert.match(source, /class="onframe-commerce-popover-price-grid"/);
+  assert.match(source, /class="onframe-commerce-popover-price-grid\$\{fields\.length >= 5 \? ' with-benefit' : ''\}"/);
   assert.match(source, /function renderPriceEdit/);
   assert.match(source, /class="ob-card onframe-commerce-popover-price-edit-card"/);
   assert.match(source, /class="onframe-commerce-popover-price-edit-field"/);
@@ -283,7 +283,8 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.doesNotMatch(source, /function renderPriceReference/);
   assert.match(source, /Preço promocional/);
   assert.match(source, /originalPrice/);
-  assert.match(source, /De <s>\$\{escapeHtml\(field\.originalPrice\)\}<\/s> por/);
+  assert.match(source, /De <s>\$\{escapeHtml\(field\.originalPrice\)\}<\/s><\/span>/);
+  assert.match(source, /onframe-commerce-popover-price-transition-prefix">por<\/span>/);
   assert.doesNotMatch(source, /priceMeta/);
   assert.match(source, /Você recebe/);
   assert.match(source, /Comissão/);
@@ -296,7 +297,10 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /onframe-commerce-popover-price-scenario/);
   assert.doesNotMatch(source, /formatBenefitValue/);
   assert.match(source, /join\(' · '\)/);
+  assert.match(source, /function formatPromotionBenefitValue\(amountText, percentageText\)/);
+  assert.match(source, /return `\$\{amountText\} \(\$\{percentageText\}\)`;/);
   assert.match(source, /Reduzimos \$\{benefit\} nas suas tarifas por venda/);
+  assert.match(source, /compactPromotionBenefitLabel/);
   assert.match(source, /Custos/);
   assert.strictEqual(source.includes('onframe-commerce-price-secondary'), false);
   assert.doesNotMatch(source, /label: 'Preço base'/);
@@ -310,6 +314,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(styles, /\.onframe-commerce-popover-price-edit-card/);
   assert.match(styles, /\.onframe-commerce-popover-price-grid\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-price-transition s\s*{\s*color: var\(--ob-ink-strong\)/s);
+  assert.match(styles, /\.onframe-commerce-popover-price-field\.with-transition > strong\s*{\s*display: flex;[\s\S]*white-space: nowrap;/);
   assert.match(styles, /\.onframe-commerce-popover-price-scenario\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-review-grid > span/);
   assert.doesNotMatch(styles, /\.onframe-commerce-(?:cost-grid|promo-metrics|estimate-grid|meta|review-grid) span\b/);
@@ -461,7 +466,7 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.doesNotMatch(source, /if \(targetPrice\) facts\.push\(\{ label: 'Preço final'/);
   assert.doesNotMatch(source, /promotionBenefitMetrics\(entry, \{ includeAmount: true, basePrice: targetPrice \}\)/);
   assert.match(source, /function promotionFinancialMetrics/);
-  assert.match(source, /metric\.kind !== 'fee-reduction'/);
+  assert.match(source, /metric\.kind === 'meli-contribution' \|\| metric\.kind === 'fee-reduction'/);
   assert.doesNotMatch(source, /Impacto estimado/);
   assert.doesNotMatch(source, /Prévia de custos/);
   assert.doesNotMatch(source, /function estimateDataForKey/);
@@ -519,8 +524,9 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(source, /icon\('ticket', 14\)/);
   assert.match(source, /icon\('creditCard', 14\)/);
   assert.match(styles, /\.onframe-commerce-popover-root\.promotions,\s*\.onframe-commerce-popover-root\.price-summary\s*{\s*width: min\(560px/s);
-  assert.match(styles, /\.onframe-commerce-popover-campaign-grid\s*{\s*display: grid[\s\S]*grid-template-columns: minmax\(0, 1\.45fr\)/);
-  assert.match(styles, /\.onframe-commerce-popover-fee-reduction\s*{[\s\S]*color: var\(--ob-green-700\)/);
+  assert.match(styles, /\.onframe-commerce-popover-campaign-grid\.with-benefit\s*{\s*grid-template-columns: minmax\(0, 1\.45fr\)[\s\S]*minmax\(0, 1\.25fr\)/);
+  assert.match(styles, /\.onframe-commerce-popover-price-grid\.with-benefit\s*{\s*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\) minmax\(0, 1\.28fr\)/s);
+  assert.match(styles, /\.onframe-commerce-compact-tooltip \.ob-tooltip-content\s*{[\s\S]*white-space: normal;/);
   assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-condition-list\s*{\s*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-campaign-field \+ \.onframe-commerce-popover-campaign-field/);
@@ -528,7 +534,7 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-scenario > div \+ div/);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-scenario > div:nth-child/);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-(?:campaign|price)-field:nth-child/);
-  assert.doesNotMatch(styles, /\.onframe-commerce-popover-fee-reduction\s*{[^}]*border-top:/s);
+  assert.doesNotMatch(styles, /\.onframe-commerce-popover-fee-reduction/);
   assert.match(styles, /\.onframe-commerce-popover-root \.onframe-commerce-popover-campaign-field small,[\s\S]*font-family: var\(--ob-font-mono\) !important;/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.onframe-commerce-popover-campaign-grid\s*{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });

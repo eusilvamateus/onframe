@@ -1677,16 +1677,17 @@
       const period = formatPromotionPeriodShort(entry) || 'Sem vigência informada';
       const status = promotionDisplayStatusLabel(entry);
       const tone = promotionDisplayTone(entry);
+      const financialBenefit = renderPromotionPopoverFinancialBenefits(entry);
       return `
         <section class="ob-card onframe-commerce-popover-campaign">
-          <div class="onframe-commerce-popover-campaign-grid">
+          <div class="onframe-commerce-popover-campaign-grid${financialBenefit ? ' with-benefit' : ''}">
             <div class="onframe-commerce-popover-campaign-field name">
               <small>Promoção</small>
               <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
             </div>
             <div class="onframe-commerce-popover-campaign-field period">
               <small>Estado e vigência</small>
-              <span>${escapeHtml(period)}</span>
+              ${renderCompactPopoverTooltip(period, period, 'campaign-period', true)}
               <span class="ob-badge ${escapeAttribute(tone)}">${escapeHtml(status)}</span>
             </div>
             <div class="onframe-commerce-popover-campaign-field">
@@ -1697,8 +1698,8 @@
               <small>Preço final</small>
               <strong>${finalPrice ? escapeHtml(CommerceModel.formatMoney(finalPrice, itemCurrency())) : '—'}</strong>
             </div>
+            ${financialBenefit}
           </div>
-          ${renderPromotionPopoverFinancialBenefits(entry)}
         </section>
       `;
     }
@@ -1720,16 +1721,22 @@
       const benefits = promotionFinancialMetrics(entry, { originalPrice: promotionSummaryOriginalPrice(entry) })
         .filter((metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction');
       if (!benefits.length) return '';
+      const primary = benefits[0];
+      const description = benefits
+        .map((metric) => promotionFinancialListText(metric))
+        .filter(Boolean)
+        .join(' ');
       return `
-        <div class="onframe-commerce-popover-fee-reduction">
-          ${benefits.map((metric) => `
-            <div>
-              <strong>${escapeHtml(metric.label)}</strong>
-              <span>${escapeHtml(metric.copy || metric.value)}</span>
-            </div>
-          `).join('')}
+        <div class="onframe-commerce-popover-campaign-field financial ${escapeAttribute(primary.tone || '')}">
+          <small>${escapeHtml(compactPromotionBenefitLabel(primary))}</small>
+          ${renderCompactPopoverTooltip(primary.value, description, `campaign-benefit-${primary.kind}`)}
         </div>
       `;
+    }
+
+    function compactPromotionBenefitLabel(metric) {
+      if (!metric) return 'Redução de tarifa';
+      return metric.kind === 'fee-reduction' ? 'Bônus ML' : 'Redução de tarifa';
     }
 
     function renderPromotionPopoverCouponList(entries) {
@@ -2014,13 +2021,12 @@
     function renderPriceSummary(summary, priceState) {
       const snapshot = priceSnapshot(summary, priceState);
       const costs = priceSummaryCosts(summary);
+      const fields = [snapshot].concat(costs.fields);
       return `
         <section class="ob-card onframe-commerce-popover-price-card">
-          <div class="onframe-commerce-popover-price-grid">
-            ${renderPriceSummaryField(snapshot)}
-            ${costs.fields.map(renderPriceSummaryField).join('')}
+          <div class="onframe-commerce-popover-price-grid${fields.length >= 5 ? ' with-benefit' : ''}">
+            ${fields.map(renderPriceSummaryField).join('')}
           </div>
-          ${renderPriceSummaryBonus(costs.feeReduction)}
         </section>
       `;
     }
@@ -2048,7 +2054,7 @@
       const fields = [];
       const financial = breakdown && breakdown.promotion_financial ? breakdown.promotion_financial : null;
       const feeReduction = breakdown && breakdown.fee_reduction ? breakdown.fee_reduction : financial && financial.fee_reduction || null;
-      if (!breakdown) return { fields, feeReduction: null };
+      if (!breakdown) return { fields };
 
       const commission = breakdown.commission || null;
       const shipping = breakdown.shipping || null;
@@ -2063,33 +2069,53 @@
       if (shipping && moneyOrNull(shipping.amount) !== null) {
         fields.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
       }
-      promotionFinancialMetrics(financial).filter((metric) => metric.kind !== 'fee-reduction').forEach((metric) => fields.push(metric));
-      return { fields, feeReduction };
+      const benefits = promotionFinancialMetrics(financial)
+        .filter((metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction');
+      if (feeReduction) {
+        const benefit = buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, currency, 'fee-reduction');
+        if (benefit.value && !benefits.some((metric) => metric.kind === benefit.kind && metric.value === benefit.value)) benefits.push(benefit);
+      }
+      if (benefits.length) {
+        const primary = benefits[0];
+        fields.push({
+          label: compactPromotionBenefitLabel(primary),
+          value: primary.value,
+          tone: primary.tone,
+          description: benefits.map((metric) => promotionFinancialListText(metric)).filter(Boolean).join(' ')
+        });
+      }
+      return { fields };
     }
 
     function renderPriceSummaryField(field) {
       if (!field || !field.label || !field.value) return '';
       return `
-        <div class="onframe-commerce-popover-price-field ${escapeAttribute(field.tone || '')}">
+        <div class="onframe-commerce-popover-price-field ${escapeAttribute(field.tone || '')}${field.originalPrice ? ' with-transition' : ''}">
           <small>${escapeHtml(field.label)}</small>
-          ${field.originalPrice ? `<span class="onframe-commerce-popover-price-transition">De <s>${escapeHtml(field.originalPrice)}</s> por</span>` : ''}
-          <strong>${escapeHtml(field.value)}</strong>
+          ${field.originalPrice ? `
+            <span class="onframe-commerce-popover-price-transition">De <s>${escapeHtml(field.originalPrice)}</s></span>
+            <strong><span class="onframe-commerce-popover-price-transition-prefix">por</span>${escapeHtml(field.value)}</strong>
+          ` : renderCompactPopoverTooltip(field.value, field.description || '', `price-${field.label}`)}
         </div>
       `;
     }
 
-    function renderPriceSummaryBonus(feeReduction) {
-      if (!feeReduction) return '';
-      const benefit = buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, itemCurrency(), 'fee-reduction');
-      if (!benefit.value) return '';
+    function renderCompactPopoverTooltip(value, description, key, force = false) {
+      const text = String(value || '—');
+      const tooltipText = String(description || '').trim();
+      if (!tooltipText || (!force && tooltipText === text)) return `<strong>${escapeHtml(text)}</strong>`;
+      const tooltipId = compactPopoverTooltipId(key);
       return `
-        <div class="onframe-commerce-popover-fee-reduction">
-          <div>
-            <strong>${escapeHtml(benefit.label)}</strong>
-            <span>${escapeHtml(benefit.copy || benefit.value)}</span>
-          </div>
-        </div>
+        <span class="ob-tooltip onframe-commerce-compact-tooltip" data-placement="bottom" tabindex="0" aria-describedby="${escapeAttribute(tooltipId)}">
+          <strong>${escapeHtml(text)}</strong>
+          <span class="ob-tooltip-content" id="${escapeAttribute(tooltipId)}" role="tooltip">${escapeHtml(tooltipText)}<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
+        </span>
       `;
+    }
+
+    function compactPopoverTooltipId(key) {
+      const safeKey = String(key || 'metric').toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+      return `onframe-commerce-${safeKey}-tooltip`;
     }
 
     function renderPriceStackableScenarios(summary) {
@@ -2322,7 +2348,15 @@
 
     function buildPromotionBenefitMetric(label, amount, percentage, currency, kind) {
       const metric = buildFinancialMetric(label, amount, percentage, currency, 'green', kind);
-      return Object.assign(metric, { copy: formatPromotionBenefitCopy(metric) });
+      return Object.assign(metric, {
+        value: formatPromotionBenefitValue(metric.amountText, metric.percentageText),
+        copy: formatPromotionBenefitCopy(metric)
+      });
+    }
+
+    function formatPromotionBenefitValue(amountText, percentageText) {
+      if (amountText && percentageText) return `${amountText} (${percentageText})`;
+      return amountText || percentageText;
     }
 
     function formatPromotionBenefitCopy(metric) {
