@@ -41,6 +41,22 @@ const {
   buildBulkPreview,
   commitBulkAction
 } = require('../service/src/bulk-actions');
+const { createSummaryController } = require('../extension/modules/commerce/summary-controller');
+
+test('summary controller isola falhas parciais dos resumos comerciais', async () => {
+  const controller = createSummaryController({
+    api: async (path) => {
+      if (path === '/price') return { amount: 100 };
+      throw new Error('promo indisponivel');
+    },
+    toUserError: (err) => err.message
+  });
+
+  assert.deepStrictEqual(await controller.load({ price: '/price', promotions: '/promotions' }), {
+    price: { value: { amount: 100 }, error: '' },
+    promotions: { value: null, error: 'promo indisponivel' }
+  });
+});
 
 test('commerce model resume estado de preco e bloqueios', () => {
   const editable = commerceModel.getPriceState({
@@ -261,18 +277,20 @@ test('promocoes usam datepicker OnFrame em vez do calendario nativo', () => {
 });
 
 test('popover de preco resume valores e custos em um card horizontal', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const viewSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'popover-view.js'), 'utf8');
+  const source = `${moduleSource}\n${viewSource}`;
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const pricePopoverSource = source.slice(source.indexOf('function buildPricePopover'), source.indexOf('function renderPriceEdit'));
+  const pricePopoverSource = viewSource.slice(viewSource.indexOf('function buildPrice'), viewSource.indexOf('function buildPromotions'));
 
-  assert.match(pricePopoverSource, /renderPopoverHead\('Preço'\)/);
+  assert.match(pricePopoverSource, /options\.renderHead\('Preço'\)/);
   assert.match(source, /function renderPriceSummary/);
   assert.match(source, /function priceSnapshot/);
   assert.match(source, /function priceSummaryCosts/);
   assert.match(source, /function renderCompactPopoverTooltip/);
   assert.match(source, /class="ob-card onframe-commerce-popover-price-card"/);
   assert.match(source, /class="onframe-commerce-popover-price-grid\$\{fields\.length >= 5 \? ' with-benefit' : ''\}"/);
-  assert.match(source, /function renderPriceEdit/);
+  assert.match(viewSource, /function buildPriceEdit/);
   assert.match(source, /class="ob-card onframe-commerce-popover-price-edit-card"/);
   assert.match(source, /class="onframe-commerce-popover-price-edit-field"/);
   assert.match(source, /class="onframe-commerce-popover-price-edit-bulk"/);
@@ -322,7 +340,10 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
 });
 
 test('listagens reutilizam popovers apenas para anuncios da conta conectada', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const listingSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'listing-surface.js'), 'utf8');
+  const popoverSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'popover-view.js'), 'utf8');
+  const source = `${moduleSource}\n${listingSource}\n${popoverSource}`;
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
 
@@ -331,9 +352,9 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(source, /function extractListingItemId/);
   assert.match(source, /params\.get\('wid'\)/);
   assert.ok(source.includes("if (/\\/p\\/MLB\\d+/i.test(url.pathname)) return null;"));
-  assert.match(source, /IntersectionObserver/);
-  assert.match(source, /state\.listingResolving < 3/);
-  assert.match(source, /pageIdentity: \{ canonicalItemId: itemId \}/);
+  assert.match(listingSource, /IntersectionObserver/);
+  assert.match(listingSource, /resolving < 3/);
+  assert.match(listingSource, /pageIdentity: \{ canonicalItemId: itemId \}/);
   assert.match(source, /onframe-commerce-listing-badge/);
   assert.match(source, /badge\.className = 'ob-badge green onframe-commerce-listing-badge'/);
   assert.match(source, /Seu anúncio/);
@@ -493,14 +514,16 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
 });
 
 test('popover de promocoes separa campanha, reducao de tarifa e cupons globais', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const viewSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'popover-view.js'), 'utf8');
+  const source = `${moduleSource}\n${viewSource}`;
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const popoverSource = source.slice(source.indexOf('function buildPromotionPopover'), source.indexOf('function renderModal'));
+  const popoverSource = viewSource.slice(viewSource.indexOf('function buildPromotions'), viewSource.indexOf('function loading'));
 
-  assert.match(popoverSource, /renderPopoverHead\('Promoções'\)/);
-  assert.match(popoverSource, /renderPromotionPopoverCampaign\(campaign\)/);
-  assert.match(popoverSource, /renderPromotionPopoverCouponList\(coupons\)/);
-  assert.match(popoverSource, /renderPromotionPopoverPaymentList\(paymentBenefits\)/);
+  assert.match(popoverSource, /options\.renderHead\('Promoções'\)/);
+  assert.match(popoverSource, /options\.renderCampaign\(campaign\)/);
+  assert.match(popoverSource, /options\.renderCoupons\(coupons\)/);
+  assert.match(popoverSource, /options\.renderPayments\(paymentBenefits\)/);
   assert.match(source, /classList\.toggle\('promotions', state\.popover === 'promotions'\)/);
   assert.match(source, /classList\.toggle\('price-summary', state\.popover === 'price'\)/);
   assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price';/);

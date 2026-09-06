@@ -14,7 +14,7 @@
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
     "test": "node --test",
-    "test:all": "node --test test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/service.test.js"
+    "test:all": "node --test test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/runtime.test.js test/service.test.js"
   },
   "engines": {
     "node": ">=20"

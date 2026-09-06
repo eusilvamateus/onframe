@@ -7,16 +7,23 @@
   const Shared = services.Shared;
   const Detection = services.Detection;
   const PhotosModel = services.PhotosModel;
+  const PhotosContextController = window.OnFramePhotosContextController;
+  const PhotosDockView = window.OnFramePhotosDockView;
   const api = services.api;
   const toast = services.toast;
   const root = services.root;
+  const hosts = services.hosts;
+  const contextStore = services.contextStore;
+  const contextUpdates = services.contextUpdates;
   const requestPageContextReload = services.requestPageContextReload || (() => Promise.resolve(null));
+  const invalidatePageContext = services.invalidatePageContext || (() => {});
   const escapeHtml = Shared.escapeHtml;
   const escapeAttribute = Shared.escapeAttribute;
   const isProductPageUrl = Detection.isProductPageUrl;
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const EDITOR_MORPH_OPEN_DURATION = 900;
   const EDITOR_MORPH_CLOSE_DURATION = 950;
+  let unsubscribeContext = null;
 
   const state = {
     context: null,
@@ -59,8 +66,27 @@
     qualityDialog: null,
     qualityRequestId: 0
   };
+  const dockView = PhotosDockView.createDockView({
+    state,
+    escapeHtml,
+    icon,
+    getLimitState: getPictureLimitState,
+    getBlockedMessage: getPictureEditingBlockedMessage,
+    isEditingBlocked: isPictureEditingBlocked,
+    renderPictureTile,
+    renderUploadTile
+  });
+  const contextController = PhotosContextController.createContextController({
+    model: PhotosModel,
+    makeLocalId
+  });
 
   function startProductEditor() {
+    if (!unsubscribeContext && contextStore) {
+      unsubscribeContext = contextStore.subscribe((snapshot) => {
+        handlePageContextChange(contextUpdates.toModuleUpdate(snapshot));
+      });
+    }
     ensureFileInput();
     state.pageSignature = readPageSignature();
     if (state.editorVisible) mountEditorTray();
@@ -121,6 +147,13 @@
     const status = update && update.status ? update.status : '';
     const pageSignature = update && update.signature ? update.signature : readPageSignature();
 
+    if (update && update.targetChanged) {
+      const visible = state.editorVisible;
+      resetState();
+      state.editorVisible = visible;
+      return;
+    }
+
     if (status === 'not_product') {
       resetState();
       return;
@@ -157,6 +190,15 @@
 
     if (status !== 'ready') return;
 
+    if (state.context && !update.targetChanged) {
+      state.context = update.context || state.context;
+      state.ownerUserId = state.context && state.context.ownerAccount && state.context.ownerAccount.user_id
+        ? state.context.ownerAccount.user_id
+        : state.ownerUserId;
+      state.pageSignature = pageSignature;
+      return;
+    }
+
     if (state.dirty && pageSignature !== state.loadedPageSignature) {
       state.blockedPageSignature = pageSignature;
       state.pendingPageContext = update;
@@ -184,22 +226,12 @@
     state.error = '';
 
     try {
-      const context = options.context;
-      if (!context) throw new Error('Contexto do anúncio indisponível.');
-
-      state.context = context;
-      state.ownerUserId = context && context.ownerAccount && context.ownerAccount.user_id ? context.ownerAccount.user_id : null;
-      state.selectedVariationId = context.selectedVariationId || null;
-      state.originalVariations = PhotosModel.cloneVariations(context.variations || []);
-      state.variations = PhotosModel.cloneVariations(context.variations || []);
-      state.originalPictures = PhotosModel
-        .selectPicturesForActiveVariation(context, state.selectedVariationId)
-        .map((picture) => PhotosModel.toDraftPicture(picture, makeLocalId));
-      state.draftPictures = state.originalPictures.map(PhotosModel.clonePicture);
+      const projected = contextController.project(options.context);
+      Object.assign(state, projected);
       state.dirty = false;
       state.blockedPageSignature = '';
       state.pendingPageContext = null;
-      state.loadedPageSignature = context.page && context.page.signature ? context.page.signature : readPageSignature();
+      state.loadedPageSignature = state.context.page && state.context.page.signature ? state.context.page.signature : readPageSignature();
       state.pageSignature = state.loadedPageSignature;
       state.message = options.successMessage || '';
       state.quality = null;
@@ -246,7 +278,8 @@
       state.tray = document.createElement('section');
       state.tray.className = 'onblide-ml-tray';
       if (state.qualityDialog) state.tray.classList.add('is-editor-hidden');
-      document.body.appendChild(state.tray);
+      if (hosts) hosts.mount(state.tray, 'photos-dock');
+      else document.body.appendChild(state.tray);
     }
 
     renderTray();
@@ -273,18 +306,11 @@
     };
   }
 
-  async function showEditor() {
+  function showEditor() {
     if (!isProductPageUrl(location.href)) return getEditorStatus();
     state.editorVisible = true;
     ensureFileInput();
-    if (!state.loaded && !state.busy) {
-      state.busy = true;
-      state.message = 'Detectando anúncio...';
-      rerenderTray();
-      await requestPageContextReload('show');
-    } else {
-      rerenderTray();
-    }
+    rerenderTray();
     return getEditorStatus();
   }
 
@@ -326,117 +352,7 @@
   }
 
   function buildTrayMarkup() {
-    if (!state.loaded && !state.context && !state.error) return '';
-
-    const expanded = state.dockExpanded;
-
-    return `
-      <div class="onblide-ml-dock-shell">
-        <svg class="onblide-ml-dock-silhouette" viewBox="0 0 1000 28" preserveAspectRatio="none" focusable="false">
-          <path class="onblide-ml-dock-silhouette-fill" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984Z"></path>
-          <path class="onblide-ml-dock-silhouette-outline" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984"></path>
-        </svg>
-        <div class="onblide-ml-dock-panel${expanded ? ' is-expanded' : ''}">
-          <div class="onblide-ml-dock-content">
-            ${buildTrayContent()}
-          </div>
-        </div>
-      </div>
-      <button class="onblide-ml-dock-tab" data-action="toggle-dock" type="button" title="${expanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos'}">
-        <span class="onblide-ml-dock-tab-icon${expanded ? ' is-expanded' : ''}">${icon('caretUp', 16)}</span>
-      </button>
-    `;
-  }
-
-  function buildTrayContent() {
-    if (!state.context) {
-      return `
-        <div class="onblide-ml-tray-bar">
-          ${renderStatus()}
-          <button class="onblide-ml-btn primary" data-action="connect" type="button">Conectar</button>
-          <button class="onblide-ml-btn" data-action="reload" type="button">Recarregar</button>
-        </div>
-      `;
-    }
-
-    if (isPictureEditingBlocked()) {
-      return `
-        <div class="onblide-ml-tray-bar">
-          ${renderStatus()}
-          <button class="onblide-ml-btn" data-action="reload" type="button">Recarregar</button>
-        </div>
-      `;
-    }
-
-    const limitState = getPictureLimitState();
-
-    return `
-      <div class="onblide-ml-dock-main">
-        ${renderDockIdentity(limitState)}
-        <div class="onblide-ml-strip" aria-label="Editor de fotos do anuncio">
-          ${state.draftPictures.map(renderPictureTile).join('')}
-          ${renderUploadTile()}
-        </div>
-        <div class="onblide-ml-dock-command-stack">
-          <button class="onblide-ml-btn primary compact onblide-ml-dock-open-editor" data-action="open-editor" type="button" ${state.busy ? 'disabled' : ''}>${icon('arrowSquareOut', 14)}Abrir editor</button>
-          ${renderTrayActions(limitState)}
-        </div>
-      </div>
-      ${renderTrayFeedback(limitState)}
-    `;
-  }
-
-  function renderDockIdentity(limitState) {
-    const counter = limitState.counterText || `${state.draftPictures.length} fotos`;
-
-    return `
-      <div class="onblide-ml-dock-identity">
-        <span class="onblide-ml-dock-identity-icon">${icon('image', 16)}</span>
-        <span class="onblide-ml-dock-identity-copy">
-          <strong>Editor de fotos</strong>
-          <small>${escapeHtml(counter)}</small>
-        </span>
-      </div>
-    `;
-  }
-
-  function renderStatus() {
-    if (state.error) return `<div class="onblide-ml-status error">${escapeHtml(state.error)}</div>`;
-    if (state.reloadCountdown) return `<div class="onblide-ml-status">Salvo. Atualizando em ${state.reloadCountdown}s.</div>`;
-    const blockedMessage = getPictureEditingBlockedMessage();
-    if (blockedMessage) return `<div class="onblide-ml-status muted">${escapeHtml(blockedMessage)}</div>`;
-    const limitState = getPictureLimitState();
-    if (limitState.message) return `<div class="onblide-ml-status error">${escapeHtml(limitState.message)}</div>`;
-    if (state.message) return `<div class="onblide-ml-status">${escapeHtml(state.message)}</div>`;
-    if (state.context && state.selectedVariationId) return '<div class="onblide-ml-status muted">Variação selecionada</div>';
-    if (state.context) return '<div class="onblide-ml-status muted">Fotos do anúncio</div>';
-    return '';
-  }
-
-  function renderTrayFeedback(limitState) {
-    if (state.error) return `<div class="onblide-ml-tray-feedback error">${escapeHtml(state.error)}</div>`;
-    if (state.reloadCountdown) {
-      return `<div class="onblide-ml-tray-feedback">Salvo. Atualizando em ${state.reloadCountdown}s.</div>`;
-    }
-    if (state.dirty && limitState && limitState.message) {
-      return `<div class="onblide-ml-tray-feedback error">${escapeHtml(limitState.message)}</div>`;
-    }
-    return '';
-  }
-
-  function renderTrayActions(limitState) {
-    if (!state.dirty && !state.reloadCountdown) return '';
-    return `
-      <div class="onblide-ml-tray-actions">
-        ${state.dirty ? `
-          <button class="onblide-ml-btn compact onblide-ml-dock-save" data-action="commit" type="button" ${state.busy || limitState.message ? 'disabled' : ''}>Salvar</button>
-          <button class="onblide-ml-btn compact onblide-ml-dock-discard" data-action="discard" type="button" ${state.busy ? 'disabled' : ''}>${icon('trash', 13)}Descartar</button>
-        ` : ''}
-        ${state.reloadCountdown ? `
-          <button class="onblide-ml-btn compact onblide-ml-dock-refresh" data-action="refresh" type="button">${icon('refresh', 14)}Atualizar agora</button>
-        ` : ''}
-      </div>
-    `;
+    return dockView.buildMarkup();
   }
 
   function getPictureLimitState() {
@@ -523,7 +439,8 @@
     if (!state.dialogRoot) {
       state.dialogRoot = document.createElement('div');
       state.dialogRoot.className = 'onblide-ml-dialog-root';
-      document.body.appendChild(state.dialogRoot);
+      if (hosts) hosts.mount(state.dialogRoot, 'photos-dialog');
+      else document.body.appendChild(state.dialogRoot);
     }
     if (markup === state.lastDialogMarkup) return;
     state.lastDialogMarkup = markup;
@@ -1628,6 +1545,7 @@
       const finalSelectedPictures = await prepareFinalSelectedPictures();
       await commitFinalSelectedPictures(finalSelectedPictures);
       showToast('success', 'Fotos salvas');
+      invalidatePageContext('photos-save');
       startReloadCountdown();
     } catch (err) {
       state.error = toUserError(err);
@@ -2084,6 +2002,12 @@
     return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
   }
 
+  function stopProductEditor() {
+    if (unsubscribeContext) unsubscribeContext();
+    unsubscribeContext = null;
+    resetState();
+  }
+
   return {
     id: 'photos',
     label: 'Fotos',
@@ -2101,7 +2025,9 @@
     reset: resetState,
     scheduleRender,
     show: showEditor,
-    start: startProductEditor
+    start: startProductEditor,
+    stop: stopProductEditor,
+    refreshLayout: scheduleRender
   };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

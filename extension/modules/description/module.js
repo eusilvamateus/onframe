@@ -9,10 +9,14 @@
     const DescriptionModel = services.DescriptionModel;
     const api = services.api;
     const toast = services.toast;
+    const contextStore = services.contextStore;
+    const contextUpdates = services.contextUpdates;
+    const invalidatePageContext = services.invalidatePageContext || (() => {});
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const toUserError = (err) => DescriptionModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame descrição] detalhe tecnico:' }));
+    let unsubscribeContext = null;
 
     const state = {
       context: null,
@@ -44,6 +48,11 @@
     };
 
     function startDescription() {
+      if (!unsubscribeContext && contextStore) {
+        unsubscribeContext = contextStore.subscribe((snapshot) => {
+          handlePageContextChange(contextUpdates.toModuleUpdate(snapshot));
+        });
+      }
       state.pageSignature = readPageSignature();
       if (state.visible) mountDescription();
     }
@@ -83,6 +92,13 @@
     function handlePageContextChange(update) {
       const status = update && update.status ? update.status : '';
       const pageSignature = update && update.signature ? update.signature : readPageSignature();
+
+      if (update && update.targetChanged) {
+        const visible = state.visible;
+        resetState();
+        state.visible = visible;
+        return;
+      }
 
       if (status === 'not_product') {
         resetState();
@@ -400,6 +416,7 @@
         state.bulkResult = state.bulkEnabled ? result : null;
         state.saving = false;
         const saved = notifySaveResult(result, 'Descrição salva', state.bulkEnabled);
+        if (saved) invalidatePageContext('description-save');
         if (!saved || (state.bulkEnabled && countNotChanged(result) > 0)) {
           mountDescription();
           return;
@@ -532,6 +549,12 @@
       return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
     }
 
+    function stopDescription() {
+      if (unsubscribeContext) unsubscribeContext();
+      unsubscribeContext = null;
+      resetState();
+    }
+
     return {
       id: 'description',
       label: 'Descrição',
@@ -544,7 +567,9 @@
       reset: resetState,
       scheduleRender,
       show: showDescription,
-      start: startDescription
+      start: startDescription,
+      stop: stopDescription,
+      refreshLayout: scheduleRender
     };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
