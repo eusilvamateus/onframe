@@ -10,6 +10,7 @@
 .onframe-commerce-promotion-result-popover-root,
 .onframe-description-root,
 .onframe-description-action,
+.onframe-catalog-notice,
 .onframe-section-edit-tooltip,
 #highlighted_specs_attrs.onframe-characteristics-is-editing,
 .onframe-characteristics-root,
@@ -68,6 +69,10 @@
 .onframe-description-action *,
 .onframe-description-action *::before,
 .onframe-description-action *::after,
+.onframe-catalog-notice,
+.onframe-catalog-notice *,
+.onframe-catalog-notice *::before,
+.onframe-catalog-notice *::after,
 .onframe-section-edit-tooltip,
 .onframe-section-edit-tooltip *,
 .onframe-section-edit-tooltip *::before,
@@ -323,6 +328,46 @@
 
 .onframe-section-edit-action:disabled:hover {
   background: transparent;
+}
+
+.onframe-catalog-notice {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ob-gap-sm);
+  max-width: min(560px, 100%);
+  margin: var(--ob-s-2) 0 0;
+  padding: 9px 10px;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-bg-alt);
+}
+
+.onframe-catalog-notice > .ob-icon {
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  color: var(--ob-fg-soft);
+  font-size: 14px;
+}
+
+.onframe-catalog-notice-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.onframe-catalog-notice-copy strong {
+  color: var(--ob-fg-strong);
+  font-size: 12px;
+  font-weight: var(--ob-w-semibold);
+  line-height: var(--ob-lh-snug);
+}
+
+.onframe-catalog-notice-copy small {
+  color: var(--ob-fg-soft);
+  font-size: 11px;
+  line-height: var(--ob-lh-normal);
 }
 
 .ob-button:disabled,

@@ -138,7 +138,7 @@
     }
 
     function mountDescription() {
-      if (!state.visible || !isProductPageUrl(location.href) || !state.itemId || !DescriptionModel.canEditDescription(state.context)) {
+      if (!state.visible || !isProductPageUrl(location.href) || !state.itemId) {
         removeInjectedActions();
         return;
       }
@@ -146,6 +146,12 @@
       const elements = getDescriptionElements();
       if (!elements.content || !elements.description) {
         removeInjectedActions();
+        return;
+      }
+
+      if (!DescriptionModel.canEditDescription(state.context)) {
+        removeInjectedActions();
+        if (isCatalogListing()) injectCatalogNotice(elements);
         return;
       }
 
@@ -213,6 +219,17 @@
         tooltipId: 'onframe-description-edit-disabled-tooltip',
         tooltipText: 'Expanda esta seção para editar a descrição.'
       });
+    }
+
+    function injectCatalogNotice(elements) {
+      const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);
+      if (!elements.title || !scope) return;
+      let notice = scope.querySelector('.onframe-description-catalog-notice');
+      if (notice) return;
+      notice = document.createElement('div');
+      notice.className = 'onframe-catalog-notice onframe-description-catalog-notice';
+      notice.innerHTML = `${icon('info', 14)}<span class="onframe-catalog-notice-copy"><strong>Este é um anúncio de catálogo</strong><small>A descrição é definida pelo catálogo. Para editá-la, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.</small></span>`;
+      elements.title.insertAdjacentElement('afterend', notice);
     }
 
     function bindContentClick(content) {
@@ -472,6 +489,11 @@
         if (wrapper) Shared.removeDisabledButtonTooltip(wrapper);
         (wrapper || node).remove();
       });
+      document.querySelectorAll('.onframe-description-catalog-notice').forEach((node) => node.remove());
+    }
+
+    function isCatalogListing() {
+      return Boolean(state.context && state.context.item && state.context.item.catalog_listing);
     }
 
     function hideDescription() {

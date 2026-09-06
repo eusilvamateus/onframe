@@ -472,6 +472,7 @@ test('ui exibem comando de atualizacao auditavel', () => {
   const popupJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.js'), 'utf8');
   const launcherHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'launcher', 'index.html'), 'utf8');
   const launcherJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'launcher', 'launcher.js'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
   const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
   const optionsCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.css'), 'utf8');
@@ -547,6 +548,10 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(launcherJs.includes('if (isPreview) return;'), true);
   assert.strictEqual(launcherJs.includes("notify('success', 'Comando copiado')"), true);
   assert.strictEqual(launcherJs.includes("elements.statusLabel.textContent = 'Ação manual necessária';"), true);
+  const backgroundJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'background.js'), 'utf8');
+  assert.strictEqual(backgroundJs.includes("message.type === 'onframe:openLauncher'"), true);
+  assert.strictEqual(backgroundJs.includes('chrome.tabs.create'), true);
+  assert.strictEqual(backgroundJs.includes("['start', 'stop', 'restart', 'check', 'update']"), true);
   const popupCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.css'), 'utf8');
   assert.strictEqual(popupCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))'), true);
   assert.strictEqual(popupCss.includes('.service-primary:not(.is-hidden)'), false);
@@ -574,6 +579,9 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(optionsCss.includes('grid-template-columns: minmax(0, 1fr);'), true);
   assert.strictEqual(popupJs.includes('dataset.actionCount = String(visibleActions)'), true);
   assert.strictEqual(optionsJs.includes('dataset.actionCount = String(visibleActions)'), true);
+  assert.strictEqual(components.includes('.onframe-catalog-notice'), true);
+  assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'module.js'), 'utf8').includes('onframe-description-catalog-notice'), true);
+  assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8').includes('onframe-characteristics-catalog-notice'), true);
 });
 
 test('ui usam gerenciamento multi-conta local', () => {

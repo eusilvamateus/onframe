@@ -17,6 +17,7 @@
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const EDITOR_MORPH_OPEN_DURATION = 900;
   const EDITOR_MORPH_CLOSE_DURATION = 950;
+  const LOCAL_SERVICE_OFFLINE_MESSAGE = 'Serviço local desligado. Abra o OnFrame.';
 
   const state = {
     context: null,
@@ -334,22 +335,30 @@
       <div class="onblide-ml-dock-shell">
         <svg class="onblide-ml-dock-silhouette" viewBox="0 0 1000 28" preserveAspectRatio="none" focusable="false">
           <path class="onblide-ml-dock-silhouette-fill" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984Z"></path>
-          <path class="onblide-ml-dock-silhouette-outline" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984"></path>
         </svg>
+        <button class="onblide-ml-dock-tab" data-action="toggle-dock" type="button" title="${expanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos'}">
+          <span class="onblide-ml-dock-tab-icon${expanded ? ' is-expanded' : ''}">${icon('caretUp', 16)}</span>
+        </button>
         <div class="onblide-ml-dock-panel${expanded ? ' is-expanded' : ''}">
           <div class="onblide-ml-dock-content">
             ${buildTrayContent()}
           </div>
         </div>
       </div>
-      <button class="onblide-ml-dock-tab" data-action="toggle-dock" type="button" title="${expanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos'}">
-        <span class="onblide-ml-dock-tab-icon${expanded ? ' is-expanded' : ''}">${icon('caretUp', 16)}</span>
-      </button>
     `;
   }
 
   function buildTrayContent() {
     if (!state.context) {
+      if (isLocalServiceOffline()) {
+        return `
+          <div class="onblide-ml-tray-bar">
+            ${renderStatus()}
+            <button class="onblide-ml-btn onblide-ml-start-service" data-action="start-service" type="button">${icon('play', 14)}Iniciar serviço</button>
+            <button class="onblide-ml-btn" data-action="reload" type="button">Recarregar</button>
+          </div>
+        `;
+      }
       return `
         <div class="onblide-ml-tray-bar">
           ${renderStatus()}
@@ -360,6 +369,7 @@
     }
 
     if (isPictureEditingBlocked()) {
+      if (isCatalogListing()) return renderCatalogPhotoNotice();
       return `
         <div class="onblide-ml-tray-bar">
           ${renderStatus()}
@@ -395,6 +405,18 @@
         <span class="onblide-ml-dock-identity-copy">
           <strong>Editor de fotos</strong>
           <small>${escapeHtml(counter)}</small>
+        </span>
+      </div>
+    `;
+  }
+
+  function renderCatalogPhotoNotice() {
+    return `
+      <div class="onblide-ml-dock-catalog-notice">
+        ${icon('info', 16)}
+        <span class="onblide-ml-dock-catalog-copy">
+          <strong>Este é um anúncio de catálogo</strong>
+          <small>As fotos são definidas pelo catálogo. Para gerenciá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.</small>
         </span>
       </div>
     `;
@@ -787,6 +809,9 @@
     container.querySelectorAll('[data-action="connect"]').forEach((button) => {
       button.addEventListener('click', () => void startAuth());
     });
+    container.querySelectorAll('[data-action="start-service"]').forEach((button) => {
+      button.addEventListener('click', openLocalServiceLauncher);
+    });
     container.querySelectorAll('[data-action="reload"]').forEach((button) => {
       button.addEventListener('click', () => void reloadEditor());
     });
@@ -1094,6 +1119,15 @@
       state.busy = false;
       rerenderTray();
     }
+  }
+
+  function openLocalServiceLauncher() {
+    if (!window.chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') return;
+    chrome.runtime.sendMessage({ type: 'onframe:openLauncher', action: 'start' }, (response) => {
+      if (!chrome.runtime.lastError && response && response.ok) return;
+      state.error = response && response.error ? response.error : 'Não consegui abrir o controle local.';
+      rerenderTray();
+    });
   }
 
   async function addPendingFiles(files) {
@@ -2028,6 +2062,10 @@
     return Boolean(state.context && state.context.item && state.context.item.catalog_listing);
   }
 
+  function isLocalServiceOffline() {
+    return String(state.error || '').trim() === LOCAL_SERVICE_OFFLINE_MESSAGE;
+  }
+
   function isPictureEditingBlocked() {
     return Boolean(getPictureEditingBlockedMessage());
   }
@@ -2036,6 +2074,7 @@
     const item = state.context && state.context.item ? state.context.item : null;
     const permissions = state.context && state.context.permissions ? state.context.permissions : {};
     const editability = permissions.pictureEditability || item && item.pictureEditability || {};
+    if (isCatalogListing()) return 'Fotos definidas pelo catálogo.';
     if (editability.editable === false) return editability.message || 'Fotos bloqueadas neste anúncio.';
     if (permissions.picturesEditable === false) return 'Fotos bloqueadas neste anúncio.';
     return '';

@@ -146,7 +146,7 @@
     }
 
     function mountCharacteristics() {
-      if (!state.visible || !isProductPageUrl(location.href) || !state.itemId || !CharacteristicsModel.canEditCharacteristics(state.context)) {
+      if (!state.visible || !isProductPageUrl(location.href) || !state.itemId) {
         removeInjectedActions();
         return;
       }
@@ -154,6 +154,12 @@
       const elements = getCharacteristicsElements();
       if (!elements.title || !elements.section) {
         removeInjectedActions();
+        return;
+      }
+
+      if (!CharacteristicsModel.canEditCharacteristics(state.context)) {
+        removeInjectedActions();
+        if (isCatalogListing()) injectCatalogNotice(elements);
         return;
       }
 
@@ -200,6 +206,17 @@
         tooltipId: 'onframe-characteristics-edit-disabled-tooltip',
         tooltipText: 'Expanda esta seção para editar as características.'
       });
+    }
+
+    function injectCatalogNotice(elements) {
+      if (!elements.title || !elements.section) return;
+      let notice = elements.section.querySelector('.onframe-characteristics-catalog-notice');
+      if (notice) return;
+      notice = document.createElement('div');
+      notice.className = 'onframe-catalog-notice onframe-characteristics-catalog-notice';
+      notice.innerHTML = `${icon('info', 14)}<span class="onframe-catalog-notice-copy"><strong>Este é um anúncio de catálogo</strong><small>As características são definidas pelo catálogo. Para editá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.</small></span>`;
+      const anchor = elements.titleRow || elements.title;
+      anchor.insertAdjacentElement('afterend', notice);
     }
 
     function isCharacteristicsCollapsed(section) {
@@ -1233,9 +1250,14 @@
         if (wrapper) Shared.removeDisabledButtonTooltip(wrapper);
         (wrapper || node).remove();
       });
+      document.querySelectorAll('.onframe-characteristics-catalog-notice').forEach((node) => node.remove());
       document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
+    }
+
+    function isCatalogListing() {
+      return Boolean(state.context && state.context.item && state.context.item.catalog_listing);
     }
 
     function hideCharacteristics() {

@@ -1,7 +1,19 @@
 const SERVICE = 'http://127.0.0.1:4765';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || message.type !== 'onframe:api') return false;
+  if (!message || typeof message.type !== 'string') return false;
+
+  if (message.type === 'onframe:openLauncher') {
+    openLauncher(message.action)
+      .then((payload) => sendResponse(payload))
+      .catch((err) => sendResponse({
+        ok: false,
+        error: err && err.message ? err.message : 'Não consegui abrir o controle local.'
+      }));
+    return true;
+  }
+
+  if (message.type !== 'onframe:api') return false;
 
   handleApiMessage(message)
     .then((payload) => sendResponse(payload))
@@ -13,6 +25,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }));
   return true;
 });
+
+async function openLauncher(action) {
+  const name = String(action || '').toLowerCase();
+  if (!['start', 'stop', 'restart', 'check', 'update'].includes(name)) {
+    throw new Error('Ação local inválida.');
+  }
+  await chrome.tabs.create({
+    url: chrome.runtime.getURL(`ui/launcher/index.html?action=${encodeURIComponent(name)}`)
+  });
+  return { ok: true };
+}
 
 async function handleApiMessage(message) {
   const path = normalizePath(message.path);

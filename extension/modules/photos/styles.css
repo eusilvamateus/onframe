@@ -72,7 +72,7 @@
 
 .onblide-ml-dock-silhouette {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% - 1px);
   left: -1px;
   z-index: 1;
   display: block;
@@ -84,13 +84,6 @@
 
 .onblide-ml-dock-silhouette-fill {
   fill: var(--ob-surface);
-}
-
-.onblide-ml-dock-silhouette-outline {
-  fill: none;
-  stroke: var(--ob-border);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
 }
 
 .onblide-ml-dock-content {
@@ -159,12 +152,57 @@
   margin-bottom: 10px;
 }
 
+.onblide-ml-start-service {
+  border-color: var(--ob-green);
+  background: var(--ob-green);
+  color: var(--ob-fg-on-color);
+}
+
+.onblide-ml-start-service:hover:not(:disabled) {
+  border-color: var(--ob-green-700);
+  background: var(--ob-green-700);
+}
+
 .onblide-ml-dock-main {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 92px;
   max-width: calc(100vw - 64px);
+}
+
+.onblide-ml-dock-catalog-notice {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  width: min(440px, calc(100vw - 64px));
+  min-height: 40px;
+  padding: 2px 0;
+}
+
+.onblide-ml-dock-catalog-notice > .ob-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--ob-ink-soft);
+  font-size: 16px;
+}
+
+.onblide-ml-dock-catalog-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.onblide-ml-dock-catalog-copy strong {
+  color: var(--ob-ink-strong);
+  font: var(--ob-w-semibold) 13px/1.2 var(--ob-font);
+}
+
+.onblide-ml-dock-catalog-copy small {
+  color: var(--ob-ink-soft);
+  font: var(--ob-w-regular) 11px/1.35 var(--ob-font);
 }
 
 .onblide-ml-dock-identity {
