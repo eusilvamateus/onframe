@@ -351,6 +351,16 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(styles, /\.onframe-commerce-listing-badge\s*\{[\s\S]*pointer-events: none;/);
   assert.match(components, /\.onframe-commerce-listing-controls/);
   assert.match(components, /\.onframe-commerce-listing-badge/);
+  assert.match(source, /function scheduleListingControlsLayout/);
+  assert.match(source, /function syncListingControlsLayout/);
+  assert.match(source, /function restoreListingControlsLayout/);
+  assert.match(source, /record\.card\.style\.setProperty\('min-height'/);
+  assert.match(source, /contentBottom - cardRect\.bottom/);
+  assert.match(source, /function positionPopover/);
+  assert.match(source, /state\.popoverRoot\.classList\.toggle\('listing', state\.surface === 'listing'\)/);
+  assert.match(source, /const top = isListingPopover \? rect\.bottom \+ 8/);
+  assert.doesNotMatch(source, /function syncListingPopoverSpace/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-listing-popover-space/);
 });
 
 test('modal de promocoes preserva posicao ao revisar oferta', () => {

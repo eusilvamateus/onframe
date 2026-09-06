@@ -506,6 +506,8 @@
           link,
           itemId,
           controls: null,
+          controlsLayoutFrame: null,
+          originalMinHeight: null,
           badge: null,
           media: null,
           context: null,
@@ -646,6 +648,34 @@
         </div>
       `;
       if (record.controls.innerHTML !== markup) record.controls.innerHTML = markup;
+      scheduleListingControlsLayout(record);
+    }
+
+    function scheduleListingControlsLayout(record) {
+      if (!record || !record.card || !record.controls || record.controlsLayoutFrame) return;
+      record.controlsLayoutFrame = requestAnimationFrame(() => {
+        record.controlsLayoutFrame = null;
+        syncListingControlsLayout(record);
+      });
+    }
+
+    function syncListingControlsLayout(record) {
+      if (!record || !record.card || !record.controls || !record.card.isConnected) return;
+      const cardRect = record.card.getBoundingClientRect();
+      if (!cardRect.height) return;
+      const contentBottom = Array.from(record.card.querySelectorAll('*')).reduce((bottom, element) => {
+        const rect = element.getBoundingClientRect();
+        return Math.max(bottom, rect.bottom);
+      }, cardRect.bottom);
+      const overflow = Math.ceil(contentBottom - cardRect.bottom);
+      if (overflow <= 0) return;
+      if (!record.originalMinHeight) {
+        record.originalMinHeight = {
+          value: record.card.style.getPropertyValue('min-height'),
+          priority: record.card.style.getPropertyPriority('min-height')
+        };
+      }
+      record.card.style.setProperty('min-height', `${Math.ceil(cardRect.height + overflow + 8)}px`, 'important');
     }
 
     function listingPriceTone(record) {
@@ -677,12 +707,26 @@
 
     function removeListingDecorations(record) {
       if (!record) return;
+      restoreListingControlsLayout(record);
       if (record.controls) record.controls.remove();
       if (record.badge) record.badge.remove();
       if (record.media) record.media.classList.remove('onframe-commerce-listing-media');
       record.controls = null;
       record.badge = null;
       record.media = null;
+    }
+
+    function restoreListingControlsLayout(record) {
+      if (!record) return;
+      if (record.controlsLayoutFrame) cancelAnimationFrame(record.controlsLayoutFrame);
+      record.controlsLayoutFrame = null;
+      if (!record.originalMinHeight || !record.card) return;
+      if (record.originalMinHeight.value) {
+        record.card.style.setProperty('min-height', record.originalMinHeight.value, record.originalMinHeight.priority);
+      } else {
+        record.card.style.removeProperty('min-height');
+      }
+      record.originalMinHeight = null;
     }
 
     function activateListingPopover(record, type, anchor) {
@@ -835,12 +879,14 @@
 
       state.popoverRoot.classList.toggle('promotions', state.popover === 'promotions');
       state.popoverRoot.classList.toggle('price-summary', state.popover === 'price');
-      positionFloatingRoot(state.popoverRoot, popoverAnchor());
+      state.popoverRoot.classList.toggle('listing', state.surface === 'listing');
       const markup = state.popover === 'price' ? buildPricePopover() : buildPromotionPopover();
-      if (markup === state.lastPopoverMarkup) return;
-      state.lastPopoverMarkup = markup;
-      state.popoverRoot.innerHTML = markup;
-      bindPopoverEvents();
+      if (markup !== state.lastPopoverMarkup) {
+        state.lastPopoverMarkup = markup;
+        state.popoverRoot.innerHTML = markup;
+        bindPopoverEvents();
+      }
+      positionPopover();
     }
 
     function buildPricePopover() {
@@ -4272,14 +4318,20 @@
     function positionFloatingRoot(root, anchor) {
       if (!root || !anchor || typeof anchor.getBoundingClientRect !== 'function') return;
       const rect = anchor.getBoundingClientRect();
+      const isListingPopover = root.classList.contains('listing');
       const isSummaryPopover = state.popover === 'promotions' || state.popover === 'price';
       const preferredWidth = isSummaryPopover ? 560 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
       const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
       const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
-      const top = Math.max(12, rect.bottom + 8);
+      const top = isListingPopover ? rect.bottom + 8 : Math.max(12, rect.bottom + 8);
       root.style.left = `${Math.round(left)}px`;
       root.style.top = `${Math.round(top)}px`;
+    }
+
+    function positionPopover() {
+      if (!state.popover || !state.popoverRoot) return;
+      positionFloatingRoot(state.popoverRoot, popoverAnchor());
     }
 
     function positionPromotionResultPopover(root, anchor) {
@@ -4467,12 +4519,13 @@
       state.viewportEventsReady = true;
       window.addEventListener('resize', () => {
         scheduleRender(80);
+        positionPopover();
         if (state.promotionResultPopoverRoot) {
           positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
         }
       });
       window.addEventListener('scroll', () => {
-        if (state.popover) renderPopover();
+        positionPopover();
         if (state.promotionResultPopoverRoot) positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
       }, true);
     }
