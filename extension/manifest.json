@@ -3,6 +3,12 @@
   "name": "OnFrame",
   "version": "0.3.17",
   "description": "Edita anuncios do Mercado Livre pela pagina do produto.",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvUGoH+xXL78rOpBCFJLDHdkkb/8GONgMdbsgB8+01o8KaItBf6VCZtAKMcYb3Z5n3Iy0t7NAxJ70FQG95t4a3pyqVzy7T9a97C1hq2Tj1vP4OmlMYF2K49p49/0HpRORa87OuMvf+D8ryN8g2v/Nwk1jgJXDjDxzuCBoomrSvB/tDYUzMjliwrVQtjJmrhJ3pq5Lgn9FoSv8Y/jJCIHQdSxUdqD4e0JzVosdghZpZcJr91ny2/FBPLQN8ZcAEvWsX5pqHOXsE1FHNoMa4HAMmI3W7Jc69FUO/Ge1Vc47wYs2xWJMAfe1YLcmF7fzy4DBZ6DrjmukOSSaBjIS8gdqRwIDAQAB",
   "permissions": [
     "activeTab",
@@ -18,7 +24,13 @@
   },
   "action": {
     "default_title": "OnFrame",
-    "default_popup": "ui/popup/index.html"
+    "default_popup": "ui/popup/index.html",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
   },
   "background": {
     "service_worker": "background.js"

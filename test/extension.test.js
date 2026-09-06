@@ -81,6 +81,8 @@ test('manifest e telas referenciam arquivos existentes', () => {
     manifest.background.service_worker,
     manifest.action.default_popup,
     manifest.options_ui.page,
+    ...Object.values(manifest.icons || {}),
+    ...Object.values(manifest.action.default_icon || {}),
     ...manifest.content_scripts[0].js,
     ...manifest.content_scripts[0].css
   ];
@@ -96,6 +98,10 @@ test('manifest e telas referenciam arquivos existentes', () => {
       assert.strictEqual(fs.existsSync(path.resolve(path.dirname(htmlFile), asset)), true, `${htmlPath} -> ${asset}`);
     }
   }
+
+  assert.strictEqual(manifest.icons['16'], 'assets/icons/icon-16.png');
+  assert.strictEqual(manifest.icons['128'], 'assets/icons/icon-128.png');
+  assert.strictEqual(manifest.action.default_icon['48'], 'assets/icons/icon-48.png');
 });
 
 test('module registry cria modulos com contrato estavel', () => {
