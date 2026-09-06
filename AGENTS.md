@@ -67,3 +67,11 @@ Não versione tokens ou credenciais; use `.env.example` como referência de
 configuração. Use o conector `$mercado-livre` para informações do Mercado Livre.
 Se ele não estiver disponível, informe isso expressamente antes de usar qualquer
 fonte externa.
+
+## Verificação no Navegador
+
+Não use o navegador para validar aparência, layout, posição ou animações: essa
+verificação é responsabilidade do usuário. Abra-o somente quando for necessário
+confirmar a estrutura, os seletores ou o ciclo de vida do DOM real do Mercado
+Livre. Antes de qualquer acesso, informe qual hipótese precisa ser verificada e
+por que a inspeção do DOM é necessária.
