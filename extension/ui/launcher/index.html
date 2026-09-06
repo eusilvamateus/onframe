@@ -12,41 +12,66 @@
 </head>
 <body class="ob-shell">
   <main class="launcher">
-    <section class="launcher-hero ob-card">
-      <div class="ob-brand">
-        <img src="../../assets/onblide-symbol-primary.svg" alt="">
-        <div>
-          <p class="ob-eyebrow" id="launcher-eyebrow">OnFrame</p>
-          <h1 class="ob-title" id="launcher-title">Controle local</h1>
+    <section class="launcher-shell ob-card" aria-labelledby="launcher-title">
+      <header class="launcher-header">
+        <div class="launcher-brand">
+          <img class="launcher-logo" src="../../assets/onblide-horizontal-primary.svg" alt="Onblide">
+          <span class="launcher-product">OnFrame</span>
         </div>
-      </div>
-      <p class="ob-copy launcher-copy" id="launcher-copy">Abrindo o controle local registrado neste computador.</p>
-      <div class="launcher-status" id="launcher-status">
-        <span class="launcher-dot" aria-hidden="true"></span>
-        <strong id="launcher-status-text">Tentando abrir o OnFrame...</strong>
-      </div>
-      <div class="launcher-actions">
-        <button class="ob-button primary" id="launcher-open" type="button">Abrir novamente</button>
-        <button class="ob-button secondary" data-copy="primary" type="button">Copiar comando</button>
-      </div>
-    </section>
+        <div class="launcher-header-meta">
+          <span class="ob-badge grey">Controle local</span>
+          <span class="ob-badge blue is-hidden" id="launcher-preview">Pré-visualização</span>
+        </div>
+      </header>
 
-    <section class="launcher-panel ob-card">
-      <div class="launcher-panel-head">
-        <div>
-          <h2 class="ob-card-title">Comando manual</h2>
-          <p class="ob-copy">Use quando o navegador nao abrir o controle local automaticamente.</p>
-        </div>
+      <div class="launcher-layout">
+        <section class="launcher-action" aria-labelledby="launcher-title">
+          <div class="launcher-action-heading">
+            <span class="launcher-action-icon" id="launcher-action-icon" aria-hidden="true"></span>
+            <div>
+              <p class="launcher-eyebrow" id="launcher-eyebrow">Serviço local</p>
+              <h1 class="launcher-title" id="launcher-title">Iniciar OnFrame</h1>
+            </div>
+          </div>
+
+          <p class="launcher-copy" id="launcher-copy">Abrindo o controle local registrado neste computador.</p>
+
+          <div class="launcher-status" id="launcher-status" data-tone="blue" role="status" aria-live="polite">
+            <span class="launcher-status-dot" aria-hidden="true"></span>
+            <div class="launcher-status-copy">
+              <span class="launcher-status-label" id="launcher-status-label">Abrindo automaticamente</span>
+              <strong id="launcher-status-text">Tentando abrir o OnFrame...</strong>
+              <small id="launcher-status-detail">Você pode fechar esta janela quando a ação for iniciada.</small>
+            </div>
+          </div>
+
+          <div class="launcher-actions">
+            <button class="ob-button primary launcher-open" id="launcher-open" type="button">Tentar novamente</button>
+          </div>
+        </section>
+
+        <section class="launcher-manual" aria-labelledby="launcher-manual-title">
+          <div class="launcher-manual-heading">
+            <p class="launcher-eyebrow">Alternativa manual</p>
+            <h2 class="ob-card-title" id="launcher-manual-title">Se o controle não abrir</h2>
+            <p class="ob-copy">Copie o comando adequado e execute-o no terminal do seu computador.</p>
+          </div>
+          <div class="launcher-commands" id="launcher-commands"></div>
+        </section>
       </div>
-      <div class="launcher-commands" id="launcher-commands"></div>
-      <div class="launcher-links">
-        <a class="ob-button ghost compact" href="chrome://extensions/">Chrome extensions</a>
-        <a class="ob-button ghost compact" href="edge://extensions/">Edge extensions</a>
-      </div>
+
+      <footer class="launcher-footer">
+        <span>Gerenciar a extensão no navegador</span>
+        <nav class="launcher-links" aria-label="Atalhos do navegador">
+          <a class="ob-button ghost compact" href="chrome://extensions/">Chrome</a>
+          <a class="ob-button ghost compact" href="edge://extensions/">Microsoft Edge</a>
+        </nav>
+      </footer>
     </section>
   </main>
 
   <script src="../../core/icons.js"></script>
+  <script src="../../core/toast.js"></script>
   <script src="launcher.js"></script>
 </body>
 </html>

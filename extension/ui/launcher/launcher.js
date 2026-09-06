@@ -2,18 +2,25 @@
   const RAW_ROOT = 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap';
   const WINDOWS_ROOT_COMMAND = "$root=Join-Path $env:LOCALAPPDATA 'OnFrame'";
   const MAC_ROOT = '"$HOME/Library/Application Support/OnFrame"';
+  const toast = window.OnFrameToast;
 
   const elements = {
     eyebrow: document.getElementById('launcher-eyebrow'),
     title: document.getElementById('launcher-title'),
     copy: document.getElementById('launcher-copy'),
+    actionIcon: document.getElementById('launcher-action-icon'),
+    preview: document.getElementById('launcher-preview'),
     status: document.getElementById('launcher-status'),
+    statusLabel: document.getElementById('launcher-status-label'),
     statusText: document.getElementById('launcher-status-text'),
+    statusDetail: document.getElementById('launcher-status-detail'),
     open: document.getElementById('launcher-open'),
     commands: document.getElementById('launcher-commands')
   };
 
   let action;
+  let isPreview = false;
+  let previewState = 'initial';
   let checkCommand = '';
   let leftPage = false;
 
@@ -24,9 +31,11 @@
     const actions = buildActions(platform);
     checkCommand = actions.check.primaryCommand;
     action = getAction(actions);
+    isPreview = isPreviewMode();
+    previewState = isPreview ? getPreviewState() : 'initial';
     render();
     bindEvents();
-    window.setTimeout(openProtocol, 320);
+    if (!isPreview) window.setTimeout(openProtocol, 320);
   }
 
   function detectPlatform() {
@@ -56,19 +65,19 @@
     const fallback = `Se nenhuma janela abriu, use o comando manual abaixo no ${shellLabel}.`;
 
     return {
-      update: createAction('Atualizacao local', 'Atualizar OnFrame', 'Esta pagina pede ao navegador para abrir o atualizador local registrado neste computador.', 'update', 'Abrir atualizador novamente', 'Tentando abrir o atualizador do OnFrame...', fallback, 'Atualizar', updateCommand),
-      start: createAction('Servico local', 'Iniciar OnFrame', 'Esta pagina pede ao navegador para iniciar o servico local do OnFrame neste computador.', 'start', 'Iniciar novamente', 'Tentando iniciar o servico local...', fallback, 'Iniciar servico', localCommand('start')),
-      stop: createAction('Servico local', 'Parar OnFrame', 'Esta pagina pede ao navegador para encerrar o servico local do OnFrame neste computador.', 'stop', 'Parar novamente', 'Tentando encerrar o servico local...', fallback, 'Parar servico', localCommand('stop')),
-      restart: createAction('Servico local', 'Reiniciar OnFrame', 'Esta pagina pede ao navegador para reiniciar o servico local do OnFrame neste computador.', 'restart', 'Reiniciar novamente', 'Tentando reiniciar o servico local...', fallback, 'Reiniciar servico', restartCommand),
+      update: createAction('Atualização local', 'Atualizar OnFrame', 'Estamos solicitando a abertura do atualizador local registrado neste computador.', 'update', 'Tentar novamente', 'Tentando abrir o atualizador do OnFrame...', fallback, 'Atualizar OnFrame', updateCommand, { icon: 'refresh', tone: 'blue' }),
+      start: createAction('Serviço local', 'Iniciar OnFrame', 'Estamos solicitando o início do serviço local do OnFrame neste computador.', 'start', 'Tentar novamente', 'Tentando iniciar o serviço local...', fallback, 'Iniciar serviço', localCommand('start'), { icon: 'play', tone: 'green' }),
+      stop: createAction('Serviço local', 'Parar OnFrame', 'Estamos solicitando o encerramento do serviço local do OnFrame neste computador.', 'stop', 'Tentar novamente', 'Tentando encerrar o serviço local...', fallback, 'Parar serviço', localCommand('stop'), { icon: 'stop', tone: 'red', buttonTone: 'danger' }),
+      restart: createAction('Serviço local', 'Reiniciar OnFrame', 'Estamos solicitando a reinicialização do serviço local do OnFrame neste computador.', 'restart', 'Tentar novamente', 'Tentando reiniciar o serviço local...', fallback, 'Reiniciar serviço', restartCommand, { icon: 'refresh', tone: 'orange' }),
       check: Object.assign(
-        createAction('Diagnostico local', 'Verificar OnFrame', 'Esta pagina pede ao navegador para abrir a verificacao local do OnFrame neste computador.', 'check', 'Verificar novamente', 'Tentando abrir a verificacao local...', fallback, 'Verificar instalacao', localCommand('check')),
+        createAction('Diagnóstico local', 'Verificar OnFrame', 'Estamos solicitando a abertura da verificação local do OnFrame neste computador.', 'check', 'Tentar novamente', 'Tentando abrir a verificação local...', fallback, 'Verificar instalação', localCommand('check'), { icon: 'checkCircle', tone: 'blue' }),
         { hideCheckCommand: true }
       )
     };
   }
 
-  function createAction(eyebrow, title, copy, protocolAction, openLabel, trying, fallback, primaryCommandLabel, primaryCommand) {
-    return {
+  function createAction(eyebrow, title, copy, protocolAction, openLabel, trying, fallback, primaryCommandLabel, primaryCommand, presentation = {}) {
+    return Object.assign({
       eyebrow,
       title,
       copy,
@@ -77,8 +86,11 @@
       trying,
       fallback,
       primaryCommandLabel,
-      primaryCommand
-    };
+      primaryCommand,
+      icon: 'refresh',
+      tone: 'blue',
+      buttonTone: 'primary'
+    }, presentation);
   }
 
   function getAction(actions) {
@@ -87,20 +99,41 @@
     return actions[value] || actions.update;
   }
 
+  function isPreviewMode() {
+    return new URLSearchParams(window.location.search).get('preview') === '1';
+  }
+
+  function getPreviewState() {
+    const value = String(new URLSearchParams(window.location.search).get('state') || 'initial').toLowerCase();
+    return value === 'fallback' ? 'fallback' : 'initial';
+  }
+
   function render() {
     elements.eyebrow.textContent = action.eyebrow;
     elements.title.textContent = action.title;
     elements.copy.textContent = action.copy;
-    elements.statusText.textContent = action.trying;
-    elements.open.textContent = action.openLabel;
-    addIcon(elements.open, 'arrowSquareOut');
+    elements.preview.classList.toggle('is-hidden', !isPreview);
+    elements.actionIcon.className = `launcher-action-icon is-${action.tone}`;
+    elements.actionIcon.innerHTML = icon(action.icon, 20);
+    elements.open.className = `ob-button ${action.buttonTone} launcher-open`;
+    elements.open.disabled = isPreview;
+    setButtonContent(elements.open, 'arrowSquareOut', action.openLabel);
     renderCommands();
+    renderState();
+  }
+
+  function renderState() {
+    if (isPreview && previewState === 'fallback') {
+      showFallback();
+      return;
+    }
+    showInitial();
   }
 
   function renderCommands() {
     const cards = [{ key: 'primary', label: action.primaryCommandLabel, command: action.primaryCommand }];
     if (!action.hideCheckCommand) {
-      cards.push({ key: 'check', label: 'Verificar instalacao', command: checkCommand });
+      cards.push({ key: 'check', label: 'Verificar instalação', command: checkCommand });
     }
 
     elements.commands.innerHTML = cards.map((card) => `
@@ -113,14 +146,16 @@
       </article>
     `).join('');
 
-    document.querySelectorAll('[data-copy]').forEach((button) => {
+    elements.commands.querySelectorAll('[data-copy]').forEach((button) => {
       addIcon(button, 'copy');
       button.addEventListener('click', () => void copyCommand(button));
     });
   }
 
   function bindEvents() {
-    elements.open.addEventListener('click', openProtocol);
+    elements.open.addEventListener('click', () => {
+      if (!isPreview) openProtocol();
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) leftPage = true;
     });
@@ -130,9 +165,9 @@
   }
 
   function openProtocol() {
+    if (isPreview) return;
     leftPage = false;
-    elements.status.classList.remove('is-fallback');
-    elements.statusText.textContent = action.trying;
+    showInitial();
     window.setTimeout(() => {
       window.location.href = action.protocolUrl;
     }, 60);
@@ -141,21 +176,25 @@
     }, 1800);
   }
 
+  function showInitial() {
+    elements.status.dataset.tone = 'blue';
+    elements.statusLabel.textContent = 'Abrindo automaticamente';
+    elements.statusText.textContent = action.trying;
+    elements.statusDetail.textContent = 'Você pode fechar esta janela quando a ação for iniciada.';
+  }
+
   function showFallback() {
-    elements.status.classList.add('is-fallback');
-    elements.statusText.textContent = action.fallback;
+    elements.status.dataset.tone = 'orange';
+    elements.statusLabel.textContent = 'Ação manual necessária';
+    elements.statusText.textContent = 'O controle local não abriu';
+    elements.statusDetail.textContent = action.fallback;
   }
 
   async function copyCommand(button) {
     const command = button.dataset.copy === 'check' ? checkCommand : action.primaryCommand;
-    const previous = button.textContent;
     try {
       await navigator.clipboard.writeText(command);
-      button.textContent = 'Copiado';
-      window.setTimeout(() => {
-        button.textContent = previous || 'Copiar';
-        addIcon(button, 'copy');
-      }, 1400);
+      notify('success', 'Comando copiado');
     } catch (err) {
       const code = button.closest('.launcher-command')?.querySelector('code');
       if (!code) return;
@@ -164,12 +203,26 @@
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
+      notify('warning', 'Comando selecionado', 'Copie-o manualmente no terminal.');
     }
   }
 
+  function setButtonContent(button, iconName, label) {
+    button.innerHTML = `${icon(iconName, 14)}<span>${escapeHtml(label)}</span>`;
+  }
+
   function addIcon(element, name) {
-    if (!element || !window.OnblideIcons) return;
+    if (!element || !window.OnblideIcons || element.dataset.iconReady) return;
     element.insertAdjacentHTML('afterbegin', window.OnblideIcons.render(name, 14));
+    element.dataset.iconReady = 'true';
+  }
+
+  function icon(name, size) {
+    return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
+  }
+
+  function notify(tone, title, body) {
+    if (toast && typeof toast.show === 'function') toast.show({ tone, title, body });
   }
 
   function escapeHtml(value) {

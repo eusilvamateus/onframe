@@ -184,6 +184,7 @@ test('ui carregam phosphor local do design system', () => {
   assert.match(launcher, /href="\.\.\/\.\.\/styles\/foundations\.css"/);
   assert.match(launcher, /href="\.\.\/\.\.\/styles\/components\.css"/);
   assert.match(launcher, /href="\.\.\/\.\.\/styles\/shell\.css"/);
+  assert.match(launcher, /src="\.\.\/\.\.\/core\/toast\.js"/);
 });
 
 test('feedback efemero usa o toast compartilhado', () => {
@@ -525,6 +526,9 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupJs.includes('ui/launcher/index.html?action='), true);
   assert.strictEqual(optionsJs.includes('ui/launcher/index.html?action='), true);
   assert.strictEqual(launcherHtml.includes('launcher-commands'), true);
+  assert.strictEqual(launcherHtml.includes('onblide-horizontal-primary.svg'), true);
+  assert.strictEqual(launcherHtml.includes('launcher-shell'), true);
+  assert.strictEqual(launcherHtml.includes('launcher-preview'), true);
   assert.strictEqual(launcherJs.includes('onframe-updater://${protocolAction}'), true);
   assert.strictEqual(launcherJs.includes('update: createAction'), true);
   assert.strictEqual(launcherJs.includes('start: createAction'), true);
@@ -537,6 +541,12 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(launcherJs.includes('scripts/bootstrap/${name}.sh'), true);
   assert.strictEqual(launcherJs.includes('/update.sh'), true);
   assert.strictEqual(launcherJs.includes('onframe-updater://'), true);
+  assert.strictEqual(launcherJs.includes("get('preview') === '1'"), true);
+  assert.strictEqual(launcherJs.includes("value === 'fallback' ? 'fallback' : 'initial'"), true);
+  assert.strictEqual(launcherJs.includes('if (!isPreview) window.setTimeout(openProtocol, 320);'), true);
+  assert.strictEqual(launcherJs.includes('if (isPreview) return;'), true);
+  assert.strictEqual(launcherJs.includes("notify('success', 'Comando copiado')"), true);
+  assert.strictEqual(launcherJs.includes("elements.statusLabel.textContent = 'Ação manual necessária';"), true);
   const popupCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.css'), 'utf8');
   assert.strictEqual(popupCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))'), true);
   assert.strictEqual(popupCss.includes('.service-primary:not(.is-hidden)'), false);
