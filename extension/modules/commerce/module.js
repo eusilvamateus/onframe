@@ -14,6 +14,22 @@
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
+    const PROMOTION_TYPE_LABELS = Object.freeze({
+      DEAL: 'Campanha com melhor exposição',
+      MARKETPLACE_CAMPAIGN: 'Campanha com aporte do Mercado Livre',
+      SMART: 'Campanha do Mercado Livre',
+      PRICE_MATCHING: 'Campanha de preço competitivo',
+      PRICE_MATCHING_MELI_ALL: 'Campanha do Mercado Livre',
+      PRE_NEGOTIATED: 'Campanha de coparticipação',
+      UNHEALTHY_STOCK: 'Liquidação de estoque Full',
+      LIGHTNING: 'Campanha rápida com estoque reservado',
+      DOD: 'Campanha de um dia',
+      VOLUME: 'Desconto por quantidade',
+      PRICE_DISCOUNT: 'Desconto do anúncio',
+      SELLER_CAMPAIGN: 'Campanha do vendedor',
+      SELLER_COUPON_CAMPAIGN: 'Cupom do vendedor',
+      BANK: 'Desconto por pagamento'
+    });
 
     const state = {
       context: null,
@@ -1405,13 +1421,11 @@
     }
 
     function promotionTypeLabel(entry, type) {
+      const promotionType = String(entry && (entry.type || entry.promotion_type || entry.campaign_type) || '').toUpperCase();
+      if (PROMOTION_TYPE_LABELS[promotionType]) return PROMOTION_TYPE_LABELS[promotionType];
       if (type === 'coupon') return 'Cupom do vendedor';
-      if (type === 'payment') {
-        const payment = stackablePaymentLabel(entry);
-        return payment ? `Desconto no ${payment}` : 'Desconto por pagamento';
-      }
-      if (type === 'direct') return 'Desconto direto';
-      if (type === 'campaign') return 'Campanha do vendedor';
+      if (type === 'payment') return 'Desconto por pagamento';
+      if (type === 'direct') return 'Desconto do anúncio';
       return 'Promoção';
     }
 

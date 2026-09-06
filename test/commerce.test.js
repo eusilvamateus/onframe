@@ -539,15 +539,35 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.onframe-commerce-popover-campaign-grid\s*{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
 });
 
-test('modal de promocoes diferencia cupons, descontos por pagamento e campanhas sem dividir a lista', () => {
+test('modal de promocoes comunica o tipo comercial de cada campanha sem dividir a lista', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const modalSource = source.slice(source.indexOf('function buildPromotionModal'), source.indexOf('function renderPromotionManager'));
   const typeLabelSource = source.slice(source.indexOf('function promotionTypeLabel'), source.indexOf('function renderPromotionListCondition'));
+  const labels = {
+    DEAL: 'Campanha com melhor exposição',
+    MARKETPLACE_CAMPAIGN: 'Campanha com aporte do Mercado Livre',
+    SMART: 'Campanha do Mercado Livre',
+    PRICE_MATCHING: 'Campanha de preço competitivo',
+    PRICE_MATCHING_MELI_ALL: 'Campanha do Mercado Livre',
+    PRE_NEGOTIATED: 'Campanha de coparticipação',
+    UNHEALTHY_STOCK: 'Liquidação de estoque Full',
+    LIGHTNING: 'Campanha rápida com estoque reservado',
+    DOD: 'Campanha de um dia',
+    VOLUME: 'Desconto por quantidade',
+    PRICE_DISCOUNT: 'Desconto do anúncio',
+    SELLER_CAMPAIGN: 'Campanha do vendedor',
+    SELLER_COUPON_CAMPAIGN: 'Cupom do vendedor',
+    BANK: 'Desconto por pagamento'
+  };
 
   assert.match(source, /function promotionListType/);
-  assert.match(source, /Cupom do vendedor/);
-  assert.match(source, /Desconto por pagamento/);
-  assert.match(typeLabelSource, /if \(type === 'campaign'\) return 'Campanha do vendedor';/);
+  assert.match(source, /const PROMOTION_TYPE_LABELS = Object\.freeze/);
+  Object.entries(labels).forEach(([type, label]) => {
+    assert.match(source, new RegExp(`${type}: '${label}'`));
+  });
+  assert.match(typeLabelSource, /return PROMOTION_TYPE_LABELS\[promotionType\];/);
+  assert.match(typeLabelSource, /return 'Promoção';/);
+  assert.doesNotMatch(typeLabelSource, /if \(type === 'campaign'\) return 'Campanha do vendedor';/);
   assert.doesNotMatch(typeLabelSource, /entry && entry\.typeLabel/);
   assert.match(source, /function promotionAudienceRule/);
   assert.match(source, /function renderPromotionListCondition/);
