@@ -40,14 +40,12 @@ const {
 
 test('manifest carrega modulo de fotos antes do bootstrap', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
-  const bridge = manifest.content_scripts.find((entry) => entry.world === 'MAIN');
-  const contentScript = manifest.content_scripts.find((entry) => Array.isArray(entry.css));
-  const scripts = contentScript.js;
+  const scripts = manifest.content_scripts[0].js;
 
   assert.strictEqual(manifest.action.default_popup, 'ui/popup/index.html');
   assert.strictEqual(manifest.options_ui.page, 'ui/options/index.html');
   assert.strictEqual(manifest.background.service_worker, 'background.js');
-  assert.deepStrictEqual(contentScript.css, [
+  assert.deepStrictEqual(manifest.content_scripts[0].css, [
     'vendor/phosphor/phosphor.css',
     'styles/foundations.css',
     'styles/components.css',
@@ -57,28 +55,23 @@ test('manifest carrega modulo de fotos antes do bootstrap', () => {
     'modules/characteristics/styles.css'
   ]);
   assert.ok(manifest.web_accessible_resources[0].resources.includes('vendor/phosphor/*'));
-  assert.deepStrictEqual(bridge.js, ['core/navigation-bridge.js']);
-  assert.strictEqual(bridge.run_at, 'document_start');
   assert.ok(scripts.indexOf('core/detection.js') < scripts.indexOf('modules/photos/model.js'));
   assert.ok(scripts.indexOf('core/shared.js') < scripts.indexOf('modules/photos/model.js'));
   assert.ok(scripts.indexOf('core/toast.js') < scripts.indexOf('modules/photos/model.js'));
-  assert.ok(scripts.indexOf('modules/photos/context-controller.js') < scripts.indexOf('modules/photos/module.js'));
   assert.ok(scripts.indexOf('modules/photos/model.js') < scripts.indexOf('modules/photos/module.js'));
   assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('modules/commerce/model.js'));
   assert.ok(scripts.indexOf('modules/commerce/model.js') < scripts.indexOf('modules/commerce/module.js'));
-  assert.ok(scripts.indexOf('modules/commerce/summary-controller.js') < scripts.indexOf('modules/commerce/module.js'));
   assert.ok(scripts.indexOf('modules/commerce/module.js') < scripts.indexOf('modules/description/model.js'));
   assert.ok(scripts.indexOf('modules/description/model.js') < scripts.indexOf('modules/description/module.js'));
   assert.ok(scripts.indexOf('modules/description/module.js') < scripts.indexOf('modules/characteristics/model.js'));
   assert.ok(scripts.indexOf('modules/characteristics/model.js') < scripts.indexOf('modules/characteristics/module.js'));
-  assert.ok(scripts.indexOf('modules/characteristics/editor-view.js') < scripts.indexOf('modules/characteristics/module.js'));
   assert.ok(scripts.indexOf('modules/characteristics/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/description/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/commerce/module.js') < scripts.indexOf('core/module-registry.js'));
   assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('core/module-registry.js'));
-  assert.ok(scripts.indexOf('core/module-registry.js') < scripts.indexOf('core/page-runtime.js'));
-  assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('core/page-runtime.js'));
-  assert.ok(scripts.indexOf('core/page-runtime.js') < scripts.indexOf('content.js'));
+  assert.ok(scripts.indexOf('core/module-registry.js') < scripts.indexOf('core/content-shell.js'));
+  assert.ok(scripts.indexOf('modules/photos/module.js') < scripts.indexOf('core/content-shell.js'));
+  assert.ok(scripts.indexOf('core/content-shell.js') < scripts.indexOf('content.js'));
 });
 
 test('manifest e telas referenciam arquivos existentes', () => {
@@ -88,8 +81,8 @@ test('manifest e telas referenciam arquivos existentes', () => {
     manifest.background.service_worker,
     manifest.action.default_popup,
     manifest.options_ui.page,
-    ...manifest.content_scripts.flatMap((entry) => entry.js || []),
-    ...manifest.content_scripts.flatMap((entry) => entry.css || [])
+    ...manifest.content_scripts[0].js,
+    ...manifest.content_scripts[0].css
   ];
 
   for (const file of manifestFiles) {
@@ -116,9 +109,10 @@ test('module registry cria modulos com contrato estavel', () => {
     isBusy() {},
     isLoaded() {},
     reload() {},
+    reset() {},
+    scheduleRender() {},
     show() {},
-    start() {},
-    stop() {}
+    start() {}
   };
   const commerceModule = Object.assign({}, photosModule, {
     id: 'commerce',
@@ -313,10 +307,8 @@ test('editor inline de descricao preserva altura visual ao abrir', () => {
 });
 
 test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre', () => {
-  const characteristicsModuleSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
-  const characteristicsViewSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'editor-view.js'), 'utf8');
-  const characteristicsSource = `${characteristicsModuleSource}\n${characteristicsViewSource}`;
-  const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'page-runtime.js'), 'utf8');
+  const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'styles.css'), 'utf8');
 
@@ -431,7 +423,9 @@ test('editor inline de caracteristicas ancora no bloco tecnico do Mercado Livre'
   assert.strictEqual(styles.includes('.onframe-characteristics-hidden-fields'), false);
   assert.strictEqual(styles.includes('.onframe-characteristics-groups'), false);
   assert.strictEqual(styles.includes('.onframe-characteristics-grid'), false);
-  assert.strictEqual(runtimeSource.includes("closest('#onblide-ml-root')"), true);
+  assert.strictEqual(shellSource.includes('.onframe-characteristics-inline-control'), true);
+  assert.strictEqual(shellSource.includes('.onframe-characteristics-inline-cell'), true);
+  assert.strictEqual(shellSource.includes('.onframe-characteristics-extra-row'), true);
   assert.strictEqual(characteristicsSource.includes("field.reason !== 'hidden'"), true);
   assert.strictEqual(styles.includes('[data-testid="action-collapsable-target"].ui-vpp-highlighted-specs__striped-collapsed__action'), true);
   assert.strictEqual(styles.includes('.ui-pdp-collapsable__container'), true);
@@ -442,7 +436,6 @@ test('acoes de edicao respeitam a secao expandida nativa', () => {
   const descriptionStyles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'styles.css'), 'utf8');
   const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'shared.js'), 'utf8');
   const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
-  const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'page-runtime.js'), 'utf8');
 
   assert.strictEqual(descriptionSource.includes("document.querySelector('.ui-pdp-description__title') ||"), true);
   assert.strictEqual(descriptionSource.includes(".startsWith('descricao')"), true);
@@ -464,7 +457,7 @@ test('acoes de edicao respeitam a secao expandida nativa', () => {
   assert.strictEqual(components.includes('.onframe-section-edit-tooltip'), true);
   assert.strictEqual(components.includes('.onframe-section-edit-action:disabled'), true);
   assert.strictEqual(components.includes('.ob-tooltip-content.onframe-floating-tooltip'), true);
-  assert.strictEqual(runtimeSource.includes('hasPageRootCandidate'), true);
+  assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8').includes('.onframe-section-edit-tooltip'), true);
 });
 
 test('ui exibem comando de atualizacao auditavel', () => {
@@ -575,67 +568,62 @@ test('ui usam gerenciamento multi-conta local', () => {
 
 test('popup persiste visibilidade global do editor', () => {
   const popupJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.js'), 'utf8');
-  const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'page-runtime.js'), 'utf8');
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
 
   assert.strictEqual(popupJs.includes('onframeEditorVisible'), true);
   assert.strictEqual(popupJs.includes('chrome.storage.local.get'), true);
   assert.strictEqual(popupJs.includes('chrome.storage.local.set'), true);
   assert.strictEqual(popupJs.includes('onframe:setEditorVisibility'), true);
-  assert.strictEqual(runtimeSource.includes('onframeEditorVisible'), true);
-  assert.strictEqual(runtimeSource.includes('chrome.storage.onChanged'), true);
-  assert.strictEqual(runtimeSource.includes('setModulesVisible'), true);
-  assert.strictEqual(runtimeSource.includes('onframe:setEditorVisibility'), true);
+  assert.strictEqual(shellSource.includes('onframeEditorVisible'), true);
+  assert.strictEqual(shellSource.includes('chrome.storage.onChanged'), true);
+  assert.strictEqual(shellSource.includes('setModulesVisible'), true);
+  assert.strictEqual(shellSource.includes('onframe:setEditorVisibility'), true);
 });
 
-test('runtime centraliza contexto sem observar mutacoes como identidade global', () => {
-  const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'page-runtime.js'), 'utf8');
-  const bridgeSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'navigation-bridge.js'), 'utf8');
+test('shell centraliza sincronizacao de contexto da pagina', () => {
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const contentSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'content.js'), 'utf8');
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
   const registrySource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'module-registry.js'), 'utf8');
 
-  assert.strictEqual(runtimeSource.includes('setInterval'), false);
-  assert.strictEqual(runtimeSource.includes('store.publish'), true);
-  assert.strictEqual(runtimeSource.includes("closest('button, [role=\"button\"]"), false);
-  assert.strictEqual(runtimeSource.includes('[data-testid*="variation"]'), true);
-  assert.strictEqual(bridgeSource.includes("wrap('pushState')"), true);
-  assert.strictEqual(bridgeSource.includes("wrap('replaceState')"), true);
+  assert.strictEqual(shellSource.includes('setInterval(syncPageState'), false);
+  assert.strictEqual(shellSource.includes('MutationObserver'), true);
+  assert.strictEqual(shellSource.includes('history.pushState'), true);
+  assert.strictEqual(shellSource.includes('handlePageContextChange'), true);
   assert.strictEqual(contentSource.includes('requestPageContextReload'), true);
-  assert.strictEqual(contentSource.includes('invalidatePageContext'), true);
-  assert.strictEqual(contentSource.includes('ContextStore.createStore'), true);
+  assert.strictEqual(contentSource.includes('resolvePageContext: (options)'), false);
   assert.strictEqual(photosSource.includes('services.resolvePageContext'), false);
   assert.strictEqual(commerceSource.includes('services.resolvePageContext'), false);
   assert.strictEqual(photosSource.includes('scheduleContextSync'), false);
   assert.strictEqual(commerceSource.includes('scheduleContextSync'), false);
   assert.strictEqual(characteristicsSource.includes('services.resolvePageContext'), false);
-  assert.strictEqual(photosSource.includes("invalidatePageContext('photos-save')"), true);
-  assert.strictEqual(characteristicsSource.includes("invalidatePageContext('characteristics-save')"), true);
-  assert.strictEqual(registrySource.includes("'handlePageContextChange'"), false);
-  assert.strictEqual(registrySource.includes("'stop'"), true);
+  assert.strictEqual(registrySource.includes("'handlePageContextChange'"), true);
 });
 
-test('runtime mantem comercio ativo com superficie de listagem isolada', () => {
-  const listingSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'listing-surface.js'), 'utf8');
+test('shell mantem o modulo de comercio ativo nas listagens', () => {
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
 
-  assert.doesNotMatch(listingSource, /observe\(document\.body/);
-  assert.match(listingSource, /mutationObserver\.observe\(container/);
-  assert.match(listingSource, /resolving < 3/);
+  assert.match(shellSource, /module\.supportsNonProduct === true/);
+  assert.match(shellSource, /function moduleSupportsCurrentPage/);
+  assert.match(shellSource, /onframe-commerce-listing-controls/);
+  assert.match(shellSource, /onframe-commerce-listing-badge/);
   assert.match(commerceSource, /status === 'not_product'/);
-  assert.match(commerceSource, /listingSurface\.start\(\)/);
+  assert.match(commerceSource, /state\.surface !== 'listing'/);
 });
 
-test('runtime usa resolucao rapida antes da hidratacao completa', () => {
-  const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'page-runtime.js'), 'utf8');
+test('shell usa resolucao rapida antes da hidratacao completa', () => {
+  const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const characteristicsSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8');
 
-  assert.strictEqual(runtimeSource.includes('repository.resolveQuick'), true);
-  assert.strictEqual(runtimeSource.includes("publishContext('quick-ready'"), true);
-  assert.strictEqual(runtimeSource.includes("'hydration-error'"), true);
+  assert.strictEqual(shellSource.includes('/api/resolve/quick'), true);
+  assert.strictEqual(shellSource.includes("status: 'quick-ready'"), true);
+  assert.strictEqual(shellSource.includes("status: 'hydration-error'"), true);
+  assert.strictEqual(shellSource.includes('waitForStableProductPage'), false);
   assert.strictEqual(commerceSource.includes("status !== 'ready' && status !== 'quick-ready'"), true);
   assert.strictEqual(photosSource.includes("status === 'hydration-error' || status === 'error'"), true);
 });

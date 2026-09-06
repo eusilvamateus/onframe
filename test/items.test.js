@@ -157,34 +157,6 @@ test('assinatura da pagina muda quando a selecao visual muda', () => {
   );
 });
 
-test('assinatura da pagina ignora controles selecionados fora das variacoes', () => {
-  const selectedVariation = {
-    textContent: 'Azul',
-    innerText: 'Azul',
-    getAttribute: () => '',
-    closest: (selector) => selector.includes('variation') ? {} : null
-  };
-  const productRoot = {
-    textContent: 'Cor: Azul',
-    innerText: 'Cor: Azul',
-    contains: (element) => element === selectedVariation,
-    querySelectorAll: (selector) => selector === '[aria-checked="true"]' ? [selectedVariation] : []
-  };
-  const createDocument = (externalLabel) => ({
-    body: fakeElement(''),
-    querySelector: (selector) => selector === '#ui-pdp-main-container' ? productRoot : null,
-    querySelectorAll: (selector) => selector === '[aria-pressed="true"]'
-      ? [fakeElement(externalLabel, { 'aria-label': externalLabel })]
-      : []
-  });
-  const href = 'https://produto.mercadolivre.com.br/MLB-1234567890-produto-_JM';
-
-  assert.strictEqual(
-    detection.createPageSignature(createDocument('Favorito ativado'), href),
-    detection.createPageSignature(createDocument('Favorito desativado'), href)
-  );
-});
-
 test('assinatura da pagina ignora parametros que nao identificam anuncio ou variacao', () => {
   const doc = fakeDocument({
     'a[href*="/noindex/denounce"][href*="item_id=MLB"]': [

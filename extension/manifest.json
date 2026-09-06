@@ -41,38 +41,20 @@
         "https://*.mercadolivre.com.br/*"
       ],
       "js": [
-        "core/navigation-bridge.js"
-      ],
-      "run_at": "document_start",
-      "world": "MAIN"
-    },
-    {
-      "matches": [
-        "https://*.mercadolivre.com.br/*"
-      ],
-      "js": [
         "core/icons.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",
-        "core/context-store.js",
-        "core/surface-host.js",
         "modules/photos/model.js",
-        "modules/photos/context-controller.js",
-        "modules/photos/dock-view.js",
         "modules/photos/module.js",
         "modules/commerce/model.js",
-        "modules/commerce/summary-controller.js",
-        "modules/commerce/listing-surface.js",
-        "modules/commerce/popover-view.js",
         "modules/commerce/module.js",
         "modules/description/model.js",
         "modules/description/module.js",
         "modules/characteristics/model.js",
-        "modules/characteristics/editor-view.js",
         "modules/characteristics/module.js",
         "core/module-registry.js",
-        "core/page-runtime.js",
+        "core/content-shell.js",
         "content.js"
       ],
       "css": [

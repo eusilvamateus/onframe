@@ -7,17 +7,12 @@
     const Shared = services.Shared;
     const Detection = services.Detection;
     const CharacteristicsModel = services.CharacteristicsModel;
-    const CharacteristicsEditorView = window.OnFrameCharacteristicsEditorView;
     const api = services.api;
     const toast = services.toast;
-    const contextStore = services.contextStore;
-    const contextUpdates = services.contextUpdates;
-    const invalidatePageContext = services.invalidatePageContext || (() => {});
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const toUserError = (err) => CharacteristicsModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame características] detalhe tecnico:' }));
-    let unsubscribeContext = null;
 
     const state = {
       context: null,
@@ -48,25 +43,8 @@
       requestId: 0,
       pageSignature: ''
     };
-    const editorView = CharacteristicsEditorView.createEditorView({
-      state,
-      model: CharacteristicsModel,
-      escapeHtml,
-      icon,
-      spinner,
-      renderInlineNotice,
-      renderBulkSwitch,
-      renderBulkFailures,
-      getPackageDimensionFields,
-      renderPackageDimensionField
-    });
 
     function startCharacteristics() {
-      if (!unsubscribeContext && contextStore) {
-        unsubscribeContext = contextStore.subscribe((snapshot) => {
-          handlePageContextChange(contextUpdates.toModuleUpdate(snapshot));
-        });
-      }
       state.pageSignature = readPageSignature();
       ensureDocumentEvents();
       if (state.visible) mountCharacteristics();
@@ -113,13 +91,6 @@
     function handlePageContextChange(update) {
       const status = update && update.status ? update.status : '';
       const pageSignature = update && update.signature ? update.signature : readPageSignature();
-
-      if (update && update.targetChanged) {
-        const visible = state.visible;
-        resetState();
-        state.visible = visible;
-        return;
-      }
 
       if (status === 'not_product') {
         resetState();
@@ -289,7 +260,7 @@
         anchor.insertAdjacentElement('afterend', state.editorRoot);
       }
 
-      state.editorRoot.innerHTML = editorView.build();
+      state.editorRoot.innerHTML = `${renderPackageDimensionsCard(disabled)}${renderFooterMarkup()}`;
       bindEditorEvents();
     }
 
@@ -301,6 +272,51 @@
         section.querySelector('.ui-pdp-collapsable') ||
         elements.titleRow ||
         elements.title;
+    }
+
+    function renderFooterMarkup() {
+      const disabled = state.loading || state.saving;
+      const canBulk = CharacteristicsModel.canBulkEditCharacteristics(state.context);
+      if (!canBulk) state.bulkEnabled = false;
+      return `
+        <section class="onframe-characteristics-footer" aria-label="Ações da edição de características">
+          <div class="onframe-characteristics-footer-head">
+            <strong>Editando características</strong>
+            ${state.loading ? `<span class="onframe-characteristics-state">${spinner()}Carregando ficha...</span>` : ''}
+            ${state.saving ? `<span class="onframe-characteristics-state">${spinner()}Salvando...</span>` : ''}
+          </div>
+          ${renderInlineNotice()}
+          ${canBulk ? renderBulkSwitch(disabled) : ''}
+          ${state.error ? `<div class="onframe-characteristics-alert error">${escapeHtml(state.error)}</div>` : ''}
+          ${renderBulkFailures()}
+          <div class="onframe-characteristics-actions">
+            <button class="ob-button primary" data-action="save-characteristics" type="button" ${disabled ? 'disabled' : ''}>${icon('checkCircle', 14)}Salvar</button>
+            <button class="ob-button" data-action="cancel-characteristics" type="button" ${state.saving ? 'disabled' : ''}>Cancelar</button>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderPackageDimensionsCard(disabled) {
+      const packageDimensions = state.snapshot && state.snapshot.packageDimensions ? state.snapshot.packageDimensions : null;
+      const fields = getPackageDimensionFields();
+      if (!fields.length) return '';
+      return `
+        <section class="onframe-characteristics-package-card" aria-label="Dimensões do pacote">
+          <div class="onframe-characteristics-package-head">
+            <span class="onframe-characteristics-package-icon" aria-hidden="true">${icon('package', 18)}</span>
+            <div class="onframe-characteristics-package-title">
+              <strong>${escapeHtml(packageDimensions.label || 'Dimensões do pacote')}</strong>
+              <span>Medidas de envio, tratadas à parte dos atributos do produto.</span>
+            </div>
+            <span class="ob-badge grey onframe-characteristics-package-badge">${escapeHtml(packageDimensions.badge || 'LOGÍSTICA')}</span>
+          </div>
+          <div class="onframe-characteristics-package-grid">
+            ${fields.map((field) => renderPackageDimensionField(field, disabled)).join('')}
+          </div>
+          <div class="onframe-characteristics-package-note">${icon('info', 12)}Peso e medidas afetam o cálculo do frete. Confira antes de salvar.</div>
+        </section>
+      `;
     }
 
     function renderPackageDimensionField(field, disabled) {
@@ -1064,8 +1080,6 @@
           applyDraftToSnapshotFields(updates);
         }
         state.saving = false;
-        const changed = !state.bulkEnabled || Number(result && result.counts && result.counts.applied || 0) > 0;
-        if (changed) invalidatePageContext('characteristics-save');
         notifySaveResult(result, 'Características salvas', state.bulkEnabled);
         mountCharacteristics();
       } catch (err) {
@@ -1372,12 +1386,6 @@
       return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
     }
 
-    function stopCharacteristics() {
-      if (unsubscribeContext) unsubscribeContext();
-      unsubscribeContext = null;
-      resetState();
-    }
-
     return {
       id: 'characteristics',
       label: 'Características',
@@ -1390,9 +1398,7 @@
       reset: resetState,
       scheduleRender,
       show: showCharacteristics,
-      start: startCharacteristics,
-      stop: stopCharacteristics,
-      refreshLayout: scheduleRender
+      start: startCharacteristics
     };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

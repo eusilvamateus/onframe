@@ -1,10 +1,11 @@
 #onblide-ml-root {
   position: fixed;
-  inset: 0 auto auto 0;
-  width: 0;
-  height: 0;
-  overflow: visible;
-  pointer-events: auto;
+  left: -10000px;
+  top: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .onblide-ml-file {

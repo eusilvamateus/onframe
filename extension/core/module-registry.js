@@ -8,11 +8,15 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   const REQUIRED_METHODS = Object.freeze([
     'getStatus',
+    'handlePageContextChange',
     'hide',
+    'isBusy',
+    'isLoaded',
     'reload',
+    'reset',
+    'scheduleRender',
     'show',
-    'start',
-    'stop'
+    'start'
   ]);
 
   function createModules(services) {

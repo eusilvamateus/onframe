@@ -6,51 +6,13 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   function createPageSignature(documentRef, href) {
-    return createPageSnapshot(documentRef, href).signature;
-  }
-
-  function createPageSnapshot(documentRef, href) {
-    const url = String(href || '');
-    const surface = isProductPageUrl(url) ? 'pdp' : (isListingPageUrl(url) ? 'listing' : 'unsupported');
-    if (surface !== 'pdp') {
-      const routeKey = normalizeRouteKey(url);
-      return {
-        surface,
-        url,
-        routeKey,
-        itemKey: '',
-        selectionKey: '',
-        targetKey: surface === 'listing' ? routeKey : '',
-        signature: JSON.stringify({ surface, routeKey }),
-        pageIdentity: {},
-        itemCandidates: [],
-        userProductCandidates: []
-      };
-    }
-
-    const pageIdentity = collectPageIdentity(documentRef, url, { includeScripts: false });
-    const selection = createSelectionKey(documentRef, url);
-    const itemKey = createPageItemKey(pageIdentity, url);
-    const selectionKey = JSON.stringify(selection);
-    const targetKey = `${itemKey}::${selectionKey}`;
-    const snapshot = {
-      surface,
-      url,
-      routeKey: normalizeRouteKey(url),
-      itemKey,
-      selectionKey,
-      targetKey,
-      pageIdentity,
-      itemCandidates: collectItemIdCandidatesFromPage(documentRef, url, { includeScripts: false }),
-      userProductCandidates: collectUserProductCandidatesFromPage(documentRef, url, { includeScripts: false })
-    };
-    snapshot.signature = JSON.stringify({
-      surface,
-      itemKey,
-      selection,
-      pageIdentity
+    const identity = collectPageIdentity(documentRef, href, { includeScripts: false });
+    return JSON.stringify({
+      productPage: isProductPageUrl(href),
+      itemKey: createPageItemKey(identity, href),
+      selectionKey: createSelectionKey(documentRef, href),
+      pageIdentity: identity
     });
-    return snapshot;
   }
 
   function createPageItemKey(identity, href) {
@@ -102,8 +64,6 @@
     const values = [];
     const documentLike = documentRef || {};
     const textRoot = firstElement(documentLike, [
-      '#ui-pdp-main-container',
-      '.ui-pdp-container--pdp',
       '.ui-pdp-container',
       '.ui-pdp',
       'main'
@@ -118,10 +78,8 @@
       '.andes-button--selected',
       '[data-testid*="selected"]'
     ];
-    const selectionRoot = textRoot && typeof textRoot.querySelectorAll === 'function' ? textRoot : documentLike;
     for (const selector of selectors) {
-      for (const element of queryAll(selectionRoot, selector)) {
-        if (!isProductSelectionElement(element, textRoot)) continue;
+      for (const element of queryAll(documentLike, selector)) {
         values.push(normalizeText(elementText(element)));
         values.push(normalizeText(element.getAttribute ? element.getAttribute('aria-label') : ''));
         values.push(normalizeText(element.getAttribute ? element.getAttribute('title') : ''));
@@ -260,14 +218,6 @@
   }
 
   function collectSelectedCandidateElements(documentLike) {
-    const productRoot = firstElement(documentLike, [
-      '#ui-pdp-main-container',
-      '.ui-pdp-container--pdp',
-      '.ui-pdp-container',
-      '.ui-pdp',
-      'main'
-    ]);
-    const selectionRoot = productRoot && typeof productRoot.querySelectorAll === 'function' ? productRoot : documentLike;
     const selectors = [
       '[aria-checked="true"]',
       '[aria-pressed="true"]',
@@ -276,8 +226,7 @@
     ];
     const elements = [];
     for (const selector of selectors) {
-      for (const element of queryAll(selectionRoot, selector)) {
-        if (!isProductSelectionElement(element, productRoot)) continue;
+      for (const element of queryAll(documentLike, selector)) {
         elements.push(element);
         const link = closestLink(element);
         if (link) elements.push(link);
@@ -464,38 +413,6 @@
       /[?&]pdp_filters=[^&]*item_id/i.test(value);
   }
 
-  function isListingPageUrl(value) {
-    try {
-      const url = new URL(String(value || ''), 'https://www.mercadolivre.com.br');
-      const host = String(url.hostname || '').toLowerCase();
-      if (host === 'lista.mercadolivre.com.br') return true;
-      return /(^|\.)mercadolivre\.com\.br$/.test(host) && /^\/(?:loja|perfil)(?:\/|$)/.test(url.pathname || '');
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function normalizeRouteKey(href) {
-    try {
-      const url = new URL(String(href || ''), 'https://www.mercadolivre.com.br');
-      url.hash = '';
-      return `${url.origin}${url.pathname}${url.search}`;
-    } catch (e) {
-      return String(href || '').split('#')[0];
-    }
-  }
-
-  function isProductSelectionElement(element, productRoot) {
-    if (!element) return false;
-    if (typeof element.closest !== 'function') return true;
-    if (element.closest('#onblide-ml-root, [data-onframe-portal], .ui-pdp-gallery, video, [class*="vjs-"], [class*="carousel"]')) return false;
-    if (productRoot && typeof productRoot.contains === 'function' && !productRoot.contains(element)) return false;
-    if (element.matches && element.matches('[role="switch"], [id*="favorite" i], [class*="favorite" i]')) return false;
-    if (element.closest('[data-testid*="variation"], [class*="variation"], [class*="picker"], [class*="attribute"], [class*="thumbnail"]')) return true;
-    const label = `${elementText(element)} ${getAttribute(element, 'aria-label')} ${getAttribute(element, 'title')}`;
-    return /selecionad|bot[oó]n\s+\d+\s+de\s+\d+/i.test(label);
-  }
-
   function normalizeUrlForSignature(href) {
     try {
       const url = new URL(String(href || ''), 'https://produto.mercadolivre.com.br');
@@ -559,11 +476,9 @@
     collectUserProductCandidatesFromPage,
     collectVisibleSelectedValues,
     createPageItemKey,
-    createPageSnapshot,
     createPageSignature,
     createSelectionKey,
     inferSelectedVariationId,
-    isListingPageUrl,
     isProductPageUrl,
     normalizeItemId,
     normalizeText

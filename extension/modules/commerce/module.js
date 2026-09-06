@@ -7,14 +7,8 @@
     const Shared = services.Shared;
     const Detection = services.Detection;
     const CommerceModel = services.CommerceModel;
-    const SummaryController = window.OnFrameCommerceSummaryController;
-    const ListingSurface = window.OnFrameCommerceListingSurface;
-    const PopoverView = window.OnFrameCommercePopoverView;
     const api = services.api;
     const toast = services.toast;
-    const hosts = services.hosts;
-    const contextStore = services.contextStore;
-    const contextUpdates = services.contextUpdates;
     const requestPageContextReload = services.requestPageContextReload || (() => Promise.resolve(null));
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
@@ -36,7 +30,6 @@
       SELLER_COUPON_CAMPAIGN: 'Cupom do vendedor',
       BANK: 'Desconto por pagamento'
     });
-    let unsubscribeContext = null;
 
     const state = {
       context: null,
@@ -60,6 +53,13 @@
       promotionError: '',
       surface: 'pdp',
       popoverAnchor: null,
+      listingRecords: new Map(),
+      listingCache: new Map(),
+      listingQueue: [],
+      listingResolving: 0,
+      listingObserver: null,
+      listingMutationObserver: null,
+      listingScanTimer: null,
       listingActiveRecord: null,
       actionError: '',
       popover: null,
@@ -106,46 +106,8 @@
       viewportEventsReady: false,
       documentEventsReady: false
     };
-    const listingSurface = ListingSurface.createListingSurface({
-      Detection,
-      api,
-      extractItemId: extractListingItemId,
-      onOwned: applyListingOwnership,
-      onUnavailable: removeListingDecorations,
-      onRemove: removeListingRecord,
-      toUserError
-    });
-    const popoverView = PopoverView.createPopoverView({
-      state,
-      model: CommerceModel,
-      escapeHtml,
-      escapeAttribute,
-      icon,
-      renderHead: renderPopoverHead,
-      renderNotice,
-      renderPriceSummary,
-      renderPriceScenarios: renderPriceStackableScenarios,
-      renderBulkSwitch,
-      renderBulkBusyStatus,
-      renderBulkStatus,
-      priceSaveIcon,
-      priceSaveLabel,
-      campaignEntry: promotionPopoverCampaignEntry,
-      couponEntries: promotionPopoverCouponEntries,
-      paymentEntries: promotionPopoverPaymentEntries,
-      renderCampaign: renderPromotionPopoverCampaign,
-      renderEmptyState: renderPromotionPopoverEmptyState,
-      renderCoupons: renderPromotionPopoverCouponList,
-      renderPayments: renderPromotionPopoverPaymentList
-    });
-    const summaryController = SummaryController.createSummaryController({ api, toUserError });
 
     function startCommerce() {
-      if (!unsubscribeContext && contextStore) {
-        unsubscribeContext = contextStore.subscribe((snapshot) => {
-          handlePageContextChange(contextUpdates.toModuleUpdate(snapshot));
-        });
-      }
       bindViewportEvents();
       bindDocumentEvents();
       state.pageSignature = readPageSignature();
@@ -229,7 +191,7 @@
       const pageSignature = update && update.signature ? update.signature : readPageSignature();
 
       if (status === 'not_product') {
-        if (state.surface !== 'listing' || (update && update.targetChanged)) {
+        if (state.surface !== 'listing') {
           resetState({ preserveListing: true });
           state.surface = 'listing';
         }
@@ -240,14 +202,6 @@
       if (state.surface === 'listing') {
         resetListingState();
         state.surface = 'pdp';
-      }
-
-      if (update && update.targetChanged) {
-        const visible = state.visible;
-        resetState();
-        state.visible = visible;
-        state.surface = 'pdp';
-        return;
       }
 
       if (status === 'loading') {
@@ -350,16 +304,27 @@
       state.promotionError = '';
       mountCommerce();
 
-      const summaries = await summaryController.load({
-        price: itemApiPath('/pricing/summary'),
-        promotions: itemApiPath('/promotions/summary')
-      });
+      const [priceResult, promotionResult] = await Promise.allSettled([
+        api(itemApiPath('/pricing/summary')),
+        api(itemApiPath('/promotions/summary'))
+      ]);
       if (parentRequestId !== state.requestId) return;
 
-      state.priceSummary = summaries.price.value;
-      state.priceError = summaries.price.error;
-      state.promotionSummary = summaries.promotions.value;
-      state.promotionError = summaries.promotions.error;
+      if (priceResult.status === 'fulfilled') {
+        state.priceSummary = priceResult.value;
+        state.priceError = '';
+      } else {
+        state.priceSummary = null;
+        state.priceError = toUserError(priceResult.reason);
+      }
+
+      if (promotionResult.status === 'fulfilled') {
+        state.promotionSummary = promotionResult.value;
+        state.promotionError = '';
+      } else {
+        state.promotionSummary = null;
+        state.promotionError = toUserError(promotionResult.reason);
+      }
 
       state.priceLoading = false;
       state.promotionLoading = false;
@@ -445,16 +410,179 @@
     }
 
     function isListingPageUrl() {
-      return Detection.isListingPageUrl(location.href);
+      const host = String(location.hostname || '').toLowerCase();
+      const path = String(location.pathname || '');
+      if (host === 'lista.mercadolivre.com.br') return true;
+      return /(^|\.)mercadolivre\.com\.br$/.test(host) && /^\/(?:loja|perfil)(?:\/|$)/.test(path);
+    }
+
+    function isStorefrontListingPage() {
+      return String(location.hostname || '').toLowerCase() !== 'lista.mercadolivre.com.br';
     }
 
     function startListingObserver() {
-      listingSurface.start();
+      if (!isListingPageUrl()) return;
+
+      if (!state.listingObserver && typeof IntersectionObserver === 'function') {
+        state.listingObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const record = state.listingRecords.get(entry.target);
+            if (record) queueListingResolution(record.itemId);
+            state.listingObserver.unobserve(entry.target);
+          });
+        }, { rootMargin: '180px 0px' });
+      }
+
+      if (!state.listingMutationObserver && typeof MutationObserver === 'function' && document.body) {
+        state.listingMutationObserver = new MutationObserver((mutations) => {
+          if (mutations.some((mutation) => mutation.type === 'childList')) scheduleListingScan();
+        });
+        state.listingMutationObserver.observe(document.body, { childList: true, subtree: true });
+      }
+
+      scheduleListingScan(0);
+    }
+
+    function stopListingObserver() {
+      if (state.listingObserver) state.listingObserver.disconnect();
+      if (state.listingMutationObserver) state.listingMutationObserver.disconnect();
+      state.listingObserver = null;
+      state.listingMutationObserver = null;
+      if (state.listingScanTimer) clearTimeout(state.listingScanTimer);
+      state.listingScanTimer = null;
     }
 
     function resetListingState() {
-      listingSurface.stop();
+      stopListingObserver();
+      state.listingRecords.forEach((record) => removeListingRecord(record));
+      state.listingRecords.clear();
+      state.listingCache.clear();
+      state.listingQueue = [];
+      state.listingResolving = 0;
       state.listingActiveRecord = null;
+    }
+
+    function scheduleListingScan(delay = 120) {
+      if (state.listingScanTimer) return;
+      state.listingScanTimer = setTimeout(() => {
+        state.listingScanTimer = null;
+        scanListingCards();
+      }, delay);
+    }
+
+    function scanListingCards() {
+      if (!state.visible || !isListingPageUrl()) return;
+      const selector = isStorefrontListingPage() ? '.poly-card' : 'li.ui-search-layout__item';
+      const cards = Array.from(document.querySelectorAll(selector));
+      const currentCards = new Set(cards);
+
+      state.listingRecords.forEach((record, card) => {
+        if (!card.isConnected || !currentCards.has(card)) {
+          removeListingRecord(record);
+          state.listingRecords.delete(card);
+        }
+      });
+
+      cards.forEach((card) => {
+        if (!card || !card.isConnected || card.closest('#onblide-ml-root')) return;
+        const link = card.querySelector('a.poly-component__title[href]');
+        const itemId = extractListingItemId(link && link.href);
+        const current = state.listingRecords.get(card);
+
+        if (!itemId || !link) {
+          if (current) {
+            removeListingRecord(current);
+            state.listingRecords.delete(card);
+          }
+          return;
+        }
+
+        if (current && current.itemId === itemId) return;
+        if (current) removeListingRecord(current);
+
+        const record = {
+          card,
+          link,
+          itemId,
+          controls: null,
+          badge: null,
+          media: null,
+          context: null,
+          priceSummary: null,
+          promotionSummary: null,
+          priceError: '',
+          promotionError: '',
+          priceLoading: false,
+          promotionLoading: false
+        };
+        state.listingRecords.set(card, record);
+        observeListingRecord(record);
+      });
+    }
+
+    function observeListingRecord(record) {
+      const cached = state.listingCache.get(record.itemId);
+      if (cached && cached.status === 'owned') {
+        applyListingOwnership(record, cached.context);
+        return;
+      }
+      if (cached && (cached.status === 'not-owned' || cached.status === 'error')) return;
+      if (state.listingObserver) {
+        state.listingObserver.observe(record.card);
+        return;
+      }
+      queueListingResolution(record.itemId);
+    }
+
+    function queueListingResolution(itemId) {
+      const current = state.listingCache.get(itemId);
+      if (current && (current.status === 'queued' || current.status === 'loading' || current.status === 'owned' || current.status === 'not-owned' || current.status === 'error')) return;
+      state.listingCache.set(itemId, { status: 'queued', context: null });
+      state.listingQueue.push(itemId);
+      drainListingQueue();
+    }
+
+    function drainListingQueue() {
+      while (state.listingResolving < 3 && state.listingQueue.length) {
+        const itemId = state.listingQueue.shift();
+        const entry = state.listingCache.get(itemId);
+        if (!entry || entry.status !== 'queued') continue;
+        state.listingResolving += 1;
+        entry.status = 'loading';
+        void resolveListingItem(itemId).finally(() => {
+          state.listingResolving = Math.max(0, state.listingResolving - 1);
+          drainListingQueue();
+        });
+      }
+    }
+
+    async function resolveListingItem(itemId) {
+      const entry = state.listingCache.get(itemId);
+      if (!entry) return;
+
+      try {
+        const context = await api('/api/resolve/quick', {
+          method: 'POST',
+          body: JSON.stringify({
+            url: location.href,
+            html: '',
+            pageIdentity: { canonicalItemId: itemId }
+          })
+        });
+        if (!context || !context.item || String(context.item.id || '') !== itemId) throw new Error('Não foi possível confirmar este anúncio.');
+        entry.status = 'owned';
+        entry.context = context;
+      } catch (err) {
+        entry.status = Number(err && err.status) === 403 || Number(err && err.status) === 404 ? 'not-owned' : 'error';
+        entry.error = toUserError(err);
+      }
+
+      state.listingRecords.forEach((record) => {
+        if (record.itemId !== itemId) return;
+        if (entry.status === 'owned') applyListingOwnership(record, entry.context);
+        else removeListingDecorations(record);
+      });
     }
 
     function applyListingOwnership(record, context) {
@@ -539,6 +667,7 @@
 
     function removeListingRecord(record) {
       if (!record) return;
+      if (state.listingObserver && record.card) state.listingObserver.unobserve(record.card);
       if (state.listingActiveRecord === record) {
         closePopover();
         state.listingActiveRecord = null;
@@ -701,8 +830,7 @@
       if (!state.popoverRoot) {
         state.popoverRoot = document.createElement('div');
         state.popoverRoot.className = 'onframe-commerce-popover-root';
-        if (hosts) hosts.mount(state.popoverRoot, 'commerce-popover');
-        else document.body.appendChild(state.popoverRoot);
+        document.body.appendChild(state.popoverRoot);
       }
 
       state.popoverRoot.classList.toggle('promotions', state.popover === 'promotions');
@@ -716,11 +844,104 @@
     }
 
     function buildPricePopover() {
-      return popoverView.buildPrice();
+      if (state.priceLoading) {
+        return `
+          <section class="onframe-commerce-popover">
+            ${renderPopoverHead('Preço', 'Carregando')}
+            <div class="onframe-commerce-muted">Lendo preço do anúncio.</div>
+          </section>
+        `;
+      }
+
+      if (state.priceError) {
+        return `
+          <section class="onframe-commerce-popover">
+            ${renderPopoverHead('Preço', 'Aviso')}
+            ${renderNotice(state.priceError, 'warn')}
+            <button class="onframe-commerce-btn primary" data-action="reload-commerce" type="button">${icon('refresh', 14)}Recarregar</button>
+          </section>
+        `;
+      }
+
+      const priceState = CommerceModel.getPriceState(state.priceSummary);
+      if (state.priceEditing) return renderPriceEdit(priceState);
+
+      return `
+        <section class="onframe-commerce-popover">
+          ${renderPopoverHead('Preço')}
+          ${renderNotice(state.actionError, 'warn')}
+          ${renderPriceSummary(state.priceSummary, priceState)}
+          ${renderPriceStackableScenarios(state.priceSummary)}
+          ${state.detailsOpen ? `<p class="onframe-commerce-detail">${escapeHtml(priceState.detail)}</p>` : ''}
+          <div class="onframe-commerce-actions">
+            <button class="onframe-commerce-btn primary" data-action="edit-price" type="button" ${priceState.canEdit ? '' : 'disabled'}>${icon('pencil', 14)}Editar preço base</button>
+            ${priceState.blocker ? '<button class="onframe-commerce-btn" data-action="toggle-details" type="button">Ver motivo</button>' : ''}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderPriceEdit(priceState) {
+      const bulkSwitch = renderBulkSwitch('price', state.priceBulkEnabled);
+      return `
+        <section class="onframe-commerce-popover">
+          ${renderPopoverHead('Editar preço', priceState.label)}
+          ${renderNotice(state.actionError, 'warn')}
+          <section class="ob-card onframe-commerce-popover-price-edit-card">
+            <div class="onframe-commerce-popover-price-edit-field">
+              <label class="onframe-commerce-field">
+                <span>Novo preço</span>
+                <input data-field="price" inputmode="decimal" autocomplete="off" value="${escapeAttribute(state.priceDraft)}">
+              </label>
+            </div>
+            ${bulkSwitch ? `<div class="onframe-commerce-popover-price-edit-bulk">${bulkSwitch}</div>` : ''}
+          </section>
+          ${renderBulkBusyStatus()}
+          ${renderBulkStatus(state.priceBulkPreview, state.priceBulkError)}
+          <div class="onframe-commerce-actions">
+            <button class="onframe-commerce-btn primary" data-action="save-price" type="button" ${state.busy ? 'disabled' : ''}>${priceSaveIcon()}${escapeHtml(priceSaveLabel())}</button>
+            <button class="onframe-commerce-btn" data-action="cancel-price" type="button" ${state.busy ? 'disabled' : ''}>Descartar</button>
+          </div>
+        </section>
+      `;
     }
 
     function buildPromotionPopover() {
-      return popoverView.buildPromotions();
+      if (state.promotionLoading) {
+        return `
+          <section class="onframe-commerce-popover">
+            ${renderPopoverHead('Promoções', 'Carregando')}
+            <div class="onframe-commerce-muted">Lendo promoções do anúncio.</div>
+          </section>
+        `;
+      }
+
+      if (state.promotionError) {
+        return `
+          <section class="onframe-commerce-popover">
+            ${renderPopoverHead('Promoções', 'Aviso')}
+            ${renderNotice(state.promotionError, 'warn')}
+            <button class="onframe-commerce-btn primary" data-action="reload-commerce" type="button">${icon('refresh', 14)}Recarregar</button>
+          </section>
+        `;
+      }
+
+      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const campaign = promotionPopoverCampaignEntry(groups);
+      const coupons = promotionPopoverCouponEntries(groups);
+      const paymentBenefits = promotionPopoverPaymentEntries(groups);
+      return `
+        <section class="onframe-commerce-popover">
+          ${renderPopoverHead('Promoções')}
+          ${renderNotice(state.actionError, 'warn')}
+          ${campaign ? renderPromotionPopoverCampaign(campaign) : renderPromotionPopoverEmptyState()}
+          ${renderPromotionPopoverCouponList(coupons)}
+          ${renderPromotionPopoverPaymentList(paymentBenefits)}
+          <div class="onframe-commerce-actions">
+            <button class="onframe-commerce-btn primary" data-action="open-promotion-modal" type="button">${icon('tag', 14)}Gerenciar promoções</button>
+          </div>
+        </section>
+      `;
     }
 
     function renderModal() {
@@ -732,8 +953,7 @@
       if (!state.modalRoot) {
         state.modalRoot = document.createElement('div');
         state.modalRoot.className = 'onframe-commerce-modal-root';
-        if (hosts) hosts.mount(state.modalRoot, 'commerce-modal');
-        else document.body.appendChild(state.modalRoot);
+        document.body.appendChild(state.modalRoot);
       }
 
       const modalContent = state.modalRoot.querySelector('.onframe-commerce-modal-content');
@@ -777,8 +997,7 @@
       if (!state.directDiscountModalRoot) {
         state.directDiscountModalRoot = document.createElement('div');
         state.directDiscountModalRoot.className = 'onframe-commerce-direct-discount-modal-root';
-        if (hosts) hosts.mount(state.directDiscountModalRoot, 'commerce-direct-discount');
-        else document.body.appendChild(state.directDiscountModalRoot);
+        document.body.appendChild(state.directDiscountModalRoot);
       }
 
       const focusedField = captureModalFieldFocus();
@@ -1292,8 +1511,7 @@
       if (!state.promotionResultPopoverRoot) {
         state.promotionResultPopoverRoot = document.createElement('div');
         state.promotionResultPopoverRoot.className = 'onframe-commerce-promotion-result-popover-root';
-        if (hosts) hosts.mount(state.promotionResultPopoverRoot, 'commerce-result-popover');
-        else document.body.appendChild(state.promotionResultPopoverRoot);
+        document.body.appendChild(state.promotionResultPopoverRoot);
       }
 
       state.promotionResultPopoverRoot.innerHTML = buildPromotionResultPopover(details);
@@ -4323,14 +4541,19 @@
       };
     }
 
-    function showCommerce() {
+    async function showCommerce() {
       state.visible = true;
       if (isListingPageUrl()) {
         state.surface = 'listing';
         mountCommerce();
         return getCommerceStatus();
       }
-      mountCommerce();
+      if (!state.loaded && !state.busy) {
+        state.busy = true;
+        mountCommerce();
+        await requestPageContextReload('show');
+      }
+      else mountCommerce();
       return getCommerceStatus();
     }
 
@@ -4364,12 +4587,6 @@
       return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
     }
 
-    function stopCommerce() {
-      if (unsubscribeContext) unsubscribeContext();
-      unsubscribeContext = null;
-      resetState();
-    }
-
     return {
       id: 'commerce',
       label: 'Preço e promoções',
@@ -4386,9 +4603,7 @@
       reset: resetState,
       scheduleRender,
       show: showCommerce,
-      start: startCommerce,
-      stop: stopCommerce,
-      refreshLayout: scheduleRender
+      start: startCommerce
     };
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

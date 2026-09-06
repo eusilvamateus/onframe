@@ -10,18 +10,15 @@
   const CharacteristicsModel = window.OnFrameCharacteristicsModel;
   const CharacteristicsModule = window.OnFrameCharacteristicsModule;
   const ModuleRegistry = window.OnFrameModuleRegistry;
-  const ContextStore = window.OnFrameContextStore;
-  const SurfaceHost = window.OnFrameSurfaceHost;
-  const PageRuntime = window.OnFramePageRuntime;
+  const ContentShell = window.OnFrameContentShell;
   const toast = window.OnFrameToast;
   const api = Shared.createApi({ offlineMessage: 'Serviço local desligado. Abra o OnFrame.' });
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
-  const contextStore = ContextStore.createStore();
-  const repository = ContextStore.createRepository({ api, ttlMs: 60 * 1000 });
-  const hosts = SurfaceHost.createSurfaceHost({ document, rootId: 'onblide-ml-root' });
-  const root = hosts.ensureRoot();
+  const root = document.createElement('div');
+  root.id = 'onblide-ml-root';
+  document.documentElement.appendChild(root);
 
-  let runtime = null;
+  let shell = null;
   const modules = ModuleRegistry.createModules({
     Shared,
     Detection,
@@ -34,22 +31,16 @@
     CharacteristicsModel,
     CharacteristicsModule,
     api,
-    contextStore,
-    contextUpdates: ContextStore,
-    hosts,
     root,
     toast,
-    requestPageContextReload: (reason) => runtime.reload(reason),
-    invalidatePageContext: (reason) => runtime.invalidate(reason)
+    requestPageContextReload: (reason) => shell.reloadPageContext(reason)
   });
 
-  runtime = PageRuntime.createRuntime({
+  shell = ContentShell.createShell({
     Detection,
-    store: contextStore,
-    repository,
-    hosts,
+    api,
     modules,
     toUserError
   });
-  runtime.start();
+  shell.start();
 })();

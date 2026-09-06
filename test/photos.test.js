@@ -35,23 +35,6 @@ const {
   fakeElement,
   listen
 } = require('./helpers');
-const { createContextController } = require('../extension/modules/photos/context-controller');
-
-test('context controller projeta a variacao ativa sem compartilhar rascunhos', () => {
-  const controller = createContextController({ model: photosModel, makeLocalId: () => 'local-1' });
-  const context = {
-    ownerAccount: { user_id: 42 },
-    selectedVariationId: '20',
-    variations: [{ id: 20, picture_ids: ['PIC-1'] }],
-    pictures: [{ id: 'PIC-1', url: 'https://http2.mlstatic.com/a.jpg' }]
-  };
-  const projected = controller.project(context);
-
-  assert.strictEqual(projected.ownerUserId, 42);
-  assert.strictEqual(projected.selectedVariationId, '20');
-  assert.notStrictEqual(projected.originalVariations, projected.variations);
-  assert.notStrictEqual(projected.originalPictures, projected.draftPictures);
-});
 
 test('buildCommitPayload preserva variacoes nao editadas', () => {
   const payload = buildCommitPayload(
@@ -245,10 +228,8 @@ test('photos model aplica limite por variacao sem bloquear pelo total do anuncio
   assert.strictEqual(state.counterText, '7/10 fotos');
 });
 
-test('modulo de fotos consome contexto resolvido pelo runtime', () => {
-  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
-  const controllerSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'context-controller.js'), 'utf8');
-  const source = `${moduleSource}\n${controllerSource}`;
+test('modulo de fotos consome contexto resolvido pelo shell', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
 
   assert.strictEqual(source.includes('collectItemIdCandidatesFromPage'), false);
   assert.strictEqual(source.includes('collectUserProductCandidatesFromPage'), false);
@@ -257,9 +238,7 @@ test('modulo de fotos consome contexto resolvido pelo runtime', () => {
 });
 
 test('dock de fotos separa recolhimento da abertura do editor', () => {
-  const moduleSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
-  const viewSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'dock-view.js'), 'utf8');
-  const source = `${moduleSource}\n${viewSource}`;
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
 
   assert.match(source, /dockExpanded: false/);
