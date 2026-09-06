@@ -377,6 +377,22 @@ test('modal de promocoes preserva posicao ao revisar oferta', () => {
   assert.match(source, /data-entry-key/);
 });
 
+test('modal de promocoes nasce do popover em qualquer superficie', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+
+  assert.match(source, /function readPromotionPopoverRect/);
+  assert.match(source, /function getPromotionModalMorphTransform/);
+  assert.match(source, /function beginPromotionModalOpenTransition/);
+  assert.match(source, /state\.popoverRoot\.getBoundingClientRect/);
+  assert.match(source, /duration: 620/);
+  assert.match(source, /function animatePromotionModalChildren/);
+  assert.match(source, /schedulePromotionManagerEstimates\(\);/);
+  assert.match(styles, /\.onframe-commerce-backdrop\.is-promotion-modal-morphing\s*\{\s*background: transparent;/s);
+  assert.match(styles, /\.onframe-commerce-modal\.is-promotion-modal-morphing\s*\{[\s\S]*will-change: transform, border-radius, box-shadow;/s);
+  assert.match(styles, /\.onframe-commerce-modal\.is-promotion-modal-opening > \*\s*\{[\s\S]*translateY\(20px\)/s);
+});
+
 test('modal cria desconto direto em dialogo separado da tabela', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');

@@ -76,6 +76,8 @@
       promotionModalOpen: false,
       directDiscountModalOpen: false,
       renderingPromotionModal: false,
+      promotionModalTransition: null,
+      promotionModalAnimations: [],
       promotionFormKey: '',
       promotionFormAction: '',
       promotionDraftValues: {},
@@ -3976,6 +3978,7 @@
     }
 
     function openPromotionModal() {
+      const popoverRect = readPromotionPopoverRect();
       state.popover = null;
       removePopover();
       removePromotionResultPopover();
@@ -3995,7 +3998,124 @@
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
       renderModal();
+      void beginPromotionModalOpenTransition(popoverRect);
+    }
+
+    async function beginPromotionModalOpenTransition(popoverRect) {
+      const modal = getPromotionModalElement();
+      const backdrop = getPromotionModalBackdropElement();
+      if (!modal || !backdrop || !popoverRect) {
+        schedulePromotionManagerEstimates();
+        return;
+      }
+
+      clearPromotionModalTransition();
+      const transition = { direction: 'open', popoverRect };
+      state.promotionModalTransition = transition;
+      const transform = getPromotionModalMorphTransform(modal, popoverRect);
+      const modalStyle = getComputedStyle(modal);
+      const backdropStyle = getComputedStyle(backdrop);
+      modal.classList.add('is-promotion-modal-morphing', 'is-promotion-modal-opening');
+      backdrop.classList.add('is-promotion-modal-morphing', 'is-promotion-modal-opening');
+
+      const animations = [
+        animatePromotionModalElement(modal, [
+          { transform, borderRadius: '8px', boxShadow: 'none' },
+          { transform: 'none', borderRadius: modalStyle.borderRadius, boxShadow: modalStyle.boxShadow }
+        ], {
+          duration: 620,
+          easing: 'cubic-bezier(0.22, 0.78, 0.18, 1)',
+          fill: 'both'
+        }),
+        animatePromotionModalElement(backdrop, [
+          { backgroundColor: 'transparent' },
+          { backgroundColor: backdropStyle.backgroundColor }
+        ], {
+          duration: 560,
+          easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
+          fill: 'both'
+        }),
+        ...animatePromotionModalChildren(modal)
+      ].filter(Boolean);
+
+      await waitForPromotionModalAnimations(animations);
+      if (state.promotionModalTransition !== transition) return;
+      modal.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
+      backdrop.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
+      finishPromotionModalAnimations();
+      state.promotionModalTransition = null;
       schedulePromotionManagerEstimates();
+    }
+
+    function animatePromotionModalChildren(modal) {
+      return Array.from(modal.children).map((child, index) => animatePromotionModalElement(child, [
+        { opacity: 0, transform: 'translateY(20px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ], {
+        duration: 340,
+        delay: 210 + index * 55,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'both'
+      })).filter(Boolean);
+    }
+
+    function animatePromotionModalElement(element, keyframes, options) {
+      if (!element || typeof element.animate !== 'function') return null;
+      try {
+        const animation = element.animate(keyframes, options);
+        state.promotionModalAnimations.push(animation);
+        return animation;
+      } catch (_err) {
+        return null;
+      }
+    }
+
+    function waitForPromotionModalAnimations(animations) {
+      if (!animations.length) return Promise.resolve();
+      return Promise.all(animations.map((animation) => animation.finished.catch(() => null)));
+    }
+
+    function finishPromotionModalAnimations() {
+      state.promotionModalAnimations.forEach((animation) => animation.cancel());
+      state.promotionModalAnimations = [];
+    }
+
+    function clearPromotionModalTransition() {
+      finishPromotionModalAnimations();
+      const modal = getPromotionModalElement();
+      const backdrop = getPromotionModalBackdropElement();
+      if (modal) modal.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
+      if (backdrop) backdrop.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
+      state.promotionModalTransition = null;
+    }
+
+    function getPromotionModalElement() {
+      return state.modalRoot && state.modalRoot.querySelector('.onframe-commerce-modal');
+    }
+
+    function getPromotionModalBackdropElement() {
+      return state.modalRoot && state.modalRoot.querySelector('.onframe-commerce-backdrop');
+    }
+
+    function readPromotionPopoverRect() {
+      if (!state.popoverRoot || typeof state.popoverRoot.getBoundingClientRect !== 'function') return null;
+      const rect = state.popoverRoot.getBoundingClientRect();
+      if (!rect || !rect.width || !rect.height) return null;
+      return {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    }
+
+    function getPromotionModalMorphTransform(modal, popoverRect) {
+      const modalRect = modal.getBoundingClientRect();
+      const translateX = popoverRect.left + popoverRect.width / 2 - (modalRect.left + modalRect.width / 2);
+      const translateY = popoverRect.top + popoverRect.height / 2 - (modalRect.top + modalRect.height / 2);
+      const scaleX = popoverRect.width / modalRect.width;
+      const scaleY = popoverRect.height / modalRect.height;
+      return `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px) scale(${scaleX}, ${scaleY})`;
     }
 
     function openDirectDiscountForm() {
@@ -4502,6 +4622,7 @@
     }
 
     function removeModal() {
+      clearPromotionModalTransition();
       removePromotionResultPopover();
       if (state.modalRoot) state.modalRoot.remove();
       state.modalRoot = null;

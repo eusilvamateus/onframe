@@ -995,9 +995,24 @@
   overscroll-behavior: contain;
 }
 
+.onframe-commerce-backdrop.is-promotion-modal-morphing {
+  background: transparent;
+}
+
 .onframe-commerce-modal {
   width: min(860px, calc(100vw - 36px));
   max-height: min(760px, calc(100vh - 36px));
+}
+
+.onframe-commerce-modal.is-promotion-modal-morphing {
+  transform-origin: center;
+  overflow: hidden;
+  will-change: transform, border-radius, box-shadow;
+}
+
+.onframe-commerce-modal.is-promotion-modal-opening > * {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 .onframe-commerce-modal-head {
