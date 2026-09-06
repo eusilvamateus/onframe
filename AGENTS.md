@@ -47,19 +47,12 @@ e mudanças visíveis ao usuário, não apenas utilitários. Execute o teste foc
 desenvolvimento e depois `npm run test:all`. Alterações de UI devem manter as
 asserções de layout e interação atualizadas.
 
-## Commits e Solicitações de Pull
+## Workflow Git
 
-Siga a convenção `feat(escopo):`, `fix(escopo):`, `style(escopo):` ou
-`refactor(escopo):`, com resumo conciso em português. Antes de commitar, decida
-se a mudança é uma nova entrega lógica ou complemento da última entrega. Não crie
-commits `fix` em sequência para refinamentos da feature recém-entregue: incorpore-os
-ao commit lógico da feature com `git commit --amend --no-edit`, mesmo se ele já tiver
-sido publicado. Nesse caso, envie a história reescrita apenas com
-`git push --force-with-lease`, nunca com `git push --force`. Crie um novo commit
-somente para uma entrega lógica independente. Todo commit criado deve ser enviado;
-nunca deixe commits apenas locais. Solicitações de pull devem descrever o impacto ao
-usuário, a validação feita, problemas vinculados quando existirem e capturas de tela
-para alterações visuais.
+Antes de executar qualquer operação Git, leia e siga integralmente
+`docs/GIT_WORKFLOW.md`. Esse documento é a fonte única de verdade para branches,
+commits, integração, histórico, SemVer, GitHub Actions, releases e reversões. Não
+duplique ou mantenha regras Git divergentes neste arquivo.
 
 ## Segurança e Integrações
 
