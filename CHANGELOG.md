@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.3.18 - 2026-09-06
+
+### Adicionado
+
+- Gerenciamento de preço e promoções diretamente nos anúncios, com criação de
+  desconto, estimativas financeiras e identificação clara do tipo de campanha.
+- Dock recolhível para o editor de fotos, com acesso rápido ao editor completo.
+
+### Melhorado
+
+- Popup, opções, contas conectadas e telas de ação do serviço local receberam
+  uma interface unificada, controles mais claros e a nova identidade Onblide.
+- Anúncios de catálogo agora explicam, em cada módulo afetado, quais edições não
+  estão disponíveis.
+
+### Corrigido
+
+- Popovers de preço e promoções das listagens permanecem ligados ao anúncio
+  correspondente durante a rolagem.
+
 ## v0.3.17 - 2026-08-02
 
 ### Corrigido
