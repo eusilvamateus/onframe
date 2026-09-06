@@ -1,5 +1,6 @@
 (function (root) {
   const SERVICE = 'http://127.0.0.1:4765';
+  let tooltipSequence = 0;
 
   function createApi(options = {}) {
     const offlineMessage = options.offlineMessage || 'Serviço local desligado. Abra o OnFrame.';
@@ -128,6 +129,55 @@
     if (tone === 'error') return 'red';
     if (tone === 'blue') return 'blue';
     return 'grey';
+  }
+
+  function mountTooltips(scope) {
+    if (!scope || typeof scope.querySelectorAll !== 'function') return;
+    const triggers = [];
+    if (scope.nodeType === 1 && scope.matches('[data-tooltip]')) triggers.push(scope);
+    triggers.push(...scope.querySelectorAll('[data-tooltip]'));
+    triggers.forEach((trigger) => {
+      setTooltip(trigger, trigger.dataset.tooltip, { placement: trigger.dataset.tooltipPlacement });
+    });
+  }
+
+  function setTooltip(trigger, label, options = {}) {
+    if (!trigger || !trigger.ownerDocument) return trigger;
+
+    const text = String(label || '').trim();
+    if (!text) return trigger;
+
+    const document = trigger.ownerDocument;
+    const parent = trigger.parentElement;
+    const wrapper = parent && parent.classList.contains('ob-tooltip')
+      ? parent
+      : document.createElement('span');
+
+    if (wrapper !== parent) {
+      wrapper.className = 'ob-tooltip';
+      trigger.parentNode.insertBefore(wrapper, trigger);
+      wrapper.appendChild(trigger);
+    }
+
+    wrapper.dataset.placement = options.placement || trigger.dataset.tooltipPlacement || wrapper.dataset.placement || 'top';
+    trigger.dataset.tooltip = text;
+    trigger.removeAttribute('title');
+
+    let content = Array.from(wrapper.children).find((child) => child.classList.contains('ob-tooltip-content'));
+    if (!content) {
+      content = document.createElement('span');
+      content.className = 'ob-tooltip-content';
+      content.setAttribute('role', 'tooltip');
+      content.innerHTML = '<span class="ob-tooltip-label"></span><span class="ob-tooltip-arrow" aria-hidden="true"></span>';
+      wrapper.appendChild(content);
+    }
+
+    const tooltipId = trigger.dataset.tooltipId || `onframe-tooltip-${++tooltipSequence}`;
+    trigger.dataset.tooltipId = tooltipId;
+    trigger.setAttribute('aria-describedby', tooltipId);
+    content.id = tooltipId;
+    content.querySelector('.ob-tooltip-label').textContent = text;
+    return trigger;
   }
 
   function setDisabledButtonTooltip(button, options = {}) {
@@ -283,9 +333,11 @@
     escapeAttribute,
     escapeHtml,
     isDebugLoggingEnabled,
+    mountTooltips,
     removeDisabledButtonTooltip,
     setBadge,
     setDisabledButtonTooltip,
+    setTooltip,
     toUserError
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -468,6 +468,7 @@ test('ui exibem comando de atualizacao auditavel', () => {
   const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
   const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
   const optionsCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.css'), 'utf8');
+  const sharedSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'shared.js'), 'utf8');
 
   assert.strictEqual(popupHtml.includes('update-block'), true);
   assert.strictEqual(popupHtml.includes('service-start'), true);
@@ -476,6 +477,11 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupHtml.includes('service-check'), true);
   assert.strictEqual(popupHtml.includes('service-danger'), true);
   assert.strictEqual(popupHtml.includes('version-tag'), true);
+  assert.strictEqual(popupHtml.includes('class="ob-switch is-on" id="toggle-editor"'), true);
+  assert.strictEqual(popupHtml.includes('role="switch" aria-checked="true"'), true);
+  assert.strictEqual(popupJs.includes("elements.toggleEditor.classList.toggle('is-on', state.editorVisible);"), true);
+  assert.strictEqual(popupJs.includes("elements.toggleEditor.setAttribute('aria-checked', String(state.editorVisible));"), true);
+  assert.strictEqual(popupJs.includes("toggleEditor, 'eye'"), false);
   assert.strictEqual(optionsHtml.includes('version-tag'), true);
   assert.strictEqual(optionsHtml.includes('service-start'), true);
   assert.strictEqual(optionsHtml.includes('service-restart'), true);
@@ -484,6 +490,14 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(optionsHtml.includes('service-danger'), true);
   assert.strictEqual(optionsHtml.includes('update-block'), true);
   assert.strictEqual(optionsHtml.includes('update-title'), true);
+  assert.strictEqual(popupHtml.includes('title='), false);
+  assert.strictEqual(optionsHtml.includes('title='), false);
+  assert.strictEqual(popupHtml.includes('data-tooltip='), true);
+  assert.strictEqual(optionsHtml.includes('data-tooltip='), true);
+  assert.strictEqual(popupJs.includes('mountTooltips(document)'), true);
+  assert.strictEqual(optionsJs.includes('mountTooltips(document)'), true);
+  assert.strictEqual(sharedSource.includes('function mountTooltips(scope)'), true);
+  assert.strictEqual(sharedSource.includes('function setTooltip(trigger, label, options = {})'), true);
   assert.strictEqual(popupHtml.includes('Atualizar agora'), true);
   assert.strictEqual(popupHtml.includes('Copiar comando'), true);
   assert.strictEqual(optionsHtml.includes('Atualizar agora'), true);
@@ -519,11 +533,31 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(launcherJs.includes('onframe-updater://'), true);
   const popupCss = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'popup', 'popup.css'), 'utf8');
   assert.strictEqual(popupCss.includes('grid-template-columns: repeat(3, minmax(0, 1fr))'), true);
-  assert.strictEqual(popupCss.includes('.service-primary:not(.is-hidden)'), true);
+  assert.strictEqual(popupCss.includes('.service-primary:not(.is-hidden)'), false);
   assert.strictEqual(popupCss.includes('.service-danger'), true);
+  assert.strictEqual(popupCss.includes('#service-start:hover:not(:disabled)'), true);
+  assert.strictEqual(popupCss.includes('#service-restart:hover:not(:disabled)'), true);
+  assert.strictEqual(popupCss.includes('#service-check:hover:not(:disabled)'), true);
+  assert.strictEqual(popupCss.includes('#service-stop:hover:not(:disabled)'), true);
   assert.strictEqual(optionsCss.includes('.service-actions'), true);
-  assert.strictEqual(optionsCss.includes('.service-primary:not(.is-hidden)'), true);
+  assert.strictEqual(optionsCss.includes('.service-primary:not(.is-hidden)'), false);
   assert.strictEqual(optionsCss.includes('.service-danger'), true);
+  assert.strictEqual(optionsCss.includes('#service-start:hover:not(:disabled)'), true);
+  assert.strictEqual(optionsCss.includes('#service-restart:hover:not(:disabled)'), true);
+  assert.strictEqual(optionsCss.includes('#service-check:hover:not(:disabled)'), true);
+  assert.strictEqual(optionsCss.includes('#service-stop:hover:not(:disabled)'), true);
+  assert.strictEqual(popupCss.includes('.service-actions .ob-button.is-hidden'), true);
+  assert.strictEqual(optionsCss.includes('.service-actions .ob-button.is-hidden'), true);
+  assert.strictEqual(popupJs.includes("elements.serviceRestart.classList.toggle('is-hidden', !state.serviceOnline);"), true);
+  assert.strictEqual(optionsJs.includes("elements.serviceRestart.classList.toggle('is-hidden', !state.serviceOnline);"), true);
+  assert.strictEqual(popupCss.includes(".service-actions[data-action-count='2']"), true);
+  assert.strictEqual(popupCss.includes(".service-actions[data-action-count='4']"), true);
+  assert.strictEqual(optionsCss.includes(".service-actions[data-action-count='2']"), true);
+  assert.strictEqual(optionsCss.includes(".service-actions[data-action-count='4']"), true);
+  assert.strictEqual(popupCss.includes('grid-template-columns: minmax(0, 1fr);'), true);
+  assert.strictEqual(optionsCss.includes('grid-template-columns: minmax(0, 1fr);'), true);
+  assert.strictEqual(popupJs.includes('dataset.actionCount = String(visibleActions)'), true);
+  assert.strictEqual(optionsJs.includes('dataset.actionCount = String(visibleActions)'), true);
 });
 
 test('ui usam gerenciamento multi-conta local', () => {
@@ -547,6 +581,9 @@ test('ui usam gerenciamento multi-conta local', () => {
   assert.strictEqual(popupJs.includes('open-account'), true);
   assert.strictEqual(popupJs.includes('remove-account'), true);
   assert.strictEqual(popupJs.includes('account-card-actions'), true);
+  assert.strictEqual(popupJs.includes('account-avatar-image'), true);
+  assert.strictEqual(popupJs.includes("setServiceActionIcon(elements.serviceStart, 'play')"), true);
+  assert.strictEqual(popupJs.includes("setServiceActionIcon(elements.serviceStop, 'stop')"), true);
   assert.strictEqual(popupJs.includes('loadTabStatus'), false);
   assert.strictEqual(popupHtml.includes('Recarregar editor'), false);
   assert.strictEqual(popupHtml.includes('reload-editor'), false);
@@ -562,6 +599,9 @@ test('ui usam gerenciamento multi-conta local', () => {
   assert.strictEqual(optionsJs.includes('open-account'), true);
   assert.strictEqual(optionsJs.includes('remove-account'), true);
   assert.strictEqual(optionsJs.includes('account-card-actions'), true);
+  assert.strictEqual(optionsJs.includes('account-avatar-image'), true);
+  assert.strictEqual(optionsJs.includes("setServiceActionIcon(elements.serviceStart, 'play')"), true);
+  assert.strictEqual(optionsJs.includes("setServiceActionIcon(elements.serviceStop, 'stop')"), true);
   assert.strictEqual(optionsJs.includes("addIcon(elements.connect, 'plus')"), true);
   assert.strictEqual(optionsJs.includes('client_secret_missing'), false);
 });

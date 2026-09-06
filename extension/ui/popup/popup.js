@@ -4,7 +4,9 @@
   const addIcon = Shared.addIcon;
   const escapeAttribute = Shared.escapeAttribute;
   const escapeHtml = Shared.escapeHtml;
+  const mountTooltips = Shared.mountTooltips;
   const setBadge = Shared.setBadge;
+  const setTooltip = Shared.setTooltip;
   const toUserError = Shared.toUserError;
   const toast = window.OnFrameToast;
   const EDITOR_VISIBLE_KEY = 'onframeEditorVisible';
@@ -23,6 +25,7 @@
     updateStart: document.getElementById('update-start'),
     serviceBadge: document.getElementById('service-badge'),
     serviceText: document.getElementById('service-text'),
+    serviceActions: document.querySelector('.service-actions'),
     serviceStart: document.getElementById('service-start'),
     serviceRestart: document.getElementById('service-restart'),
     serviceStop: document.getElementById('service-stop'),
@@ -42,6 +45,7 @@
   };
 
   decorateButtons();
+  mountTooltips(document);
   elements.refresh.addEventListener('click', () => void loadPopup({ forceUpdate: true }));
   elements.versionTag.addEventListener('click', (event) => openVersionLink(event));
   elements.connect.addEventListener('click', () => void startAuth());
@@ -142,21 +146,22 @@
       const enabled = account.enabled !== false;
       return `
       <article class="account-card ${enabled ? 'is-connected' : 'is-disabled'}" data-user-id="${escapeAttribute(account.user_id)}">
-        <span class="account-avatar">${escapeHtml(getAccountInitial(account))}</span>
+        ${renderAccountAvatar(account)}
         <span class="account-main">
           <strong>${escapeHtml(account.nickname || `Conta ${account.user_id}`)}</strong>
           <small>ID: ${escapeHtml(account.user_id || '-')}</small>
           <em>${enabled ? 'Habilitada' : 'Desativada'}</em>
         </span>
-        <button class="account-switch ${enabled ? 'is-on' : ''}" data-action="toggle-account" data-user-id="${escapeAttribute(account.user_id)}" role="switch" aria-checked="${enabled ? 'true' : 'false'}" type="button" title="${enabled ? 'Desativar conta' : 'Habilitar conta'}" aria-label="${enabled ? 'Desativar conta' : 'Habilitar conta'}"></button>
+        <button class="account-switch ${enabled ? 'is-on' : ''}" data-action="toggle-account" data-user-id="${escapeAttribute(account.user_id)}" data-tooltip="${enabled ? 'Desativar conta' : 'Habilitar conta'}" role="switch" aria-checked="${enabled ? 'true' : 'false'}" type="button" aria-label="${enabled ? 'Desativar conta' : 'Habilitar conta'}"></button>
         <span class="account-card-actions">
-          ${account.permalink ? `<button class="account-icon-btn" data-action="open-account" data-url="${escapeAttribute(account.permalink)}" type="button" title="Abrir perfil" aria-label="Abrir perfil">${icon('arrowSquareOut', 16)}</button>` : ''}
-          <button class="account-icon-btn danger${String(state.pendingRemoveUserId) === String(account.user_id) ? ' is-confirming' : ''}" data-action="remove-account" data-user-id="${escapeAttribute(account.user_id)}" type="button" title="${String(state.pendingRemoveUserId) === String(account.user_id) ? 'Confirmar remoção' : 'Remover conta'}" aria-label="${String(state.pendingRemoveUserId) === String(account.user_id) ? 'Confirmar remoção' : 'Remover conta'}">${icon(String(state.pendingRemoveUserId) === String(account.user_id) ? 'checkCircle' : 'x', 16)}</button>
+          ${account.permalink ? `<button class="account-icon-btn" data-action="open-account" data-url="${escapeAttribute(account.permalink)}" data-tooltip="Abrir perfil" type="button" aria-label="Abrir perfil">${icon('arrowSquareOut', 16)}</button>` : ''}
+          <button class="account-icon-btn danger${String(state.pendingRemoveUserId) === String(account.user_id) ? ' is-confirming' : ''}" data-action="remove-account" data-user-id="${escapeAttribute(account.user_id)}" data-tooltip="${String(state.pendingRemoveUserId) === String(account.user_id) ? 'Confirmar remoção' : 'Remover conta'}" type="button" aria-label="${String(state.pendingRemoveUserId) === String(account.user_id) ? 'Confirmar remoção' : 'Remover conta'}">${icon(String(state.pendingRemoveUserId) === String(account.user_id) ? 'checkCircle' : 'x', 16)}</button>
         </span>
       </article>
     `;
     }).join('');
     elements.accountList.classList.remove('is-hidden');
+    mountTooltips(elements.accountList);
     bindAccountActions();
   }
 
@@ -165,7 +170,21 @@
     return label ? label[0].toUpperCase() : '?';
   }
 
+  function renderAccountAvatar(account) {
+    const initial = escapeHtml(getAccountInitial(account));
+    const logo = getAccountLogo(account);
+    return `<span class="account-avatar"><span class="account-avatar-fallback">${initial}</span>${logo ? `<img class="account-avatar-image" src="${escapeAttribute(logo)}" alt="" referrerpolicy="no-referrer">` : ''}</span>`;
+  }
+
+  function getAccountLogo(account) {
+    const logo = String(account && account.logo || '').trim();
+    return /^https:\/\/(?:[a-z0-9-]+\.)*mlstatic\.com\//i.test(logo) ? logo : '';
+  }
+
   function bindAccountActions() {
+    elements.accountList.querySelectorAll('.account-avatar-image').forEach((image) => {
+      image.addEventListener('error', () => image.remove(), { once: true });
+    });
     elements.accountList.querySelectorAll('[data-action="open-account"]').forEach((button) => {
       button.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -255,7 +274,7 @@
     const hasUpdate = Boolean(status && status.updateAvailable && latestVersion);
     elements.versionTag.textContent = hasUpdate ? `v${latestVersion}` : `v${currentVersion}`;
     elements.versionTag.classList.toggle('has-update', hasUpdate);
-    elements.versionTag.title = hasUpdate ? `Versão ${latestVersion} disponível` : `OnFrame v${currentVersion}`;
+    setTooltip(elements.versionTag, hasUpdate ? `Versão ${latestVersion} disponível` : `OnFrame v${currentVersion}`, { placement: 'bottom' });
     elements.versionTag.href = status && status.releaseUrl ? status.releaseUrl : RELEASES_URL;
   }
 
@@ -448,13 +467,20 @@
   }
 
   function renderEditorToggle() {
-    setIconButton(elements.toggleEditor, state.editorVisible ? 'eyeSlash' : 'eye', state.editorVisible ? 'Ocultar editor' : 'Mostrar editor');
+    const label = state.editorVisible ? 'Ocultar editor' : 'Mostrar editor';
+    elements.toggleEditor.classList.toggle('is-on', state.editorVisible);
+    elements.toggleEditor.setAttribute('aria-checked', String(state.editorVisible));
+    elements.toggleEditor.setAttribute('aria-label', label);
+    setTooltip(elements.toggleEditor, label, { placement: 'bottom' });
   }
 
   function renderServiceControls() {
     elements.serviceStart.classList.toggle('is-hidden', state.serviceOnline);
     elements.serviceRestart.classList.toggle('is-hidden', !state.serviceOnline);
     elements.serviceStop.classList.toggle('is-hidden', !state.serviceOnline);
+    const visibleActions = [...elements.serviceActions.querySelectorAll('.ob-button')]
+      .filter((button) => !button.classList.contains('is-hidden')).length;
+    elements.serviceActions.dataset.actionCount = String(visibleActions);
   }
 
   function showActionFeedback(message, tone) {
@@ -474,14 +500,20 @@
   function decorateButtons() {
     addIcon(elements.refresh, 'refresh');
     addIcon(elements.connect, 'plus');
-    addIcon(elements.toggleEditor, 'eye');
     addIcon(elements.openOptions, 'gear');
     addIcon(elements.updateOpen, 'arrowSquareOut');
     addIcon(elements.updateStart, 'copy');
-    addIcon(elements.serviceStart, 'plug');
-    addIcon(elements.serviceRestart, 'refresh');
-    addIcon(elements.serviceStop, 'x');
-    addIcon(elements.serviceCheck, 'checkCircle');
+    setServiceActionIcon(elements.serviceStart, 'play');
+    setServiceActionIcon(elements.serviceRestart, 'refresh');
+    setServiceActionIcon(elements.serviceStop, 'stop');
+    setServiceActionIcon(elements.serviceCheck, 'checkCircle');
+  }
+
+  function setServiceActionIcon(button, name) {
+    if (!button || !window.OnblideIcons) return;
+    const label = button.textContent.trim();
+    button.innerHTML = `${window.OnblideIcons.render(name, 14)}<span class="service-action-label">${escapeHtml(label)}</span>`;
+    button.dataset.iconReady = 'true';
   }
 
   function icon(name, size) {
@@ -490,14 +522,6 @@
 
   function getInstalledVersion() {
     return chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : '-';
-  }
-
-  function setIconButton(button, icon, label) {
-    if (!button || !window.OnblideIcons) return;
-    button.innerHTML = window.OnblideIcons.render(icon, 16);
-    button.title = label;
-    button.setAttribute('aria-label', label);
-    button.dataset.iconReady = 'true';
   }
 
   async function copyText(value) {

@@ -1255,6 +1255,7 @@
 }
 
 .account-avatar {
+  position: relative;
   display: grid;
   width: 32px;
   height: 32px;
@@ -1264,6 +1265,22 @@
   background: var(--ob-bg-alt);
   color: var(--ob-fg-strong);
   font: var(--ob-w-bold) 13px/1 var(--ob-font);
+  overflow: hidden;
+}
+
+.account-avatar-fallback {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
+.account-avatar-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .account-main {

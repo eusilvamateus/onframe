@@ -58,6 +58,7 @@ const packageJson = require('../../package.json');
 
 const DEFAULT_CONNECT_BASE_URL = 'https://connect.onblide.com';
 const REQUIRED_NODE_MAJOR = 20;
+const ACCOUNT_PROFILE_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 function createApp(options = {}) {
   const env = options.env || process.env;
@@ -116,7 +117,7 @@ function createApp(options = {}) {
       }
 
       if (route === 'GET /auth/accounts') {
-        return sendJson(res, 200, await handleAuthAccounts({ store }));
+        return sendJson(res, 200, await handleAuthAccounts({ store, clientFactory }));
       }
 
       if (route === 'POST /auth/accounts/active') {
@@ -390,10 +391,15 @@ async function handleAuthAccount({ store, client }) {
   }
 }
 
-async function handleAuthAccounts({ store }) {
-  const accounts = store && typeof store.listAccounts === 'function'
+async function handleAuthAccounts({ store, clientFactory }) {
+  const storedAccounts = store && typeof store.listAccounts === 'function'
     ? await store.listAccounts()
     : await listAccountsFallback(store);
+  const accounts = await refreshAccountProfiles({
+    accounts: storedAccounts,
+    store,
+    clientFactory
+  });
   const active = accounts.find((account) => account.active) || null;
   return {
     authenticated: Boolean(active),
@@ -505,7 +511,9 @@ async function handleAuthCallback({ res, url, client, pendingAuth }) {
   });
   const me = await client.getMe();
   if (client.store && typeof client.store.write === 'function') {
-    await client.store.write(token, summarizeAccount(me));
+    await client.store.write(token, Object.assign({}, summarizeAccount(me), {
+      profile_updated_at: Date.now()
+    }));
   }
 
   return sendHtml(res, 200, 'Autenticacao concluida. Voce ja pode fechar esta janela.');
@@ -523,8 +531,35 @@ function summarizeAccount(user) {
     nickname: user.nickname || null,
     site_id: user.site_id || null,
     permalink: user.permalink || null,
-    status: user.status || null
+    status: user.status || null,
+    logo: accountLogoUrl(user)
   };
+}
+
+function accountLogoUrl(user) {
+  const thumbnail = user && user.thumbnail;
+  const candidates = [
+    user && user.logo,
+    thumbnail && thumbnail.picture_url,
+    thumbnail && thumbnail.secure_url,
+    typeof thumbnail === 'string' ? thumbnail : null,
+    user && user.profile_picture,
+    user && user.picture_url
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || !candidate.trim()) continue;
+    try {
+      const url = new URL(candidate);
+      const hostname = url.hostname.toLowerCase();
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') continue;
+      if (hostname !== 'mlstatic.com' && !hostname.endsWith('.mlstatic.com')) continue;
+      url.protocol = 'https:';
+      return url.toString();
+    } catch (err) {
+      // Ignore malformed profile image URLs returned by third parties.
+    }
+  }
+  return null;
 }
 
 async function buildDiagnostics({ env, store, startedAt }) {
@@ -848,6 +883,50 @@ function getUpdateOpenPageData(updateManager) {
       ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" \"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/check.sh\""
       : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/check.ps1' | iex"
   };
+}
+
+async function refreshAccountProfiles({ accounts, store, clientFactory }) {
+  if (!Array.isArray(accounts) || !accounts.length || !store ||
+    typeof store.listAccountTokens !== 'function' || typeof clientFactory !== 'function') {
+    return accounts;
+  }
+
+  const accountTokens = await store.listAccountTokens();
+  const tokensByUserId = new Map(accountTokens.map((account) => [String(account.user_id), account]));
+  const refreshed = [];
+
+  for (const account of accounts) {
+    const token = tokensByUserId.get(String(account.user_id));
+    if (!token || !token.refresh_token || !shouldRefreshAccountProfile(token)) {
+      refreshed.push(account);
+      continue;
+    }
+
+    try {
+      const profile = summarizeAccount(await clientFactory(token).getMe());
+      const profileWithTimestamp = Object.assign({}, profile, { profile_updated_at: Date.now() });
+      if (typeof store.updateAccountProfile === 'function') {
+        await store.updateAccountProfile(account.user_id, profileWithTimestamp).catch(() => null);
+      }
+      refreshed.push(Object.assign({}, account, {
+        nickname: profile.nickname || account.nickname,
+        site_id: profile.site_id || account.site_id,
+        permalink: profile.permalink || account.permalink,
+        status: profile.status || account.status,
+        logo: profile.logo
+      }));
+    } catch (err) {
+      refreshed.push(account);
+    }
+  }
+
+  return refreshed;
+}
+
+function shouldRefreshAccountProfile(account) {
+  if (!account || !account.logo) return true;
+  const updatedAt = Number(account && account.profile_updated_at || 0);
+  return !updatedAt || Date.now() - updatedAt >= ACCOUNT_PROFILE_REFRESH_INTERVAL_MS;
 }
 
 function buildUpdateOpenPage(data = {}) {

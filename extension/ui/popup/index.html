@@ -21,10 +21,10 @@
         </div>
       </div>
       <div class="header-actions">
-        <a class="version-tag" id="version-tag" href="https://github.com/eusilvamateus/onframe/releases" target="_blank" rel="noopener noreferrer">v...</a>
-        <button class="ob-button secondary ob-icon-button" id="toggle-editor" type="button" title="Mostrar editor" aria-label="Mostrar editor"></button>
-        <button class="ob-button ghost ob-icon-button" id="open-options" type="button" title="Abrir opções" aria-label="Abrir opções"></button>
-        <button class="ob-button secondary ob-icon-button" id="refresh" type="button" title="Atualizar" aria-label="Atualizar"></button>
+        <a class="version-tag" id="version-tag" data-tooltip="Versão do OnFrame" data-tooltip-placement="bottom" href="https://github.com/eusilvamateus/onframe/releases" target="_blank" rel="noopener noreferrer">v...</a>
+        <button class="ob-switch is-on" id="toggle-editor" data-tooltip="Ocultar editor" data-tooltip-placement="bottom" role="switch" aria-checked="true" type="button" aria-label="Ocultar editor"></button>
+        <button class="ob-button ghost ob-icon-button" id="open-options" data-tooltip="Abrir opções" data-tooltip-placement="bottom" type="button" aria-label="Abrir opções"></button>
+        <button class="ob-button secondary ob-icon-button" id="refresh" data-tooltip="Atualizar" data-tooltip-placement="bottom" type="button" aria-label="Atualizar"></button>
       </div>
     </header>
 
@@ -47,7 +47,7 @@
         <h2 class="ob-card-title">Conta</h2>
         <span class="block-actions">
           <span class="ob-badge grey" id="account-badge">Verificando</span>
-          <button class="ob-button secondary ob-icon-button compact-icon" id="connect" type="button" title="Conectar conta" aria-label="Conectar conta"></button>
+          <button class="ob-button secondary ob-icon-button compact-icon" id="connect" data-tooltip="Conectar conta" type="button" aria-label="Conectar conta"></button>
         </span>
       </div>
       <p class="ob-copy" id="account-text">Buscando conta conectada.</p>

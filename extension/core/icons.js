@@ -31,6 +31,8 @@
     tag: 'tag',
     user: 'user',
     plug: 'plug',
+    play: 'play',
+    stop: 'stop',
     plus: 'plus',
     arrowSquareOut: 'arrow-square-out',
     copy: 'copy',

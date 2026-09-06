@@ -94,6 +94,22 @@ class TokenStore {
     return database.accounts[normalized];
   }
 
+  async updateAccountProfile(userId, account) {
+    const database = await this.readDatabase() || createEmptyDatabase();
+    const normalized = String(userId || '').trim();
+    const existing = database.accounts[normalized];
+    if (!normalized || !existing) {
+      const err = new Error('Conta não encontrada.');
+      err.statusCode = 404;
+      throw err;
+    }
+    const entry = buildAccountEntry(existing, account, existing);
+    entry.profile_updated_at = Number(account && account.profile_updated_at) || Date.now();
+    database.accounts[normalized] = entry;
+    await this.writeDatabase(database);
+    return entry;
+  }
+
   async removeAccount(userId) {
     const database = await this.readDatabase() || createEmptyDatabase();
     const normalized = String(userId || '').trim();
@@ -143,6 +159,7 @@ function summarizeAccounts(database) {
       site_id: account.site_id || null,
       permalink: account.permalink || null,
       status: account.status || null,
+      logo: account.logo || null,
       expires_at: account.expires_at || null,
       connected_at: account.connected_at || null,
       updated_at: account.updated_at || null,
@@ -197,6 +214,7 @@ function buildAccountEntry(token, account, existing) {
     site_id: account && account.site_id ? account.site_id : merged.site_id || null,
     permalink: account && account.permalink ? account.permalink : merged.permalink || null,
     status: account && account.status ? account.status : merged.status || null,
+    logo: account && Object.prototype.hasOwnProperty.call(account, 'logo') ? account.logo : merged.logo || null,
     enabled: merged.enabled !== false,
     connected_at: merged.connected_at || now,
     updated_at: now

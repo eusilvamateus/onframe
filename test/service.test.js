@@ -755,7 +755,8 @@ test('token store salva multiplas contas e escolhe conta ativa', async () => {
     expires_at: 1000
   }, {
     nickname: 'LOJA 1',
-    site_id: 'MLB'
+    site_id: 'MLB',
+    logo: 'https://http2.mlstatic.com/D_NQ_NP_2X_STORE-F.webp'
   });
   await store.write({
     access_token: 'APP_USR-2',
@@ -768,9 +769,9 @@ test('token store salva multiplas contas e escolhe conta ativa', async () => {
   });
 
   assert.strictEqual((await store.read()).user_id, 202);
-  assert.deepStrictEqual((await store.listAccounts()).map((account) => [account.user_id, account.nickname, account.active, account.enabled]), [
-    [101, 'LOJA 1', false, true],
-    [202, 'LOJA 2', true, true]
+  assert.deepStrictEqual((await store.listAccounts()).map((account) => [account.user_id, account.nickname, account.logo, account.active, account.enabled]), [
+    [101, 'LOJA 1', 'https://http2.mlstatic.com/D_NQ_NP_2X_STORE-F.webp', false, true],
+    [202, 'LOJA 2', null, true, true]
   ]);
   assert.deepStrictEqual((await store.listAccountTokens()).map((account) => [account.user_id, account.refresh_token, account.active, account.enabled]), [
     [101, 'TG-1', false, true],
@@ -1612,6 +1613,37 @@ test('auth accounts lista, ativa e remove contas locais', async (t) => {
   assert.deepStrictEqual(body.accounts.map((account) => account.user_id), [101]);
 });
 
+test('auth accounts completa logo de contas conectadas sem perfil em cache', async (t) => {
+  const profiles = [];
+  const store = {
+    listAccounts: async () => [{ user_id: 101, nickname: 'LOJA 1', active: true, enabled: true }],
+    listAccountTokens: async () => [{ user_id: 101, refresh_token: 'TG-1', profile_updated_at: Date.now() }],
+    updateAccountProfile: async (userId, profile) => profiles.push({ userId, profile })
+  };
+  const server = await listen(createApp({
+    store,
+    clientFactory: () => ({
+      getMe: async () => ({
+        id: 101,
+        nickname: 'LOJA 1',
+        thumbnail: {
+          picture_url: 'http://mla-s1-p.mlstatic.com/STORE-LOGO.jpg'
+        }
+      })
+    })
+  }));
+  t.after(() => server.close());
+
+  const response = await fetch(`${server.url}/auth/accounts`);
+  const body = await response.json();
+
+  assert.strictEqual(response.status, 200);
+  assert.strictEqual(body.accounts[0].logo, 'https://mla-s1-p.mlstatic.com/STORE-LOGO.jpg');
+  assert.strictEqual(profiles[0].userId, 101);
+  assert.strictEqual(profiles[0].profile.logo, 'https://mla-s1-p.mlstatic.com/STORE-LOGO.jpg');
+  assert.strictEqual(typeof profiles[0].profile.profile_updated_at, 'number');
+});
+
 test('auth account retorna dados seguros da conta conectada', async (t) => {
   const expiresAt = Date.now() + 3600000;
   const server = await listen(createApp({
@@ -1640,7 +1672,8 @@ test('auth account retorna dados seguros da conta conectada', async (t) => {
     nickname: 'BOGU STORE',
     site_id: 'MLB',
     permalink: 'https://perfil.mercadolivre.com.br/BOGU+STORE',
-    status: { site_status: 'active' }
+    status: { site_status: 'active' },
+    logo: null
   });
   assert.strictEqual(JSON.stringify(body).includes('TG-secret'), false);
   assert.strictEqual(JSON.stringify(body).includes('privado@example.com'), false);

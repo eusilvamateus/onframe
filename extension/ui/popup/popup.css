@@ -40,6 +40,11 @@ body {
 }
 
 .service-actions .ob-button {
+  display: grid;
+  grid-template-columns: 14px max-content;
+  align-items: center;
+  justify-content: center;
+  column-gap: 6px;
   width: 100%;
   min-width: 0;
   min-height: 30px;
@@ -47,8 +52,58 @@ body {
   white-space: nowrap;
 }
 
-.service-primary:not(.is-hidden) {
-  grid-column: span 2;
+.service-actions .ob-button.is-hidden {
+  display: none;
+}
+
+.service-actions .ob-button > .ob-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+}
+
+.service-actions[data-action-count='1'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.service-actions[data-action-count='2'],
+.service-actions[data-action-count='4'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.service-action-label {
+  line-height: 1;
+}
+
+.service-actions .service-primary {
+  border-color: var(--ob-green);
+  background: var(--ob-green);
+}
+
+.service-actions #service-start:hover:not(:disabled) {
+  border-color: var(--ob-green-700);
+  background: var(--ob-green-700);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--ob-green) 20%, transparent);
+}
+
+.service-actions #service-restart {
+  border-color: color-mix(in srgb, var(--ob-orange) 22%, var(--ob-border));
+  background: var(--ob-orange-050);
+  color: var(--ob-orange-700);
+}
+
+.service-actions #service-restart:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ob-orange) 46%, var(--ob-border));
+  background: var(--ob-orange-100);
+  color: var(--ob-orange-700);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--ob-orange) 16%, transparent);
+}
+
+.service-actions #service-check:hover:not(:disabled) {
+  border-color: var(--ob-blue);
+  background: var(--ob-blue-050);
+  color: var(--ob-blue-700);
+  box-shadow: var(--ob-shadow-xs);
 }
 
 .service-danger {
@@ -57,8 +112,11 @@ body {
   color: var(--ob-red-700);
 }
 
-.service-danger:hover {
+.service-actions #service-stop:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--ob-red) 46%, var(--ob-border));
+  background: var(--ob-red-100);
+  color: var(--ob-red-700);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--ob-red) 16%, transparent);
 }
 
 .update-actions {
