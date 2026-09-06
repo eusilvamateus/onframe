@@ -237,15 +237,64 @@ test('modulo de fotos consome contexto resolvido pelo shell', () => {
   assert.match(source, /context\.selectedVariationId/);
 });
 
-test('botao do editor completo fica integrado na bandeja', () => {
+test('dock de fotos separa recolhimento da abertura do editor', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
 
-  assert.match(styles, /\.onblide-ml-tray-modal-row \{/);
-  assert.match(styles, /margin: 0 0 10px;/);
-  assert.match(styles, /\.onblide-ml-expand \{/);
-  assert.match(styles, /box-shadow: none;/);
-  assert.doesNotMatch(styles, /margin: -4px 0 6px;/);
-  assert.doesNotMatch(styles, /0 8px 18px rgba\(20, 20, 20, 0\.12\)/);
+  assert.match(source, /dockExpanded: false/);
+  assert.match(source, /data-action="toggle-dock"/);
+  assert.match(source, /function toggleDock\(\)/);
+  assert.match(source, /panel\.classList\.toggle\('is-expanded', state\.dockExpanded\)/);
+  assert.match(source, /data-action="open-editor"[^>]*>\$\{icon\('arrowSquareOut', 14\)\}Abrir editor/);
+  assert.match(source, /function beginEditorOpenTransition\(\)/);
+  assert.match(source, /function beginEditorCloseTransition\(\)/);
+  assert.match(source, /EDITOR_MORPH_OPEN_DURATION = 900/);
+  assert.match(source, /EDITOR_MORPH_CLOSE_DURATION = 950/);
+  assert.match(source, /function animateEditorChildren\(modal, direction\)/);
+  assert.match(source, /element\.animate\(keyframes, options\)/);
+  assert.match(source, /delay: opening \? 220 \+ sequenceIndex \* 55/);
+  assert.match(source, /const preservedEditorDialog = state\.qualityDialog && state\.qualityDialog\.mode === 'editor'/);
+  assert.match(source, /state\.qualityDialog = preservedEditorDialog;/);
+  assert.match(source, /if \(!state\.editorTransition\) restoreTrayAfterDialog\(\);/);
+  assert.match(source, /state\.editorTransitionTimer = setTimeout\(complete, fallbackDuration \+ 250\)/);
+  assert.match(source, /catch \(_err\) \{\s+return null;/);
+  assert.match(source, /if \(state\.tray && !state\.tray\.isConnected\)/);
+  assert.match(source, /if \(state\.dialogRoot && !state\.dialogRoot\.isConnected\)/);
+  assert.match(source, /if \(state\.qualityDialog\) state\.tray\.classList\.add\('is-editor-hidden'\)/);
+  assert.match(source, /function hideEditor\(\) \{[\s\S]*state\.qualityDialog = null;[\s\S]*removeQualityDialog\(\);/);
+  assert.match(source, /restoreTrayAfterDialog\(\);\s+renderQualityDialogRoot\(\);/);
+  assert.doesNotMatch(source, /revealTrayForEditorReturn/);
+  assert.match(source, /getEditorMorphTransform\(modal, dockRect\)/);
+  assert.match(source, /if \(!state\.loaded && !state\.context && !state\.error\) return '';/);
+  assert.match(source, /class="onblide-ml-dock-command-stack"/);
+  assert.match(source, /onblide-ml-dock-save/);
+  assert.match(source, /onblide-ml-dock-discard/);
+  assert.match(source, /class="onblide-ml-dock-identity"/);
+  assert.match(source, /class="onblide-ml-dock-shell"/);
+  assert.match(source, /class="onblide-ml-dock-silhouette"/);
+  assert.doesNotMatch(source, /onblide-ml-expand/);
+  assert.match(styles, /\.onblide-ml-dock-tab \{/);
+  assert.match(styles, /width: 160px;/);
+  assert.match(styles, /\.onblide-ml-dock-silhouette \{/);
+  assert.match(styles, /\.onblide-ml-dock-silhouette-outline \{/);
+  assert.match(styles, /\.onblide-ml-dock-command-stack \{/);
+  assert.match(styles, /flex: 0 0 150px;/);
+  assert.match(styles, /grid-template-columns: 56px minmax\(0, 1fr\);/);
+  assert.match(styles, /\.onblide-ml-tray-actions \.onblide-ml-btn \{[\s\S]*white-space: nowrap;/);
+  assert.match(styles, /\.onblide-ml-dock-save:hover:not\(:disabled\) \{/);
+  assert.match(styles, /\.onblide-ml-dock-discard:hover:not\(:disabled\) \{/);
+  assert.match(styles, /\.onblide-ml-upload \{[\s\S]*border: 0\.5px dashed var\(--ob-ink-mute\);[\s\S]*color: var\(--ob-ink\);/);
+  assert.match(styles, /\.onblide-ml-upload > \.ob-icon \{[\s\S]*color: var\(--ob-blue\);/);
+  assert.match(styles, /\.onblide-ml-upload:hover \{[\s\S]*background: var\(--ob-surface\);/);
+  assert.match(styles, /\.onblide-ml-tray\.is-editor-hidden \{/);
+  assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
+  assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-opening > \* \{/);
+  assert.match(source, /modal\.classList\.add\('is-editor-morphing', 'is-editor-closing'\)/);
+  assert.doesNotMatch(styles, /\.onblide-ml-tray\.is-editor-returning/);
+  assert.match(styles, /\.onblide-ml-dock-panel \{[\s\S]*max-height: 10px;/);
+  assert.match(styles, /\.onblide-ml-dock-panel\.is-expanded \{/);
+  assert.match(styles, /bottom: 0;/);
+  assert.doesNotMatch(styles, /\.onblide-ml-dock-panel \{[^}]*box-shadow:/);
 });
 
 test('picture quality extrai dimensoes oficiais do Mercado Livre', () => {

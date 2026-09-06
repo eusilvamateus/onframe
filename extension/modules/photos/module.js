@@ -15,6 +15,8 @@
   const escapeAttribute = Shared.escapeAttribute;
   const isProductPageUrl = Detection.isProductPageUrl;
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
+  const EDITOR_MORPH_OPEN_DURATION = 900;
+  const EDITOR_MORPH_CLOSE_DURATION = 950;
 
   const state = {
     context: null,
@@ -33,6 +35,11 @@
     busy: false,
     loaded: false,
     editorVisible: true,
+    dockExpanded: false,
+    editorTransition: null,
+    editorTransitionTimer: null,
+    editorTransitionResolve: null,
+    editorTransitionAnimations: [],
     renderTimer: null,
     reloadTimer: null,
     renderAfterDrag: false,
@@ -74,6 +81,7 @@
     state.busy = false;
     state.loaded = false;
     state.editorVisible = true;
+    clearEditorTransition();
     if (state.renderTimer) clearTimeout(state.renderTimer);
     if (state.reloadTimer) clearInterval(state.reloadTimer);
     state.renderTimer = null;
@@ -167,6 +175,9 @@
   }
 
   async function loadContext(options = {}) {
+    const preservedEditorDialog = state.qualityDialog && state.qualityDialog.mode === 'editor'
+      ? Object.assign({}, state.qualityDialog, { error: '', notice: '' })
+      : null;
     state.busy = true;
     state.loaded = false;
     state.message = options.loadingMessage || '';
@@ -195,7 +206,8 @@
       state.qualityLoading = false;
       state.qualityError = '';
       state.qualityOverrides = {};
-      state.qualityDialog = null;
+      state.qualityDialog = preservedEditorDialog;
+      if (!preservedEditorDialog) restoreTrayAfterDialog();
       state.qualityRequestId += 1;
       if (!isPictureEditingBlocked()) void loadPictureQuality();
     } catch (err) {
@@ -224,14 +236,21 @@
       return;
     }
 
+    if (state.tray && !state.tray.isConnected) {
+      clearEditorTransition();
+      state.tray = null;
+      state.lastTrayMarkup = '';
+    }
+
     if (!state.tray) {
       state.tray = document.createElement('section');
       state.tray.className = 'onblide-ml-tray';
+      if (state.qualityDialog) state.tray.classList.add('is-editor-hidden');
       document.body.appendChild(state.tray);
     }
 
     renderTray();
-    renderQualityDialogRoot();
+    if (!state.editorTransition) renderQualityDialogRoot();
   }
 
   function getEditorStatus() {
@@ -271,7 +290,10 @@
 
   function hideEditor() {
     state.editorVisible = false;
+    state.qualityDialog = null;
+    clearEditorTransition();
     removeTray();
+    removeQualityDialog();
     return getEditorStatus();
   }
 
@@ -306,6 +328,27 @@
   function buildTrayMarkup() {
     if (!state.loaded && !state.context && !state.error) return '';
 
+    const expanded = state.dockExpanded;
+
+    return `
+      <div class="onblide-ml-dock-shell">
+        <svg class="onblide-ml-dock-silhouette" viewBox="0 0 1000 28" preserveAspectRatio="none" focusable="false">
+          <path class="onblide-ml-dock-silhouette-fill" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984Z"></path>
+          <path class="onblide-ml-dock-silhouette-outline" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984"></path>
+        </svg>
+        <div class="onblide-ml-dock-panel${expanded ? ' is-expanded' : ''}">
+          <div class="onblide-ml-dock-content">
+            ${buildTrayContent()}
+          </div>
+        </div>
+      </div>
+      <button class="onblide-ml-dock-tab" data-action="toggle-dock" type="button" title="${expanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos'}">
+        <span class="onblide-ml-dock-tab-icon${expanded ? ' is-expanded' : ''}">${icon('caretUp', 16)}</span>
+      </button>
+    `;
+  }
+
+  function buildTrayContent() {
     if (!state.context) {
       return `
         <div class="onblide-ml-tray-bar">
@@ -328,14 +371,31 @@
     const limitState = getPictureLimitState();
 
     return `
-      <div class="onblide-ml-tray-modal-row">
-        <button class="onblide-ml-expand" data-action="open-editor" type="button" title="Abrir editor completo" aria-label="Abrir editor completo">${icon('caretUp', 16)}</button>
+      <div class="onblide-ml-dock-main">
+        ${renderDockIdentity(limitState)}
+        <div class="onblide-ml-strip" aria-label="Editor de fotos do anuncio">
+          ${state.draftPictures.map(renderPictureTile).join('')}
+          ${renderUploadTile()}
+        </div>
+        <div class="onblide-ml-dock-command-stack">
+          <button class="onblide-ml-btn primary compact onblide-ml-dock-open-editor" data-action="open-editor" type="button" ${state.busy ? 'disabled' : ''}>${icon('arrowSquareOut', 14)}Abrir editor</button>
+          ${renderTrayActions(limitState)}
+        </div>
       </div>
-      ${renderTrayActions(limitState)}
       ${renderTrayFeedback(limitState)}
-      <div class="onblide-ml-strip" aria-label="Editor de fotos do anuncio">
-        ${state.draftPictures.map(renderPictureTile).join('')}
-        ${renderUploadTile()}
+    `;
+  }
+
+  function renderDockIdentity(limitState) {
+    const counter = limitState.counterText || `${state.draftPictures.length} fotos`;
+
+    return `
+      <div class="onblide-ml-dock-identity">
+        <span class="onblide-ml-dock-identity-icon">${icon('image', 16)}</span>
+        <span class="onblide-ml-dock-identity-copy">
+          <strong>Editor de fotos</strong>
+          <small>${escapeHtml(counter)}</small>
+        </span>
       </div>
     `;
   }
@@ -369,11 +429,11 @@
     return `
       <div class="onblide-ml-tray-actions">
         ${state.dirty ? `
-          <button class="onblide-ml-btn primary compact" data-action="commit" type="button" ${state.busy || limitState.message ? 'disabled' : ''}>Salvar</button>
-          <button class="onblide-ml-btn compact" data-action="discard" type="button" ${state.busy ? 'disabled' : ''}>Descartar</button>
+          <button class="onblide-ml-btn compact onblide-ml-dock-save" data-action="commit" type="button" ${state.busy || limitState.message ? 'disabled' : ''}>Salvar</button>
+          <button class="onblide-ml-btn compact onblide-ml-dock-discard" data-action="discard" type="button" ${state.busy ? 'disabled' : ''}>${icon('trash', 13)}Descartar</button>
         ` : ''}
         ${state.reloadCountdown ? `
-          <button class="onblide-ml-btn primary compact" data-action="refresh" type="button">${icon('refresh', 14)}Atualizar agora</button>
+          <button class="onblide-ml-btn compact onblide-ml-dock-refresh" data-action="refresh" type="button">${icon('refresh', 14)}Atualizar agora</button>
         ` : ''}
       </div>
     `;
@@ -388,6 +448,23 @@
       contextPictures: state.context ? state.context.pictures || [] : [],
       originalPictures: state.originalPictures
     });
+  }
+
+  function toggleDock() {
+    state.dockExpanded = !state.dockExpanded;
+    const panel = state.tray && state.tray.querySelector('.onblide-ml-dock-panel');
+    const iconElement = state.tray && state.tray.querySelector('.onblide-ml-dock-tab-icon');
+    const tab = state.tray && state.tray.querySelector('.onblide-ml-dock-tab');
+
+    if (!panel || !iconElement || !tab) {
+      rerenderTray();
+      return;
+    }
+
+    panel.classList.toggle('is-expanded', state.dockExpanded);
+    iconElement.classList.toggle('is-expanded', state.dockExpanded);
+    tab.title = state.dockExpanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos';
+    state.lastTrayMarkup = buildTrayMarkup();
   }
 
   function renderPictureTile(picture, index) {
@@ -435,8 +512,13 @@
   function renderQualityDialogRoot() {
     const markup = renderQualityDialog();
     if (!markup) {
+      if (!state.editorTransition) restoreTrayAfterDialog();
       removeQualityDialog();
       return;
+    }
+    if (state.dialogRoot && !state.dialogRoot.isConnected) {
+      state.dialogRoot = null;
+      state.lastDialogMarkup = '';
     }
     if (!state.dialogRoot) {
       state.dialogRoot = document.createElement('div');
@@ -699,6 +781,9 @@
   }
 
   function bindCommonActionEvents(container) {
+    container.querySelectorAll('[data-action="toggle-dock"]').forEach((button) => {
+      button.addEventListener('click', toggleDock);
+    });
     container.querySelectorAll('[data-action="connect"]').forEach((button) => {
       button.addEventListener('click', () => void startAuth());
     });
@@ -1049,12 +1134,19 @@
 
   function openEditorDialog() {
     if (!state.context || isPictureEditingBlocked()) return;
+    if (state.qualityDialog && state.qualityDialog.mode === 'editor') return;
+    clearEditorTransition();
+    state.editorTransition = {
+      direction: 'open',
+      dockRect: readDockRect()
+    };
     state.qualityDialog = {
       mode: 'editor',
       error: '',
       notice: ''
     };
-    rerenderTray();
+    renderQualityDialogRoot();
+    beginEditorOpenTransition();
   }
 
   function openOptimizeDialog() {
@@ -1082,8 +1174,251 @@
 
   function closeQualityDialog() {
     if (state.busy && state.qualityDialog && state.qualityDialog.mode === 'processing') return;
+    if (state.qualityDialog && state.qualityDialog.mode === 'editor') {
+      beginEditorCloseTransition();
+      return;
+    }
     state.qualityDialog = null;
+    restoreTrayAfterDialog();
     rerenderTray();
+  }
+
+  async function beginEditorOpenTransition() {
+    const modal = getEditorDialogElement();
+    const backdrop = getEditorBackdropElement();
+    const tray = state.tray;
+    const dockRect = state.editorTransition && state.editorTransition.dockRect;
+
+    if (!modal || !backdrop) {
+      state.qualityDialog = null;
+      restoreTrayAfterDialog();
+      state.editorTransition = null;
+      renderQualityDialogRoot();
+      return;
+    }
+
+    if (!tray || !dockRect) {
+      if (tray) hideTrayForEditor();
+      state.editorTransition = null;
+      return;
+    }
+
+    const transition = state.editorTransition;
+    const transform = getEditorMorphTransform(modal, dockRect);
+    const modalStyle = getComputedStyle(modal);
+    const backdropStyle = getComputedStyle(backdrop);
+    const targetRadius = modalStyle.borderRadius;
+    const targetShadow = modalStyle.boxShadow;
+    const targetScrim = backdropStyle.backgroundColor;
+    modal.classList.add('is-editor-morphing', 'is-editor-opening');
+    backdrop.classList.add('is-editor-morphing', 'is-editor-opening');
+    tray.classList.add('is-editor-leaving');
+
+    const animations = [
+      animateEditorElement(modal, [
+        { transform, borderRadius: '8px', boxShadow: 'none' },
+        { transform: 'none', borderRadius: targetRadius, boxShadow: targetShadow }
+      ], {
+        duration: EDITOR_MORPH_OPEN_DURATION,
+        easing: 'cubic-bezier(0.22, 0.78, 0.18, 1)',
+        fill: 'both'
+      }),
+      animateEditorElement(backdrop, [
+        { backgroundColor: 'transparent' },
+        { backgroundColor: targetScrim }
+      ], {
+        duration: 620,
+        easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
+        fill: 'both'
+      }),
+      animateEditorElement(tray, [
+        { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
+        { opacity: 0, transform: 'translateX(-50%) translateY(10px)' }
+      ], {
+        duration: 180,
+        easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
+        fill: 'both'
+      }),
+      ...animateEditorChildren(modal, 'open')
+    ].filter(Boolean);
+
+    await waitForEditorAnimations(animations, EDITOR_MORPH_OPEN_DURATION);
+    if (state.editorTransition !== transition) return;
+    hideTrayForEditor();
+    modal.classList.remove('is-editor-morphing', 'is-editor-opening');
+    backdrop.classList.remove('is-editor-morphing', 'is-editor-opening');
+    finishEditorAnimations();
+    state.editorTransition = null;
+    renderQualityDialogRoot();
+  }
+
+  async function beginEditorCloseTransition() {
+    if (state.editorTransition) return;
+
+    const modal = getEditorDialogElement();
+    const backdrop = getEditorBackdropElement();
+    const tray = state.tray;
+
+    if (!modal || !backdrop || !tray) {
+      state.qualityDialog = null;
+      rerenderTray();
+      return;
+    }
+
+    const dockRect = readDockRect();
+    if (!dockRect) {
+      state.qualityDialog = null;
+      rerenderTray();
+      return;
+    }
+
+    const transition = { direction: 'close', dockRect };
+    state.editorTransition = transition;
+    const modalStyle = getComputedStyle(modal);
+    const backdropStyle = getComputedStyle(backdrop);
+    const targetTransform = getEditorMorphTransform(modal, dockRect);
+    modal.classList.add('is-editor-morphing', 'is-editor-closing');
+    backdrop.classList.add('is-editor-morphing', 'is-editor-closing');
+
+    const animations = [
+      animateEditorElement(modal, [
+        { transform: 'none', borderRadius: modalStyle.borderRadius, boxShadow: modalStyle.boxShadow },
+        { transform: targetTransform, borderRadius: '8px', boxShadow: 'none' }
+      ], {
+        duration: 800,
+        delay: 100,
+        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+        fill: 'both'
+      }),
+      animateEditorElement(backdrop, [
+        { backgroundColor: backdropStyle.backgroundColor },
+        { backgroundColor: 'transparent' }
+      ], {
+        duration: 760,
+        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+        fill: 'both'
+      }),
+      ...animateEditorChildren(modal, 'close')
+    ].filter(Boolean);
+
+    await waitForEditorAnimations(animations, EDITOR_MORPH_CLOSE_DURATION);
+    if (state.editorTransition !== transition) return;
+    state.qualityDialog = null;
+    restoreTrayAfterDialog();
+    renderQualityDialogRoot();
+    finishEditorAnimations();
+    state.editorTransition = null;
+  }
+
+  function animateEditorChildren(modal, direction) {
+    return Array.from(modal.children).map((child, index, children) => {
+      const opening = direction === 'open';
+      const sequenceIndex = opening ? index : children.length - index - 1;
+      return animateEditorElement(child, opening ? [
+        { opacity: 0, transform: 'translateY(20px)' },
+        { opacity: 1, transform: 'translateY(0)' }
+      ] : [
+        { opacity: 1, transform: 'translateY(0)' },
+        { opacity: 0, transform: 'translateY(14px)' }
+      ], {
+        duration: opening ? 360 : 200,
+        delay: opening ? 220 + sequenceIndex * 55 : sequenceIndex * 18,
+        easing: opening ? 'cubic-bezier(0.16, 1, 0.3, 1)' : 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+        fill: 'both'
+      });
+    }).filter(Boolean);
+  }
+
+  function animateEditorElement(element, keyframes, options) {
+    if (!element || typeof element.animate !== 'function') return null;
+    try {
+      const animation = element.animate(keyframes, options);
+      state.editorTransitionAnimations.push(animation);
+      return animation;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function waitForEditorAnimations(animations, fallbackDuration) {
+    return new Promise((resolve) => {
+      let settled = false;
+      const complete = () => {
+        if (settled) return;
+        settled = true;
+        if (state.editorTransitionTimer) clearTimeout(state.editorTransitionTimer);
+        state.editorTransitionTimer = null;
+        state.editorTransitionResolve = null;
+        resolve();
+      };
+
+      state.editorTransitionResolve = complete;
+      state.editorTransitionTimer = setTimeout(complete, fallbackDuration + 250);
+      if (animations.length) {
+        Promise.all(animations.map((animation) => animation.finished.catch(() => null))).then(complete);
+      }
+    });
+  }
+
+  function finishEditorAnimations() {
+    const resolveTransition = state.editorTransitionResolve;
+    state.editorTransitionResolve = null;
+    state.editorTransitionAnimations.forEach((animation) => animation.cancel());
+    state.editorTransitionAnimations = [];
+    if (state.editorTransitionTimer) clearTimeout(state.editorTransitionTimer);
+    state.editorTransitionTimer = null;
+    if (resolveTransition) resolveTransition();
+  }
+
+  function getEditorDialogElement() {
+    return state.dialogRoot && state.dialogRoot.querySelector('.onblide-ml-modal.editor');
+  }
+
+  function getEditorBackdropElement() {
+    return state.dialogRoot && state.dialogRoot.querySelector('.onblide-ml-modal-backdrop');
+  }
+
+  function readDockRect() {
+    if (!state.tray || typeof state.tray.getBoundingClientRect !== 'function') return null;
+    const rect = state.tray.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) return null;
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height
+    };
+  }
+
+  function getEditorMorphTransform(modal, dockRect) {
+    const modalRect = modal.getBoundingClientRect();
+    const translateX = dockRect.left + dockRect.width / 2 - (modalRect.left + modalRect.width / 2);
+    const translateY = dockRect.top + dockRect.height / 2 - (modalRect.top + modalRect.height / 2);
+    const scaleX = dockRect.width / modalRect.width;
+    const scaleY = dockRect.height / modalRect.height;
+    return `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px) scale(${scaleX}, ${scaleY})`;
+  }
+
+  function hideTrayForEditor() {
+    if (!state.tray) return;
+    state.tray.classList.remove('is-editor-leaving', 'is-editor-returning', 'is-editor-returned');
+    state.tray.classList.add('is-editor-hidden');
+  }
+
+  function restoreTrayAfterDialog() {
+    if (!state.tray) return;
+    state.tray.classList.remove('is-editor-hidden', 'is-editor-leaving');
+  }
+
+  function clearEditorTransition() {
+    finishEditorAnimations();
+    const modal = getEditorDialogElement();
+    const backdrop = getEditorBackdropElement();
+    if (modal) modal.classList.remove('is-editor-morphing', 'is-editor-opening', 'is-editor-closing');
+    if (backdrop) backdrop.classList.remove('is-editor-morphing', 'is-editor-opening', 'is-editor-closing');
+    state.editorTransition = null;
+    if (state.qualityDialog) hideTrayForEditor();
+    else restoreTrayAfterDialog();
   }
 
   function setAllOptimizeSelection(selected) {
