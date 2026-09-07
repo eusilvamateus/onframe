@@ -50,7 +50,7 @@ asserções de layout e interação atualizadas.
 ## Workflow Git
 
 Antes de executar qualquer operação Git, leia e siga integralmente
-`docs/GIT_WORKFLOW.md`. Esse documento é a fonte única de verdade para branches,
+`docs/fluxo/GIT_WORKFLOW.md`. Esse documento é a fonte única de verdade para branches,
 commits, integração, histórico, SemVer, GitHub Actions, releases e reversões. Não
 duplique ou mantenha regras Git divergentes neste arquivo.
 

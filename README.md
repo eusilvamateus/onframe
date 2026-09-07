@@ -6,7 +6,7 @@ Livre a gerenciar anuncios diretamente pela pagina do produto.
 A ideia e simples: abrir o anuncio como qualquer cliente veria e fazer ajustes
 sem precisar voltar para a ficha do anuncio no painel do vendedor.
 
-Guias para usuario final ficam em [docs/README.md](docs/README.md).
+Guias para usuario final ficam em [docs/usuario/README.md](docs/usuario/README.md).
 
 ## O que a extensao faz
 

@@ -1322,7 +1322,7 @@ O objetivo é impedir merge commits e preservar o grafo linear.
 Este documento deve existir no projeto em localização padronizada, preferencialmente:
 
 ```text
-docs/GIT_WORKFLOW.md
+docs/fluxo/GIT_WORKFLOW.md
 ```
 
 Arquivos específicos de agentes, como:
@@ -1339,7 +1339,7 @@ Devem apenas instruir:
 
 ```text
 Antes de executar operações Git, leia e siga integralmente
-docs/GIT_WORKFLOW.md.
+docs/fluxo/GIT_WORKFLOW.md.
 ```
 
 Isso evita versões divergentes da política.

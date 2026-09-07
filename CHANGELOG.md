@@ -97,7 +97,7 @@
 - Guias de usuario final em `docs/`, cobrindo descricao, caracteristicas,
   promocoes, acoes em massa e atualizacao.
 - Espacos de imagens nos guias ja apontam para nomes definidos em
-  `docs/assets/`, facilitando a inclusao de prints.
+  `docs/usuario/assets/`, facilitando a inclusao de prints.
 
 ### Melhorado
 
