@@ -331,9 +331,10 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(source, /function extractListingItemId/);
   assert.match(source, /params\.get\('wid'\)/);
   assert.ok(source.includes("if (/\\/p\\/MLB\\d+/i.test(url.pathname)) return null;"));
-  assert.match(source, /state\.listingResolving < 3/);
+  assert.match(source, /const LISTING_REQUEST_CONCURRENCY = 20/);
+  assert.match(source, /state\.listingResolving < LISTING_REQUEST_CONCURRENCY/);
   assert.match(source, /listingSummaryQueue/);
-  assert.match(source, /state\.listingSummaryResolving < 3/);
+  assert.match(source, /state\.listingSummaryResolving < LISTING_REQUEST_CONCURRENCY/);
   assert.match(source, /queueListingSummary\(record, 'price'\)/);
   assert.match(source, /queueListingSummary\(record, 'promotions'\)/);
   assert.doesNotMatch(source, /IntersectionObserver/);

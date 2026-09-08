@@ -690,7 +690,8 @@ test('listagens antecipam os resumos de preco e promocoes', () => {
   assert.match(commerceSource, /queueListingSummary\(record, 'price'\)/);
   assert.match(commerceSource, /queueListingSummary\(record, 'promotions'\)/);
   assert.match(commerceSource, /listingSummaryQueue/);
-  assert.match(commerceSource, /state\.listingSummaryResolving < 3/);
+  assert.match(commerceSource, /const LISTING_REQUEST_CONCURRENCY = 20/);
+  assert.match(commerceSource, /state\.listingSummaryResolving < LISTING_REQUEST_CONCURRENCY/);
   assert.strictEqual(commerceSource.includes('IntersectionObserver'), false);
 });
 

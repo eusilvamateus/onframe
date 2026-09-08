@@ -14,6 +14,7 @@
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
+    const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
       DEAL: 'Campanha com melhor exposição',
       MARKETPLACE_CAMPAIGN: 'Campanha com aporte do Mercado Livre',
@@ -543,7 +544,7 @@
     }
 
     function drainListingQueue() {
-      while (state.listingResolving < 3 && state.listingQueue.length) {
+      while (state.listingResolving < LISTING_REQUEST_CONCURRENCY && state.listingQueue.length) {
         const itemId = state.listingQueue.shift();
         const entry = state.listingCache.get(itemId);
         if (!entry || entry.status !== 'queued') continue;
@@ -790,7 +791,7 @@
     }
 
     function drainListingSummaryQueue() {
-      while (state.listingSummaryResolving < 3 && state.listingSummaryQueue.length) {
+      while (state.listingSummaryResolving < LISTING_REQUEST_CONCURRENCY && state.listingSummaryQueue.length) {
         const job = state.listingSummaryQueue.shift();
         const entry = state.listingSummaryCache.get(job.itemId);
         const summary = entry && entry[job.type];
