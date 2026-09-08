@@ -174,7 +174,7 @@
 .onblide-ml-dock-catalog-notice {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
-  align-items: start;
+  align-items: center;
   gap: 9px;
   width: min(440px, calc(100vw - 64px));
   min-height: 40px;
@@ -184,7 +184,7 @@
 .onblide-ml-dock-catalog-notice > .ob-icon {
   width: 16px;
   height: 16px;
-  margin-top: 1px;
+  margin-top: 0;
   color: var(--ob-ink-soft);
   font-size: 16px;
 }

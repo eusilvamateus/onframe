@@ -286,6 +286,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-silhouette \{/);
   assert.doesNotMatch(styles, /\.onblide-ml-dock-silhouette-outline \{/);
   assert.match(styles, /\.onblide-ml-dock-catalog-notice \{/);
+  assert.match(styles, /\.onblide-ml-dock-catalog-notice \{[\s\S]*?align-items: center;/);
   assert.match(styles, /bottom: calc\(100% - 1px\);/);
   assert.match(styles, /\.onblide-ml-start-service \{/);
   assert.match(styles, /\.onblide-ml-dock-command-stack \{/);

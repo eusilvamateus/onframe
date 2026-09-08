@@ -580,6 +580,7 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(popupJs.includes('dataset.actionCount = String(visibleActions)'), true);
   assert.strictEqual(optionsJs.includes('dataset.actionCount = String(visibleActions)'), true);
   assert.strictEqual(components.includes('.onframe-catalog-notice'), true);
+  assert.match(components, /\.onframe-catalog-notice \{[\s\S]*?align-items: center;/);
   assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'description', 'module.js'), 'utf8').includes('onframe-description-catalog-notice'), true);
   assert.strictEqual(fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'characteristics', 'module.js'), 'utf8').includes('onframe-characteristics-catalog-notice'), true);
 });
