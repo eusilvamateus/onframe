@@ -57,7 +57,9 @@
       listingCache: new Map(),
       listingQueue: [],
       listingResolving: 0,
-      listingObserver: null,
+      listingSummaryCache: new Map(),
+      listingSummaryQueue: [],
+      listingSummaryResolving: 0,
       listingMutationObserver: null,
       listingScanTimer: null,
       listingActiveRecord: null,
@@ -337,13 +339,20 @@
     function syncActiveListingSummaries() {
       const record = state.listingActiveRecord;
       if (state.surface !== 'listing' || !record || record.itemId !== state.itemId) return;
-      record.priceSummary = state.priceSummary;
-      record.promotionSummary = state.promotionSummary;
-      record.priceError = state.priceError;
-      record.promotionError = state.promotionError;
-      record.priceLoading = state.priceLoading;
-      record.promotionLoading = state.promotionLoading;
-      mountListingControls(record);
+      const entry = getListingSummaryEntry(record.itemId);
+      entry.price = {
+        status: state.priceError ? 'error' : 'ready',
+        value: state.priceSummary,
+        error: state.priceError,
+        context: record.context
+      };
+      entry.promotions = {
+        status: state.promotionError ? 'error' : 'ready',
+        value: state.promotionSummary,
+        error: state.promotionError,
+        context: record.context
+      };
+      syncListingSummaryRecords(record.itemId);
     }
 
     function mountCommerce() {
@@ -425,17 +434,6 @@
     function startListingObserver() {
       if (!isListingPageUrl()) return;
 
-      if (!state.listingObserver && typeof IntersectionObserver === 'function') {
-        state.listingObserver = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            if (!entry.isIntersecting) return;
-            const record = state.listingRecords.get(entry.target);
-            if (record) queueListingResolution(record.itemId);
-            state.listingObserver.unobserve(entry.target);
-          });
-        }, { rootMargin: '180px 0px' });
-      }
-
       if (!state.listingMutationObserver && typeof MutationObserver === 'function' && document.body) {
         state.listingMutationObserver = new MutationObserver((mutations) => {
           if (mutations.some((mutation) => mutation.type === 'childList')) scheduleListingScan();
@@ -447,9 +445,7 @@
     }
 
     function stopListingObserver() {
-      if (state.listingObserver) state.listingObserver.disconnect();
       if (state.listingMutationObserver) state.listingMutationObserver.disconnect();
-      state.listingObserver = null;
       state.listingMutationObserver = null;
       if (state.listingScanTimer) clearTimeout(state.listingScanTimer);
       state.listingScanTimer = null;
@@ -462,6 +458,9 @@
       state.listingCache.clear();
       state.listingQueue = [];
       state.listingResolving = 0;
+      state.listingSummaryCache.clear();
+      state.listingSummaryQueue = [];
+      state.listingSummaryResolving = 0;
       state.listingActiveRecord = null;
     }
 
@@ -532,10 +531,6 @@
         return;
       }
       if (cached && (cached.status === 'not-owned' || cached.status === 'error')) return;
-      if (state.listingObserver) {
-        state.listingObserver.observe(record.card);
-        return;
-      }
       queueListingResolution(record.itemId);
     }
 
@@ -592,8 +587,11 @@
     function applyListingOwnership(record, context) {
       if (!record || !record.card.isConnected || !context) return;
       record.context = context;
+      syncListingSummaryRecord(record);
       mountListingBadge(record);
       mountListingControls(record);
+      queueListingSummary(record, 'price');
+      queueListingSummary(record, 'promotions');
     }
 
     function mountListingBadge(record) {
@@ -699,7 +697,6 @@
 
     function removeListingRecord(record) {
       if (!record) return;
-      if (state.listingObserver && record.card) state.listingObserver.unobserve(record.card);
       if (state.listingActiveRecord === record) {
         closePopover();
         state.listingActiveRecord = null;
@@ -757,26 +754,98 @@
       if (type === 'promotions' && !record.promotionSummary && !record.promotionLoading) void loadListingSummary(record, 'promotions');
     }
 
-    async function loadListingSummary(record, type) {
-      if (!record || !record.context) return;
-      const isPrice = type === 'price';
-      const summaryKey = isPrice ? 'priceSummary' : 'promotionSummary';
-      const errorKey = isPrice ? 'priceError' : 'promotionError';
-      const loadingKey = isPrice ? 'priceLoading' : 'promotionLoading';
-      if (record[loadingKey]) return;
+    function loadListingSummary(record, type) {
+      queueListingSummary(record, type, { force: true });
+    }
 
-      record[loadingKey] = true;
-      record[errorKey] = '';
-      syncListingPopoverState(record);
-      try {
-        record[summaryKey] = await api(listingItemApiPath(record, isPrice ? '/pricing/summary' : '/promotions/summary'));
-      } catch (err) {
-        record[summaryKey] = null;
-        record[errorKey] = toUserError(err);
-      } finally {
-        record[loadingKey] = false;
-        syncListingPopoverState(record);
+    function getListingSummaryEntry(itemId) {
+      let entry = state.listingSummaryCache.get(itemId);
+      if (entry) return entry;
+      entry = {
+        price: { status: 'idle', value: null, error: '' },
+        promotions: { status: 'idle', value: null, error: '' }
+      };
+      state.listingSummaryCache.set(itemId, entry);
+      return entry;
+    }
+
+    function queueListingSummary(record, type, options = {}) {
+      if (!record || !record.context || !record.itemId) return;
+      const entry = getListingSummaryEntry(record.itemId);
+      const summary = entry[type];
+      if (!summary) return;
+      if (!options.force && summary.status !== 'idle') {
+        syncListingSummaryRecord(record);
+        return;
       }
+      if (summary.status === 'queued' || summary.status === 'loading') return;
+
+      summary.status = 'queued';
+      summary.value = null;
+      summary.error = '';
+      summary.context = record.context;
+      syncListingSummaryRecords(record.itemId);
+      state.listingSummaryQueue.push({ itemId: record.itemId, type });
+      drainListingSummaryQueue();
+    }
+
+    function drainListingSummaryQueue() {
+      while (state.listingSummaryResolving < 3 && state.listingSummaryQueue.length) {
+        const job = state.listingSummaryQueue.shift();
+        const entry = state.listingSummaryCache.get(job.itemId);
+        const summary = entry && entry[job.type];
+        if (!summary || summary.status !== 'queued') continue;
+        state.listingSummaryResolving += 1;
+        summary.status = 'loading';
+        syncListingSummaryRecords(job.itemId);
+        void resolveListingSummary(job.itemId, job.type).finally(() => {
+          state.listingSummaryResolving = Math.max(0, state.listingSummaryResolving - 1);
+          drainListingSummaryQueue();
+        });
+      }
+    }
+
+    async function resolveListingSummary(itemId, type) {
+      const entry = state.listingSummaryCache.get(itemId);
+      const summary = entry && entry[type];
+      if (!summary || !summary.context) return;
+      const suffix = type === 'price' ? '/pricing/summary' : '/promotions/summary';
+      const record = { itemId, context: summary.context };
+
+      try {
+        summary.value = await api(listingItemApiPath(record, suffix));
+        summary.error = '';
+        summary.status = 'ready';
+      } catch (err) {
+        summary.value = null;
+        summary.error = toUserError(err);
+        summary.status = 'error';
+      } finally {
+        syncListingSummaryRecords(itemId);
+      }
+    }
+
+    function syncListingSummaryRecords(itemId) {
+      state.listingRecords.forEach((record) => {
+        if (record.itemId !== itemId || !record.context) return;
+        syncListingSummaryRecord(record);
+        mountListingControls(record);
+      });
+      if (state.listingActiveRecord && state.listingActiveRecord.itemId === itemId) {
+        syncListingPopoverState(state.listingActiveRecord);
+      }
+    }
+
+    function syncListingSummaryRecord(record) {
+      if (!record || !record.itemId) return;
+      const entry = state.listingSummaryCache.get(record.itemId);
+      if (!entry) return;
+      record.priceSummary = entry.price.value;
+      record.promotionSummary = entry.promotions.value;
+      record.priceError = entry.price.error;
+      record.promotionError = entry.promotions.error;
+      record.priceLoading = entry.price.status === 'queued' || entry.price.status === 'loading';
+      record.promotionLoading = entry.promotions.status === 'queued' || entry.promotions.status === 'loading';
     }
 
     function listingItemApiPath(record, suffix) {
@@ -4317,6 +4386,11 @@
       state.promotionEstimates = {};
       if (!state.context || !state.itemId) {
         await reloadCommerceEditor();
+        return;
+      }
+      if (state.surface === 'listing' && state.listingActiveRecord) {
+        queueListingSummary(state.listingActiveRecord, 'price', { force: true });
+        queueListingSummary(state.listingActiveRecord, 'promotions', { force: true });
         return;
       }
       await loadSummaries(state.requestId);

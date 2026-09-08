@@ -684,6 +684,16 @@ test('shell mantem o modulo de comercio ativo nas listagens', () => {
   assert.match(commerceSource, /state\.surface !== 'listing'/);
 });
 
+test('listagens antecipam os resumos de preco e promocoes', () => {
+  const commerceSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+
+  assert.match(commerceSource, /queueListingSummary\(record, 'price'\)/);
+  assert.match(commerceSource, /queueListingSummary\(record, 'promotions'\)/);
+  assert.match(commerceSource, /listingSummaryQueue/);
+  assert.match(commerceSource, /state\.listingSummaryResolving < 3/);
+  assert.strictEqual(commerceSource.includes('IntersectionObserver'), false);
+});
+
 test('shell usa resolucao rapida antes da hidratacao completa', () => {
   const shellSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'content-shell.js'), 'utf8');
   const photosSource = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
