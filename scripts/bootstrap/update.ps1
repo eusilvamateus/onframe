@@ -1,128 +1,31 @@
+param([switch]$NoHeader)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $Repo = if ($env:ONFRAME_UPDATE_REPO) { $env:ONFRAME_UPDATE_REPO } else { 'eusilvamateus/onframe' }
 $InstallRoot = if ($env:ONFRAME_HOME) { $env:ONFRAME_HOME } else { Join-Path $env:LOCALAPPDATA 'OnFrame' }
 
-$script:OnFrameColors = @{
-  Primary = 'Cyan'
-  Success = 'Green'
-  Warning = 'Yellow'
-  Error = 'Red'
-  Muted = 'DarkGray'
-  Text = 'White'
+$commonPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot 'common.ps1' } else { '' }
+if (-not $commonPath -or -not (Test-Path -LiteralPath $commonPath -PathType Leaf)) {
+  $commonPath = Join-Path $InstallRoot 'scripts/bootstrap/common.ps1'
 }
-
-function Write-OnFrameText {
-  param(
-    [string]$Text,
-    [string]$Color = 'White',
-    [switch]$NoNewLine
-  )
-
-  if ($NoNewLine) {
-    Write-Host $Text -ForegroundColor $Color -NoNewline
-  } else {
-    Write-Host $Text -ForegroundColor $Color
+if (Test-Path -LiteralPath $commonPath -PathType Leaf) {
+  . $commonPath
+} else {
+  $commonUrl = 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/common.ps1'
+  try {
+    $commonSource = (Invoke-WebRequest -UseBasicParsing -Uri $commonUrl -TimeoutSec 30).Content
+    . ([scriptblock]::Create($commonSource))
+  } catch {
+    function Write-OnFrameText { param([string]$Text, [string]$Tone = 'Default', [switch]$NoNewLine) if ($NoNewLine) { Write-Host $Text -NoNewline } else { Write-Host $Text } }
+    function Write-OnFrameHeader { param([string]$Mode, [string]$RootPath, [string]$Repository = '') Write-Host "OnFrame - $Mode" }
+    function Write-OnFrameSection { param([string]$Title) Write-Host "[$($Title.ToUpperInvariant())]" }
+    function Write-OnFrameStep { param([int]$Current, [int]$Total, [string]$Message, [string]$Status = 'running') Write-Host ("[{0:00}/{1:00}] {2}" -f $Current, $Total, $Message) }
+    function Write-OnFrameSubStep { param([string]$Message, [string]$Type = 'info') Write-Host "  $Message" }
+    function Write-OnFrameSuccess { param([string]$Title, [string[]]$Lines = @()) Write-Host $Title; $Lines | ForEach-Object { Write-Host "  $_" } }
+    function Write-OnFrameFailure { param([string]$Message) Write-Host $Message }
   }
-}
-
-function Write-OnFrameHeader {
-  param(
-    [string]$Mode,
-    [string]$RootPath,
-    [string]$Repository = ''
-  )
-
-  Write-Host ''
-  Write-OnFrameText '  ONFRAME' $script:OnFrameColors.Primary
-  Write-OnFrameText '  Onblide local toolkit' $script:OnFrameColors.Muted
-  Write-OnFrameText ("  " + ('-' * 58)) $script:OnFrameColors.Muted
-  Write-OnFrameText ("  {0,-10} {1}" -f 'Modo', $Mode) $script:OnFrameColors.Text
-  Write-OnFrameText ("  {0,-10} {1}" -f 'Pasta', $RootPath) $script:OnFrameColors.Text
-  if ($Repository) {
-    Write-OnFrameText ("  {0,-10} {1}" -f 'Repo', $Repository) $script:OnFrameColors.Text
-  }
-  Write-OnFrameText ("  " + ('-' * 58)) $script:OnFrameColors.Muted
-}
-
-function Write-OnFrameSection {
-  param([string]$Title)
-
-  Write-Host ''
-  Write-OnFrameText ("  [{0}]" -f $Title.ToUpperInvariant()) $script:OnFrameColors.Primary
-}
-
-function Write-OnFrameStep {
-  param(
-    [int]$Current,
-    [int]$Total,
-    [string]$Message,
-    [string]$Status = 'running'
-  )
-
-  $icon = switch ($Status) {
-    'ok' { '+' }
-    'warning' { '!' }
-    'error' { 'x' }
-    default { '>' }
-  }
-  $color = switch ($Status) {
-    'ok' { $script:OnFrameColors.Success }
-    'warning' { $script:OnFrameColors.Warning }
-    'error' { $script:OnFrameColors.Error }
-    default { $script:OnFrameColors.Primary }
-  }
-  $progress = '{0:00}/{1:00}' -f $Current, $Total
-
-  Write-OnFrameText "  [$icon] " $color -NoNewLine
-  Write-OnFrameText "$progress " $script:OnFrameColors.Muted -NoNewLine
-  Write-OnFrameText $Message $script:OnFrameColors.Text
-}
-
-function Write-OnFrameSubStep {
-  param(
-    [string]$Message,
-    [string]$Type = 'info'
-  )
-
-  $icon = switch ($Type) {
-    'ok' { '+' }
-    'warning' { '!' }
-    'error' { 'x' }
-    default { '-' }
-  }
-  $color = switch ($Type) {
-    'ok' { $script:OnFrameColors.Success }
-    'warning' { $script:OnFrameColors.Warning }
-    'error' { $script:OnFrameColors.Error }
-    default { $script:OnFrameColors.Muted }
-  }
-
-  Write-OnFrameText "       $icon $Message" $color
-}
-
-function Write-OnFrameSuccess {
-  param(
-    [string]$Title,
-    [string[]]$Lines = @()
-  )
-
-  Write-Host ''
-  Write-OnFrameText "  [OK] $Title" $script:OnFrameColors.Success
-  foreach ($line in $Lines) {
-    Write-OnFrameText "       $line" $script:OnFrameColors.Muted
-  }
-  Write-Host ''
-}
-
-function Write-OnFrameFailure {
-  param([string]$Message)
-
-  Write-Host ''
-  Write-OnFrameText '  [ERRO] O processo nao foi concluido.' $script:OnFrameColors.Error
-  Write-OnFrameText "         $Message" $script:OnFrameColors.Error
-  Write-Host ''
 }
 
 function Fail-Update {
@@ -439,7 +342,9 @@ function Get-Release {
 }
 
 try {
-  Write-OnFrameHeader -Mode 'Atualizacao' -RootPath $InstallRoot -Repository $Repo
+  if (-not $NoHeader) {
+    Write-OnFrameHeader -Mode 'Atualizacao' -RootPath $InstallRoot -Repository $Repo
+  }
 
   Write-OnFrameSection 'Preparando'
   Write-OnFrameStep 1 9 'Validando instalacao.'

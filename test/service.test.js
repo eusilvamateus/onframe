@@ -1062,6 +1062,7 @@ test('service expoe status de atualizacao auditavel', async (t) => {
       protocolUrl: 'onframe-updater://update',
       canOpenUpdater: true,
       updateCommand: 'update-command',
+      repairCommand: 'repair-command',
       checkCommand: 'check-command'
     }),
     getStatus: async () => ({ ok: true, updateAvailable: false })
@@ -1084,7 +1085,11 @@ test('service expoe status de atualizacao auditavel', async (t) => {
   assert.match(page.headers.get('content-type'), /text\/html/);
   assert.match(html, /onframe-updater:\/\/update/);
   assert.match(html, /update-command/);
+  assert.match(html, /repair-command/);
   assert.match(html, /check-command/);
+  assert.match(html, /data-repair-command/);
+  assert.match(html, /document\.createElement\('iframe'\)/);
+  assert.doesNotMatch(html, /window\.location\.href = pageData\.protocolUrl/);
   assert.doesNotMatch(html, /\/updates\/start/);
 });
 
@@ -1192,6 +1197,7 @@ test('update manager retorna comando quando existe versao nova', async () => {
   assert.strictEqual(typeof status.canOpenUpdater, 'boolean');
   assert.match(status.updateCommand, /ONFRAME_HOME='C:\\Users\\Mateus\\onframe'/);
   assert.match(status.updateCommand, /scripts\/bootstrap\/update\.ps1/);
+  assert.match(status.repairCommand, /scripts\/bootstrap\/install\.ps1/);
   assert.match(status.checkCommand, /ONFRAME_HOME='C:\\Users\\Mateus\\onframe'/);
   assert.match(status.checkCommand, /scripts\/bootstrap\/check\.ps1/);
 });
@@ -1219,6 +1225,7 @@ test('update manager produz comandos nativos para macOS', async () => {
   assert.match(status.updateCommand, /^ONFRAME_HOME=/);
   assert.match(status.updateCommand, /\/bin\/sh -c/);
   assert.match(status.updateCommand, /update\.sh/);
+  assert.match(status.repairCommand, /install\.sh/);
   assert.match(status.updateCommand, /O'"'"'Brien/);
   assert.match(status.checkCommand, /scripts\/bootstrap\/check\.sh/);
   assert.doesNotMatch(status.checkCommand, /PowerShell|\.ps1/);
@@ -1312,12 +1319,13 @@ test('bootstrap substitui atalhos bat legados', () => {
   const stopScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'stop.ps1'), 'utf8');
   const updateScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'update.ps1'), 'utf8');
   const uninstallScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.ps1'), 'utf8');
+  const commonScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'common.ps1'), 'utf8');
   const protocolScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'onframe-updater.ps1'), 'utf8');
   const macCommon = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'common.sh'), 'utf8');
   const macInstall = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'install.sh'), 'utf8');
   const macUninstall = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.sh'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  const visualBootstrapScripts = [installScript, updateScript, uninstallScript];
+  const visualBootstrapScripts = [commonScript];
   const serviceStopScripts = [stopScript, updateScript];
 
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-start.bat')), false);
@@ -1353,11 +1361,17 @@ test('bootstrap substitui atalhos bat legados', () => {
     assert.strictEqual(script.includes('function Write-OnFrameSuccess'), true);
     assert.strictEqual(script.includes('function Write-OnFrameFailure'), true);
     assert.strictEqual(script.includes('Onblide local toolkit'), true);
-    assert.strictEqual(script.includes('Chrome: chrome://extensions/'), true);
-    assert.strictEqual(script.includes('Edge: edge://extensions/'), true);
     assert.strictEqual(script.includes('Clear-Host'), false);
     assert.strictEqual(script.includes('function Write-Step'), false);
   }
+  for (const script of [installScript, updateScript, uninstallScript]) {
+    assert.strictEqual(script.includes('common.ps1'), true);
+    assert.strictEqual(script.includes('Chrome: chrome://extensions/'), true);
+    assert.strictEqual(script.includes('Edge: edge://extensions/'), true);
+  }
+  assert.strictEqual(commonScript.includes('$script:OnFrameSymbolMask'), true);
+  assert.strictEqual(commonScript.includes('$script:OnFrameCompactMask'), true);
+  assert.strictEqual(commonScript.includes('Width = $symbolWidth + 7'), true);
   assert.strictEqual(installScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(installScript.includes('^onframe-release-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
   assert.strictEqual(updateScript.includes('^onframe-v?\\d+\\.\\d+\\.\\d+.*\\.zip$'), true);
@@ -1365,6 +1379,7 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'register-updater-protocol.ps1')), true);
   assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'unregister-updater-protocol.ps1')), true);
   assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'onframe-updater.ps1')), true);
+  assert.strictEqual(fs.existsSync(path.join(root, 'scripts', 'bootstrap', 'common.ps1')), true);
   assert.strictEqual(installScript.includes('register-updater-protocol.ps1'), true);
   assert.strictEqual(updateScript.includes('register-updater-protocol.ps1'), true);
   assert.strictEqual(uninstallScript.includes('onframe-updater'), true);
@@ -1376,9 +1391,13 @@ test('bootstrap substitui atalhos bat legados', () => {
   assert.strictEqual(protocolScript.includes('Invoke-OnFrameBootstrapScript'), true);
   assert.strictEqual(protocolScript.includes("scripts/bootstrap/start.ps1"), true);
   assert.strictEqual(protocolScript.includes("scripts/bootstrap/stop.ps1"), true);
+  assert.strictEqual(protocolScript.includes("scripts/bootstrap/restart.ps1"), true);
   assert.strictEqual(protocolScript.includes("scripts/bootstrap/check.ps1"), true);
   assert.strictEqual(protocolScript.includes('Acao local nao suportada'), true);
   assert.strictEqual(protocolScript.includes('raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1'), true);
+  assert.strictEqual(installScript.includes('Pasta local parcial encontrada'), true);
+  assert.strictEqual(macInstall.includes('Pasta local parcial encontrada'), true);
+  assert.strictEqual(fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'check.ps1'), 'utf8').includes('Test-OnFrameUpdaterProtocol'), true);
   assert.strictEqual(packageJson.scripts.check.includes('scripts/bootstrap/check.ps1'), true);
   assert.strictEqual(JSON.stringify(packageJson.scripts).includes('doctor'), false);
   for (const scriptName of ['install', 'update', 'start', 'stop', 'restart', 'check', 'uninstall', 'launcher-action', 'register-updater-protocol', 'unregister-updater-protocol']) {

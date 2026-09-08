@@ -1,7 +1,12 @@
-param([string]$Root = '')
+param(
+  [string]$Root = '',
+  [switch]$Quiet
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'common.ps1')
 
 function Get-InstallRoot {
   param([string]$Value)
@@ -63,7 +68,7 @@ function Ensure-TokenSecret {
   if ($index -lt 0) {
     $lines.Add("ONBLIDE_TOKEN_SECRET=$secret")
     Set-Content -LiteralPath $EnvPath -Value $lines -Encoding UTF8
-    Write-Host 'Segredo local de tokens criado.' -ForegroundColor Yellow
+    if (-not $Quiet) { Write-OnFrameSubStep 'Segredo local de tokens criado.' 'warning' }
     return
   }
 
@@ -71,7 +76,7 @@ function Ensure-TokenSecret {
   if (-not $value) {
     $lines[$index] = "ONBLIDE_TOKEN_SECRET=$secret"
     Set-Content -LiteralPath $EnvPath -Value $lines -Encoding UTF8
-    Write-Host 'Segredo local de tokens criado.' -ForegroundColor Yellow
+    if (-not $Quiet) { Write-OnFrameSubStep 'Segredo local de tokens criado.' 'warning' }
   }
 }
 
@@ -82,6 +87,11 @@ function Test-Node {
   if ($version -notmatch '^(\d+)') { return $null }
   if ([int]$Matches[1] -lt 20) { return $null }
   return $command.Source
+}
+
+if (-not $Quiet) {
+  Write-OnFrameQuickHeader 'Servico local'
+  Write-OnFrameSection 'Preparando'
 }
 
 try {
@@ -99,15 +109,20 @@ try {
   $envExamplePath = Join-Path $InstallRoot '.env.example'
   if (-not (Test-Path $envPath) -and (Test-Path $envExamplePath)) {
     Copy-Item -LiteralPath $envExamplePath -Destination $envPath
-    Write-Host 'Arquivo .env criado com a configuracao padrao.' -ForegroundColor Yellow
+    if (-not $Quiet) { Write-OnFrameSubStep 'Arquivo .env criado com a configuracao padrao.' 'warning' }
   }
   Ensure-TokenSecret -EnvPath $envPath
 
   $port = Get-Port -InstallRoot $InstallRoot
   if (Invoke-Health -Port $port) {
-    Write-Host "OnFrame ja esta ativo em http://127.0.0.1:$port." -ForegroundColor Green
+    if (-not $Quiet) {
+      Write-OnFrameSuccess 'O servico ja esta ativo.' @(
+        "Endereco: http://127.0.0.1:$port"
+      )
+    }
     $global:LASTEXITCODE = 0
   } else {
+    if (-not $Quiet) { Write-OnFrameStep 1 2 'Iniciando servico em segundo plano.' }
     $runDir = Join-Path $InstallRoot '.onframe'
     $logDir = Join-Path $runDir 'logs'
     New-Item -ItemType Directory -Force -Path $runDir, $logDir | Out-Null
@@ -124,13 +139,19 @@ try {
     Start-Sleep -Milliseconds 900
 
     if (Invoke-Health -Port $port) {
-      Write-Host "OnFrame iniciado em http://127.0.0.1:$port." -ForegroundColor Green
+      if (-not $Quiet) {
+        Write-OnFrameSuccess 'Servico local pronto.' @(
+          "Endereco: http://127.0.0.1:$port"
+        )
+      }
       $global:LASTEXITCODE = 0
     } else {
       throw 'Nao consegui confirmar que o servico iniciou.'
     }
   }
 } catch {
-  Write-Host "[OnFrame] $($_.Exception.Message)" -ForegroundColor Red
+  if (-not $Quiet) {
+    Write-OnFrameFailure $_.Exception.Message
+  }
   $global:LASTEXITCODE = 1
 }

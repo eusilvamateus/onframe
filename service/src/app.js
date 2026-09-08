@@ -879,6 +879,9 @@ function getUpdateOpenPageData(updateManager) {
     updateCommand: isMac
       ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" /bin/sh -c \"$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh')\""
       : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex",
+    repairCommand: isMac
+      ? "/bin/sh -c \"$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.sh')\""
+      : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.ps1' | iex",
     checkCommand: isMac
       ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" \"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/check.sh\""
       : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/check.ps1' | iex"
@@ -935,6 +938,7 @@ function buildUpdateOpenPage(data = {}) {
     canOpenUpdater: data.canOpenUpdater !== false,
     shellLabel: data.shellLabel || 'PowerShell',
     updateCommand: data.updateCommand || '',
+    repairCommand: data.repairCommand || '',
     checkCommand: data.checkCommand || '',
     messages: {
       trying: 'Tentando abrir o atualizador do OnFrame...',
@@ -945,6 +949,7 @@ function buildUpdateOpenPage(data = {}) {
   };
   const serialized = JSON.stringify(pageData).replace(/</g, '\\u003c');
   const updateCommand = escapeHtml(pageData.updateCommand || 'Comando indisponivel.');
+  const repairCommand = escapeHtml(pageData.repairCommand || 'Comando indisponivel.');
   const checkCommand = escapeHtml(pageData.checkCommand || 'Comando indisponivel.');
   const shellLabel = escapeHtml(pageData.shellLabel);
 
@@ -1024,6 +1029,7 @@ function buildUpdateOpenPage(data = {}) {
     .panel-head span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
     .commands { display: grid; grid-template-columns: 1fr 1fr; }
     .command { padding: 16px 18px; border-right: 1px solid var(--line); }
+    .command.is-hidden { display: none; }
     .command:last-child { border-right: 0; }
     .command-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 13px; font-weight: 800; }
     code {
@@ -1072,6 +1078,10 @@ function buildUpdateOpenPage(data = {}) {
             <div class="command-head"><span>Atualizar</span><button type="button" data-copy="update">Copiar</button></div>
             <code>${updateCommand}</code>
           </div>
+          <div class="command is-hidden" data-repair-command>
+            <div class="command-head"><span>Reparar instalacao</span><button type="button" data-copy="repair">Copiar</button></div>
+            <code>${repairCommand}</code>
+          </div>
           <div class="command">
             <div class="command-head"><span>Verificar instalacao</span><button type="button" data-copy="check">Copiar</button></div>
             <code>${checkCommand}</code>
@@ -1090,10 +1100,31 @@ function buildUpdateOpenPage(data = {}) {
     const statusText = document.getElementById('statusText');
     const openUpdaterButton = document.getElementById('openUpdaterButton');
     let leftPage = false;
+    let protocolFrame = null;
+    let protocolFrameTimer = null;
 
     function showFallback() {
       statusBox.classList.add('is-fallback');
       statusText.textContent = pageData.messages.fallback;
+      for (const command of document.querySelectorAll('[data-repair-command]')) {
+        command.classList.remove('is-hidden');
+      }
+    }
+
+    function launchProtocol() {
+      if (protocolFrame) protocolFrame.remove();
+      if (protocolFrameTimer) window.clearTimeout(protocolFrameTimer);
+      protocolFrame = document.createElement('iframe');
+      protocolFrame.setAttribute('aria-hidden', 'true');
+      protocolFrame.tabIndex = -1;
+      protocolFrame.style.cssText = 'position:fixed;width:1px;height:1px;inset:-1px auto auto -1px;border:0;opacity:0;pointer-events:none;';
+      protocolFrame.src = pageData.protocolUrl;
+      document.body.appendChild(protocolFrame);
+      protocolFrameTimer = window.setTimeout(() => {
+        if (protocolFrame) protocolFrame.remove();
+        protocolFrame = null;
+        protocolFrameTimer = null;
+      }, 2200);
     }
 
     function openUpdater() {
@@ -1104,9 +1135,7 @@ function buildUpdateOpenPage(data = {}) {
       statusBox.classList.remove('is-fallback');
       statusText.textContent = pageData.messages.trying;
       leftPage = false;
-      window.setTimeout(() => {
-        window.location.href = pageData.protocolUrl;
-      }, 60);
+      launchProtocol();
       window.setTimeout(() => {
         if (!leftPage) showFallback();
       }, 1800);
@@ -1122,7 +1151,7 @@ function buildUpdateOpenPage(data = {}) {
 
     for (const button of document.querySelectorAll('[data-copy]')) {
       button.addEventListener('click', async () => {
-        const key = button.getAttribute('data-copy') === 'check' ? 'checkCommand' : 'updateCommand';
+        const key = button.getAttribute('data-copy') + 'Command';
         const command = pageData[key] || '';
         try {
           await navigator.clipboard.writeText(command);

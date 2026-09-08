@@ -10,9 +10,13 @@ $ProtocolName = 'onframe-updater'
 $UpdaterRoot = Join-Path $env:LOCALAPPDATA 'OnFrame\Updater'
 $StatePath = Join-Path $UpdaterRoot 'updater-state.json'
 $SourceScript = Join-Path $PSScriptRoot 'onframe-updater.ps1'
+$SourceCommonScript = Join-Path $PSScriptRoot 'common.ps1'
 
 if (-not (Test-Path -LiteralPath $SourceScript -PathType Leaf)) {
   throw "Script do atualizador nao encontrado: $SourceScript"
+}
+if (-not (Test-Path -LiteralPath $SourceCommonScript -PathType Leaf)) {
+  throw "Interface do atualizador nao encontrada: $SourceCommonScript"
 }
 
 if ([string]::IsNullOrWhiteSpace($Root)) {
@@ -23,7 +27,9 @@ $InstallRoot = [System.IO.Path]::GetFullPath($Root)
 New-Item -ItemType Directory -Force -Path $UpdaterRoot | Out-Null
 
 $TargetScript = Join-Path $UpdaterRoot 'onframe-updater.ps1'
+$TargetCommonScript = Join-Path $UpdaterRoot 'common.ps1'
 Copy-Item -LiteralPath $SourceScript -Destination $TargetScript -Force
+Copy-Item -LiteralPath $SourceCommonScript -Destination $TargetCommonScript -Force
 
 $state = [pscustomobject]@{
   installRoot = $InstallRoot

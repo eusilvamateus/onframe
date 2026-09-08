@@ -1,7 +1,12 @@
-param([string]$Root = '')
+param(
+  [string]$Root = '',
+  [switch]$Quiet
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+. (Join-Path $PSScriptRoot 'common.ps1')
 
 function Get-InstallRoot {
   param([string]$Value)
@@ -83,12 +88,17 @@ function Stop-OnFrameProcess {
   try {
     Stop-Process -Id $process.Id -Force -ErrorAction Stop
     Start-Sleep -Milliseconds 800
-    Write-Host "OnFrame encerrado. PID $($process.Id)." -ForegroundColor Green
+    if (-not $Quiet) { Write-OnFrameSubStep "Processo encerrado. PID $($process.Id)." 'ok' }
     return $true
   } catch {
-    Write-Host "Windows recusou encerrar o PID $($process.Id): $($_.Exception.Message)" -ForegroundColor Yellow
+    if (-not $Quiet) { Write-OnFrameSubStep "Windows recusou encerrar o PID $($process.Id): $($_.Exception.Message)" 'warning' }
     return $false
   }
+}
+
+if (-not $Quiet) {
+  Write-OnFrameQuickHeader 'Servico local'
+  Write-OnFrameSection 'Encerrando'
 }
 
 try {
@@ -105,18 +115,18 @@ try {
       $candidatePid = [int]$pidValue
       $isOnFrameProcess = Test-OnFrameServiceProcess -ProcessId $candidatePid
       if ($isOnFrameProcess -eq $false) {
-        Write-Host "PID salvo nao parece ser o servico do OnFrame: $candidatePid." -ForegroundColor Yellow
+        if (-not $Quiet) { Write-OnFrameSubStep "PID salvo nao parece ser o servico do OnFrame: $candidatePid." 'warning' }
         $candidatePid = $null
       }
     } else {
-      Write-Host 'PID invalido removido.' -ForegroundColor Yellow
+      if (-not $Quiet) { Write-OnFrameSubStep 'PID invalido removido.' 'warning' }
     }
     Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
   }
 
   $portPid = Get-PortProcessId -Port $port
   if ($candidatePid -and $portPid -and $candidatePid -ne $portPid) {
-    Write-Host "PID salvo difere do processo na porta $port; usando PID $portPid." -ForegroundColor Yellow
+    if (-not $Quiet) { Write-OnFrameSubStep "PID salvo difere do processo na porta $port; usando PID $portPid." 'warning' }
     $candidatePid = $portPid
   }
 
@@ -125,6 +135,7 @@ try {
   }
 
   if ($candidatePid) {
+    if (-not $Quiet) { Write-OnFrameStep 1 1 'Encerrando o servico local.' }
     $stopped = Stop-OnFrameProcess -ProcessId $candidatePid
   }
 
@@ -136,12 +147,14 @@ try {
   }
 
   if (-not $candidatePid) {
-    Write-Host 'OnFrame nao parece estar ativo.' -ForegroundColor Green
+    if (-not $Quiet) { Write-OnFrameSuccess 'O servico ja estava parado.' }
   } else {
-    Write-Host 'Servico local parado.' -ForegroundColor Green
+    if (-not $Quiet) { Write-OnFrameSuccess 'Servico local parado.' }
   }
   $global:LASTEXITCODE = 0
 } catch {
-  Write-Host "[OnFrame] $($_.Exception.Message)" -ForegroundColor Red
+  if (-not $Quiet) {
+    Write-OnFrameFailure $_.Exception.Message
+  }
   $global:LASTEXITCODE = 1
 }

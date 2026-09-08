@@ -20,6 +20,7 @@ function createUpdateManager(options = {}) {
   const scriptExtension = platform === 'darwin' ? 'sh' : 'ps1';
   const updateScriptUrl = env.ONFRAME_UPDATE_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, `update.${scriptExtension}`);
   const checkScriptUrl = env.ONFRAME_CHECK_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, `check.${scriptExtension}`);
+  const installScriptUrl = env.ONFRAME_INSTALL_SCRIPT_URL || buildDefaultScriptUrl(repo, branch, `install.${scriptExtension}`);
   let cache = null;
 
   return {
@@ -37,6 +38,7 @@ function createUpdateManager(options = {}) {
       shellLabel: platform === 'darwin' ? 'Terminal' : 'PowerShell',
       canOpenUpdater: platform === 'win32' || platform === 'darwin',
       updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl, platform }),
+      repairCommand: buildInstallCommand({ scriptUrl: installScriptUrl, platform }),
       checkCommand: platform === 'darwin'
         ? buildLocalScriptCommand({ root, scriptName: 'check.sh' })
         : buildBootstrapCommand({ root, scriptUrl: checkScriptUrl, platform })
@@ -54,6 +56,7 @@ function createUpdateManager(options = {}) {
       scriptUrl: updateScriptUrl,
       updateScriptUrl,
       checkScriptUrl,
+      installScriptUrl,
       latestVersion: null,
       latestTag: null,
       releaseUrl: null,
@@ -67,6 +70,7 @@ function createUpdateManager(options = {}) {
       shell: openPage.shell,
       shellLabel: openPage.shellLabel,
       updateCommand: openPage.updateCommand,
+      repairCommand: openPage.repairCommand,
       checkCommand: openPage.checkCommand,
       message: '',
       checkedAt: new Date(nowImpl()).toISOString()
@@ -159,6 +163,13 @@ function buildBootstrapCommand({ root, scriptUrl, platform = process.platform })
 
 function buildUpdateCommand({ root, scriptUrl, platform = process.platform }) {
   return buildBootstrapCommand({ root, scriptUrl, platform });
+}
+
+function buildInstallCommand({ scriptUrl, platform = process.platform }) {
+  if (platform === 'darwin') {
+    return `/bin/sh -c "$(/usr/bin/curl -fsSL '${escapePosixSingleQuoted(scriptUrl)}')"`;
+  }
+  return `iwr -useb '${escapePowerShellSingleQuoted(scriptUrl)}' | iex`;
 }
 
 function buildLocalScriptCommand({ root, scriptName }) {

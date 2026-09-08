@@ -535,8 +535,9 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(launcherJs.includes('start: createAction'), true);
   assert.strictEqual(launcherJs.includes('stop: createAction'), true);
   assert.strictEqual(launcherJs.includes('restart: createAction'), true);
-  assert.strictEqual(launcherJs.includes("scripts/bootstrap/start.ps1"), true);
-  assert.strictEqual(launcherJs.includes("scripts/bootstrap/stop.ps1"), true);
+  assert.strictEqual(launcherJs.includes("localCommand('start')"), true);
+  assert.strictEqual(launcherJs.includes("localCommand('restart')"), true);
+  assert.strictEqual(launcherJs.includes("scripts/bootstrap/stop.ps1') -Root $root;"), false);
   assert.strictEqual(launcherJs.includes('scripts/bootstrap/${name}.ps1'), true);
   assert.strictEqual(launcherJs.includes('chrome.runtime.getPlatformInfo'), true);
   assert.strictEqual(launcherJs.includes('scripts/bootstrap/${name}.sh'), true);
@@ -546,6 +547,10 @@ test('ui exibem comando de atualizacao auditavel', () => {
   assert.strictEqual(launcherJs.includes("value === 'fallback' ? 'fallback' : 'initial'"), true);
   assert.strictEqual(launcherJs.includes('if (!isPreview) window.setTimeout(openProtocol, 320);'), true);
   assert.strictEqual(launcherJs.includes('if (isPreview) return;'), true);
+  assert.strictEqual(launcherJs.includes("document.createElement('iframe')"), true);
+  assert.strictEqual(launcherJs.includes('launcher-protocol-transport'), true);
+  assert.strictEqual(launcherJs.includes('window.location.href = action.protocolUrl'), false);
+  assert.strictEqual(launcherJs.includes('Reparar instalação'), true);
   assert.strictEqual(launcherJs.includes("notify('success', 'Comando copiado')"), true);
   assert.strictEqual(launcherJs.includes("elements.statusLabel.textContent = 'Ação manual necessária';"), true);
   const backgroundJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'background.js'), 'utf8');

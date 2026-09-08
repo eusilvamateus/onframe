@@ -53,7 +53,7 @@ printf '  ----------------------------------------------------------\n'
 printf '\n  [PREPARANDO]\n'
 printf '  [>] 01/09 Validando destino.\n'
 if [ -e "$INSTALL_ROOT" ] && [ ! -f "$INSTALL_ROOT/package.json" ]; then
-  fail "A pasta existe, mas nao parece ser uma instalacao do OnFrame: $INSTALL_ROOT"
+  printf '       ! Pasta local parcial encontrada; os arquivos serao restaurados e a configuracao preservada.\n'
 fi
 if [ -d "$INSTALL_ROOT/.git" ]; then
   fail "Esta pasta e um checkout de desenvolvimento. Use outra pasta para instalar."

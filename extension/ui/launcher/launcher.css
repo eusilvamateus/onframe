@@ -223,6 +223,16 @@ body {
   box-shadow: 0 3px 10px color-mix(in srgb, var(--ob-danger) 16%, transparent);
 }
 
+.launcher-protocol-transport {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  inset: -1px auto auto -1px;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .launcher-manual-heading h2 {
   margin: 0;
   font-size: var(--ob-fs-md);

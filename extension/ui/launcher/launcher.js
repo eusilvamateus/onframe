@@ -23,6 +23,9 @@
   let previewState = 'initial';
   let checkCommand = '';
   let leftPage = false;
+  let recoveryVisible = false;
+  let protocolFrame = null;
+  let protocolFrameTimer = null;
 
   void initialize();
 
@@ -56,27 +59,30 @@
     const updateCommand = isMac
       ? `ONFRAME_HOME=${MAC_ROOT} /bin/sh -c "$(/usr/bin/curl -fsSL '${RAW_ROOT}/update.sh')"`
       : `$env:ONFRAME_HOME=(Join-Path $env:LOCALAPPDATA 'OnFrame'); iwr -useb '${RAW_ROOT}/update.ps1' | iex`;
+    const repairCommand = isMac
+      ? `/bin/sh -c "$(/usr/bin/curl -fsSL '${RAW_ROOT}/install.sh')"`
+      : `iwr -useb '${RAW_ROOT}/install.ps1' | iex`;
     const localCommand = (name) => isMac
       ? `${MAC_ROOT}/scripts/bootstrap/${name}.sh`
       : `${WINDOWS_ROOT_COMMAND}; & (Join-Path $root 'scripts/bootstrap/${name}.ps1') -Root $root`;
     const restartCommand = isMac
       ? localCommand('restart')
-      : `${WINDOWS_ROOT_COMMAND}; & (Join-Path $root 'scripts/bootstrap/stop.ps1') -Root $root; & (Join-Path $root 'scripts/bootstrap/start.ps1') -Root $root`;
+      : localCommand('restart');
     const fallback = `Se nenhuma janela abriu, use o comando manual abaixo no ${shellLabel}.`;
 
     return {
-      update: createAction('Atualização local', 'Atualizar OnFrame', 'Estamos solicitando a abertura do atualizador local registrado neste computador.', 'update', 'Tentar novamente', 'Tentando abrir o atualizador do OnFrame...', fallback, 'Atualizar OnFrame', updateCommand, { icon: 'refresh', tone: 'blue' }),
-      start: createAction('Serviço local', 'Iniciar OnFrame', 'Estamos solicitando o início do serviço local do OnFrame neste computador.', 'start', 'Tentar novamente', 'Tentando iniciar o serviço local...', fallback, 'Iniciar serviço', localCommand('start'), { icon: 'play', tone: 'green' }),
-      stop: createAction('Serviço local', 'Parar OnFrame', 'Estamos solicitando o encerramento do serviço local do OnFrame neste computador.', 'stop', 'Tentar novamente', 'Tentando encerrar o serviço local...', fallback, 'Parar serviço', localCommand('stop'), { icon: 'stop', tone: 'red', buttonTone: 'danger' }),
-      restart: createAction('Serviço local', 'Reiniciar OnFrame', 'Estamos solicitando a reinicialização do serviço local do OnFrame neste computador.', 'restart', 'Tentar novamente', 'Tentando reiniciar o serviço local...', fallback, 'Reiniciar serviço', restartCommand, { icon: 'refresh', tone: 'orange' }),
+      update: createAction('Atualização local', 'Atualizar OnFrame', 'Estamos solicitando a abertura do atualizador local registrado neste computador.', 'update', 'Tentar novamente', 'Tentando abrir o atualizador do OnFrame...', fallback, 'Atualizar OnFrame', updateCommand, repairCommand, { icon: 'refresh', tone: 'blue' }),
+      start: createAction('Serviço local', 'Iniciar OnFrame', 'Estamos solicitando o início do serviço local do OnFrame neste computador.', 'start', 'Tentar novamente', 'Tentando iniciar o serviço local...', fallback, 'Iniciar serviço', localCommand('start'), repairCommand, { icon: 'play', tone: 'green' }),
+      stop: createAction('Serviço local', 'Parar OnFrame', 'Estamos solicitando o encerramento do serviço local do OnFrame neste computador.', 'stop', 'Tentar novamente', 'Tentando encerrar o serviço local...', fallback, 'Parar serviço', localCommand('stop'), repairCommand, { icon: 'stop', tone: 'red', buttonTone: 'danger' }),
+      restart: createAction('Serviço local', 'Reiniciar OnFrame', 'Estamos solicitando a reinicialização do serviço local do OnFrame neste computador.', 'restart', 'Tentar novamente', 'Tentando reiniciar o serviço local...', fallback, 'Reiniciar serviço', restartCommand, repairCommand, { icon: 'refresh', tone: 'orange' }),
       check: Object.assign(
-        createAction('Diagnóstico local', 'Verificar OnFrame', 'Estamos solicitando a abertura da verificação local do OnFrame neste computador.', 'check', 'Tentar novamente', 'Tentando abrir a verificação local...', fallback, 'Verificar instalação', localCommand('check'), { icon: 'checkCircle', tone: 'blue' }),
+        createAction('Diagnóstico local', 'Verificar OnFrame', 'Estamos solicitando a abertura da verificação local do OnFrame neste computador.', 'check', 'Tentar novamente', 'Tentando abrir a verificação local...', fallback, 'Verificar instalação', localCommand('check'), repairCommand, { icon: 'checkCircle', tone: 'blue' }),
         { hideCheckCommand: true }
       )
     };
   }
 
-  function createAction(eyebrow, title, copy, protocolAction, openLabel, trying, fallback, primaryCommandLabel, primaryCommand, presentation = {}) {
+  function createAction(eyebrow, title, copy, protocolAction, openLabel, trying, fallback, primaryCommandLabel, primaryCommand, repairCommand, presentation = {}) {
     return Object.assign({
       eyebrow,
       title,
@@ -87,6 +93,7 @@
       fallback,
       primaryCommandLabel,
       primaryCommand,
+      repairCommand,
       icon: 'refresh',
       tone: 'blue',
       buttonTone: 'primary'
@@ -135,6 +142,9 @@
     if (!action.hideCheckCommand) {
       cards.push({ key: 'check', label: 'Verificar instalação', command: checkCommand });
     }
+    if (recoveryVisible) {
+      cards.push({ key: 'repair', label: 'Reparar instalação', command: action.repairCommand });
+    }
 
     elements.commands.innerHTML = cards.map((card) => `
       <article class="launcher-command">
@@ -168,15 +178,33 @@
     if (isPreview) return;
     leftPage = false;
     showInitial();
-    window.setTimeout(() => {
-      window.location.href = action.protocolUrl;
-    }, 60);
+    launchProtocol();
     window.setTimeout(() => {
       if (!leftPage) showFallback();
     }, 1800);
   }
 
+  function launchProtocol() {
+    if (protocolFrame) protocolFrame.remove();
+    if (protocolFrameTimer) window.clearTimeout(protocolFrameTimer);
+
+    protocolFrame = document.createElement('iframe');
+    protocolFrame.className = 'launcher-protocol-transport';
+    protocolFrame.setAttribute('aria-hidden', 'true');
+    protocolFrame.tabIndex = -1;
+    protocolFrame.src = action.protocolUrl;
+    document.body.appendChild(protocolFrame);
+
+    protocolFrameTimer = window.setTimeout(() => {
+      if (protocolFrame) protocolFrame.remove();
+      protocolFrame = null;
+      protocolFrameTimer = null;
+    }, 2200);
+  }
+
   function showInitial() {
+    recoveryVisible = false;
+    renderCommands();
     elements.status.dataset.tone = 'blue';
     elements.statusLabel.textContent = 'Abrindo automaticamente';
     elements.statusText.textContent = action.trying;
@@ -184,14 +212,20 @@
   }
 
   function showFallback() {
+    recoveryVisible = true;
+    renderCommands();
     elements.status.dataset.tone = 'orange';
     elements.statusLabel.textContent = 'Ação manual necessária';
-    elements.statusText.textContent = 'O controle local não abriu';
-    elements.statusDetail.textContent = action.fallback;
+    elements.statusText.textContent = 'Não foi possível confirmar a abertura do controle local';
+    elements.statusDetail.textContent = `${action.fallback} Use “Reparar instalação” se o atalho por um clique não estiver disponível.`;
   }
 
   async function copyCommand(button) {
-    const command = button.dataset.copy === 'check' ? checkCommand : action.primaryCommand;
+    const command = button.dataset.copy === 'check'
+      ? checkCommand
+      : button.dataset.copy === 'repair'
+        ? action.repairCommand
+        : action.primaryCommand;
     try {
       await navigator.clipboard.writeText(command);
       notify('success', 'Comando copiado');

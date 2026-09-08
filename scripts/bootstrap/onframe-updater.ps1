@@ -7,9 +7,14 @@ $ErrorActionPreference = 'Stop'
 
 $ProtocolName = 'onframe-updater'
 $DefaultUpdateScriptUrl = 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1'
+$DefaultCommonScriptUrl = 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/common.ps1'
 $UpdaterRoot = Join-Path $env:LOCALAPPDATA 'OnFrame\Updater'
 $StatePath = Join-Path $UpdaterRoot 'updater-state.json'
 $LogPath = Join-Path $UpdaterRoot 'updater.log'
+$commonScript = Join-Path $PSScriptRoot 'common.ps1'
+if (Test-Path -LiteralPath $commonScript -PathType Leaf) {
+  . $commonScript
+}
 
 function Write-OnFrameUpdaterLog {
   param([string]$Message)
@@ -17,7 +22,21 @@ function Write-OnFrameUpdaterLog {
   New-Item -ItemType Directory -Force -Path $UpdaterRoot | Out-Null
   $line = '[{0}] {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Message
   Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8
-  Write-Host $Message
+}
+
+function Write-OnFrameUpdaterFailure {
+  param([string]$Message)
+
+  if (Get-Command Write-OnFrameFailure -ErrorAction SilentlyContinue) {
+    Write-OnFrameFailure $Message
+  } else {
+    Write-Host "[OnFrame] $Message"
+  }
+}
+
+function Wait-OnFrameUpdaterClose {
+  Write-Host ''
+  Read-Host 'Pressione Enter para fechar'
 }
 
 function Get-OnFrameUpdaterAction {
@@ -79,18 +98,26 @@ function Invoke-OnFrameOfficialUpdate {
   $installRoot = Get-OnFrameInstallRoot
   Write-OnFrameUpdaterLog "Iniciando atualizacao do OnFrame em: $installRoot"
 
+  if (Get-Command Write-OnFrameHeader -ErrorAction SilentlyContinue) {
+    Write-OnFrameHeader -Mode 'Atualizacao local' -RootPath $installRoot
+    Write-OnFrameSection 'Preparando'
+    Write-OnFrameSubStep 'Baixando atualizador oficial.' 'info'
+  }
+
   $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("onframe-updater-" + [guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
   $scriptPath = Join-Path $tempRoot 'update.ps1'
+  $commonPath = Join-Path $tempRoot 'common.ps1'
 
   try {
     Write-OnFrameUpdaterLog 'Baixando atualizador oficial.'
     Invoke-WebRequest -UseBasicParsing -Uri $DefaultUpdateScriptUrl -OutFile $scriptPath -TimeoutSec 60
+    Invoke-WebRequest -UseBasicParsing -Uri $DefaultCommonScriptUrl -OutFile $commonPath -TimeoutSec 60
 
     Write-OnFrameUpdaterLog 'Executando atualizador oficial.'
     $previousHome = $env:ONFRAME_HOME
     $env:ONFRAME_HOME = $installRoot
-    $command = ". '$($scriptPath.Replace("'", "''"))'; exit `$global:LASTEXITCODE"
+    $command = ". '$($commonPath.Replace("'", "''"))'; & '$($scriptPath.Replace("'", "''"))' -NoHeader; exit `$global:LASTEXITCODE"
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command $command
     $exitCode = $LASTEXITCODE
     if ($null -ne $previousHome) {
@@ -101,9 +128,7 @@ function Invoke-OnFrameOfficialUpdate {
     if ($exitCode -ne 0) {
       throw "Atualizador terminou com codigo $exitCode."
     }
-
     Write-OnFrameUpdaterLog 'Atualizacao do OnFrame concluida.'
-    Start-Sleep -Seconds 2
   } finally {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
   }
@@ -112,8 +137,7 @@ function Invoke-OnFrameOfficialUpdate {
 function Invoke-OnFrameBootstrapScript {
   param(
     [string]$ScriptName,
-    [string]$Label,
-    [switch]$KeepOpen
+    [string]$Label
   )
 
   $installRoot = Get-OnFrameInstallRoot
@@ -132,12 +156,6 @@ function Invoke-OnFrameBootstrapScript {
     throw "$Label terminou com codigo $exitCode."
   }
 
-  if ($KeepOpen) {
-    Write-Host ''
-    Read-Host 'Pressione Enter para fechar'
-  } else {
-    Start-Sleep -Seconds 2
-  }
 }
 
 function Get-OnFrameManualCommand {
@@ -146,7 +164,7 @@ function Get-OnFrameManualCommand {
   switch ($Action) {
     'start' { return '$root=Join-Path $env:LOCALAPPDATA ''OnFrame''; & (Join-Path $root ''scripts/bootstrap/start.ps1'') -Root $root' }
     'stop' { return '$root=Join-Path $env:LOCALAPPDATA ''OnFrame''; & (Join-Path $root ''scripts/bootstrap/stop.ps1'') -Root $root' }
-    'restart' { return '$root=Join-Path $env:LOCALAPPDATA ''OnFrame''; & (Join-Path $root ''scripts/bootstrap/stop.ps1'') -Root $root; & (Join-Path $root ''scripts/bootstrap/start.ps1'') -Root $root' }
+    'restart' { return '$root=Join-Path $env:LOCALAPPDATA ''OnFrame''; & (Join-Path $root ''scripts/bootstrap/restart.ps1'') -Root $root' }
     'check' { return '$root=Join-Path $env:LOCALAPPDATA ''OnFrame''; & (Join-Path $root ''scripts/bootstrap/check.ps1'') -Root $root' }
     default { return "iwr -useb '$DefaultUpdateScriptUrl' | iex" }
   }
@@ -155,14 +173,11 @@ function Get-OnFrameManualCommand {
 try {
   $action = Get-OnFrameUpdaterAction -RawUri $Uri
   switch ($action) {
-    'update' { Invoke-OnFrameOfficialUpdate }
-    'start' { Invoke-OnFrameBootstrapScript -ScriptName 'start' -Label 'Iniciando servico local' }
-    'stop' { Invoke-OnFrameBootstrapScript -ScriptName 'stop' -Label 'Encerrando servico local' }
-    'restart' {
-      Invoke-OnFrameBootstrapScript -ScriptName 'stop' -Label 'Encerrando servico local'
-      Invoke-OnFrameBootstrapScript -ScriptName 'start' -Label 'Reiniciando servico local'
-    }
-    'check' { Invoke-OnFrameBootstrapScript -ScriptName 'check' -Label 'Verificando instalacao local' -KeepOpen }
+    'update' { Invoke-OnFrameOfficialUpdate; Wait-OnFrameUpdaterClose }
+    'start' { Invoke-OnFrameBootstrapScript -ScriptName 'start' -Label 'Iniciando servico local'; Wait-OnFrameUpdaterClose }
+    'stop' { Invoke-OnFrameBootstrapScript -ScriptName 'stop' -Label 'Encerrando servico local'; Wait-OnFrameUpdaterClose }
+    'restart' { Invoke-OnFrameBootstrapScript -ScriptName 'restart' -Label 'Reiniciando servico local'; Wait-OnFrameUpdaterClose }
+    'check' { Invoke-OnFrameBootstrapScript -ScriptName 'check' -Label 'Verificando instalacao local'; Wait-OnFrameUpdaterClose }
     'open-log' {
       New-Item -ItemType Directory -Force -Path $UpdaterRoot | Out-Null
       if (-not (Test-Path -LiteralPath $LogPath -PathType Leaf)) {
@@ -180,10 +195,14 @@ try {
   }
   $manualCommand = Get-OnFrameManualCommand -Action $manualAction
   Write-OnFrameUpdaterLog ("Falha no atualizador: " + $_.Exception.Message)
-  Write-Host ''
-  Write-Host 'Nao foi possivel executar a acao por um clique. Use o comando manual:'
-  Write-Host $manualCommand
-  Write-Host ''
-  Read-Host 'Pressione Enter para fechar'
+  Write-OnFrameUpdaterFailure ("Nao foi possivel executar a acao por um clique. $($_.Exception.Message)")
+  if (Get-Command Write-OnFrameText -ErrorAction SilentlyContinue) {
+    Write-OnFrameText '  Use o comando manual abaixo:' 'Muted'
+    Write-OnFrameText "  $manualCommand" 'Default'
+  } else {
+    Write-Host 'Use o comando manual abaixo:'
+    Write-Host $manualCommand
+  }
+  Wait-OnFrameUpdaterClose
   exit 1
 }
