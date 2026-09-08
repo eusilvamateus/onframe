@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.4.0 - 2026-09-08
+
+### Adicionado
+
+- A listagem antecipa os resumos de preco e promocoes dos anuncios da conta
+  conectada, sem esperar a abertura do respectivo popover.
+
+### Melhorado
+
+- A apresentacao dos comandos locais no PowerShell passa a usar a identidade
+  responsiva do OnFrame em telas largas, compactas e estreitas.
+
+### Corrigido
+
+- Telas de acao preservam a interface quando o protocolo local nao responde e
+  oferecem reparo da instalacao sem perder a configuracao local.
+- A verificacao local informa quando o atalho de um clique nao esta registrado.
+- Icones dos avisos de catalogo ficam centralizados nos cards de informacao.
+
 ## v0.3.18 - 2026-09-06
 
 ### Adicionado
