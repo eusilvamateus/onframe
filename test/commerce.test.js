@@ -630,7 +630,8 @@ test('modal de promocoes limpa erro antigo ao editar campos', () => {
   assert.match(source, /function savePromotionFieldDraft/);
   assert.match(source, /clearPromotionActionFeedback\(\)/);
   assert.match(source, /onframe-commerce-alert/);
-  assert.match(source, /showToast\('success', action === 'delete'/);
+  assert.match(source, /showToast\('success', promotionActionSuccessLabel\(action\)\)/);
+  assert.match(source, /function promotionActionSuccessLabel/);
   assert.doesNotMatch(source, /actionMessage/);
 });
 
@@ -949,6 +950,7 @@ test('pricing update bloqueia anuncio encerrado antes de alterar o item', async 
 test('bulk de preco resolve familia user_product e aplica somente elegiveis', async () => {
   const updated = [];
   const promotionOffers = [];
+  const appliedPromotions = new Map();
   const items = {
     MLB1000000001: {
       id: 'MLB1000000001',
@@ -1008,7 +1010,7 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
       return { results: Object.keys(items) };
     },
     getPricingAutomation: async (itemId) => itemId === 'MLB1000000003' ? { status: 'ACTIVE' } : null,
-    getItemPromotions: async () => ({ results: [] }),
+    getItemPromotions: async (itemId) => ({ results: appliedPromotions.get(itemId) || [] }),
     updateItem: async (itemId, payload) => {
       updated.push({ itemId, payload });
       return Object.assign({}, items[itemId], payload);
@@ -1016,6 +1018,12 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
     createPromotionOffer: async (itemId, payload) => {
       if (itemId === 'MLB1000000003') throw new Error('promotion_rejected');
       promotionOffers.push({ itemId, payload });
+      appliedPromotions.set(itemId, [{
+        id: payload.promotion_id,
+        type: payload.promotion_type,
+        status: 'pending',
+        price: payload.deal_price
+      }]);
       return { ok: true };
     }
   };
@@ -1063,6 +1071,90 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
   assert.strictEqual(directCommit.counts.skipped, 0);
   assert.strictEqual(directCommit.targets.find((target) => target.itemId === 'MLB1000000003').status, 'failed');
   assert.deepStrictEqual(promotionOffers.map((entry) => entry.itemId).sort(), ['MLB1000000001', 'MLB1000000002']);
+});
+
+test('promotion offer só confirma sucesso quando a alteração aparece no anúncio', async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => createOffer({
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      getItemPromotions: async () => {
+        calls += 1;
+        return {
+          results: [{
+            id: 'P-MLB1',
+            type: 'DEAL',
+            status: 'candidate',
+            min_discounted_price: 70,
+            max_discounted_price: 90,
+            suggested_discounted_price: 80
+          }]
+        };
+      },
+      createPromotionOffer: async () => ({ price: 80, original_price: 100 })
+    }, 'MLB1234567890', {
+      promotionType: 'DEAL',
+      promotionId: 'P-MLB1',
+      dealPrice: 80
+    }),
+    /promotion_change_not_confirmed/
+  );
+  assert.strictEqual(calls, 3);
+});
+
+test('promotion offer confirma o preço aplicado pela API', async () => {
+  let applied = false;
+  const result = await createOffer({
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+    getItemPromotions: async () => ({
+      results: applied
+        ? [{ id: 'P-MLB1', type: 'DEAL', status: 'pending', price: 80 }]
+        : [{ id: 'P-MLB1', type: 'DEAL', status: 'candidate', min_discounted_price: 70, max_discounted_price: 90 }]
+    }),
+    createPromotionOffer: async () => {
+      applied = true;
+      return { price: 80, original_price: 100 };
+    }
+  }, 'MLB1234567890', {
+    promotionType: 'DEAL',
+    promotionId: 'P-MLB1',
+    dealPrice: 80
+  });
+
+  assert.deepStrictEqual(result, { price: 80, original_price: 100 });
+});
+
+test('promotion offer confirma campanha do vendedor pela consulta da campanha', async () => {
+  let applied = false;
+  const result = await createOffer({
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+    getItemPromotions: async () => ({ results: [] }),
+    getPromotionItems: async (promotionId, promotionType, options) => {
+      assert.strictEqual(promotionId, 'C-MLB1');
+      assert.strictEqual(promotionType, 'SELLER_CAMPAIGN');
+      assert.deepStrictEqual(options, { item_id: 'MLB1234567890', limit: 50 });
+      return {
+        results: [{
+          id: 'MLB1234567890',
+          status: applied ? 'pending' : 'candidate',
+          price: applied ? 80 : 0
+        }]
+      };
+    },
+    createPromotionOffer: async () => {
+      applied = true;
+      return { price: 80, original_price: 100 };
+    }
+  }, 'MLB1234567890', {
+    promotionType: 'SELLER_CAMPAIGN',
+    promotionId: 'C-MLB1',
+    dealPrice: 80
+  });
+
+  assert.deepStrictEqual(result, { price: 80, original_price: 100 });
 });
 
 test('promotion adapter exige estoque em oferta relampago e monta payload', async () => {

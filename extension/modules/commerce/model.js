@@ -319,6 +319,7 @@
     if (text.includes('promotion_missing_deal_price')) return 'Informe o preço promocional.';
     if (text.includes('promotion_missing_stock')) return 'Informe o estoque.';
     if (text.includes('promotion_missing_offer_id')) return 'Oferta não identificada. Atualize e tente de novo.';
+    if (text.includes('promotion_change_not_confirmed')) return 'O Mercado Livre não confirmou a alteração. Atualize e tente de novo.';
     if (text.includes('start and finish dates must be in local format')) return 'Use datas sem fuso horário. Atualize e tente de novo.';
     if (text.includes('promotion_missing_start_date') || text.includes('promotion_missing_finish_date')) return 'Informe início e fim.';
     if (text.includes('promotion_readonly')) return 'Promoção automática.';

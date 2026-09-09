@@ -4297,7 +4297,7 @@
             method: 'POST',
             body: JSON.stringify(bulkRequest(`promotion.offer.${action}`, payload))
           });
-          notifyBulkResult(result, action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
+          notifyBulkResult(result, promotionActionSuccessLabel(action));
           state.promotionFormKey = '';
           state.promotionFormAction = '';
           state.promotionDraftValues = {};
@@ -4320,7 +4320,7 @@
           body: JSON.stringify(payload)
         });
         const createdDirectDiscount = Boolean(entry.direct_discount_draft);
-        showToast('success', action === 'delete' ? 'Promoção removida' : 'Promoção enviada');
+        showToast('success', promotionActionSuccessLabel(action));
         state.promotionFormKey = '';
         state.promotionFormAction = '';
         state.promotionDraftValues = {};
@@ -4632,6 +4632,12 @@
         ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterada${unchanged === 1 ? '' : 's'}.`
         : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
       showToast(unchanged ? 'warning' : 'success', title, body);
+    }
+
+    function promotionActionSuccessLabel(action) {
+      if (action === 'delete') return 'Promoção removida';
+      if (action === 'update') return 'Promoção atualizada';
+      return 'Promoção aplicada';
     }
 
     function showToast(tone, title, body) {

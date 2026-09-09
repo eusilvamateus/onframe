@@ -88,6 +88,9 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('promotion_missing_offer_id')) {
     return 'Oferta não identificada.';
   }
+  if (text.includes('promotion_change_not_confirmed')) {
+    return 'O Mercado Livre não confirmou a alteração da promoção. Atualize e tente novamente.';
+  }
   if (text.includes('promotion_missing_start_date') || text.includes('promotion_missing_finish_date')) {
     return 'Informe início e fim da promoção.';
   }

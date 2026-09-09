@@ -19,6 +19,9 @@ const PROMOTION_TYPES = Object.freeze({
   BANK: 'BANK'
 });
 
+const APPLIED_OFFER_STATUSES = new Set(['pending', 'programmed', 'sync_requested', 'started', 'active']);
+const PROMOTION_CONFIRMATION_RETRY_DELAY_MS = 400;
+
 const ADAPTERS = Object.freeze({
   [PROMOTION_TYPES.PRICE_DISCOUNT]: adapter({
     type: PROMOTION_TYPES.PRICE_DISCOUNT,
@@ -182,7 +185,9 @@ async function createOffer(client, itemId, input = {}) {
   assertRequired(input, promotionAdapter.offerCreate);
   const payload = buildOfferPayload(input, promotionAdapter);
   await assertPromotionPriceInRange(client, item.id, payload);
-  return client.createPromotionOffer(item.id, payload);
+  const response = await client.createPromotionOffer(item.id, payload);
+  await confirmOfferMutation(client, item.id, 'create', payload, response);
+  return response;
 }
 
 async function estimatePromotionImpact(client, itemId, input = {}) {
@@ -361,7 +366,9 @@ async function updateOffer(client, itemId, input = {}) {
   assertRequired(input, promotionAdapter.offerUpdate);
   const payload = buildOfferPayload(input, promotionAdapter);
   await assertPromotionPriceInRange(client, item.id, payload);
-  return client.updatePromotionOffer(item.id, payload);
+  const response = await client.updatePromotionOffer(item.id, payload);
+  await confirmOfferMutation(client, item.id, 'update', payload, response);
+  return response;
 }
 
 async function deleteOffer(client, itemId, input = {}) {
@@ -373,7 +380,98 @@ async function deleteOffer(client, itemId, input = {}) {
   assertActionSupported(promotionAdapter, 'offerDelete');
   assertRequired(input, promotionAdapter.offerDelete);
   assertStartedDeletePolicyDoesNotApply(input, promotionAdapter, current);
-  return client.deletePromotionOffer(item.id, buildOfferDeleteParams(input, promotionAdapter));
+  const payload = buildOfferDeleteParams(input, promotionAdapter);
+  const response = await client.deletePromotionOffer(item.id, payload);
+  await confirmOfferMutation(client, item.id, 'delete', payload, response);
+  return response;
+}
+
+async function confirmOfferMutation(client, itemId, action, payload, response) {
+  assertPromotionMutationAccepted(response);
+  if (!client || typeof client.getItemPromotions !== 'function') return;
+
+  let entries = await loadOfferEntriesForVerification(client, itemId, payload);
+  if (isOfferMutationConfirmed(entries, action, payload)) return;
+
+  await wait(PROMOTION_CONFIRMATION_RETRY_DELAY_MS);
+  entries = await loadOfferEntriesForVerification(client, itemId, payload);
+  if (isOfferMutationConfirmed(entries, action, payload)) return;
+
+  const err = new Error('promotion_change_not_confirmed');
+  err.statusCode = 409;
+  err.body = {
+    action,
+    promotion_type: payload.promotion_type,
+    promotion_id: payload.promotion_id || null,
+    offer_id: payload.offer_id || null
+  };
+  throw err;
+}
+
+async function loadOfferEntriesForVerification(client, itemId, payload) {
+  const entries = extractEntries(await client.getItemPromotions(itemId));
+  const type = normalizePromotionType(payload.promotion_type);
+  const promotionId = String(payload.promotion_id || '');
+  if (type !== PROMOTION_TYPES.SELLER_CAMPAIGN || !promotionId || typeof client.getPromotionItems !== 'function') {
+    return entries;
+  }
+
+  const campaignItems = await client.getPromotionItems(promotionId, type, { item_id: itemId, limit: 50 });
+  const campaignEntries = extractEntries(campaignItems)
+    .filter((entry) => String(entry && entry.id || '') === String(itemId))
+    .map((entry) => Object.assign({}, entry, {
+      id: promotionId,
+      promotion_id: promotionId,
+      type
+    }));
+  return entries.concat(campaignEntries);
+}
+
+function assertPromotionMutationAccepted(response) {
+  if (!response || typeof response !== 'object') return;
+  const rejected = response.ok === false || response.success === false || response.error ||
+    Array.isArray(response.errors) && response.errors.length;
+  if (!rejected) return;
+
+  const err = new Error(response.message || response.error || 'promotion_change_rejected');
+  err.statusCode = Number(response.status || response.statusCode) || 409;
+  err.body = response;
+  throw err;
+}
+
+function isOfferMutationConfirmed(entries, action, payload) {
+  const matchingEntries = entries.filter((entry) => promotionEntryMatchesPayload(entry, payload));
+  if (action === 'delete') {
+    return !matchingEntries.some((entry) => APPLIED_OFFER_STATUSES.has(promotionEntryStatus(entry)));
+  }
+
+  const confirmedEntry = matchingEntries.find((entry) => APPLIED_OFFER_STATUSES.has(promotionEntryStatus(entry)));
+  if (!confirmedEntry) return false;
+
+  const expectedPrice = numberOrNull(payload.deal_price);
+  if (expectedPrice === null) return true;
+  const observedPrice = numberOrNull(confirmedEntry.price || confirmedEntry.new_price || confirmedEntry.deal_price);
+  return observedPrice !== null && Math.abs(observedPrice - expectedPrice) < 0.01;
+}
+
+function promotionEntryMatchesPayload(entry, payload) {
+  if (normalizePromotionType(entry && (entry.type || entry.promotion_type)) !== normalizePromotionType(payload.promotion_type)) return false;
+
+  const promotionId = String(payload.promotion_id || '');
+  if (promotionId && String(entry.id || entry.promotion_id || '') !== promotionId) return false;
+
+  const offerId = String(payload.offer_id || '');
+  if (offerId && String(entry.offer_id || entry.ref_id || '') !== offerId) return false;
+
+  return true;
+}
+
+function promotionEntryStatus(entry) {
+  return String(entry && (entry.status || entry.status_item) || '').toLowerCase();
+}
+
+function wait(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 async function previewOfferAction(client, itemId, action, input = {}) {
