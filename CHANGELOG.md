@@ -1,23 +1,5 @@
 # Changelog
 
-## v0.5.0 - 2026-09-10
-
-### Adicionado
-
-- As ações locais do OnFrame passam a usar uma interface TUI unificada no
-  PowerShell, com progresso, diagnóstico e recuperação orientada ao contexto.
-
-### Melhorado
-
-- A listagem amplia a concorrência ao antecipar dados de preço e promoções dos
-  anúncios conectados.
-- A identidade visual da Onblide foi atualizada em ícones e variações de logo.
-
-### Corrigido
-
-- Participações e edições de promoções só informam sucesso depois que a
-  alteração é confirmada no Mercado Livre.
-
 ## v0.4.0 - 2026-09-08
 
 ### Adicionado
