@@ -1145,7 +1145,7 @@
                 <p>Controle ofertas e campanhas deste anúncio.</p>
               </div>
               <div class="onframe-commerce-modal-head-actions">
-                <button class="ob-icon-button" data-action="close-promotion-modal" type="button" aria-label="Fechar">${icon('x', 18)}</button>
+                <button class="onframe-commerce-icon-btn" data-action="close-promotion-modal" type="button" aria-label="Fechar">${icon('x', 14)}</button>
               </div>
             </header>
             <div class="onframe-commerce-modal-content">

@@ -680,7 +680,7 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-name"/);
   assert.match(source, /onframe-commerce-promotion-row-actions-content/);
   assert.match(source, /onframe-commerce-promotion-action-btn/);
-  assert.match(source, /<button class="ob-icon-button" data-action="close-promotion-modal" type="button" aria-label="Fechar">/);
+  assert.match(source, /<button class="onframe-commerce-icon-btn" data-action="close-promotion-modal" type="button" aria-label="Fechar">/);
   assert.doesNotMatch(source, /onframe-promotion-modal-close-tooltip/);
   assert.match(source, /<button class="onframe-commerce-btn" data-action="reload-commerce" type="button"/);
   assert.match(source, /Atualizar promoções<\/button>\s*<button class="onframe-commerce-btn" data-action="close-promotion-modal"/);
