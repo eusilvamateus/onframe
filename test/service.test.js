@@ -1072,6 +1072,7 @@ test('service expoe status de atualizacao auditavel', async (t) => {
 
   assert.strictEqual(appSource.includes('/updates/status'), true);
   assert.strictEqual(appSource.includes('/updates/open'), true);
+  assert.strictEqual(appSource.includes('/updates/assets/'), true);
   assert.strictEqual(appSource.includes('/updates/start'), false);
   assert.strictEqual(fs.existsSync(path.join(__dirname, '..', 'service', 'src', 'update-manager.js')), true);
 
@@ -1087,10 +1088,23 @@ test('service expoe status de atualizacao auditavel', async (t) => {
   assert.match(html, /update-command/);
   assert.match(html, /repair-command/);
   assert.match(html, /check-command/);
-  assert.match(html, /data-repair-command/);
+  assert.match(html, /launcher-shell/);
+  assert.match(html, /onblide-horizontal-primary\.svg/);
+  assert.match(html, /Poppins-SemiBold\.ttf/);
+  assert.match(html, /function renderCommands/);
   assert.match(html, /document\.createElement\('iframe'\)/);
   assert.doesNotMatch(html, /window\.location\.href = pageData\.protocolUrl/);
   assert.doesNotMatch(html, /\/updates\/start/);
+  const inlineScript = html.match(/<script>([\s\S]+)<\/script>/)[1];
+  assert.doesNotThrow(() => new Function(inlineScript));
+
+  const logo = await fetch(`${server.url}/updates/assets/onblide-horizontal-primary.svg`);
+  assert.strictEqual(logo.status, 200);
+  assert.match(logo.headers.get('content-type'), /image\/svg\+xml/);
+  assert.match(await logo.text(), /onblide-horizontal-primary/);
+
+  const unknownAsset = await fetch(`${server.url}/updates/assets/not-found.svg`);
+  assert.strictEqual(unknownAsset.status, 404);
 });
 
 test('service restringe origem web e aceita origem da extensao', async (t) => {
@@ -1253,18 +1267,27 @@ test('update manager permite forcar consulta para release recem publicada', asyn
   assert.strictEqual(calls, 2);
 });
 
-test('release package nao inclui env nem estado gerenciado', () => {
+test('release package inclui apenas arquivos necessarios para a instalacao', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'release', 'package-release.js'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
   const packageLock = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package-lock.json'), 'utf8'));
+  const entries = source.match(/const entries = \[([\s\S]*?)\];/)[1];
 
   assert.match(source, /`onframe-v\$\{version\}`/);
   assert.match(source, /`onframe-v\$\{version\}\.zip`/);
   assert.strictEqual(source.includes('onframe-release-v${version}'), false);
   assert.strictEqual(packageLock.version, packageJson.version);
   assert.strictEqual(packageLock.packages[''].version, packageJson.version);
+  assert.match(source, /'extension'/);
+  assert.match(source, /'service'/);
+  assert.match(source, /'scripts\/bootstrap'/);
+  assert.match(source, /'package\.json'/);
   assert.match(source, /'\.env\.example'/);
-  assert.match(source, /'docs'/);
+  assert.strictEqual(entries.includes("'docs'"), false);
+  assert.strictEqual(entries.includes("'package-lock.json'"), false);
+  assert.strictEqual(entries.includes("'README.md'"), false);
+  assert.strictEqual(entries.includes("'CHANGELOG.md'"), false);
+  assert.strictEqual(entries.includes("'RELEASE.md'"), false);
   assert.strictEqual(source.includes("'.env'"), false);
   assert.strictEqual(source.includes('install.json'), false);
   assert.strictEqual(source.includes('.bat'), false);

@@ -96,13 +96,15 @@ fi
 
 printf '  [>] 06/09 Copiando arquivos.\n'
 mkdir -p "$INSTALL_ROOT"
-for target in extension service scripts docs; do
+for target in extension service scripts; do
   rm -rf "${INSTALL_ROOT:?}/$target"
   if [ -e "$source_root/$target" ]; then
     cp -R "$source_root/$target" "$INSTALL_ROOT/$target"
   fi
 done
-for file in package.json package-lock.json README.md CHANGELOG.md RELEASE.md .env.example; do
+rm -rf "${INSTALL_ROOT:?}/docs"
+rm -f "$INSTALL_ROOT/package-lock.json" "$INSTALL_ROOT/README.md" "$INSTALL_ROOT/CHANGELOG.md" "$INSTALL_ROOT/RELEASE.md"
+for file in package.json .env.example; do
   if [ -f "$source_root/$file" ]; then
     cp "$source_root/$file" "$INSTALL_ROOT/$file"
   fi

@@ -12,13 +12,8 @@ const zipPath = path.join(distDir, `onframe-v${version}.zip`);
 const entries = [
   'extension',
   'service',
-  'scripts',
-  'docs',
+  'scripts/bootstrap',
   'package.json',
-  'package-lock.json',
-  'README.md',
-  'CHANGELOG.md',
-  'RELEASE.md',
   '.env.example'
 ];
 
@@ -45,7 +40,16 @@ function copyRecursive(source, destination) {
   if (stat.isDirectory()) {
     fs.mkdirSync(destination, { recursive: true });
     for (const child of fs.readdirSync(source)) {
-      if (child === 'node_modules' || child === 'dist' || child === '.git' || child === '.onframe') continue;
+      if (
+        child === 'node_modules' ||
+        child === 'dist' ||
+        child === '.git' ||
+        child === '.onframe' ||
+        child === 'docs' ||
+        child === 'README.md' ||
+        child === 'CHANGELOG.md' ||
+        child === 'RELEASE.md'
+      ) continue;
       copyRecursive(path.join(source, child), path.join(destination, child));
     }
     return;

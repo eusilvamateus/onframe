@@ -59,6 +59,32 @@ const packageJson = require('../../package.json');
 const DEFAULT_CONNECT_BASE_URL = 'https://connect.onblide.com';
 const REQUIRED_NODE_MAJOR = 20;
 const ACCOUNT_PROFILE_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const UPDATE_PAGE_ASSETS = Object.freeze({
+  'onblide-horizontal-primary.svg': {
+    path: path.join(__dirname, '..', '..', 'extension', 'assets', 'onblide-horizontal-primary.svg'),
+    contentType: 'image/svg+xml; charset=utf-8'
+  },
+  'Poppins-Regular.ttf': {
+    path: path.join(__dirname, '..', '..', 'extension', 'fonts', 'Poppins-Regular.ttf'),
+    contentType: 'font/ttf'
+  },
+  'Poppins-SemiBold.ttf': {
+    path: path.join(__dirname, '..', '..', 'extension', 'fonts', 'Poppins-SemiBold.ttf'),
+    contentType: 'font/ttf'
+  },
+  'Poppins-Bold.ttf': {
+    path: path.join(__dirname, '..', '..', 'extension', 'fonts', 'Poppins-Bold.ttf'),
+    contentType: 'font/ttf'
+  },
+  'JetBrainsMono-Medium.ttf': {
+    path: path.join(__dirname, '..', '..', 'extension', 'fonts', 'JetBrainsMono-Medium.ttf'),
+    contentType: 'font/ttf'
+  },
+  'Phosphor.woff2': {
+    path: path.join(__dirname, '..', '..', 'extension', 'vendor', 'phosphor', 'Phosphor.woff2'),
+    contentType: 'font/woff2'
+  }
+});
 
 function createApp(options = {}) {
   const env = options.env || process.env;
@@ -106,6 +132,11 @@ function createApp(options = {}) {
 
       if (route === 'GET /updates/open') {
         return sendRawHtml(res, 200, buildUpdateOpenPage(getUpdateOpenPageData(updateManager)));
+      }
+
+      if (req.method === 'GET' && url.pathname.startsWith('/updates/assets/')) {
+        const assetName = url.pathname.slice('/updates/assets/'.length);
+        if (sendUpdatePageAsset(res, assetName)) return;
       }
 
       if (route === 'GET /auth/status') {
@@ -865,6 +896,17 @@ function sendRawHtml(res, statusCode, html) {
   res.end(html);
 }
 
+function sendUpdatePageAsset(res, assetName) {
+  const asset = UPDATE_PAGE_ASSETS[assetName];
+  if (!asset) return false;
+
+  res.statusCode = 200;
+  res.setHeader('content-type', asset.contentType);
+  res.setHeader('cache-control', 'no-store');
+  res.end(fs.readFileSync(asset.path));
+  return true;
+}
+
 function getUpdateOpenPageData(updateManager) {
   if (updateManager && typeof updateManager.getOpenPageData === 'function') {
     return updateManager.getOpenPageData();
@@ -948,10 +990,6 @@ function buildUpdateOpenPage(data = {}) {
     }
   };
   const serialized = JSON.stringify(pageData).replace(/</g, '\\u003c');
-  const updateCommand = escapeHtml(pageData.updateCommand || 'Comando indisponivel.');
-  const repairCommand = escapeHtml(pageData.repairCommand || 'Comando indisponivel.');
-  const checkCommand = escapeHtml(pageData.checkCommand || 'Comando indisponivel.');
-  const shellLabel = escapeHtml(pageData.shellLabel);
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -960,164 +998,438 @@ function buildUpdateOpenPage(data = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Atualizar OnFrame</title>
   <style>
+    @font-face {
+      font-family: 'Poppins';
+      src: url('/updates/assets/Poppins-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Poppins';
+      src: url('/updates/assets/Poppins-SemiBold.ttf') format('truetype');
+      font-weight: 600;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Poppins';
+      src: url('/updates/assets/Poppins-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      src: url('/updates/assets/JetBrainsMono-Medium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Phosphor';
+      src: url('/updates/assets/Phosphor.woff2') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+    }
     :root {
       color-scheme: light;
-      --bg: #f7f8fb;
-      --surface: #fff;
-      --line: #e6e9ef;
-      --line-strong: #d8dde7;
-      --ink: #171a21;
-      --muted: #667085;
-      --blue: #0a4ee4;
-      --blue-soft: #edf3ff;
-      --green: #0a9f4a;
-      --shadow: 0 16px 42px rgba(16, 24, 40, .08), 0 2px 8px rgba(16, 24, 40, .04);
+      --ob-blue: #0a4ee4;
+      --ob-blue-700: #0840b8;
+      --ob-blue-100: #e0eaff;
+      --ob-blue-050: #f1f5ff;
+      --ob-orange: #eb7c2d;
+      --ob-orange-100: #fde6d3;
+      --ob-ink-strong: #2a2a2a;
+      --ob-ink: #545454;
+      --ob-ink-soft: #7a7a7a;
+      --ob-ink-mute: #a8a8a8;
+      --ob-line: #ececec;
+      --ob-surface: #ffffff;
+      --ob-surface-2: #fbfbfb;
+      --ob-border: var(--ob-line);
+      --ob-shadow-lg: 0 12px 28px rgba(20, 20, 20, 0.08), 0 4px 8px rgba(20, 20, 20, 0.04);
+      --ob-shadow-pop: 0 8px 24px rgba(10, 78, 228, 0.18);
+      --ob-font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --ob-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+      --ob-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body {
-      background: var(--bg);
-      color: var(--ink);
-      font-family: Poppins, Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      min-width: 360px;
+      background: var(--ob-surface-2);
+      color: var(--ob-ink);
+      font-family: var(--ob-font);
       letter-spacing: 0;
     }
-    .page { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-    .shell { width: min(920px, 100%); display: grid; gap: 14px; }
-    .hero, .panel {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: var(--shadow);
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    .launcher {
+      display: grid;
+      width: min(100% - 32px, 980px);
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 32px 0;
+      align-items: center;
     }
-    .hero { padding: 28px; display: grid; gap: 22px; }
-    .brand { margin: 0; color: var(--blue); font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(32px, 5vw, 52px); line-height: 1.02; letter-spacing: 0; }
-    .copy { margin: 0; max-width: 680px; color: var(--muted); font-size: 15px; line-height: 1.55; }
-    .status {
+    .launcher-shell {
+      overflow: hidden;
+      border: 1px solid var(--ob-border);
+      border-radius: 12px;
+      background: var(--ob-surface);
+      box-shadow: var(--ob-shadow-lg);
+    }
+    .launcher-header, .launcher-footer, .launcher-layout, .launcher-action-heading,
+    .launcher-actions, .launcher-links, .launcher-command-head, .launcher-status,
+    .launcher-brand, .launcher-header-meta, .ob-button {
       display: flex;
       align-items: center;
-      gap: 10px;
-      min-height: 44px;
-      padding: 12px 14px;
-      border-radius: 8px;
-      background: var(--blue-soft);
-      color: var(--blue);
-      font-weight: 700;
     }
-    .status.is-fallback { background: #fff7e8; color: #9a5a00; }
-    .dot { width: 10px; height: 10px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 0 rgba(10, 78, 228, .34); animation: pulse 1.25s infinite; }
-    @keyframes pulse { 70% { box-shadow: 0 0 0 12px rgba(10, 78, 228, 0); } 100% { box-shadow: 0 0 0 0 rgba(10, 78, 228, 0); } }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-    button, a.button {
+    .launcher-header {
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 68px;
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--ob-border);
+    }
+    .launcher-brand { gap: 14px; min-width: 0; }
+    .launcher-logo { display: block; width: 128px; height: auto; }
+    .launcher-product {
+      padding-left: 14px;
+      border-left: 1px solid var(--ob-border);
+      color: var(--ob-ink-strong);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .launcher-header-meta { justify-content: flex-end; gap: 6px; }
+    .ob-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #f4f4f4;
+      color: var(--ob-ink-soft);
+      font: 600 10px/1 var(--ob-font-mono);
+      text-transform: uppercase;
+    }
+    .launcher-layout { align-items: stretch; }
+    .launcher-action, .launcher-manual { min-width: 0; padding: 30px 32px; }
+    .launcher-action { flex: 1.08 1 0; }
+    .launcher-manual {
+      flex: 0.92 1 0;
+      border-left: 1px solid var(--ob-border);
+      background: var(--ob-surface-2);
+    }
+    .launcher-action-heading { align-items: flex-start; gap: 14px; }
+    .launcher-action-icon {
+      display: inline-flex;
+      width: 42px;
+      height: 42px;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: var(--ob-blue-050);
+      color: var(--ob-blue);
+    }
+    .ob-icon {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 38px;
-      padding: 9px 12px;
-      border: 1.5px solid var(--line-strong);
-      border-radius: 8px;
-      background: var(--surface);
-      color: var(--ink);
-      cursor: pointer;
-      font: 700 13px/1 Poppins, Inter, system-ui, sans-serif;
-      text-decoration: none;
+      font-family: 'Phosphor';
+      font-style: normal;
+      font-weight: normal;
+      line-height: 1;
     }
-    button.primary { border-color: var(--blue); background: var(--blue); color: #fff; }
-    .panel { overflow: hidden; }
-    .panel-head { padding: 16px 18px; border-bottom: 1px solid var(--line); }
-    .panel-head strong { display: block; font-size: 15px; }
-    .panel-head span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
-    .commands { display: grid; grid-template-columns: 1fr 1fr; }
-    .command { padding: 16px 18px; border-right: 1px solid var(--line); }
-    .command.is-hidden { display: none; }
-    .command:last-child { border-right: 0; }
-    .command-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 13px; font-weight: 800; }
-    code {
-      display: block;
-      min-height: 64px;
+    .launcher-action-icon .ob-icon { font-size: 20px; }
+    .launcher-eyebrow {
+      margin: 1px 0 4px;
+      color: var(--ob-ink-soft);
+      font: 500 10px/1.2 var(--ob-font-mono);
+      text-transform: uppercase;
+    }
+    .launcher-title {
+      margin: 0;
+      color: var(--ob-ink-strong);
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1.05;
+    }
+    .launcher-copy {
+      max-width: 520px;
+      margin: 20px 0 0;
+      color: var(--ob-ink-soft);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .launcher-status {
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 22px;
       padding: 12px;
+      border: 1px solid var(--ob-border);
       border-radius: 8px;
-      background: #f0f2f6;
-      color: #283040;
-      font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--ob-surface-2);
+    }
+    .launcher-status-dot {
+      width: 6px;
+      height: 6px;
+      margin-top: 6px;
+      flex: none;
+      border-radius: 999px;
+      background: var(--ob-blue);
+    }
+    .launcher-status[data-tone='orange'] .launcher-status-dot { background: var(--ob-orange); }
+    .launcher-status-copy { display: grid; gap: 3px; min-width: 0; }
+    .launcher-status-label {
+      color: var(--ob-ink-soft);
+      font: 500 10px/1.2 var(--ob-font-mono);
+      text-transform: uppercase;
+    }
+    .launcher-status strong {
+      color: var(--ob-ink-strong);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .launcher-status small {
+      color: var(--ob-ink-soft);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .launcher-actions { gap: 8px; margin-top: 20px; }
+    .ob-button {
+      justify-content: center;
+      gap: 8px;
+      min-height: 36px;
+      margin: 0;
+      padding: 9px 12px;
+      border: 1.5px solid var(--ob-border);
+      border-radius: 8px;
+      background: var(--ob-surface);
+      color: var(--ob-ink-strong);
+      font-family: var(--ob-font);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      text-decoration: none;
+      transition: background 120ms var(--ob-ease), border-color 120ms var(--ob-ease), box-shadow 120ms var(--ob-ease), color 120ms var(--ob-ease);
+    }
+    .ob-button:hover { border-color: var(--ob-ink-soft); }
+    .ob-button.primary {
+      border-color: var(--ob-blue);
+      background: var(--ob-blue);
+      color: #fff;
+    }
+    .ob-button.primary:hover { background: var(--ob-blue-700); box-shadow: var(--ob-shadow-pop); }
+    .ob-button.ghost { border-color: transparent; background: transparent; color: var(--ob-blue); }
+    .ob-button.ghost:hover { background: var(--ob-blue-100); }
+    .ob-button.compact { min-height: 28px; padding: 6px 10px; gap: 6px; font-size: 11px; }
+    .launcher-open { min-width: 168px; }
+    .launcher-manual-heading h2 { margin: 0; color: var(--ob-ink-strong); font-size: 18px; }
+    .launcher-manual-heading .manual-copy {
+      margin: 6px 0 0;
+      color: var(--ob-ink-soft);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .launcher-commands { display: grid; margin-top: 18px; border-top: 1px solid var(--ob-border); }
+    .launcher-command { display: grid; gap: 9px; padding: 14px 0; border-bottom: 1px solid var(--ob-border); }
+    .launcher-command-head { justify-content: space-between; gap: 10px; }
+    .launcher-command-head strong {
+      min-width: 0;
+      color: var(--ob-ink-strong);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.45;
+    }
+    .launcher-command code {
+      display: block;
+      max-height: 154px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--ob-border);
+      border-radius: 8px;
+      background: var(--ob-surface);
+      color: var(--ob-ink-strong);
+      font: 500 11px/1.55 var(--ob-font-mono);
       overflow-wrap: anywhere;
       user-select: all;
     }
-    .destinations { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
-    @media (max-width: 720px) {
-      .page { padding: 14px; }
-      .commands { grid-template-columns: 1fr; }
-      .command { border-right: 0; border-bottom: 1px solid var(--line); }
-      .command:last-child { border-bottom: 0; }
+    .launcher-footer {
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 22px;
+      border-top: 1px solid var(--ob-border);
+      color: var(--ob-ink-soft);
+      font-size: 11px;
+    }
+    .launcher-links { flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
+    .launcher-protocol-transport {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      inset: -1px auto auto -1px;
+      border: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    @media (max-width: 760px) {
+      body { min-width: 0; }
+      .launcher { width: min(100% - 20px, 980px); padding: 14px 0; }
+      .launcher-header, .launcher-footer { align-items: flex-start; flex-direction: column; }
+      .launcher-header-meta, .launcher-links { justify-content: flex-start; }
+      .launcher-layout { display: block; }
+      .launcher-action, .launcher-manual { padding: 24px 20px; }
+      .launcher-manual { border-top: 1px solid var(--ob-border); border-left: 0; }
+      .launcher-title { font-size: 26px; }
+      .launcher-open { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <main class="page">
-    <div class="shell">
-      <section class="hero">
-        <p class="brand">OnFrame</p>
-        <h1>Atualizar OnFrame</h1>
-        <p class="copy">Esta pagina pede ao navegador para abrir o atualizador local registrado neste computador. Se nada abrir, use o comando manual.</p>
-        <div class="status" id="statusBox">
-          <span class="dot" aria-hidden="true"></span>
-          <span id="statusText">Tentando abrir o atualizador do OnFrame...</span>
+  <main class="launcher">
+    <section class="launcher-shell" aria-labelledby="launcher-title">
+      <header class="launcher-header">
+        <div class="launcher-brand">
+          <img class="launcher-logo" src="/updates/assets/onblide-horizontal-primary.svg" alt="Onblide">
+          <span class="launcher-product">OnFrame</span>
         </div>
-        <div class="actions">
-          <button class="primary" type="button" id="openUpdaterButton">Abrir atualizador novamente</button>
-          <button type="button" data-copy="update">Copiar comando manual</button>
+        <div class="launcher-header-meta">
+          <span class="ob-badge">Atualização local</span>
         </div>
-      </section>
-      <section class="panel">
-        <div class="panel-head">
-          <strong>Fallback manual</strong>
-          <span>Copie o comando e execute no ${shellLabel} quando o protocolo local ainda nao estiver registrado.</span>
-        </div>
-        <div class="commands">
-          <div class="command">
-            <div class="command-head"><span>Atualizar</span><button type="button" data-copy="update">Copiar</button></div>
-            <code>${updateCommand}</code>
+      </header>
+
+      <div class="launcher-layout">
+        <section class="launcher-action" aria-labelledby="launcher-title">
+          <div class="launcher-action-heading">
+            <span class="launcher-action-icon" id="launcher-action-icon" aria-hidden="true"></span>
+            <div>
+              <p class="launcher-eyebrow">Atualização local</p>
+              <h1 class="launcher-title" id="launcher-title">Atualizar OnFrame</h1>
+            </div>
           </div>
-          <div class="command is-hidden" data-repair-command>
-            <div class="command-head"><span>Reparar instalacao</span><button type="button" data-copy="repair">Copiar</button></div>
-            <code>${repairCommand}</code>
+
+          <p class="launcher-copy">Estamos solicitando a abertura do atualizador local registrado neste computador.</p>
+
+          <div class="launcher-status" id="launcher-status" data-tone="blue" role="status" aria-live="polite">
+            <span class="launcher-status-dot" aria-hidden="true"></span>
+            <div class="launcher-status-copy">
+              <span class="launcher-status-label" id="launcher-status-label">Abrindo automaticamente</span>
+              <strong id="launcher-status-text">Tentando abrir o atualizador do OnFrame...</strong>
+              <small id="launcher-status-detail">Você pode fechar esta janela quando a ação for iniciada.</small>
+            </div>
           </div>
-          <div class="command">
-            <div class="command-head"><span>Verificar instalacao</span><button type="button" data-copy="check">Copiar</button></div>
-            <code>${checkCommand}</code>
+
+          <div class="launcher-actions">
+            <button class="ob-button primary launcher-open" type="button" id="open-updater-button">Tentar novamente</button>
           </div>
-        </div>
-        <div class="destinations">
-          <a class="button" href="chrome://extensions/">Chrome extensions</a>
-          <a class="button" href="edge://extensions/">Edge extensions</a>
-        </div>
-      </section>
-    </div>
+        </section>
+
+        <section class="launcher-manual" aria-labelledby="launcher-manual-title">
+          <div class="launcher-manual-heading">
+            <p class="launcher-eyebrow">Alternativa manual</p>
+            <h2 id="launcher-manual-title">Se o controle não abrir</h2>
+            <p class="manual-copy" id="launcher-manual-copy"></p>
+          </div>
+          <div class="launcher-commands" id="launcher-commands"></div>
+        </section>
+      </div>
+
+      <footer class="launcher-footer">
+        <span>Gerenciar a extensão no navegador</span>
+        <nav class="launcher-links" aria-label="Atalhos do navegador">
+          <a class="ob-button ghost compact" href="chrome://extensions/">Chrome</a>
+          <a class="ob-button ghost compact" href="edge://extensions/">Microsoft Edge</a>
+        </nav>
+      </footer>
+    </section>
   </main>
   <script>
     const pageData = ${serialized};
-    const statusBox = document.getElementById('statusBox');
-    const statusText = document.getElementById('statusText');
-    const openUpdaterButton = document.getElementById('openUpdaterButton');
+    const glyphs = { refresh: '\\ue036', copy: '\\ue1ca', arrowSquareOut: '\\ue5de' };
+    const elements = {
+      actionIcon: document.getElementById('launcher-action-icon'),
+      status: document.getElementById('launcher-status'),
+      statusLabel: document.getElementById('launcher-status-label'),
+      statusText: document.getElementById('launcher-status-text'),
+      statusDetail: document.getElementById('launcher-status-detail'),
+      open: document.getElementById('open-updater-button'),
+      manualCopy: document.getElementById('launcher-manual-copy'),
+      commands: document.getElementById('launcher-commands')
+    };
     let leftPage = false;
+    let recoveryVisible = false;
     let protocolFrame = null;
     let protocolFrameTimer = null;
 
-    function showFallback() {
-      statusBox.classList.add('is-fallback');
-      statusText.textContent = pageData.messages.fallback;
-      for (const command of document.querySelectorAll('[data-repair-command]')) {
-        command.classList.remove('is-hidden');
+    function createIcon(name) {
+      const icon = document.createElement('i');
+      icon.className = 'ob-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = glyphs[name] || '';
+      return icon;
+    }
+
+    function setButtonContent(button, iconName, label) {
+      button.replaceChildren(createIcon(iconName), document.createTextNode(label));
+    }
+
+    function renderCommands() {
+      const cards = [
+        { key: 'update', label: 'Atualizar OnFrame', command: pageData.updateCommand },
+        { key: 'check', label: 'Verificar instalação', command: pageData.checkCommand }
+      ];
+      if (recoveryVisible) {
+        cards.push({ key: 'repair', label: 'Reparar instalação', command: pageData.repairCommand });
       }
+
+      elements.commands.replaceChildren(...cards.map((card) => createCommand(card)));
+    }
+
+    function createCommand(card) {
+      const article = document.createElement('article');
+      article.className = 'launcher-command';
+      const heading = document.createElement('div');
+      heading.className = 'launcher-command-head';
+      const label = document.createElement('strong');
+      label.textContent = card.label;
+      const copy = document.createElement('button');
+      copy.className = 'ob-button compact';
+      copy.type = 'button';
+      copy.dataset.copy = card.key;
+      setButtonContent(copy, 'copy', pageData.messages.copy);
+      copy.addEventListener('click', () => void copyCommand(copy));
+      heading.append(label, copy);
+      const code = document.createElement('code');
+      code.textContent = card.command || 'Comando indisponível.';
+      article.append(heading, code);
+      return article;
+    }
+
+    function showInitial() {
+      recoveryVisible = false;
+      renderCommands();
+      elements.status.dataset.tone = 'blue';
+      elements.statusLabel.textContent = 'Abrindo automaticamente';
+      elements.statusText.textContent = pageData.messages.trying;
+      elements.statusDetail.textContent = 'Você pode fechar esta janela quando a ação for iniciada.';
+    }
+
+    function showFallback() {
+      recoveryVisible = true;
+      renderCommands();
+      elements.status.dataset.tone = 'orange';
+      elements.statusLabel.textContent = 'Ação manual necessária';
+      elements.statusText.textContent = 'Não foi possível confirmar a abertura do controle local';
+      elements.statusDetail.textContent = pageData.messages.fallback + ' Use “Reparar instalação” se o atalho por um clique não estiver disponível.';
     }
 
     function launchProtocol() {
       if (protocolFrame) protocolFrame.remove();
       if (protocolFrameTimer) window.clearTimeout(protocolFrameTimer);
       protocolFrame = document.createElement('iframe');
+      protocolFrame.className = 'launcher-protocol-transport';
       protocolFrame.setAttribute('aria-hidden', 'true');
       protocolFrame.tabIndex = -1;
-      protocolFrame.style.cssText = 'position:fixed;width:1px;height:1px;inset:-1px auto auto -1px;border:0;opacity:0;pointer-events:none;';
       protocolFrame.src = pageData.protocolUrl;
       document.body.appendChild(protocolFrame);
       protocolFrameTimer = window.setTimeout(() => {
@@ -1132,44 +1444,43 @@ function buildUpdateOpenPage(data = {}) {
         showFallback();
         return;
       }
-      statusBox.classList.remove('is-fallback');
-      statusText.textContent = pageData.messages.trying;
       leftPage = false;
+      showInitial();
       launchProtocol();
       window.setTimeout(() => {
         if (!leftPage) showFallback();
       }, 1800);
     }
 
+    async function copyCommand(button) {
+      const command = pageData[button.dataset.copy + 'Command'] || '';
+      try {
+        if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') throw new Error('clipboard_unavailable');
+        await navigator.clipboard.writeText(command);
+        setButtonContent(button, 'copy', pageData.messages.copied);
+        window.setTimeout(() => setButtonContent(button, 'copy', pageData.messages.copy), 1400);
+      } catch (error) {
+        const code = button.closest('.launcher-command')?.querySelector('code');
+        if (!code) return;
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+
+    elements.actionIcon.appendChild(createIcon('refresh'));
+    setButtonContent(elements.open, 'arrowSquareOut', 'Tentar novamente');
+    elements.manualCopy.textContent = 'Copie o comando adequado e execute-o no ' + pageData.shellLabel + '.';
+    elements.open.addEventListener('click', openUpdater);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) leftPage = true;
     });
     window.addEventListener('blur', () => {
       leftPage = true;
     });
-    openUpdaterButton.addEventListener('click', openUpdater);
-
-    for (const button of document.querySelectorAll('[data-copy]')) {
-      button.addEventListener('click', async () => {
-        const key = button.getAttribute('data-copy') + 'Command';
-        const command = pageData[key] || '';
-        try {
-          await navigator.clipboard.writeText(command);
-          const previous = button.textContent;
-          button.textContent = pageData.messages.copied;
-          window.setTimeout(() => { button.textContent = previous || pageData.messages.copy; }, 1400);
-        } catch (error) {
-          const code = button.closest('.command')?.querySelector('code');
-          if (!code) return;
-          const range = document.createRange();
-          range.selectNodeContents(code);
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-      });
-    }
-
+    showInitial();
     window.setTimeout(openUpdater, 320);
   </script>
 </body>
