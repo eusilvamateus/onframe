@@ -1,9 +1,12 @@
 param(
   [string]$Root = '',
-  [switch]$RemoveData
+  [switch]$RemoveData,
+  [switch]$NoPause
 )
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -37,57 +40,61 @@ function Unregister-OnFrameUpdaterProtocol {
 }
 
 try {
-  $mode = if ($RemoveData) { 'Desinstalacao total' } else { 'Desinstalacao' }
+  $mode = if ($RemoveData) { 'Desinstalação total' } else { 'Desinstalação' }
+  Start-OnFrameWorkflow -Mode $mode -Total 4 -RootPath $InstallRoot -NoPause:$NoPause
   Write-OnFrameHeader -Mode $mode -RootPath $InstallRoot
 
-  Write-OnFrameSection 'Preparando'
-  Write-OnFrameStep 1 5 'Localizando instalacao.'
+  Write-OnFrameSection 'LOCALIZANDO'
+  Write-OnFrameStep 1 4 'Localizando componentes do OnFrame...'
   if (-not (Test-Path $InstallRoot)) {
-    Write-OnFrameSubStep 'OnFrame nao encontrado; nada para remover.' 'warning'
+    Write-OnFrameSubStep 'OnFrame não encontrado; nada para remover.' 'warning'
     Unregister-OnFrameUpdaterProtocol | Out-Null
-    Write-OnFrameSuccess 'Nenhuma alteracao foi necessaria.' @(
-      "Pasta verificada: $InstallRoot"
+    Write-OnFrameSuccess 'Nenhuma alteração foi necessária.' @(
+      "Pasta verificada: $InstallRoot",
+      'Gerenciador de extensoes:',
+      'Chrome: chrome://extensions/',
+      'Edge: edge://extensions/'
     )
     $global:LASTEXITCODE = 0
   } else {
-    $InstallRoot = (Resolve-Path -LiteralPath $InstallRoot).Path
-    if (Test-Path (Join-Path $InstallRoot '.git')) {
-      throw 'Esta pasta e um checkout de desenvolvimento. Remova manualmente se desejar.'
+    $resolvedRoot = (Resolve-Path -LiteralPath $InstallRoot).Path
+    if (Test-Path (Join-Path $resolvedRoot '.git')) {
+      throw 'Esta pasta é um checkout de desenvolvimento. Remova manualmente se desejar.'
     }
-    Write-OnFrameSubStep 'Instalacao encontrada.' 'ok'
+    $InstallRoot = $resolvedRoot
+    Write-OnFrameSubStep 'Identificando arquivos, serviços e registros locais.' 'ok'
 
-    Write-OnFrameSection 'Parando'
-    Write-OnFrameStep 2 5 'Parando servico local.'
-    $global:LASTEXITCODE = 0
-    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallRoot 'scripts/bootstrap/stop.ps1') -Root $InstallRoot -Quiet
-    if ($global:LASTEXITCODE -ne 0) {
-      throw 'Nao foi possivel executar o script de parada do servico.'
+    Write-OnFrameSection 'ENCERRANDO'
+    Write-OnFrameStep 2 4 'Encerrando serviços em execução...'
+    $stopResult = Stop-OnFrameServiceCore -Root $InstallRoot
+    if ($stopResult.AlreadyStopped) {
+      Write-OnFrameSubStep 'Serviço local já se encontrava inativo.' 'ok'
+    } else {
+      Write-OnFrameSubStep 'Finalizando processos em segundo plano com segurança.' 'ok'
     }
-    Write-OnFrameSubStep 'Servico parado quando estava ativo.' 'ok'
 
-    Write-OnFrameSection 'Removendo'
-    Write-OnFrameStep 3 5 'Removendo atualizador local.'
+    Write-OnFrameSection 'REMOVENDO'
+    Write-OnFrameStep 3 4 'Removendo arquivos do aplicativo...'
     Unregister-OnFrameUpdaterProtocol | Out-Null
 
     if ($RemoveData) {
-      Write-OnFrameStep 4 5 'Removendo instalacao e dados locais.'
       Remove-IfExists -Path $InstallRoot
-      Write-OnFrameSubStep 'Pasta local removida.' 'ok'
+      Write-OnFrameSubStep 'Pasta local e configurações removidas com sucesso.' 'ok'
     } else {
-      Write-OnFrameStep 4 5 'Removendo aplicativo e preservando dados locais.'
       foreach ($target in @('extension', 'service', 'scripts', 'docs')) {
         Remove-IfExists -Path (Join-Path $InstallRoot $target)
       }
       foreach ($file in @('package.json', 'package-lock.json', 'README.md', 'CHANGELOG.md', 'RELEASE.md', '.env.example')) {
         Remove-IfExists -Path (Join-Path $InstallRoot $file)
       }
-      Write-OnFrameSubStep 'Dados preservados: .env e .onframe.' 'warning'
+      Write-OnFrameSubStep 'Limpando pastas e componentes do OnFrame.' 'ok'
     }
 
-    Write-OnFrameSection 'Finalizando'
-    Write-OnFrameStep 5 5 'Concluindo desinstalacao.'
-    Write-OnFrameSubStep 'Remova a extensao manualmente do navegador.' 'info'
-    Write-OnFrameSuccess 'Desinstalacao concluida.' @(
+    Write-OnFrameSection 'FINALIZANDO'
+    Write-OnFrameStep 4 4 'Concluindo desinstalação...'
+    Write-OnFrameSubStep 'Liberando recursos e finalizando a remoção segura.' 'ok'
+
+    Write-OnFrameSuccess 'Desinstalação Concluída' @(
       'Gerenciador de extensoes:',
       'Chrome: chrome://extensions/',
       'Edge: edge://extensions/',

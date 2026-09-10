@@ -3,6 +3,8 @@ param(
 )
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 $ProtocolName = 'onframe-updater'
@@ -98,12 +100,6 @@ function Invoke-OnFrameOfficialUpdate {
   $installRoot = Get-OnFrameInstallRoot
   Write-OnFrameUpdaterLog "Iniciando atualizacao do OnFrame em: $installRoot"
 
-  if (Get-Command Write-OnFrameHeader -ErrorAction SilentlyContinue) {
-    Write-OnFrameHeader -Mode 'Atualizacao local' -RootPath $installRoot
-    Write-OnFrameSection 'Preparando'
-    Write-OnFrameSubStep 'Baixando atualizador oficial.' 'info'
-  }
-
   $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("onframe-updater-" + [guid]::NewGuid().ToString('N'))
   New-Item -ItemType Directory -Force -Path $tempRoot | Out-Null
   $scriptPath = Join-Path $tempRoot 'update.ps1'
@@ -173,11 +169,11 @@ function Get-OnFrameManualCommand {
 try {
   $action = Get-OnFrameUpdaterAction -RawUri $Uri
   switch ($action) {
-    'update' { Invoke-OnFrameOfficialUpdate; Wait-OnFrameUpdaterClose }
-    'start' { Invoke-OnFrameBootstrapScript -ScriptName 'start' -Label 'Iniciando servico local'; Wait-OnFrameUpdaterClose }
-    'stop' { Invoke-OnFrameBootstrapScript -ScriptName 'stop' -Label 'Encerrando servico local'; Wait-OnFrameUpdaterClose }
-    'restart' { Invoke-OnFrameBootstrapScript -ScriptName 'restart' -Label 'Reiniciando servico local'; Wait-OnFrameUpdaterClose }
-    'check' { Invoke-OnFrameBootstrapScript -ScriptName 'check' -Label 'Verificando instalacao local'; Wait-OnFrameUpdaterClose }
+    'update' { Invoke-OnFrameOfficialUpdate }
+    'start' { Invoke-OnFrameBootstrapScript -ScriptName 'start' -Label 'Iniciando servico local' }
+    'stop' { Invoke-OnFrameBootstrapScript -ScriptName 'stop' -Label 'Encerrando servico local' }
+    'restart' { Invoke-OnFrameBootstrapScript -ScriptName 'restart' -Label 'Reiniciando servico local' }
+    'check' { Invoke-OnFrameBootstrapScript -ScriptName 'check' -Label 'Verificando instalacao local' }
     'open-log' {
       New-Item -ItemType Directory -Force -Path $UpdaterRoot | Out-Null
       if (-not (Test-Path -LiteralPath $LogPath -PathType Leaf)) {
@@ -195,14 +191,13 @@ try {
   }
   $manualCommand = Get-OnFrameManualCommand -Action $manualAction
   Write-OnFrameUpdaterLog ("Falha no atualizador: " + $_.Exception.Message)
-  Write-OnFrameUpdaterFailure ("Nao foi possivel executar a acao por um clique. $($_.Exception.Message)")
-  if (Get-Command Write-OnFrameText -ErrorAction SilentlyContinue) {
-    Write-OnFrameText '  Use o comando manual abaixo:' 'Muted'
-    Write-OnFrameText "  $manualCommand" 'Default'
+  if (Get-Command Show-OnFrameFailureScreen -ErrorAction SilentlyContinue) {
+    Show-OnFrameFailureScreen -Message $_.Exception.Message -RecoveryCommand $manualCommand
   } else {
+    Write-OnFrameUpdaterFailure ("Nao foi possivel executar a acao por um clique. $($_.Exception.Message)")
     Write-Host 'Use o comando manual abaixo:'
     Write-Host $manualCommand
+    Wait-OnFrameUpdaterClose
   }
-  Wait-OnFrameUpdaterClose
   exit 1
 }

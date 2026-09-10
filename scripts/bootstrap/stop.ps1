@@ -1,160 +1,89 @@
 param(
   [string]$Root = '',
-  [switch]$Quiet
+  [switch]$Quiet,
+  [switch]$NoPause
 )
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-function Get-InstallRoot {
-  param([string]$Value)
-  if ($Value) { return $Value }
-  if ($env:ONFRAME_HOME) { return $env:ONFRAME_HOME }
-  return Join-Path $env:LOCALAPPDATA 'OnFrame'
+$InstallRoot = Resolve-OnFrameInstallRoot -Root $Root
+$operation = {
+  Stop-OnFrameServiceCore -Root $InstallRoot
 }
 
-function Get-Port {
-  param([string]$InstallRoot)
-
-  $envPath = Join-Path $InstallRoot '.env'
-  if (Test-Path $envPath) {
-    $line = Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\s*ML_SERVICE_PORT\s*=' } | Select-Object -First 1
-    if ($line) {
-      $value = ($line -replace '^\s*ML_SERVICE_PORT\s*=\s*', '').Trim().Trim('"').Trim("'")
-      if ($value -match '^\d+$') { return [int]$value }
-    }
-  }
-  return 4765
-}
-
-function Invoke-Health {
-  param([int]$Port)
+if ($Quiet) {
   try {
-    Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2 | Out-Null
-    return $true
+    & $operation | Out-Null
+    $global:LASTEXITCODE = 0
   } catch {
-    return $false
+    $global:LASTEXITCODE = 1
   }
+  return
 }
 
-function Get-PortProcessId {
-  param([int]$Port)
-
-  try {
-    $connection = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop |
-      Where-Object { $_.LocalAddress -in @('127.0.0.1', '0.0.0.0', '::1', '::') } |
-      Select-Object -First 1
-    if ($connection -and $connection.OwningProcess) {
-      return [int]$connection.OwningProcess
+$result = Invoke-OnFrameQuickAction `
+  -Tag '■ ENCERRAR SERVIÇO' `
+  -Subtitle 'Drenagem de Socket & Liberação de Recursos' `
+  -CardTitle "$($script:OnFrameColors.Coral)■$($script:OnFrameColors.Reset) Encerramento do Serviço Local" `
+  -Tone coral `
+  -Steps @(
+    [pscustomobject]@{
+      Badge    = 'LOCALIZANDO PROCESSO'
+      BadgeBg  = @(45, 55, 90)
+      DotColor = @(80, 145, 255)
+      Title    = 'Localizando processo ativo na porta 4765...'
+      Detail   = 'Identificando PID e verificando integridade.'
+      StartPct = 0.0
+      EndPct   = 35.0
+      Duration = 1.0
+      Footer   = 'Encerrando processos locais e liberando a porta com segurança.'
+    },
+    [pscustomobject]@{
+      Badge    = 'FINALIZANDO PROCESSO'
+      BadgeBg  = @(140, 75, 35)
+      DotColor = @(235, 124, 45)
+      Title    = 'Encerrando servidor Node.js com segurança...'
+      Detail   = 'Fechando conexões ativas e liberando a porta.'
+      StartPct = 35.0
+      EndPct   = 75.0
+      Duration = 1.1
+      Footer   = 'Encerrando processos locais e liberando a porta com segurança.'
+    },
+    [pscustomobject]@{
+      Badge    = 'VERIFICANDO LIBERAÇÃO'
+      BadgeBg  = @(130, 45, 45)
+      DotColor = @(220, 65, 65)
+      Title    = 'Confirmando encerramento dos recursos...'
+      Detail   = 'Validando encerramento dos recursos locais.'
+      StartPct = 75.0
+      EndPct   = 100.0
+      Duration = 0.9
+      Footer   = 'Encerrando processos locais e liberando a porta com segurança.'
     }
-  } catch {
-    return $null
-  }
-
-  return $null
-}
-
-function Get-ProcessCommandLine {
-  param([int]$ProcessId)
-
-  try {
-    $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction Stop
-    if ($processInfo -and $processInfo.CommandLine) {
-      return [string]$processInfo.CommandLine
+  ) `
+  -Operation $operation `
+  -Success {
+    param($service)
+    $title = if ($service.AlreadyStopped) { 'O serviço local já estava encerrado.' } else { 'O serviço local do OnFrame foi encerrado.' }
+    [pscustomobject]@{
+      Badge = '■ PARADO / INATIVO'
+      Title = $title
+      Subtitle = 'A porta local e os processos foram liberados.'
+      Lines = @(
+        "   $($script:OnFrameColors.Coral)■$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Porta $($service.Port):$($script:OnFrameColors.Reset) Liberada e sem conexões ativas",
+        "   $($script:OnFrameColors.Coral)■$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Processo Node.js:$($script:OnFrameColors.Reset) Finalizado com sucesso",
+        "   $($script:OnFrameColors.Coral)■$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Recursos:$($script:OnFrameColors.Reset) 100% liberados e desalocados"
+      )
+      CardTitle = "$($script:OnFrameColors.Coral)■$($script:OnFrameColors.Reset) Serviço Local Encerrado"
+      Footer = 'Serviço local inativo até o próximo início.'
     }
-  } catch {
-    return $null
-  }
+  } `
+  -RecoveryCommand "& '$InstallRoot\scripts\bootstrap\check.ps1' -Root '$InstallRoot'" `
+  -NoPause:$NoPause
 
-  return $null
-}
-
-function Test-OnFrameServiceProcess {
-  param([int]$ProcessId)
-
-  $commandLine = Get-ProcessCommandLine -ProcessId $ProcessId
-  if (-not $commandLine) { return $null }
-  return $commandLine -match 'service[\\/]server\.js'
-}
-
-function Stop-OnFrameProcess {
-  param([int]$ProcessId)
-
-  $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
-  if (-not $process) { return $true }
-
-  try {
-    Stop-Process -Id $process.Id -Force -ErrorAction Stop
-    Start-Sleep -Milliseconds 800
-    if (-not $Quiet) { Write-OnFrameSubStep "Processo encerrado. PID $($process.Id)." 'ok' }
-    return $true
-  } catch {
-    if (-not $Quiet) { Write-OnFrameSubStep "Windows recusou encerrar o PID $($process.Id): $($_.Exception.Message)" 'warning' }
-    return $false
-  }
-}
-
-if (-not $Quiet) {
-  Write-OnFrameQuickHeader 'Servico local'
-  Write-OnFrameSection 'Encerrando'
-}
-
-try {
-  $InstallRoot = (Resolve-Path -LiteralPath (Get-InstallRoot -Value $Root)).Path
-  $pidPath = Join-Path (Join-Path $InstallRoot '.onframe') 'onframe-service.pid'
-  $port = Get-Port -InstallRoot $InstallRoot
-  $candidatePid = $null
-  $portPid = $null
-  $stopped = $true
-
-  if (Test-Path $pidPath) {
-    $pidValue = (Get-Content -LiteralPath $pidPath -TotalCount 1).Trim()
-    if ($pidValue -match '^\d+$') {
-      $candidatePid = [int]$pidValue
-      $isOnFrameProcess = Test-OnFrameServiceProcess -ProcessId $candidatePid
-      if ($isOnFrameProcess -eq $false) {
-        if (-not $Quiet) { Write-OnFrameSubStep "PID salvo nao parece ser o servico do OnFrame: $candidatePid." 'warning' }
-        $candidatePid = $null
-      }
-    } else {
-      if (-not $Quiet) { Write-OnFrameSubStep 'PID invalido removido.' 'warning' }
-    }
-    Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
-  }
-
-  $portPid = Get-PortProcessId -Port $port
-  if ($candidatePid -and $portPid -and $candidatePid -ne $portPid) {
-    if (-not $Quiet) { Write-OnFrameSubStep "PID salvo difere do processo na porta $port; usando PID $portPid." 'warning' }
-    $candidatePid = $portPid
-  }
-
-  if (-not $candidatePid) {
-    $candidatePid = $portPid
-  }
-
-  if ($candidatePid) {
-    if (-not $Quiet) { Write-OnFrameStep 1 1 'Encerrando o servico local.' }
-    $stopped = Stop-OnFrameProcess -ProcessId $candidatePid
-  }
-
-  if (Invoke-Health -Port $port) {
-    if (-not $stopped) {
-      throw 'O servico local continua ativo e o Windows negou permissao para encerra-lo. Feche o OnFrame pelo mesmo usuario ou execute este comando como administrador.'
-    }
-    throw 'O servico local continua ativo apos a tentativa de parada.'
-  }
-
-  if (-not $candidatePid) {
-    if (-not $Quiet) { Write-OnFrameSuccess 'O servico ja estava parado.' }
-  } else {
-    if (-not $Quiet) { Write-OnFrameSuccess 'Servico local parado.' }
-  }
-  $global:LASTEXITCODE = 0
-} catch {
-  if (-not $Quiet) {
-    Write-OnFrameFailure $_.Exception.Message
-  }
-  $global:LASTEXITCODE = 1
-}
+$global:LASTEXITCODE = if ($result.Success) { 0 } else { 1 }

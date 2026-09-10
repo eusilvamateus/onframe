@@ -1,6 +1,11 @@
-param([switch]$NoHeader)
+param(
+  [switch]$NoHeader,
+  [switch]$NoPause
+)
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 $Repo = if ($env:ONFRAME_UPDATE_REPO) { $env:ONFRAME_UPDATE_REPO } else { 'eusilvamateus/onframe' }
@@ -342,12 +347,13 @@ function Get-Release {
 }
 
 try {
+  Start-OnFrameWorkflow -Mode 'Atualização' -Total 4 -RootPath $InstallRoot -Repository $Repo -NoPause:$NoPause
   if (-not $NoHeader) {
     Write-OnFrameHeader -Mode 'Atualizacao' -RootPath $InstallRoot -Repository $Repo
   }
 
-  Write-OnFrameSection 'Preparando'
-  Write-OnFrameStep 1 9 'Validando instalacao.'
+  Write-OnFrameSection 'VERIFICANDO'
+  Write-OnFrameStep 1 4 'Buscando novas atualizações...'
   $InstallRoot = (Resolve-Path -LiteralPath $InstallRoot).Path
   if (-not (Test-Path (Join-Path $InstallRoot 'package.json'))) {
     Fail-Update "Pasta do OnFrame nao encontrada: $InstallRoot"
@@ -355,28 +361,23 @@ try {
   if (Test-Path (Join-Path $InstallRoot '.git')) {
     Fail-Update 'Esta pasta e um checkout de desenvolvimento. Atualize com git pull.'
   }
-  Write-OnFrameSubStep 'Instalacao valida.' 'ok'
-
-  Write-OnFrameStep 2 9 'Preparando segredo local.'
   Ensure-OnFrameTokenSecret -Root $InstallRoot
-  Write-OnFrameSubStep 'Segredo local preservado ou criado quando necessario.' 'ok'
-
-  Write-OnFrameSection 'Baixando'
-  Write-OnFrameStep 3 9 'Consultando ultima release.'
   $release = Get-Release -Repository $Repo
-  Write-OnFrameSubStep "Release encontrada: $($release.Tag) / $($release.AssetName)" 'ok'
+  Write-OnFrameSubStep "Conferindo versao: $($release.Tag) / $($release.AssetName)" 'ok'
 
+  Write-OnFrameSection 'BAIXANDO'
+  Write-OnFrameStep 2 4 'Baixando a versão mais recente...'
   $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("onframe-update-" + [guid]::NewGuid().ToString('N'))
   $zipPath = Join-Path $tempRoot 'release.zip'
   $extractPath = Join-Path $tempRoot 'extract'
   New-Item -ItemType Directory -Force -Path $tempRoot, $extractPath | Out-Null
 
-  Write-OnFrameStep 4 9 'Baixando pacote.'
-  Invoke-WebRequest -Uri $release.AssetUrl -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
-  Write-OnFrameSubStep 'Download concluido.' 'ok'
+  Invoke-OnFrameAnimatedDownload -Uri $release.AssetUrl -OutFile $zipPath -TargetPercent 58.0 -TimeoutSec 120
+  Write-OnFrameSubStep "Obtendo as melhorias e novidades da versao $($release.Tag)." 'ok'
 
-  Write-OnFrameStep 5 9 'Extraindo e validando pacote.'
-  Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
+  Write-OnFrameSection 'ATUALIZANDO'
+  Write-OnFrameStep 3 4 'Atualizando os arquivos da extensão...'
+  Expand-OnFrameArchive -ZipPath $zipPath -DestinationPath $extractPath
   $source = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
   if (-not $source) {
     Fail-Update 'Pacote vazio.'
@@ -388,14 +389,9 @@ try {
       Fail-Update "Pacote invalido: $required ausente."
     }
   }
-  Write-OnFrameSubStep 'Pacote valido.' 'ok'
 
-  Write-OnFrameSection 'Aplicando'
-  Write-OnFrameStep 6 9 'Encerrando servico local.'
   Stop-OnFrameService -Root $InstallRoot
-  Write-OnFrameSubStep 'Servico local parado quando estava ativo.' 'ok'
 
-  Write-OnFrameStep 7 9 'Atualizando arquivos.'
   foreach ($target in @('extension', 'service', 'scripts', 'docs')) {
     $destination = Join-Path $InstallRoot $target
     Assert-ChildPath -Parent $InstallRoot -Child $destination
@@ -411,28 +407,26 @@ try {
       Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $InstallRoot $file) -Force
     }
   }
-  Write-OnFrameSubStep 'Arquivos atualizados; .env e .onframe preservados.' 'ok'
+  Write-OnFrameSubStep 'Atualizando arquivos e preservando suas configuracoes.' 'ok'
 
-  Write-OnFrameSection 'Finalizando'
-  Write-OnFrameStep 8 9 'Registrando atualizador local.'
+  Write-OnFrameSection 'REINICIANDO'
+  Write-OnFrameStep 4 4 'Reiniciando o serviço local...'
   Register-OnFrameUpdaterProtocol -Root $InstallRoot | Out-Null
-
-  Write-OnFrameStep 9 9 'Reiniciando e validando servico.'
   Start-OnFrameService -Root $InstallRoot
 
   $port = Get-OnFramePort -Root $InstallRoot
   if (-not (Invoke-OnFrameHealth -Port $port)) {
     Fail-Update 'Arquivos atualizados, mas o servico nao respondeu. Rode scripts\bootstrap\check.ps1.'
   }
-  Write-OnFrameSubStep "Servico ativo em http://127.0.0.1:$port." 'ok'
+  Write-OnFrameSubStep 'Tudo pronto para voce continuar usando sem pausas.' 'ok'
 
-  Write-OnFrameSuccess 'Atualizacao concluida.' @(
+  Write-OnFrameSuccess 'Atualização Concluída' @(
     "Versao: $($release.Tag)",
     "Pasta: $InstallRoot",
     'Gerenciador de extensoes:',
     'Chrome: chrome://extensions/',
     'Edge: edge://extensions/',
-    'Recarregue a extensao nessa pagina.'
+    'Recarregue a extensao nessa pagina para concluir a atualizacao.'
   )
   $global:LASTEXITCODE = 0
 } catch {

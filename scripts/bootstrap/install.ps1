@@ -1,6 +1,11 @@
-param([string]$Root = '')
+param(
+  [string]$Root = '',
+  [switch]$NoPause
+)
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
@@ -75,10 +80,11 @@ try {
     $mode = 'Atualizacao pela instalacao'
   }
 
+  Start-OnFrameWorkflow -Mode $mode -Total 4 -RootPath $InstallRoot -Repository $Repo -NoPause:$NoPause
   Write-OnFrameHeader -Mode $mode -RootPath $InstallRoot -Repository $Repo
 
-  Write-OnFrameSection 'Preparando'
-  Write-OnFrameStep 1 8 'Validando destino.'
+  Write-OnFrameSection 'PREPARANDO'
+  Write-OnFrameStep 1 4 'Verificando ambiente do sistema...'
   if (Test-Path $InstallRoot) {
     $existingPackage = Join-Path $InstallRoot 'package.json'
     if (Test-Path $existingPackage) {
@@ -87,11 +93,11 @@ try {
       Write-OnFrameSubStep 'Pasta local parcial encontrada; os arquivos serao restaurados e a configuracao preservada.' 'warning'
     }
   } else {
-    Write-OnFrameSubStep 'Nova instalacao local.' 'ok'
+    Write-OnFrameSubStep 'Conferindo permissoes e integridade dos componentes locais.' 'ok'
   }
 
-  Write-OnFrameSection 'Baixando'
-  Write-OnFrameStep 2 8 'Consultando ultima release.'
+  Write-OnFrameSection 'BAIXANDO PACOTE'
+  Write-OnFrameStep 2 4 'Obtendo a versão mais recente do OnFrame...'
   $release = Get-LatestRelease -Repository $Repo
   Write-OnFrameSubStep "Release encontrada: $($release.Tag) / $($release.AssetName)" 'ok'
 
@@ -100,12 +106,12 @@ try {
   $extractPath = Join-Path $tempRoot 'extract'
   New-Item -ItemType Directory -Force -Path $tempRoot, $extractPath | Out-Null
 
-  Write-OnFrameStep 3 8 'Baixando pacote.'
-  Invoke-WebRequest -Uri $release.AssetUrl -OutFile $zipPath -UseBasicParsing -TimeoutSec 120
-  Write-OnFrameSubStep 'Download concluido.' 'ok'
+  Invoke-OnFrameAnimatedDownload -Uri $release.AssetUrl -OutFile $zipPath -TargetPercent 58.0 -TimeoutSec 120
+  Write-OnFrameSubStep 'Download seguro concluido com validacao de integridade.' 'ok'
 
-  Write-OnFrameStep 4 8 'Extraindo e validando pacote.'
-  Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
+  Write-OnFrameSection 'CONFIGURANDO ARQUIVOS'
+  Write-OnFrameStep 3 4 'Descompactando e configurando o OnFrame...'
+  Expand-OnFrameArchive -ZipPath $zipPath -DestinationPath $extractPath
   $source = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
   if (-not $source) { Fail-Install 'Pacote vazio.' }
   $sourceRoot = $source.FullName
@@ -115,10 +121,7 @@ try {
       Fail-Install "Pacote invalido: $required ausente."
     }
   }
-  Write-OnFrameSubStep 'Pacote valido.' 'ok'
 
-  Write-OnFrameSection 'Aplicando'
-  Write-OnFrameStep 5 8 'Copiando arquivos.'
   New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
   foreach ($target in @('extension', 'service', 'scripts', 'docs')) {
     $destination = Join-Path $InstallRoot $target
@@ -131,30 +134,28 @@ try {
       Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $InstallRoot $file) -Force
     }
   }
-  Write-OnFrameSubStep 'Arquivos do aplicativo atualizados.' 'ok'
 
-  Write-OnFrameStep 6 8 'Preparando configuracao local.'
   $envPath = Join-Path $InstallRoot '.env'
   $envExamplePath = Join-Path $InstallRoot '.env.example'
   if (-not (Test-Path $envPath) -and (Test-Path $envExamplePath)) {
     Copy-Item -LiteralPath $envExamplePath -Destination $envPath
     Write-OnFrameSubStep 'Arquivo .env criado com a configuracao padrao.' 'warning'
   } else {
-    Write-OnFrameSubStep 'Configuracao local preservada.' 'ok'
+    Write-OnFrameSubStep 'Instalando arquivos, scripts e dependencias da aplicacao.' 'ok'
   }
 
-  Write-OnFrameSection 'Finalizando'
-  Write-OnFrameStep 7 8 'Registrando atualizador local.'
+  Write-OnFrameSection 'PREPARANDO EXTENSÃO'
+  Write-OnFrameStep 4 4 'Preparando a extensão para o navegador...'
   Register-OnFrameUpdaterProtocol -Root $InstallRoot | Out-Null
 
-  Write-OnFrameStep 8 8 'Iniciando servico local.'
   $global:LASTEXITCODE = 0
   & (Join-Path $InstallRoot 'scripts/bootstrap/start.ps1') -Root $InstallRoot -Quiet
   if ($global:LASTEXITCODE -ne 0) {
     Fail-Install 'Arquivos instalados, mas o servico local nao iniciou.'
   }
+  Write-OnFrameSubStep 'Organizando pasta descompactada para o Chrome ou Edge.' 'ok'
 
-  Write-OnFrameSuccess 'Instalacao concluida.' @(
+  Write-OnFrameSuccess 'Instalação Completa' @(
     "Versao: $($release.Tag)",
     "Extensao: $((Join-Path $InstallRoot 'extension'))",
     'Gerenciador de extensoes:',

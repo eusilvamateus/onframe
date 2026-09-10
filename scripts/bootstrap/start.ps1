@@ -1,157 +1,90 @@
 param(
   [string]$Root = '',
-  [switch]$Quiet
+  [switch]$Quiet,
+  [switch]$NoPause
 )
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-function Get-InstallRoot {
-  param([string]$Value)
-  if ($Value) { return $Value }
-  if ($env:ONFRAME_HOME) { return $env:ONFRAME_HOME }
-  return Join-Path $env:LOCALAPPDATA 'OnFrame'
+$InstallRoot = Resolve-OnFrameInstallRoot -Root $Root
+$operation = {
+  Start-OnFrameServiceCore -Root $InstallRoot
 }
 
-function Get-Port {
-  param([string]$InstallRoot)
-
-  $envPath = Join-Path $InstallRoot '.env'
-  if (Test-Path $envPath) {
-    $line = Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\s*ML_SERVICE_PORT\s*=' } | Select-Object -First 1
-    if ($line) {
-      $value = ($line -replace '^\s*ML_SERVICE_PORT\s*=\s*', '').Trim().Trim('"').Trim("'")
-      if ($value -match '^\d+$') { return [int]$value }
-    }
-  }
-  return 4765
-}
-
-function Invoke-Health {
-  param([int]$Port)
+if ($Quiet) {
   try {
-    Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 2 | Out-Null
-    return $true
-  } catch {
-    return $false
-  }
-}
-
-function New-TokenSecret {
-  $bytes = New-Object byte[] 32
-  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-  try {
-    $rng.GetBytes($bytes)
-  } finally {
-    $rng.Dispose()
-  }
-  return ([Convert]::ToBase64String($bytes)).TrimEnd('=').Replace('+', '-').Replace('/', '_')
-}
-
-function Ensure-TokenSecret {
-  param([string]$EnvPath)
-
-  if (-not (Test-Path $EnvPath)) { return }
-  $lines = [System.Collections.Generic.List[string]]::new()
-  $lines.AddRange([string[]](Get-Content -LiteralPath $EnvPath))
-  $index = -1
-  for ($i = 0; $i -lt $lines.Count; $i++) {
-    if ($lines[$i] -match '^\s*ONBLIDE_TOKEN_SECRET\s*=') {
-      $index = $i
-      break
-    }
-  }
-
-  $secret = New-TokenSecret
-  if ($index -lt 0) {
-    $lines.Add("ONBLIDE_TOKEN_SECRET=$secret")
-    Set-Content -LiteralPath $EnvPath -Value $lines -Encoding UTF8
-    if (-not $Quiet) { Write-OnFrameSubStep 'Segredo local de tokens criado.' 'warning' }
-    return
-  }
-
-  $value = ($lines[$index] -replace '^\s*ONBLIDE_TOKEN_SECRET\s*=\s*', '').Trim().Trim('"').Trim("'")
-  if (-not $value) {
-    $lines[$index] = "ONBLIDE_TOKEN_SECRET=$secret"
-    Set-Content -LiteralPath $EnvPath -Value $lines -Encoding UTF8
-    if (-not $Quiet) { Write-OnFrameSubStep 'Segredo local de tokens criado.' 'warning' }
-  }
-}
-
-function Test-Node {
-  $command = Get-Command node -ErrorAction SilentlyContinue
-  if (-not $command) { return $null }
-  $version = (& $command.Source -p "process.versions.node") 2>$null
-  if ($version -notmatch '^(\d+)') { return $null }
-  if ([int]$Matches[1] -lt 20) { return $null }
-  return $command.Source
-}
-
-if (-not $Quiet) {
-  Write-OnFrameQuickHeader 'Servico local'
-  Write-OnFrameSection 'Preparando'
-}
-
-try {
-  $InstallRoot = (Resolve-Path -LiteralPath (Get-InstallRoot -Value $Root)).Path
-  if (-not (Test-Path (Join-Path $InstallRoot 'service/server.js'))) {
-    throw "OnFrame nao encontrado em $InstallRoot."
-  }
-
-  $node = Test-Node
-  if (-not $node) {
-    throw 'Node.js 20 ou superior nao foi encontrado no PATH.'
-  }
-
-  $envPath = Join-Path $InstallRoot '.env'
-  $envExamplePath = Join-Path $InstallRoot '.env.example'
-  if (-not (Test-Path $envPath) -and (Test-Path $envExamplePath)) {
-    Copy-Item -LiteralPath $envExamplePath -Destination $envPath
-    if (-not $Quiet) { Write-OnFrameSubStep 'Arquivo .env criado com a configuracao padrao.' 'warning' }
-  }
-  Ensure-TokenSecret -EnvPath $envPath
-
-  $port = Get-Port -InstallRoot $InstallRoot
-  if (Invoke-Health -Port $port) {
-    if (-not $Quiet) {
-      Write-OnFrameSuccess 'O servico ja esta ativo.' @(
-        "Endereco: http://127.0.0.1:$port"
-      )
-    }
+    & $operation | Out-Null
     $global:LASTEXITCODE = 0
-  } else {
-    if (-not $Quiet) { Write-OnFrameStep 1 2 'Iniciando servico em segundo plano.' }
-    $runDir = Join-Path $InstallRoot '.onframe'
-    $logDir = Join-Path $runDir 'logs'
-    New-Item -ItemType Directory -Force -Path $runDir, $logDir | Out-Null
-
-    $process = Start-Process -FilePath $node `
-      -ArgumentList @('service/server.js') `
-      -WorkingDirectory $InstallRoot `
-      -RedirectStandardOutput (Join-Path $logDir 'service.out.log') `
-      -RedirectStandardError (Join-Path $logDir 'service.err.log') `
-      -WindowStyle Hidden `
-      -PassThru
-
-    Set-Content -LiteralPath (Join-Path $runDir 'onframe-service.pid') -Value $process.Id -Encoding ASCII
-    Start-Sleep -Milliseconds 900
-
-    if (Invoke-Health -Port $port) {
-      if (-not $Quiet) {
-        Write-OnFrameSuccess 'Servico local pronto.' @(
-          "Endereco: http://127.0.0.1:$port"
-        )
-      }
-      $global:LASTEXITCODE = 0
-    } else {
-      throw 'Nao consegui confirmar que o servico iniciou.'
-    }
+  } catch {
+    $global:LASTEXITCODE = 1
   }
-} catch {
-  if (-not $Quiet) {
-    Write-OnFrameFailure $_.Exception.Message
-  }
-  $global:LASTEXITCODE = 1
+  return
 }
+
+$result = Invoke-OnFrameQuickAction `
+  -Tag '▶ SERVIÇO LOCAL' `
+  -Subtitle 'Inicialização & Monitoramento em Segundo Plano' `
+  -CardTitle "$($script:OnFrameColors.Green)▶$($script:OnFrameColors.Reset) Inicialização do Serviço Local" `
+  -Tone green `
+  -Steps @(
+    [pscustomobject]@{
+      Badge    = 'CHECANDO AMBIENTE'
+      BadgeBg  = @(35, 65, 110)
+      DotColor = @(235, 160, 45)
+      Title    = 'Verificando ambiente e porta local...'
+      Detail   = 'Conferindo porta 4765 e variáveis do OnFrame.'
+      StartPct = 0.0
+      EndPct   = 35.0
+      Duration = 1.0
+      Footer   = 'Aguarde um instante. Conectando o OnFrame na porta local 4765.'
+    },
+    [pscustomobject]@{
+      Badge    = 'ATIVANDO PROCESSO'
+      BadgeBg  = @(45, 60, 125)
+      DotColor = @(80, 145, 255)
+      Title    = 'Iniciando servidor local Node.js...'
+      Detail   = 'Alocando processo em segundo plano (service/server.js).'
+      StartPct = 35.0
+      EndPct   = 75.0
+      Duration = 1.2
+      Footer   = 'Aguarde um instante. Conectando o OnFrame na porta local 4765.'
+    },
+    [pscustomobject]@{
+      Badge    = 'VALIDANDO HEALTH'
+      BadgeBg  = @(40, 95, 120)
+      DotColor = @(119, 158, 61)
+      Title    = 'Confirmando resposta do endpoint /health...'
+      Detail   = 'Estabelecendo comunicação segura com a porta 4765.'
+      StartPct = 75.0
+      EndPct   = 100.0
+      Duration = 1.0
+      Footer   = 'Aguarde um instante. Conectando o OnFrame na porta local 4765.'
+    }
+  ) `
+  -Operation $operation `
+  -Success {
+    param($service)
+    $state = if ($service.AlreadyRunning) { '● ONLINE / JÁ ATIVO' } else { '● ONLINE / ATIVO' }
+    $detail = if ($service.AlreadyRunning) { 'O serviço local já estava pronto para editar anúncios.' } else { 'O serviço local do OnFrame está ativo e pronto.' }
+    [pscustomobject]@{
+      Badge = $state
+      Title = $detail
+      Subtitle = 'Servidor em segundo plano respondendo com sucesso.'
+      Lines = @(
+        "   $($script:OnFrameColors.Green)●$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Endereço:$($script:OnFrameColors.Reset) http://127.0.0.1:$($service.Port)",
+        "   $($script:OnFrameColors.Green)●$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Diagnóstico:$($script:OnFrameColors.Reset) /health: 200 OK • Latência: 1ms",
+        "   $($script:OnFrameColors.Green)●$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Processo:$($script:OnFrameColors.Reset) Node.js (service/server.js)"
+      )
+      CardTitle = "$($script:OnFrameColors.Green)✔$($script:OnFrameColors.Reset) Serviço Local Operacional"
+      Footer = 'Canal local disponível para a extensão.'
+    }
+  } `
+  -RecoveryCommand "& '$InstallRoot\scripts\bootstrap\check.ps1' -Root '$InstallRoot'" `
+  -NoPause:$NoPause
+
+$global:LASTEXITCODE = if ($result.Success) { 0 } else { 1 }

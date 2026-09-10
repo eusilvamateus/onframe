@@ -1326,7 +1326,6 @@ test('bootstrap substitui atalhos bat legados', () => {
   const macUninstall = fs.readFileSync(path.join(root, 'scripts', 'bootstrap', 'uninstall.sh'), 'utf8');
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const visualBootstrapScripts = [commonScript];
-  const serviceStopScripts = [stopScript, updateScript];
 
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-start.bat')), false);
   assert.strictEqual(fs.existsSync(path.join(root, 'onframe-stop.bat')), false);
@@ -1340,15 +1339,19 @@ test('bootstrap substitui atalhos bat legados', () => {
   );
   assert.strictEqual(updateScript.includes('.bat'), false);
   assert.strictEqual(updateScript.includes('Start-OnFrameService'), true);
-  for (const script of serviceStopScripts) {
-    assert.strictEqual(script.includes('function Stop-OnFrameProcess'), true);
-    assert.strictEqual(script.includes('Stop-Process -Id $process.Id -Force -ErrorAction Stop'), true);
-    assert.strictEqual(script.includes('Windows recusou encerrar o PID'), true);
-    assert.strictEqual(script.includes('O servico local continua ativo'), true);
-  }
+  assert.strictEqual(startScript.includes('Invoke-OnFrameQuickAction'), true);
+  assert.strictEqual(startScript.includes('Start-OnFrameServiceCore'), true);
+  assert.strictEqual(stopScript.includes('Invoke-OnFrameQuickAction'), true);
+  assert.strictEqual(stopScript.includes('Stop-OnFrameServiceCore'), true);
+  assert.strictEqual(commonScript.includes('function Start-OnFrameServiceCore'), true);
+  assert.strictEqual(commonScript.includes('function Stop-OnFrameServiceCore'), true);
+  assert.strictEqual(commonScript.includes('Stop-Process -Id $candidate -Force -ErrorAction Stop'), true);
+  assert.strictEqual(commonScript.includes('function Start-OnFrameLiveLoop'), true);
+  assert.strictEqual(commonScript.includes('function Get-AnalogWaveLine'), true);
+  assert.strictEqual(commonScript.includes('function Show-OnFrameFailureScreen'), true);
   assert.strictEqual(startScript.includes('RandomNumberGenerator]::Fill'), false);
   assert.strictEqual(updateScript.includes('RandomNumberGenerator]::Fill'), false);
-  assert.strictEqual(startScript.includes('RandomNumberGenerator]::Create()'), true);
+  assert.strictEqual(commonScript.includes('RandomNumberGenerator]::Create()'), true);
   assert.strictEqual(updateScript.includes('RandomNumberGenerator]::Create()'), true);
   assert.strictEqual(updateScript.includes('powershell -NoProfile -ExecutionPolicy Bypass -File $startScript'), false);
   assert.strictEqual(updateScript.includes("Join-Path $env:LOCALAPPDATA 'OnFrame'"), true);
@@ -1360,7 +1363,7 @@ test('bootstrap substitui atalhos bat legados', () => {
     assert.strictEqual(script.includes('function Write-OnFrameSubStep'), true);
     assert.strictEqual(script.includes('function Write-OnFrameSuccess'), true);
     assert.strictEqual(script.includes('function Write-OnFrameFailure'), true);
-    assert.strictEqual(script.includes('Onblide local toolkit'), true);
+    assert.strictEqual(script.includes('CONTROLE LOCAL'), false);
     assert.strictEqual(script.includes('Clear-Host'), false);
     assert.strictEqual(script.includes('function Write-Step'), false);
   }

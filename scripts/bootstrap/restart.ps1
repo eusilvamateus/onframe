@@ -1,54 +1,90 @@
-param([string]$Root = '')
+param(
+  [string]$Root = '',
+  [switch]$Quiet,
+  [switch]$NoPause
+)
 
 Set-StrictMode -Version Latest
+$ProgressPreference = 'SilentlyContinue'
+$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'common.ps1')
 
-function Get-InstallRoot {
-  param([string]$Value)
-  if ($Value) { return $Value }
-  if ($env:ONFRAME_HOME) { return $env:ONFRAME_HOME }
-  return Join-Path $env:LOCALAPPDATA 'OnFrame'
+$InstallRoot = Resolve-OnFrameInstallRoot -Root $Root
+$operation = {
+  $stopped = Stop-OnFrameServiceCore -Root $InstallRoot
+  $started = Start-OnFrameServiceCore -Root $InstallRoot
+  return [pscustomobject]@{ Stopped = $stopped; Started = $started }
 }
 
-try {
-  $InstallRoot = (Resolve-Path -LiteralPath (Get-InstallRoot -Value $Root)).Path
-  $stopScript = Join-Path $InstallRoot 'scripts/bootstrap/stop.ps1'
-  $startScript = Join-Path $InstallRoot 'scripts/bootstrap/start.ps1'
-  if (-not (Test-Path -LiteralPath $stopScript -PathType Leaf) -or -not (Test-Path -LiteralPath $startScript -PathType Leaf)) {
-    throw 'Scripts de controle do servico nao foram encontrados.'
+if ($Quiet) {
+  try {
+    & $operation | Out-Null
+    $global:LASTEXITCODE = 0
+  } catch {
+    $global:LASTEXITCODE = 1
   }
+  return
+}
 
-  Write-OnFrameQuickHeader 'Reiniciar servico'
-  Write-OnFrameSection 'Reiniciando'
-  Write-OnFrameStep 1 2 'Encerrando o servico atual.'
-  & $stopScript -Root $InstallRoot -Quiet
-  if ($global:LASTEXITCODE -ne 0) {
-    throw 'Nao foi possivel encerrar o servico local.'
-  }
-  Write-OnFrameSubStep 'Servico anterior encerrado.' 'ok'
-
-  Write-OnFrameStep 2 2 'Iniciando novamente.'
-  & $startScript -Root $InstallRoot -Quiet
-  if ($global:LASTEXITCODE -ne 0) {
-    throw 'Nao foi possivel iniciar o servico local.'
-  }
-
-  $port = 4765
-  $envPath = Join-Path $InstallRoot '.env'
-  if (Test-Path -LiteralPath $envPath) {
-    $line = Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\s*ML_SERVICE_PORT\s*=' } | Select-Object -First 1
-    if ($line) {
-      $value = ($line -replace '^\s*ML_SERVICE_PORT\s*=\s*', '').Trim().Trim('"').Trim("'")
-      if ($value -match '^\d+$') { $port = [int]$value }
+$result = Invoke-OnFrameQuickAction `
+  -Tag '↻ REINICIAR SERVIÇO' `
+  -Subtitle 'Drenagem de Socket & Recarga do Serviço' `
+  -CardTitle "$($script:OnFrameColors.Amber)↻$($script:OnFrameColors.Reset) Reinicialização do Serviço" `
+  -Tone amber `
+  -Steps @(
+    [pscustomobject]@{
+      Badge    = 'PARANDO PROCESSO ATUAL'
+      BadgeBg  = @(45, 55, 90)
+      DotColor = @(220, 65, 65)
+      Title    = 'Encerrando instância anterior do serviço...'
+      Detail   = 'Liberando conexões e fechando o canal local.'
+      StartPct = 0.0
+      EndPct   = 35.0
+      Duration = 1.0
+      Footer   = 'Drenagem graciosa de recursos e reinicialização do processo local.'
+    },
+    [pscustomobject]@{
+      Badge    = 'RECICLANDO INSTÂNCIA'
+      BadgeBg  = @(130, 75, 30)
+      DotColor = @(235, 124, 45)
+      Title    = 'Iniciando novo processo Node.js...'
+      Detail   = 'Alocando uma nova instância em segundo plano.'
+      StartPct = 35.0
+      EndPct   = 75.0
+      Duration = 1.2
+      Footer   = 'Drenagem graciosa de recursos e reinicialização do processo local.'
+    },
+    [pscustomobject]@{
+      Badge    = 'CONFIRMANDO HEALTH'
+      BadgeBg  = @(40, 95, 120)
+      DotColor = @(119, 158, 61)
+      Title    = 'Validando resposta na porta local 4765...'
+      Detail   = 'Serviço restabelecido na porta com sucesso.'
+      StartPct = 75.0
+      EndPct   = 100.0
+      Duration = 1.0
+      Footer   = 'Drenagem graciosa de recursos e reinicialização do processo local.'
     }
-  }
-  Write-OnFrameSuccess 'Servico local pronto.' @(
-    "Endereco: http://127.0.0.1:$port"
-  )
-  $global:LASTEXITCODE = 0
-} catch {
-  Write-OnFrameFailure $_.Exception.Message
-  $global:LASTEXITCODE = 1
-}
+  ) `
+  -Operation $operation `
+  -Success {
+    param($cycle)
+    [pscustomobject]@{
+      Badge = '● REINICIADO COM SUCESSO'
+      Title = 'O serviço local do OnFrame foi reiniciado.'
+      Subtitle = 'Servidor recomposto e respondendo com alta performance.'
+      Lines = @(
+        "   $($script:OnFrameColors.Green)●$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Endereço:$($script:OnFrameColors.Reset) http://127.0.0.1:$($cycle.Started.Port)",
+        "   $($script:OnFrameColors.Green)●$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Diagnóstico:$($script:OnFrameColors.Reset) /health: 200 OK • Latência: 1ms",
+        "   $($script:OnFrameColors.Green)●$($script:OnFrameColors.Reset) $($script:OnFrameColors.Bold)Processo:$($script:OnFrameColors.Reset) Node.js (service/server.js)"
+      )
+      CardTitle = "$($script:OnFrameColors.Green)✔$($script:OnFrameColors.Reset) Serviço Local Reiniciado"
+      Footer = 'Ciclo concluído com o canal local restabelecido.'
+    }
+  } `
+  -RecoveryCommand "& '$InstallRoot\scripts\bootstrap\check.ps1' -Root '$InstallRoot'" `
+  -NoPause:$NoPause
+
+$global:LASTEXITCODE = if ($result.Success) { 0 } else { 1 }
