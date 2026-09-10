@@ -42,9 +42,7 @@
     editorTransitionResolve: null,
     editorTransitionAnimations: [],
     renderTimer: null,
-    reloadTimer: null,
     renderAfterDrag: false,
-    reloadCountdown: 0,
     lastTrayMarkup: '',
     lastDialogMarkup: '',
     message: '',
@@ -84,11 +82,8 @@
     state.editorVisible = true;
     clearEditorTransition();
     if (state.renderTimer) clearTimeout(state.renderTimer);
-    if (state.reloadTimer) clearInterval(state.reloadTimer);
     state.renderTimer = null;
-    state.reloadTimer = null;
     state.renderAfterDrag = false;
-    state.reloadCountdown = 0;
     state.lastTrayMarkup = '';
     state.lastDialogMarkup = '';
     state.message = '';
@@ -424,7 +419,6 @@
 
   function renderStatus() {
     if (state.error) return `<div class="onblide-ml-status error">${escapeHtml(state.error)}</div>`;
-    if (state.reloadCountdown) return `<div class="onblide-ml-status">Salvo. Atualizando em ${state.reloadCountdown}s.</div>`;
     const blockedMessage = getPictureEditingBlockedMessage();
     if (blockedMessage) return `<div class="onblide-ml-status muted">${escapeHtml(blockedMessage)}</div>`;
     const limitState = getPictureLimitState();
@@ -437,9 +431,6 @@
 
   function renderTrayFeedback(limitState) {
     if (state.error) return `<div class="onblide-ml-tray-feedback error">${escapeHtml(state.error)}</div>`;
-    if (state.reloadCountdown) {
-      return `<div class="onblide-ml-tray-feedback">Salvo. Atualizando em ${state.reloadCountdown}s.</div>`;
-    }
     if (state.dirty && limitState && limitState.message) {
       return `<div class="onblide-ml-tray-feedback error">${escapeHtml(limitState.message)}</div>`;
     }
@@ -447,15 +438,12 @@
   }
 
   function renderTrayActions(limitState) {
-    if (!state.dirty && !state.reloadCountdown) return '';
+    if (!state.dirty) return '';
     return `
       <div class="onblide-ml-tray-actions">
         ${state.dirty ? `
           <button class="onblide-ml-btn compact onblide-ml-dock-save" data-action="commit" type="button" ${state.busy || limitState.message ? 'disabled' : ''}>Salvar</button>
           <button class="onblide-ml-btn compact onblide-ml-dock-discard" data-action="discard" type="button" ${state.busy ? 'disabled' : ''}>${icon('trash', 13)}Descartar</button>
-        ` : ''}
-        ${state.reloadCountdown ? `
-          <button class="onblide-ml-btn compact onblide-ml-dock-refresh" data-action="refresh" type="button">${icon('refresh', 14)}Atualizar agora</button>
         ` : ''}
       </div>
     `;
@@ -595,7 +583,6 @@
               <button class="onblide-ml-btn primary compact" data-action="open-optimize" type="button" ${state.busy || limitState.message || !counts.optimizable ? 'disabled' : ''}>${icon('upload', 14)}Otimizar fotos</button>
               <button class="onblide-ml-btn primary compact" data-action="commit" type="button" ${state.busy || !state.dirty || limitState.message ? 'disabled' : ''}>Salvar</button>
               <button class="onblide-ml-btn compact" data-action="discard" type="button" ${state.busy || !state.dirty ? 'disabled' : ''}>Descartar</button>
-              ${state.reloadCountdown ? `<button class="onblide-ml-btn primary compact" data-action="refresh" type="button">${icon('refresh', 14)}Atualizar agora</button>` : ''}
             </div>
           </div>
           <div class="onblide-ml-editor-strip-shell">
@@ -623,7 +610,6 @@
     if (dialog && dialog.error) return `<div class="onblide-ml-dialog-error">${escapeHtml(dialog.error)}</div>`;
     if (state.error) return `<div class="onblide-ml-dialog-error">${escapeHtml(state.error)}</div>`;
     if (limitState && limitState.message) return `<div class="onblide-ml-dialog-error">${escapeHtml(limitState.message)}</div>`;
-    if (state.reloadCountdown) return `<div class="onblide-ml-dialog-note">Salvo. Atualizando em ${state.reloadCountdown}s.</div>`;
     if (dialog && dialog.notice) return `<div class="onblide-ml-dialog-note">${escapeHtml(dialog.notice)}</div>`;
     return '';
   }
@@ -749,7 +735,6 @@
           </div>
           <div class="onblide-ml-modal-foot">
             <button class="onblide-ml-btn" data-action="close-quality-dialog" type="button">Fechar</button>
-            <button class="onblide-ml-btn primary" data-action="refresh" type="button">${icon('refresh', 14)}Atualizar agora</button>
           </div>
         </section>
       </div>
@@ -820,9 +805,6 @@
     });
     container.querySelectorAll('[data-action="discard"]').forEach((button) => {
       button.addEventListener('click', discardDraft);
-    });
-    container.querySelectorAll('[data-action="refresh"]').forEach((button) => {
-      button.addEventListener('click', refreshNow);
     });
     container.querySelectorAll('[data-action="reload-quality"]').forEach((button) => {
       button.addEventListener('click', () => void loadPictureQuality());
@@ -1590,7 +1572,7 @@
       total
     };
     showToast('success', 'Fotos otimizadas');
-    startReloadCountdown();
+    finishPhotoSave();
   }
 
   function showOptimizeError(err) {
@@ -1662,7 +1644,7 @@
       const finalSelectedPictures = await prepareFinalSelectedPictures();
       await commitFinalSelectedPictures(finalSelectedPictures);
       showToast('success', 'Fotos salvas');
-      startReloadCountdown();
+      finishPhotoSave();
     } catch (err) {
       state.error = toUserError(err);
       state.message = '';
@@ -1712,7 +1694,27 @@
       body: JSON.stringify({ pictures, variations })
     });
 
-    state.draftPictures = finalSelectedPictures.map((picture) => Object.assign({}, picture, { pending: false }));
+    syncCommittedPictures(finalSelectedPictures, pictures, variations);
+  }
+
+  function syncCommittedPictures(finalSelectedPictures, pictures, variations) {
+    const committedPictures = finalSelectedPictures.map((picture) => Object.assign({}, picture, { pending: false }));
+    const currentPictures = state.context && Array.isArray(state.context.pictures) ? state.context.pictures : [];
+    const currentById = new Map(currentPictures.map((picture) => [String(picture.id || ''), picture]));
+    const committedById = new Map(committedPictures.map((picture) => [String(picture.id || ''), picture]));
+    const contextPictures = pictures.map((picture) => {
+      const id = String(picture && picture.id || '');
+      return committedById.get(id) || currentById.get(id) || picture;
+    });
+
+    state.draftPictures = committedPictures.map(PhotosModel.clonePicture);
+    state.originalPictures = committedPictures.map(PhotosModel.clonePicture);
+    state.variations = PhotosModel.cloneVariations(variations);
+    state.originalVariations = PhotosModel.cloneVariations(variations);
+    state.context = Object.assign({}, state.context, {
+      pictures: contextPictures,
+      variations: PhotosModel.cloneVariations(variations)
+    });
   }
 
   function itemApiPath(itemId, suffix, params = {}) {
@@ -1726,9 +1728,6 @@
   }
 
   function discardDraft() {
-    if (state.reloadTimer) clearInterval(state.reloadTimer);
-    state.reloadTimer = null;
-    state.reloadCountdown = 0;
     const blockedPageSignature = state.blockedPageSignature;
     state.blockedPageSignature = '';
     state.draftPictures = state.originalPictures.map(PhotosModel.clonePicture);
@@ -1780,7 +1779,6 @@
   function markDirty(message) {
     if (isPictureEditingBlocked()) return;
     state.dirty = true;
-    state.reloadCountdown = 0;
     state.message = message;
     state.error = '';
     if (state.qualityDialog && state.qualityDialog.mode === 'editor') {
@@ -1794,34 +1792,17 @@
     mountEditorTray();
   }
 
-  function startReloadCountdown() {
-    if (state.reloadTimer) clearInterval(state.reloadTimer);
+  function finishPhotoSave() {
     state.busy = false;
     state.dirty = false;
     state.error = '';
     state.message = '';
-    state.reloadCountdown = 8;
     rerenderTray();
-    state.reloadTimer = setInterval(() => {
-      state.reloadCountdown -= 1;
-      if (state.reloadCountdown <= 0) {
-        refreshNow();
-        return;
-      }
-      rerenderTray();
-    }, 1000);
   }
 
   function showToast(tone, title, body) {
     if (!toast || typeof toast.show !== 'function') return;
     toast.show({ tone, title, body });
-  }
-
-  function refreshNow() {
-    if (state.reloadTimer) clearInterval(state.reloadTimer);
-    state.reloadTimer = null;
-    state.reloadCountdown = 0;
-    location.reload();
   }
 
   function getPictureQuality(picture) {

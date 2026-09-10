@@ -309,6 +309,18 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.doesNotMatch(styles, /\.onblide-ml-dock-panel \{[^}]*box-shadow:/);
 });
 
+test('editor de fotos preserva o estado salvo sem recarregar a página', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
+
+  assert.match(source, /function syncCommittedPictures/);
+  assert.match(source, /function finishPhotoSave/);
+  assert.doesNotMatch(source, /location\.reload/);
+  assert.doesNotMatch(source, /reloadCountdown|reloadTimer|startReloadCountdown|refreshNow/);
+  assert.doesNotMatch(source, /data-action="refresh"/);
+  assert.doesNotMatch(styles, /onblide-ml-dock-refresh/);
+});
+
 test('picture quality extrai dimensoes oficiais do Mercado Livre', () => {
   assert.deepStrictEqual(
     extractOfficialDimensions({

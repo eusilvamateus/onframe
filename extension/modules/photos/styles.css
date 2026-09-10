@@ -301,10 +301,6 @@
   white-space: nowrap;
 }
 
-.onblide-ml-tray-actions:has(.onblide-ml-dock-refresh:only-child) {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .onblide-ml-dock-save {
   border-color: var(--ob-green);
   background: var(--ob-green);
@@ -326,17 +322,6 @@
   border-color: var(--ob-red);
   background: var(--ob-red);
   color: var(--ob-surface);
-}
-
-.onblide-ml-dock-refresh {
-  border-color: var(--ob-blue-100);
-  background: var(--ob-blue-050);
-  color: var(--ob-blue);
-}
-
-.onblide-ml-dock-refresh:hover:not(:disabled) {
-  border-color: var(--ob-blue);
-  background: var(--ob-blue-100);
 }
 
 .onblide-ml-strip {
