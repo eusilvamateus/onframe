@@ -1488,7 +1488,7 @@ test('promotion summary trata cupons globais como informativos sem usar o candid
   assert.strictEqual(summary.offers.eligible.length, 0);
 });
 
-test('promotion summary preserva aplicadas e marca preco em vigor pelo sale price', async () => {
+test('promotion summary preserva aplicadas e usa sale price apenas para identificar o preco vigente', async () => {
   const summary = await buildPromotionSummary({
     getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
     getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
@@ -1564,7 +1564,7 @@ test('promotion summary preserva aplicadas e marca preco em vigor pelo sale pric
   assert.strictEqual(summary.offers.active[2].status_bucket, 'applied');
   assert.strictEqual(summary.offers.active[2].is_current_price, false);
   assert.strictEqual(summary.offers.active[2].price_role, 'not_current_price');
-  assert.strictEqual(summary.offers.active[2].display_status, 'programmed');
+  assert.strictEqual(summary.offers.active[2].display_status, 'active');
 });
 
 test('promotion campaign cria campanha do vendedor com subtipo padrao', async () => {

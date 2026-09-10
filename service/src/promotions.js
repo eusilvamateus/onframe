@@ -754,7 +754,7 @@ function normalizePromotionEntry(value) {
     candidate: status === 'candidate',
     is_current_price: false,
     price_role: 'unknown',
-    display_status: displayPromotionStatus(status, type, false, false),
+    display_status: displayPromotionStatus(status),
     capabilities: promotionAdapter ? summarizeAdapter(promotionAdapter) : null,
     boost: summarizeBoost(value),
     raw: value
@@ -838,7 +838,7 @@ function annotatePriceWinningPromotion(entries, salePrice) {
         price_role: hasSaleContext
           ? isCurrentPrice ? 'current_price' : isStackable ? 'stackable' : 'not_current_price'
           : 'unknown',
-        display_status: displayPromotionStatus(entry.status, entry.type, isCurrentPrice, hasSaleContext)
+        display_status: displayPromotionStatus(entry.status)
       });
     })
     .sort(comparePromotionDisplayOrder);
@@ -860,14 +860,13 @@ function isSalePricePromotion(entry, salePrice) {
   );
 }
 
-function displayPromotionStatus(status, type, isCurrentPrice, hasSaleContext) {
+function displayPromotionStatus(status) {
   const value = String(status || '').toLowerCase();
   if (['candidate'].includes(value)) return 'available';
   if (['pending', 'programmed', 'sync_requested'].includes(value)) return 'programmed';
   if (['finished', 'deleted', 'restore_requested'].includes(value)) return 'finished';
   if (['started', 'active'].includes(value)) {
-    if (!hasSaleContext || isCurrentPrice || isStackablePromotionType(type)) return 'active';
-    return 'programmed';
+    return 'active';
   }
   return 'informational';
 }
