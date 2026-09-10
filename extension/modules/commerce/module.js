@@ -1776,7 +1776,7 @@
     }
 
     function promotionPopoverCampaignEntry(groups) {
-      const active = currentPromotionEntry(campaignPromotionEntries(groups && groups.activeOffers));
+      const active = currentPromotionEntry(groups && groups.activeOffers);
       if (active) return active;
       return programmedPromotionEntries(groups).slice().sort((left, right) => {
         const difference = promotionStartTimestamp(left) - promotionStartTimestamp(right);

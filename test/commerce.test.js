@@ -538,6 +538,7 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(source, /const preferredWidth = isSummaryPopover \? 560 : 340/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);
+  assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(groups && groups\.activeOffers\);/);
   assert.match(source, /function promotionStartTimestamp/);
   assert.match(source, /function renderPromotionPopoverCampaign/);
   assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
