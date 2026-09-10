@@ -57,10 +57,10 @@
     const isMac = platform === 'mac';
     const shellLabel = isMac ? 'Terminal' : 'PowerShell';
     const updateCommand = isMac
-      ? `ONFRAME_HOME=${MAC_ROOT} /bin/sh -c "$(/usr/bin/curl -fsSL '${RAW_ROOT}/update.sh')"`
+      ? `onframe_bootstrap="$(mktemp)" && /usr/bin/curl -fsSL '${RAW_ROOT}/update.sh' -o "$onframe_bootstrap" && ONFRAME_HOME=${MAC_ROOT} /bin/sh "$onframe_bootstrap"; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")`
       : `$env:ONFRAME_HOME=(Join-Path $env:LOCALAPPDATA 'OnFrame'); iwr -useb '${RAW_ROOT}/update.ps1' | iex`;
     const repairCommand = isMac
-      ? `/bin/sh -c "$(/usr/bin/curl -fsSL '${RAW_ROOT}/install.sh')"`
+      ? `onframe_bootstrap="$(mktemp)" && /usr/bin/curl -fsSL '${RAW_ROOT}/install.sh' -o "$onframe_bootstrap" && /bin/sh "$onframe_bootstrap"; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")`
       : `iwr -useb '${RAW_ROOT}/install.ps1' | iex`;
     const localCommand = (name) => isMac
       ? `${MAC_ROOT}/scripts/bootstrap/${name}.sh`

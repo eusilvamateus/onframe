@@ -977,8 +977,9 @@ onframe_ensure_runtime() {
   [ -n "$archive" ] || onframe_fail "Nao encontrei o runtime oficial do Node.js para esta arquitetura."
   version="$(printf '%s' "$archive" | sed -E 's/^node-v([0-9.]+)-darwin-.*$/\1/')"
   current_version=''
-  if [ -x "$(onframe_runtime_node)" ]; then
-    current_version="$("$(onframe_runtime_node)" -p 'process.versions.node' 2>/dev/null || true)"
+  node_path="$(onframe_runtime_node)"
+  if [ -x "$node_path" ]; then
+    current_version="$("$node_path" -p 'process.versions.node' 2>/dev/null || true)"
   fi
   if [ "$current_version" = "$version" ]; then
     rm -rf "$temp_root"

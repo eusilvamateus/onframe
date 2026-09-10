@@ -1236,10 +1236,14 @@ test('update manager produz comandos nativos para macOS', async () => {
   assert.strictEqual(status.shellLabel, 'Terminal');
   assert.strictEqual(status.canOpenUpdater, true);
   assert.match(status.updateScriptUrl, /scripts\/bootstrap\/update\.sh$/);
-  assert.match(status.updateCommand, /^ONFRAME_HOME=/);
-  assert.match(status.updateCommand, /\/bin\/sh -c/);
+  assert.match(status.updateCommand, /ONFRAME_HOME='/);
+  assert.match(status.updateCommand, /onframe_bootstrap="\$\(mktemp\)"/);
+  assert.match(status.updateCommand, /\/bin\/sh "\$onframe_bootstrap"/);
+  assert.doesNotMatch(status.updateCommand, /\/bin\/sh -c/);
   assert.match(status.updateCommand, /update\.sh/);
   assert.match(status.repairCommand, /install\.sh/);
+  assert.match(status.repairCommand, /onframe_bootstrap="\$\(mktemp\)"/);
+  assert.doesNotMatch(status.repairCommand, /\/bin\/sh -c/);
   assert.match(status.updateCommand, /O'"'"'Brien/);
   assert.match(status.checkCommand, /scripts\/bootstrap\/check\.sh/);
   assert.doesNotMatch(status.checkCommand, /PowerShell|\.ps1/);

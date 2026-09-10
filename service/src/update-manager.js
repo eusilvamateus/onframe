@@ -156,7 +156,7 @@ function buildDefaultScriptUrl(repo, branch, scriptName = 'update.ps1') {
 
 function buildBootstrapCommand({ root, scriptUrl, platform = process.platform }) {
   if (platform === 'darwin') {
-    return `ONFRAME_HOME='${escapePosixSingleQuoted(root)}' /bin/sh -c "$(/usr/bin/curl -fsSL '${escapePosixSingleQuoted(scriptUrl)}')"`;
+    return buildMacBootstrapCommand({ root, scriptUrl });
   }
   return `$env:ONFRAME_HOME='${escapePowerShellSingleQuoted(root)}'; iwr -useb '${escapePowerShellSingleQuoted(scriptUrl)}' | iex`;
 }
@@ -167,9 +167,17 @@ function buildUpdateCommand({ root, scriptUrl, platform = process.platform }) {
 
 function buildInstallCommand({ scriptUrl, platform = process.platform }) {
   if (platform === 'darwin') {
-    return `/bin/sh -c "$(/usr/bin/curl -fsSL '${escapePosixSingleQuoted(scriptUrl)}')"`;
+    return buildMacBootstrapCommand({ scriptUrl });
   }
   return `iwr -useb '${escapePowerShellSingleQuoted(scriptUrl)}' | iex`;
+}
+
+function buildMacBootstrapCommand({ root, scriptUrl }) {
+  const url = escapePosixSingleQuoted(scriptUrl);
+  const runner = root
+    ? `/usr/bin/env ONFRAME_HOME='${escapePosixSingleQuoted(root)}' /bin/sh "$onframe_bootstrap"`
+    : '/bin/sh "$onframe_bootstrap"';
+  return `onframe_bootstrap="$(mktemp)" && /usr/bin/curl -fsSL '${url}' -o "$onframe_bootstrap" && ${runner}; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")`;
 }
 
 function buildLocalScriptCommand({ root, scriptName }) {

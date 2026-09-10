@@ -58,7 +58,9 @@ C:\Users\SEU_USUARIO\AppData\Local\OnFrame
 Abra o Terminal e rode:
 
 ```sh
-/bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.sh')"
+onframe_bootstrap="$(mktemp)" && \
+/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.sh' -o "$onframe_bootstrap" && \
+/bin/sh "$onframe_bootstrap"; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")
 ```
 
 A instalacao fica em:
@@ -140,7 +142,9 @@ iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/
 No macOS:
 
 ```sh
-ONFRAME_HOME="$HOME/Library/Application Support/OnFrame" /bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh')"
+onframe_bootstrap="$(mktemp)" && \
+/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh' -o "$onframe_bootstrap" && \
+ONFRAME_HOME="$HOME/Library/Application Support/OnFrame" /bin/sh "$onframe_bootstrap"; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")
 ```
 
 O instalador e o atualizador registram o protocolo local
@@ -197,14 +201,18 @@ iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/
 No macOS:
 
 ```sh
-/bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.sh')"
+onframe_bootstrap="$(mktemp)" && \
+/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.sh' -o "$onframe_bootstrap" && \
+/bin/sh "$onframe_bootstrap"; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")
 ```
 
 A desinstalacao comum preserva configuracao e contas. Para remover tambem os
 dados locais no macOS:
 
 ```sh
-ONFRAME_REMOVE_DATA=1 /bin/sh -c "$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.sh')"
+onframe_bootstrap="$(mktemp)" && \
+/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/uninstall.sh' -o "$onframe_bootstrap" && \
+ONFRAME_REMOVE_DATA=1 /bin/sh "$onframe_bootstrap"; onframe_status=$?; rm -f "$onframe_bootstrap"; (exit "$onframe_status")
 ```
 
 Depois remova a extensao manualmente em `chrome://extensions` ou

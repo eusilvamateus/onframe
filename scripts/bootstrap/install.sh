@@ -138,7 +138,9 @@ onframe_assert_install_root
 printf '  [>] 07/09 Preparando configuracao e runtime privado.\n'
 onframe_ensure_env
 onframe_ensure_runtime
-printf '       + Node.js %s instalado somente para o OnFrame.\n' "$("$(onframe_runtime_node)" -p 'process.versions.node')"
+runtime_node="$(onframe_runtime_node)"
+runtime_version="$("$runtime_node" -p 'process.versions.node')"
+printf '       + Node.js %s instalado somente para o OnFrame.\n' "$runtime_version"
 
 printf '\n  [FINALIZANDO]\n'
 printf '  [>] 08/09 Registrando servico e controles locais.\n'

@@ -919,10 +919,10 @@ function getUpdateOpenPageData(updateManager) {
     shellLabel: isMac ? 'Terminal' : 'PowerShell',
     canOpenUpdater: process.platform === 'win32' || isMac,
     updateCommand: isMac
-      ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" /bin/sh -c \"$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh')\""
+      ? "onframe_bootstrap=\"$(mktemp)\" && /usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.sh' -o \"$onframe_bootstrap\" && ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" /bin/sh \"$onframe_bootstrap\"; onframe_status=$?; rm -f \"$onframe_bootstrap\"; (exit \"$onframe_status\")"
       : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/update.ps1' | iex",
     repairCommand: isMac
-      ? "/bin/sh -c \"$(/usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.sh')\""
+      ? "onframe_bootstrap=\"$(mktemp)\" && /usr/bin/curl -fsSL 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.sh' -o \"$onframe_bootstrap\" && /bin/sh \"$onframe_bootstrap\"; onframe_status=$?; rm -f \"$onframe_bootstrap\"; (exit \"$onframe_status\")"
       : "iwr -useb 'https://raw.githubusercontent.com/eusilvamateus/onframe/main/scripts/bootstrap/install.ps1' | iex",
     checkCommand: isMac
       ? "ONFRAME_HOME=\"$HOME/Library/Application Support/OnFrame\" \"$HOME/Library/Application Support/OnFrame/scripts/bootstrap/check.sh\""
