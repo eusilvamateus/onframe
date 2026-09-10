@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.4.2 - 2026-09-10
+
+### Melhorado
+
+- Os comandos locais do macOS passam a usar a mesma interface TUI dos demais
+  fluxos e o pacote instalado deixa de incluir documentacao de desenvolvimento.
+
+### Corrigido
+
+- Promocoes ativas agora sao classificadas de forma consistente no botao, no
+  popover e no modal, com fechamento alinhado ao design system.
+- O editor de fotos preserva o estado salvo sem recarregar a pagina do anuncio.
+- Instalacao, atualizacao, reparo e desinstalacao no macOS executam scripts por
+  arquivo temporario, evitando falhas de sintaxe do interpretador.
+
 ## v0.4.1 - 2026-09-10
 
 ### Melhorado
