@@ -8,4 +8,4 @@ SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 onframe_require_macos
 onframe_assert_install_root
 onframe_register_launcher
-printf 'Protocolo onframe-updater:// registrado para este usuario.\n'
+printf '  %s●%s %sProtocolo onframe-updater:// registrado para este usuario.%s\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"

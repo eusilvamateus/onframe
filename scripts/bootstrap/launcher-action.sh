@@ -21,10 +21,3 @@ case "$action" in
     onframe_fail "Acao local nao suportada: $action"
     ;;
 esac
-
-if [ "$action" = "check" ]; then
-  printf '\nPressione Enter para fechar: '
-  read -r _unused
-else
-  sleep 2
-fi

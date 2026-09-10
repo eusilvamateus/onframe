@@ -42,13 +42,32 @@ if [ -e "$INSTALL_ROOT" ]; then
   esac
 fi
 
-printf '\n  ONFRAME\n'
-printf '  Onblide local toolkit\n'
-printf '  ----------------------------------------------------------\n'
-printf '  %-10s %s\n' "Modo" "$(if [ "$MODE" = "update" ]; then printf 'Atualizacao'; else printf 'Instalacao'; fi)"
-printf '  %-10s %s\n' "Pasta" "$INSTALL_ROOT"
-printf '  %-10s %s\n' "Repo" "$REPO"
-printf '  ----------------------------------------------------------\n'
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)"
+if [ -f "$SCRIPT_DIR/common.sh" ]; then
+  # shellcheck source=scripts/bootstrap/common.sh
+  . "$SCRIPT_DIR/common.sh"
+fi
+
+_width=74
+if command -v onframe_tui_width >/dev/null 2>&1; then
+  _width="$(onframe_tui_width)"
+fi
+
+if command -v onframe_header_3l >/dev/null 2>&1; then
+  if [ "$MODE" = "update" ]; then
+    onframe_header_3l "↻ ATUALIZAÇÃO LOCAL" "Download Seguro & Renovação do Serviço" "amber" "$_width" "Atualizador Oficial do Aplicativo • macOS"
+  else
+    onframe_header_3l "↓ INSTALAÇÃO LOCAL" "Instalação & Configuração do OnFrame" "brand" "$_width" "Instalador Oficial do Aplicativo • macOS"
+  fi
+else
+  printf '\n  ONFRAME\n'
+  printf '  Onblide local toolkit\n'
+  printf '  ----------------------------------------------------------\n'
+  printf '  %-10s %s\n' "Modo" "$(if [ "$MODE" = "update" ]; then printf 'Atualizacao'; else printf 'Instalacao'; fi)"
+  printf '  %-10s %s\n' "Pasta" "$INSTALL_ROOT"
+  printf '  %-10s %s\n' "Repo" "$REPO"
+  printf '  ----------------------------------------------------------\n'
+fi
 
 printf '\n  [PREPARANDO]\n'
 printf '  [>] 01/09 Validando destino.\n'
@@ -129,9 +148,47 @@ onframe_register_launcher
 printf '  [>] 09/09 Iniciando e validando servico.\n'
 onframe_start_service
 
-onframe_success "Instalacao concluida." \
-  "Versao: $tag" \
-  "Extensao: $INSTALL_ROOT/extension" \
-  "Chrome: chrome://extensions/" \
-  "Edge: edge://extensions/" \
-  "Recarregue ou carregue a extensao nessa pagina."
+_suc_tmp="$(mktemp "${TMPDIR:-/tmp}/onframe-install-suc.XXXXXX")"
+trap 'rm -f "$_suc_tmp"' EXIT
+
+_bar_len=$(( _width - 32 ))
+[ "$_bar_len" -lt 14 ] && _bar_len=14
+_final_bar="$(onframe_progress_bar 100.0 "$_bar_len" green)"
+
+if [ "$MODE" = "update" ]; then
+  _suc_badge="● ATUALIZADO COM SUCESSO"
+  _suc_title="Atualização do OnFrame concluída com sucesso."
+  _suc_card="Atualização Concluída"
+else
+  _suc_badge="● INSTALADO COM SUCESSO"
+  _suc_title="Instalação do OnFrame concluída com sucesso."
+  _suc_card="Instalação Concluída"
+fi
+
+{
+  onframe_badge "$_suc_badge" 119 158 61
+  printf '\n%s%s%s\n' "$ONFRAME_CLR_BOLD" "$_suc_title" "$ONFRAME_CLR_RESET"
+  printf '%sSeus arquivos e extensões estão prontos para uso.%s\n\n' "$ONFRAME_CLR_MUTED" "$ONFRAME_CLR_RESET"
+  printf '   %s●%s %sVersão:%s %s\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET" "$tag"
+  printf '   %s●%s %sExtensão:%s %s/extension\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET" "$INSTALL_ROOT"
+  printf '   %s●%s %sChrome:%s chrome://extensions/\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
+  printf '   %s●%s %sEdge:%s edge://extensions/\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
+  printf '   %s●%s Recarregue ou carregue a extensão nessa página.\n\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET"
+  printf '%s✔%s Status final:  %s\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$_final_bar"
+} > "$_suc_tmp"
+
+printf '\033[H\033[2J' 2>/dev/null || true
+if [ "$MODE" = "update" ]; then
+  onframe_header_3l "↻ ATUALIZAÇÃO LOCAL" "Download Seguro & Renovação do Serviço" "amber" "$_width" "Atualizador Oficial do Aplicativo • macOS"
+else
+  onframe_header_3l "↓ INSTALAÇÃO LOCAL" "Instalação & Configuração do OnFrame" "brand" "$_width" "Instalador Oficial do Aplicativo • macOS"
+fi
+onframe_print_card "${ONFRAME_CLR_GREEN}✔${ONFRAME_CLR_RESET} $_suc_card" "$_suc_tmp" "$_width" 119 158 61
+
+_footer_text="$ONFRAME_CLR_MUTED● Instalação concluída com sucesso. Pressione $ONFRAME_CLR_BOLD$(onframe_truecolor_fg 230 235 245)[Enter]$ONFRAME_CLR_RESET$ONFRAME_CLR_MUTED para retornar...$ONFRAME_CLR_RESET"
+_fpad="$(onframe_center_padding "$(onframe_display_width "$_footer_text")")"
+printf '\n%s%s\n' "$_fpad" "$_footer_text"
+
+if [ -t 0 ] && [ "${NO_PAUSE:-0}" = "0" ]; then
+  read -r _ || true
+fi

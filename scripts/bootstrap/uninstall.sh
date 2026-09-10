@@ -32,12 +32,27 @@ if [ -e "$INSTALL_ROOT" ]; then
 fi
 [ ! -d "$INSTALL_ROOT/.git" ] || fail "Esta pasta e um checkout de desenvolvimento. Remova manualmente se desejar."
 
-printf '\n  ONFRAME\n'
-printf '  Onblide local toolkit\n'
-printf '  ----------------------------------------------------------\n'
-printf '  %-10s %s\n' "Modo" "$(if [ "$REMOVE_DATA" = "1" ]; then printf 'Desinstalacao total'; else printf 'Desinstalacao'; fi)"
-printf '  %-10s %s\n' "Pasta" "$INSTALL_ROOT"
-printf '  ----------------------------------------------------------\n'
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)"
+if [ -f "$SCRIPT_DIR/common.sh" ]; then
+  # shellcheck source=scripts/bootstrap/common.sh
+  . "$SCRIPT_DIR/common.sh"
+fi
+
+_width=74
+if command -v onframe_tui_width >/dev/null 2>&1; then
+  _width="$(onframe_tui_width)"
+fi
+
+if command -v onframe_header_3l >/dev/null 2>&1; then
+  onframe_header_3l "■ DESINSTALAÇÃO LOCAL" "Remoção Segura & Preservação de Dados" "coral" "$_width" "Desinstalador Oficial do Aplicativo • macOS"
+else
+  printf '\n  ONFRAME\n'
+  printf '  Onblide local toolkit\n'
+  printf '  ----------------------------------------------------------\n'
+  printf '  %-10s %s\n' "Modo" "$(if [ "$REMOVE_DATA" = "1" ]; then printf 'Desinstalacao total'; else printf 'Desinstalacao'; fi)"
+  printf '  %-10s %s\n' "Pasta" "$INSTALL_ROOT"
+  printf '  ----------------------------------------------------------\n'
+fi
 
 printf '\n  [PREPARANDO]\n'
 printf '  [>] 01/04 Localizando instalacao.\n'
@@ -75,7 +90,38 @@ else
   printf '       ! Dados preservados: .env e .onframe.\n'
 fi
 
-printf '\n  [OK] Desinstalacao concluida.\n'
-printf '       Remova a extensao manualmente do Chrome ou Edge.\n'
-printf '       Chrome: chrome://extensions/\n'
-printf '       Edge: edge://extensions/\n\n'
+if command -v onframe_print_card >/dev/null 2>&1; then
+  _suc_tmp="$(mktemp "${TMPDIR:-/tmp}/onframe-uninst-suc.XXXXXX")"
+  trap 'rm -f "$_suc_tmp"' EXIT
+
+  _bar_len=$(( _width - 32 ))
+  [ "$_bar_len" -lt 14 ] && _bar_len=14
+  _final_bar="$(onframe_progress_bar 100.0 "$_bar_len" coral)"
+
+  {
+    onframe_badge "■ DESINSTALADO COM SUCESSO" 220 65 65
+    printf '\n%sDesinstalação do OnFrame concluída.%s\n' "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
+    printf '%sO serviço e os componentes locais foram removidos.%s\n\n' "$ONFRAME_CLR_MUTED" "$ONFRAME_CLR_RESET"
+    printf '   %s■%s Remova a extensão manualmente do Chrome ou Edge:\n' "$ONFRAME_CLR_CORAL" "$ONFRAME_CLR_RESET"
+    printf '   %s■%s %sChrome:%s chrome://extensions/\n' "$ONFRAME_CLR_CORAL" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
+    printf '   %s■%s %sEdge:%s edge://extensions/\n\n' "$ONFRAME_CLR_CORAL" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
+    printf '%s✔%s Status final:  %s\n' "$ONFRAME_CLR_CORAL" "$ONFRAME_CLR_RESET" "$_final_bar"
+  } > "$_suc_tmp"
+
+  printf '\033[H\033[2J' 2>/dev/null || true
+  onframe_header_3l "■ DESINSTALAÇÃO LOCAL" "Remoção Segura & Preservação de Dados" "coral" "$_width" "Desinstalador Oficial do Aplicativo • macOS"
+  onframe_print_card "${ONFRAME_CLR_CORAL}■${ONFRAME_CLR_RESET} Desinstalação Concluída" "$_suc_tmp" "$_width" 220 65 65
+
+  _footer_text="$ONFRAME_CLR_MUTED● Desinstalação concluída. Pressione $ONFRAME_CLR_BOLD$(onframe_truecolor_fg 230 235 245)[Enter]$ONFRAME_CLR_RESET$ONFRAME_CLR_MUTED para retornar...$ONFRAME_CLR_RESET"
+  _fpad="$(onframe_center_padding "$(onframe_display_width "$_footer_text")")"
+  printf '\n%s%s\n' "$_fpad" "$_footer_text"
+
+  if [ -t 0 ] && [ "${NO_PAUSE:-0}" = "0" ]; then
+    read -r _ || true
+  fi
+else
+  printf '\n  [OK] Desinstalacao concluida.\n'
+  printf '       Remova a extensao manualmente do Chrome ou Edge.\n'
+  printf '       Chrome: chrome://extensions/\n'
+  printf '       Edge: edge://extensions/\n\n'
+fi

@@ -7,4 +7,4 @@ SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
 onframe_require_macos
 onframe_unregister_launcher
-printf 'Protocolo onframe-updater:// removido para este usuario.\n'
+printf '  %s●%s %sProtocolo onframe-updater:// removido para este usuario.%s\n' "$ONFRAME_CLR_CORAL" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
