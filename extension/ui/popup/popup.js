@@ -246,10 +246,8 @@
     if (!visible) return;
 
     setBadge(elements.updateBadge, 'Disponivel', 'blue');
-    elements.updateText.textContent = status.updatePageUrl
-      ? `${status.message || `Versão ${status.latestVersion} disponível.`} Abra o atualizador ou copie o comando.`
-      : `${status.message || `Versão ${status.latestVersion} disponível.`} Copie e cole no ${status.shellLabel || 'PowerShell'}.`;
-    elements.updateOpen.disabled = !status.updatePageUrl;
+    elements.updateText.textContent = `${status.message || `Versão ${status.latestVersion} disponível.`} Abra o atualizador ou copie o comando.`;
+    elements.updateOpen.disabled = !status.updateAvailable;
     elements.updateStart.disabled = !status.updateCommand;
   }
 
@@ -260,8 +258,8 @@
   }
 
   function openUpdatePage() {
-    if (!state.updateStatus || !state.updateStatus.updatePageUrl) return;
-    openExternalUrl(state.updateStatus.updatePageUrl);
+    if (!state.updateStatus || !state.updateStatus.updateAvailable) return;
+    openLocalServiceAction('update');
     elements.updateBlock.classList.remove('is-hidden');
     setBadge(elements.updateBadge, 'Abrindo', 'blue');
     elements.updateText.textContent = 'A pagina de atualizacao foi aberta.';
@@ -432,7 +430,7 @@
     elements.serviceRestart.disabled = value;
     elements.serviceStop.disabled = value;
     elements.serviceCheck.disabled = value;
-    elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updatePageUrl;
+    elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updateAvailable;
     elements.updateStart.disabled = value || !state.updateStatus || !state.updateStatus.updateCommand;
     elements.accountList.querySelectorAll('button').forEach((button) => {
       button.disabled = value;

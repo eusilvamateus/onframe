@@ -42,7 +42,6 @@ function classifyRequest(method, pathname) {
   const route = `${method} ${pathname}`;
   if (route === 'GET /diagnostics') return 'diagnostics.read';
   if (route === 'GET /updates/status') return 'updates.status';
-  if (route === 'GET /updates/open') return 'updates.open';
   if (route === 'GET /auth/status') return 'auth.status';
   if (route === 'GET /auth/account') return 'auth.account';
   if (route === 'GET /auth/accounts') return 'auth.accounts';

@@ -3,8 +3,6 @@ const packageJson = require('../../package.json');
 
 const DEFAULT_REPO = 'eusilvamateus/onframe';
 const DEFAULT_BRANCH = 'main';
-const DEFAULT_PORT = 4765;
-const UPDATE_PROTOCOL_URL = 'onframe-updater://update';
 const CACHE_MS = 60 * 1000;
 
 function createUpdateManager(options = {}) {
@@ -24,29 +22,10 @@ function createUpdateManager(options = {}) {
   let cache = null;
 
   return {
-    getOpenPageData,
     getStatus
   };
 
-  function getOpenPageData() {
-    const updatePageUrl = buildUpdatePageUrl(env);
-    return {
-      protocolUrl: UPDATE_PROTOCOL_URL,
-      updatePageUrl,
-      platform,
-      shell: platform === 'darwin' ? 'terminal' : 'powershell',
-      shellLabel: platform === 'darwin' ? 'Terminal' : 'PowerShell',
-      canOpenUpdater: platform === 'win32' || platform === 'darwin',
-      updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl, platform }),
-      repairCommand: buildInstallCommand({ scriptUrl: installScriptUrl, platform }),
-      checkCommand: platform === 'darwin'
-        ? buildLocalScriptCommand({ root, scriptName: 'check.sh' })
-        : buildBootstrapCommand({ root, scriptUrl: checkScriptUrl, platform })
-    };
-  }
-
   async function getStatus(options = {}) {
-    const openPage = getOpenPageData();
     const base = {
       ok: true,
       currentVersion,
@@ -63,15 +42,14 @@ function createUpdateManager(options = {}) {
       assetName: null,
       updateAvailable: false,
       canUpdate: false,
-      protocolUrl: openPage.protocolUrl,
-      updatePageUrl: openPage.updatePageUrl,
-      canOpenUpdater: openPage.canOpenUpdater,
-      platform: openPage.platform,
-      shell: openPage.shell,
-      shellLabel: openPage.shellLabel,
-      updateCommand: openPage.updateCommand,
-      repairCommand: openPage.repairCommand,
-      checkCommand: openPage.checkCommand,
+      platform,
+      shell: platform === 'darwin' ? 'terminal' : 'powershell',
+      shellLabel: platform === 'darwin' ? 'Terminal' : 'PowerShell',
+      updateCommand: buildUpdateCommand({ root, scriptUrl: updateScriptUrl, platform }),
+      repairCommand: buildInstallCommand({ scriptUrl: installScriptUrl, platform }),
+      checkCommand: platform === 'darwin'
+        ? buildLocalScriptCommand({ root, scriptName: 'check.sh' })
+        : buildBootstrapCommand({ root, scriptUrl: checkScriptUrl, platform }),
       message: '',
       checkedAt: new Date(nowImpl()).toISOString()
     };
@@ -145,11 +123,6 @@ function pickReleaseAsset(release) {
     null;
 }
 
-function buildUpdatePageUrl(env) {
-  const port = normalizePort(env && env.ML_SERVICE_PORT);
-  return `http://127.0.0.1:${port}/updates/open`;
-}
-
 function buildDefaultScriptUrl(repo, branch, scriptName = 'update.ps1') {
   return `https://raw.githubusercontent.com/${repo}/${branch}/scripts/bootstrap/${scriptName}`;
 }
@@ -188,11 +161,6 @@ function buildLocalScriptCommand({ root, scriptName }) {
 function normalizeChannel(value) {
   const channel = String(value || 'stable').trim().toLowerCase();
   return channel === 'preview' ? 'preview' : 'stable';
-}
-
-function normalizePort(value) {
-  const port = Number(value || DEFAULT_PORT);
-  return Number.isInteger(port) && port > 0 && port <= 65535 ? port : DEFAULT_PORT;
 }
 
 function tagToVersion(tag) {
