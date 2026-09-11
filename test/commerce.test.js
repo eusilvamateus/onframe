@@ -74,7 +74,7 @@ test('commerce model conta promocoes ativas apenas quando aplicadas ao anuncio',
   const state = commerceModel.getPromotionState({
     offers: {
       active: [
-        { id: 'O1', type: 'SELLER_CAMPAIGN', status: 'started', display_status: 'participating' },
+        { id: 'O1', type: 'SELLER_CAMPAIGN', status: 'started', display_status: 'programmed' },
         { id: 'P4', type: 'DEAL', status: 'started', is_current_price: true, display_status: 'active' }
       ],
       eligible: [{ id: 'P4', type: 'DEAL', status: 'candidate' }]
@@ -90,9 +90,8 @@ test('commerce model conta promocoes ativas apenas quando aplicadas ao anuncio',
 
   assert.strictEqual(state.activeCount, 1);
   assert.strictEqual(state.appliedCount, 2);
-  assert.strictEqual(state.participatingCount, 1);
   assert.strictEqual(state.eligibleCount, 1);
-  assert.strictEqual(state.scheduledCount, 0);
+  assert.strictEqual(state.scheduledCount, 1);
   assert.strictEqual(state.label, 'Promo ativa');
 });
 
@@ -133,18 +132,17 @@ test('commerce model exclui cupom global de acoes e estimativas', () => {
   assert.strictEqual(commerceModel.canEstimatePromotion({ type: 'DEAL' }), true);
 });
 
-test('commerce model mantém participação iniciada sem preço vigente fora das ativas', () => {
+test('commerce model classifica participação iniciada sem preço vigente como programada', () => {
   const state = commerceModel.getPromotionState({
     offers: {
-      active: [{ id: 'O1', type: 'SELLER_CAMPAIGN', status: 'started', display_status: 'participating' }]
+      active: [{ id: 'O1', type: 'SELLER_CAMPAIGN', status: 'started', display_status: 'programmed' }]
     }
   });
 
   assert.strictEqual(state.activeCount, 0);
   assert.strictEqual(state.appliedCount, 1);
-  assert.strictEqual(state.participatingCount, 1);
-  assert.strictEqual(state.scheduledCount, 0);
-  assert.strictEqual(state.label, 'No anúncio');
+  assert.strictEqual(state.scheduledCount, 1);
+  assert.strictEqual(state.label, 'Programada');
 });
 
 test('commerce model mantém pendente como programada quando outra oferta vence o preço', () => {
@@ -553,8 +551,8 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(source, /const preferredWidth = isSummaryPopover \? 560 : 340/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);
-  assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(campaignPromotionEntries\(pricePromotionEntries\(groups\)\)\);/);
-  assert.match(source, /return participatingPromotionEntries\(campaignPromotionEntries\(groups && groups\.activeOffers\)\)\[0\] \|\| null;/);
+  assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(pricePromotionEntries\(groups\)\);/);
+  assert.match(source, /if \(programmed\) return programmed;\s*return null;/s);
   assert.match(source, /function promotionStartTimestamp/);
   assert.match(source, /function renderPromotionPopoverCampaign/);
   assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
@@ -667,8 +665,7 @@ test('promocoes preferem oportunidade do item com faixa de preco', () => {
   assert.match(source, /function promotionOpportunityEntries/);
   assert.match(source, /campaignPromotionEntries\(groups\.eligibleOffers\)/);
   assert.doesNotMatch(source, /campaignPromotionEntries\(groups\.eligibleOffers\), campaignPromotionEntries\(groups\.activeOffers\)/);
-  assert.match(source, /function participatingPromotionEntries/);
-  assert.match(source, /renderPromotionFilterOption\('status', 'participating', 'No anúncio'\)/);
+  assert.doesNotMatch(source, /participatingPromotionEntries|renderPromotionFilterOption\('status', 'participating'/);
   assert.doesNotMatch(source, /hasSamePromotion/);
   assert.match(source, /function isPriceDiscountPromotion/);
 });
@@ -1587,10 +1584,10 @@ test('regressão MLB6636154166 mantém uma única promoção de preço ativa', a
   assert.strictEqual(summary.offers.active[2].status_bucket, 'applied');
   assert.strictEqual(summary.offers.active[2].is_current_price, false);
   assert.strictEqual(summary.offers.active[2].price_role, 'not_current_price');
-  assert.strictEqual(summary.offers.active[2].display_status, 'participating');
+  assert.strictEqual(summary.offers.active[2].display_status, 'programmed');
 });
 
-test('promotion summary não cria promoção vigente sem vínculo exato da oferta no sale price', async () => {
+test('promotion summary usa a identidade da oferta sem depender do tipo do sale price', async () => {
   const buildSummary = (metadata) => buildPromotionSummary({
     getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
     getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
@@ -1604,15 +1601,16 @@ test('promotion summary não cria promoção vigente sem vínculo exato da ofert
 
   const withoutMetadata = await buildSummary({});
   assert.strictEqual(withoutMetadata.offers.active.filter((entry) => entry.is_current_price).length, 0);
-  assert.deepStrictEqual(withoutMetadata.offers.active.map((entry) => entry.display_status), ['participating', 'participating']);
+  assert.deepStrictEqual(withoutMetadata.offers.active.map((entry) => entry.display_status), ['programmed', 'programmed']);
 
-  const incompatibleType = await buildSummary({ promotion_id: 'OFFER-ONE', promotion_type: 'PRICE_DISCOUNT' });
-  assert.strictEqual(incompatibleType.offers.active.filter((entry) => entry.is_current_price).length, 0);
-  assert.deepStrictEqual(incompatibleType.offers.active.map((entry) => entry.display_status), ['participating', 'participating']);
+  const differentType = await buildSummary({ promotion_id: 'OFFER-ONE', promotion_type: 'PRICE_DISCOUNT' });
+  assert.strictEqual(differentType.offers.active.filter((entry) => entry.is_current_price).length, 1);
+  assert.strictEqual(differentType.offers.active[0].id, 'P1');
+  assert.strictEqual(differentType.offers.active[0].display_status, 'active');
 
   const unknownOffer = await buildSummary({ promotion_id: 'OFFER-UNKNOWN', promotion_type: 'DEAL' });
   assert.strictEqual(unknownOffer.offers.active.filter((entry) => entry.is_current_price).length, 0);
-  assert.deepStrictEqual(unknownOffer.offers.active.map((entry) => entry.display_status), ['participating', 'participating']);
+  assert.deepStrictEqual(unknownOffer.offers.active.map((entry) => entry.display_status), ['programmed', 'programmed']);
 });
 
 test('promotion summary reconcilia a oferta vencedora quando o estado do item está defasado', async () => {
@@ -1643,6 +1641,178 @@ test('promotion summary reconcilia a oferta vencedora quando o estado do item es
   assert.strictEqual(winner.display_status, 'active');
   assert.strictEqual(commerceModel.getPromotionState(summary).activeCount, 1);
   assert.strictEqual(commerceModel.getPromotionState(summary).scheduledCount, 0);
+});
+
+test('promotion summary resolve a campanha vencedora pela identidade da oferta', async () => {
+  let reconciledOfferId = null;
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB6554940854', seller_id: 123, site_id: 'MLB', price: 185.91, currency_id: 'BRL' }),
+    getItemSalePrice: async () => ({
+      amount: 138.99,
+      regular_amount: 185.91,
+      currency_id: 'BRL',
+      metadata: {
+        campaign_id: 'C-MLB4902633',
+        promotion_id: 'OFFER-MLB6554940854-13432635357',
+        promotion_type: 'custom'
+      }
+    }),
+    getItemPromotions: async () => ([
+      { id: 'C-MLB4902633', type: 'SELLER_CAMPAIGN', status: 'started', price: 138.99, original_price: 185.91 },
+      { id: 'P-MLB18023310', ref_id: 'OFFER-MLB6554940854-13712972217', type: 'SMART', status: 'started', price: 161.98, original_price: 185.91 }
+    ]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotionOffer: async (offerId) => {
+      reconciledOfferId = offerId;
+      return {
+        id: 'OFFER-MLB6554940854-13432635357',
+        item_id: 'MLB6554940854',
+        promotion_id: 'C-MLB4902633',
+        type: 'SELLER_CAMPAIGN',
+        status: { id: 'started' }
+      };
+    }
+  }, 'MLB6554940854');
+
+  const [winner, nonWinner] = summary.offers.active;
+  assert.strictEqual(reconciledOfferId, 'OFFER-MLB6554940854-13432635357');
+  assert.strictEqual(winner.id, 'C-MLB4902633');
+  assert.strictEqual(winner.offer_status, null);
+  assert.strictEqual(winner.is_current_price, true);
+  assert.strictEqual(winner.display_status, 'active');
+  assert.strictEqual(nonWinner.is_current_price, false);
+  assert.strictEqual(nonWinner.display_status, 'programmed');
+  assert.strictEqual(commerceModel.getPromotionState(summary).activeCount, 1);
+});
+
+test('promotion summary reconhece oferta SMART vencedora com tipo descritivo diferente no sale price', async () => {
+  let promotionOfferCalls = 0;
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB6554940852', seller_id: 123, site_id: 'MLB', price: 185.91, currency_id: 'BRL' }),
+    getItemSalePrice: async () => ({
+      amount: 134.82,
+      regular_amount: 185.91,
+      currency_id: 'BRL',
+      metadata: {
+        campaign_id: 'P-MLB17979064',
+        promotion_id: 'OFFER-MLB6554940852-13754868643',
+        promotion_type: 'marketplace_campaign'
+      }
+    }),
+    getItemPromotions: async () => ([
+      { id: 'C-MLB4902633', type: 'SELLER_CAMPAIGN', status: 'started', price: 138.99, original_price: 185.91 },
+      { id: 'P-MLB17979064', ref_id: 'OFFER-MLB6554940852-13754868643', type: 'SMART', status: 'started', price: 134.82, original_price: 185.91 }
+    ]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotionOffer: async () => { promotionOfferCalls += 1; return null; }
+  }, 'MLB6554940852');
+
+  const winner = summary.offers.active.find((entry) => entry.id === 'P-MLB17979064');
+  const nonWinner = summary.offers.active.find((entry) => entry.id === 'C-MLB4902633');
+  assert.strictEqual(promotionOfferCalls, 0);
+  assert.strictEqual(winner.is_current_price, true);
+  assert.strictEqual(winner.display_status, 'active');
+  assert.strictEqual(nonWinner.is_current_price, false);
+  assert.strictEqual(nonWinner.display_status, 'programmed');
+  assert.strictEqual(commerceModel.getPromotionState(summary).activeCount, 1);
+});
+
+test('promotion summary resolve participacao sem identificador pela oferta vencedora', async () => {
+  let promotionOfferCalls = 0;
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB6433230052', seller_id: 123, site_id: 'MLB', price: 42.99, currency_id: 'BRL' }),
+    getItemSalePrice: async () => ({
+      amount: 42.99,
+      regular_amount: 73.99,
+      currency_id: 'BRL',
+      metadata: { promotion_id: 'OFFER-MLB6433230052-13768607922', promotion_type: 'custom' }
+    }),
+    getItemPromotions: async () => ([
+      { type: 'PRICE_DISCOUNT', status: 'started', price: 41.5, original_price: 73.99 }
+    ]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotionOffer: async (offerId) => {
+      promotionOfferCalls += 1;
+      assert.strictEqual(offerId, 'OFFER-MLB6433230052-13768607922');
+      return {
+        id: offerId,
+        item_id: 'MLB6433230052',
+        promotion_id: '',
+        type: 'PRICE_DISCOUNT',
+        status: { id: 'started' }
+      };
+    }
+  }, 'MLB6433230052');
+
+  const directDiscount = summary.offers.active[0];
+  assert.strictEqual(promotionOfferCalls, 1);
+  assert.strictEqual(directDiscount.offer_id, null);
+  assert.strictEqual(directDiscount.offer_status, null);
+  assert.strictEqual(directDiscount.is_current_price, true);
+  assert.strictEqual(directDiscount.display_status, 'active');
+  assert.strictEqual(commerceModel.getPromotionState(summary).activeCount, 1);
+});
+
+test('promotion summary mantém participação sem identidade como programada sem vínculo da oferta', async () => {
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+    getItemSalePrice: async () => ({
+      amount: 90,
+      regular_amount: 100,
+      currency_id: 'BRL',
+      metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'custom' }
+    }),
+    getItemPromotions: async () => ([
+      { type: 'PRICE_DISCOUNT', status: 'started', price: 90, original_price: 100 }
+    ]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotionOffer: async () => ({
+      id: 'OFFER-WINNER',
+      item_id: 'MLB1',
+      promotion_id: '',
+      type: 'DEAL',
+      status: { id: 'started' }
+    })
+  }, 'MLB1');
+
+  const directDiscount = summary.offers.active[0];
+  assert.strictEqual(directDiscount.is_current_price, false);
+  assert.strictEqual(directDiscount.display_status, 'programmed');
+  assert.strictEqual(commerceModel.getPromotionState(summary).label, 'Programada');
+});
+
+test('promotion summary não ativa participação sem identidade quando o vínculo é ambíguo', async () => {
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+    getItemSalePrice: async () => ({
+      amount: 90,
+      regular_amount: 100,
+      currency_id: 'BRL',
+      metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'custom' }
+    }),
+    getItemPromotions: async () => ([
+      { type: 'PRICE_DISCOUNT', status: 'started', price: 90, original_price: 100 },
+      { type: 'PRICE_DISCOUNT', status: 'started', price: 80, original_price: 100 }
+    ]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotionOffer: async () => ({
+      id: 'OFFER-WINNER',
+      item_id: 'MLB1',
+      promotion_id: '',
+      type: 'PRICE_DISCOUNT',
+      status: { id: 'started' }
+    })
+  }, 'MLB1');
+
+  assert.strictEqual(summary.offers.active.every((entry) => entry.is_current_price === false), true);
+  assert.deepStrictEqual(summary.offers.active.map((entry) => entry.display_status), ['programmed', 'programmed']);
+  assert.strictEqual(commerceModel.getPromotionState(summary).activeCount, 0);
+  assert.strictEqual(commerceModel.getPromotionState(summary).label, 'Programada');
 });
 
 test('promotion summary não transforma conflito inativo em promoção programada', async () => {

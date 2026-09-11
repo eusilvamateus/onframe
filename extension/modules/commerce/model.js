@@ -57,7 +57,6 @@
     const priceOffers = entries.activeOffers.concat(entries.scheduledOffers);
     const activeCount = currentOfferCount(priceOffers);
     const appliedCount = entries.activeOffers.length;
-    const participatingCount = participatingOfferCount(entries.activeOffers);
     const eligibleCount = list(entries.eligibleOffers).filter((entry) => !isStackablePromotion(entry)).length;
     const scheduledCount = programmedOfferCount(entries);
 
@@ -65,7 +64,6 @@
       return {
         activeCount,
         appliedCount,
-        participatingCount,
         eligibleCount,
         scheduledCount,
         label: activeCount === 1 ? 'Promo ativa' : `${activeCount} ativas`,
@@ -78,7 +76,6 @@
       return {
         activeCount,
         appliedCount,
-        participatingCount,
         eligibleCount,
         scheduledCount,
         label: 'Programada',
@@ -87,26 +84,10 @@
       };
     }
 
-    if (participatingCount) {
-      return {
-        activeCount,
-        appliedCount,
-        participatingCount,
-        eligibleCount,
-        scheduledCount,
-        label: participatingCount === 1 ? 'No anúncio' : `${participatingCount} no anúncio`,
-        tone: 'muted',
-        summary: participatingCount === 1
-          ? 'O anúncio participa de uma campanha que não define o preço atual.'
-          : 'O anúncio participa de campanhas que não definem o preço atual.'
-      };
-    }
-
     if (eligibleCount) {
       return {
         activeCount,
         appliedCount,
-        participatingCount,
         eligibleCount,
         scheduledCount,
         label: 'Elegível',
@@ -118,7 +99,6 @@
     return {
       activeCount,
       appliedCount,
-      participatingCount,
       eligibleCount,
       scheduledCount,
       label: 'Sem promo',
@@ -180,12 +160,6 @@
   function currentOfferCount(entries) {
     const offers = list(entries).filter((entry) => !isStackablePromotion(entry));
     return offers.filter((entry) => entry && entry.is_current_price === true).length;
-  }
-
-  function participatingOfferCount(entries) {
-    return list(entries).filter((entry) => {
-      return !isStackablePromotion(entry) && String(entry && entry.display_status || '').toLowerCase() === 'participating';
-    }).length;
   }
 
   function programmedOfferCount(entries) {

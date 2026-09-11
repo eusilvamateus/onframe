@@ -833,10 +833,12 @@ function stackablePromotionContext(type, value = {}) {
 }
 
 function annotatePriceWinningPromotion(entries, salePrice, winnerReconciliation = null) {
+  const normalizedEntries = Array.isArray(entries) ? entries : [];
   const hasSaleWinner = Boolean(salePricePromotionReference(salePrice));
-  return (Array.isArray(entries) ? entries : [])
+  return normalizedEntries
     .map((entry) => {
-      const matchesSalePrice = isSalePricePromotion(entry, salePrice);
+      const matchesSalePrice = isSalePricePromotion(entry, salePrice) ||
+        isReconciledSalePriceWinner(entry, winnerReconciliation);
       const isStackable = entry && entry.is_stackable === true || isStackablePromotionType(entry && entry.type);
       const offerStatus = reconciledOfferStatus(entry, winnerReconciliation);
       const isCurrentPrice = matchesSalePrice && isPriceWinnerActive(entry, offerStatus);
@@ -856,8 +858,11 @@ function isSalePricePromotion(entry, salePrice) {
   const reference = salePricePromotionReference(salePrice);
   if (!reference || !entry) return false;
   const offerId = String(entry.offer_id || '').trim();
-  if (!offerId || offerId !== reference.offerId) return false;
-  return salePricePromotionTypeMatches(entry.type, reference.type);
+  return Boolean(offerId && offerId === reference.offerId);
+}
+
+function isReconciledSalePriceWinner(entry, reconciliation) {
+  return Boolean(entry && reconciliation && reconciliation.entry === entry);
 }
 
 function salePricePromotionReference(salePrice) {
@@ -866,28 +871,42 @@ function salePricePromotionReference(salePrice) {
   const offerId = String(metadata.promotion_id || '').trim();
   if (!offerId) return null;
   return {
-    offerId,
-    type: String(metadata.promotion_type || '').trim()
+    offerId
   };
-}
-
-function salePricePromotionTypeMatches(entryType, salePriceType) {
-  const expected = normalizePromotionType(salePriceType);
-  if (!expected || ['CAMPAIGN', 'CUSTOM'].includes(expected)) return true;
-  return normalizePromotionType(entryType) === expected;
 }
 
 async function reconcileSalePriceWinner(client, itemId, entries, salePrice) {
   if (!client || typeof client.getPromotionOffer !== 'function') return null;
-  const winner = (Array.isArray(entries) ? entries : []).find((entry) => isSalePricePromotion(entry, salePrice));
-  if (!winner || winner.is_stackable === true || String(winner.status || '').toLowerCase() === 'started' || !winner.offer_id) return null;
+  const reference = salePricePromotionReference(salePrice);
+  if (!reference) return null;
 
-  const response = await optional(() => client.getPromotionOffer(winner.offer_id), [400, 404]);
-  if (!response || hasError(response) || !promotionOfferMatchesWinner(response, itemId, winner)) return null;
+  const normalizedEntries = Array.isArray(entries) ? entries : [];
+  const exactWinner = normalizedEntries.find((entry) => isSalePricePromotion(entry, salePrice));
+  if (exactWinner && (
+    exactWinner.is_stackable === true ||
+    String(exactWinner.status || '').toLowerCase() === 'started'
+  )) return null;
+
+  const response = await optional(() => client.getPromotionOffer(reference.offerId), [400, 404]);
+  if (!response || hasError(response) || !promotionOfferMatchesSalePrice(response, itemId, reference)) return null;
+
+  const winner = exactWinner || resolvePromotionOfferWinner(response, itemId, normalizedEntries);
+  if (!winner) return null;
+  if (exactWinner && !promotionOfferMatchesWinner(response, itemId, exactWinner)) return null;
 
   const status = normalizePromotionOfferStatus(response);
-  if (!['active', 'programmed', 'inactive'].includes(status)) return null;
-  return { offer_id: winner.offer_id, status };
+  return {
+    entry: winner,
+    offer_id: reference.offerId,
+    status: ['active', 'programmed', 'inactive'].includes(status) ? status : null
+  };
+}
+
+function promotionOfferMatchesSalePrice(offer, itemId, reference) {
+  const offerId = String(offer && offer.id || '').trim();
+  if (!offerId || offerId !== String(reference && reference.offerId || '')) return false;
+  const offerItemId = String(offer && offer.item_id || '').trim();
+  return Boolean(offerItemId && offerItemId === String(itemId));
 }
 
 function promotionOfferMatchesWinner(offer, itemId, winner) {
@@ -895,9 +914,45 @@ function promotionOfferMatchesWinner(offer, itemId, winner) {
   const winnerOfferId = String(winner && winner.offer_id || '').trim();
   if (!offerId || offerId !== winnerOfferId) return false;
   const offerItemId = String(offer && offer.item_id || '').trim();
-  if (offerItemId && offerItemId !== String(itemId)) return false;
+  return Boolean(offerItemId && offerItemId === String(itemId));
+}
+
+function resolvePromotionOfferWinner(offer, itemId, entries) {
+  const promotionMatches = (Array.isArray(entries) ? entries : [])
+    .filter((entry) => promotionOfferMatchesPromotion(offer, itemId, entry));
+  if (promotionMatches.length === 1) return promotionMatches[0];
+  if (promotionMatches.length) return null;
+
+  const unlinkedMatches = (Array.isArray(entries) ? entries : [])
+    .filter((entry) => promotionOfferMatchesUnlinkedEntry(offer, itemId, entry));
+  return unlinkedMatches.length === 1 ? unlinkedMatches[0] : null;
+}
+
+function promotionOfferMatchesPromotion(offer, itemId, entry) {
+  const offerItemId = String(offer && offer.item_id || '').trim();
+  if (!offerItemId || offerItemId !== String(itemId)) return false;
+
+  const offerPromotionId = String(offer && offer.promotion_id || '').trim();
+  const entryPromotionId = String(entry && (entry.id || entry.promotion_id) || '').trim();
+  if (!offerPromotionId || !entryPromotionId || offerPromotionId !== entryPromotionId) return false;
+
+  return true;
+}
+
+function promotionOfferMatchesUnlinkedEntry(offer, itemId, entry) {
+  const offerItemId = String(offer && offer.item_id || '').trim();
+  if (!offerItemId || offerItemId !== String(itemId)) return false;
+
+  const offerPromotionId = String(offer && offer.promotion_id || '').trim();
+  const entryPromotionId = String(entry && (entry.id || entry.promotion_id) || '').trim();
+  const entryOfferId = String(entry && entry.offer_id || '').trim();
+  if (offerPromotionId || entryPromotionId || entryOfferId) return false;
+  if (entry && entry.is_stackable === true) return false;
+  if (String(entry && entry.status || '').toLowerCase() !== 'started') return false;
+
   const offerType = normalizePromotionType(offer && offer.type);
-  return !offerType || offerType === normalizePromotionType(winner && winner.type);
+  const entryType = normalizePromotionType(entry && entry.type);
+  return Boolean(offerType && entryType && offerType === entryType);
 }
 
 function normalizePromotionOfferStatus(value) {
@@ -909,7 +964,7 @@ function normalizePromotionOfferStatus(value) {
 
 function reconciledOfferStatus(entry, reconciliation) {
   if (!entry || !reconciliation) return null;
-  return String(entry.offer_id || '') === String(reconciliation.offer_id || '') ? reconciliation.status : null;
+  return reconciliation.entry === entry ? reconciliation.status : null;
 }
 
 function isPriceWinnerActive(entry, offerStatus) {
@@ -929,7 +984,7 @@ function displayPromotionStatus(status, options = {}) {
   if (value === 'finished') return 'finished';
   if (value === 'started') {
     if (options.isStackable === true || options.isCurrentPrice === true) return 'active';
-    return 'participating';
+    return 'programmed';
   }
   return 'informational';
 }
@@ -946,11 +1001,10 @@ function promotionDisplayRank(entry) {
   if (entry && entry.is_current_price === true) return 0;
   if (status === 'active' && entry && entry.is_stackable === true) return 1;
   if (status === 'active') return 2;
-  if (status === 'participating') return 3;
-  if (status === 'programmed') return 4;
-  if (status === 'available') return 5;
-  if (status === 'finished') return 6;
-  return 7;
+  if (status === 'programmed') return 3;
+  if (status === 'available') return 4;
+  if (status === 'finished') return 5;
+  return 6;
 }
 
 function summarizePromotionSalePrice(salePrice) {
