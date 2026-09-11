@@ -28,9 +28,11 @@ Voce pode encontrar:
 - `Preco`: valor atual ou valor final da promocao.
 - `Desconto`: percentual aplicado.
 - `Voce recebe`: estimativa do valor que fica para o vendedor.
-- `Com reducao de tarifas`: participacao promocional do Mercado Livre, comunicada como reducao nas tarifas por venda.
+- `Com reducao de tarifas`: participacao promocional do Mercado Livre,
+  comunicada como reducao nas tarifas por venda.
 - `Desconto do vendedor`: parcela do desconto comercial assumida pelo vendedor.
-- `Bonus do Mercado Livre`: beneficio adicional de boost que reduz as tarifas por venda.
+- `Bonus do Mercado Livre`: beneficio adicional de boost que reduz as tarifas
+  por venda.
 - `Comissao`: custo da venda.
 - `Frete`: custo relacionado ao envio.
 
@@ -41,7 +43,9 @@ de pagamento e nao entram na estimativa principal.
 ![Print - Promocao com reducao de tarifas](assets/promocoes-rebate-mercado-livre.png)
 
 Nem toda promocao tem todos os campos. Quando uma informacao nao existe para
-aquele caso, o OnFrame evita preencher a tela com blocos vazios.
+aquele caso, o OnFrame evita preencher a tela com blocos vazios. A classificacao
+de **Ativa**, **Programada** e **Disponivel** segue as
+[regras de produto](../product/promocoes.md).
 
 ## Aplicar promocao
 

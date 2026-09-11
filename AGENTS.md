@@ -11,14 +11,18 @@ e acionáveis. Este arquivo deve permanecer na raiz do repositório e ser versio
 Faça commit e push de suas atualizações seguindo o fluxo de trabalho do projeto.
 Escreva todas as diretrizes textuais deste arquivo em português.
 
-## Estrutura do Projeto e Organização de Módulos
+## Contexto do Projeto
 
-O código do navegador fica em `extension/`: `core/` contém código compartilhado,
-`modules/` os recursos de domínio, `ui/` as páginas da extensão e `styles/` as
-fundações visuais. O serviço Node.js local fica em `service/`, com rotas HTTP em
-`src/routes/`. Mantenha automações de instalação e lançamento em `scripts/`; o
-contrato público de compatibilidade fica em `scripts/bootstrap/`. Os testes
-automatizados ficam em `test/` e a documentação em `docs/`.
+Antes de alterar fronteiras, responsabilidades ou contratos entre componentes,
+leia [a arquitetura do projeto](docs/architecture/estrutura-do-projeto.md).
+Use [o indice da documentacao](docs/README.md) para localizar regras de produto,
+guias de usuario e procedimentos de manutencao sem duplicar esse conhecimento
+neste arquivo.
+
+Antes de alterar autenticacao, contas conectadas, tokens ou chamadas ao Mercado
+Livre, leia [a integracao Mercado Livre](docs/integrations/mercado-livre.md).
+Antes de alterar o servico local ou os scripts de bootstrap, leia
+[Servico local](docs/operations/servico-local.md).
 
 ## Comandos de Build, Teste e Desenvolvimento
 
@@ -47,12 +51,12 @@ e mudanças visíveis ao usuário, não apenas utilitários. Execute o teste foc
 desenvolvimento e depois `npm run test:all`. Alterações de UI devem manter as
 asserções de layout e interação atualizadas.
 
-## Workflow Git
+## Git e releases
 
-Antes de executar qualquer operação Git, leia e siga integralmente
-`docs/fluxo/GIT_WORKFLOW.md`. Esse documento é a fonte única de verdade para branches,
-commits, integração, histórico, SemVer, GitHub Actions, releases e reversões. Não
-duplique ou mantenha regras Git divergentes neste arquivo.
+Antes de executar qualquer operação Git ou preparar uma release, use e siga a
+skill `fluxo-git-releases`. Ela é a única fonte de verdade para branches,
+commits, integração, histórico, SemVer e publicação. Não mantenha uma cópia
+desse workflow no repositório.
 
 ## Segurança e Integrações
 
