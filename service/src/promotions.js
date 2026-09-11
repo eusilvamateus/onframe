@@ -159,7 +159,11 @@ async function buildPromotionSummary(client, itemId) {
   const sellerWideCouponKeys = new Set(sellerWideCouponEntries.map(promotionEntryKey).filter(Boolean));
   const itemScopedPromotionEntries = itemPromotionEntries.filter((entry) => !sellerWideCouponKeys.has(promotionEntryKey(entry)));
   const enrichedItemPromotions = await enrichSellerPromotionsForItem(client, item.id, sellerPromotionEntries, itemScopedPromotionEntries);
-  const offers = annotatePriceWinningPromotion(itemScopedPromotionEntries.concat(enrichedItemPromotions, sellerWideCouponEntries.map(normalizeSellerWideCouponEntry)).map(normalizePromotionEntry), salePrice);
+  const normalizedOffers = itemScopedPromotionEntries
+    .concat(enrichedItemPromotions, sellerWideCouponEntries.map(normalizeSellerWideCouponEntry))
+    .map(normalizePromotionEntry);
+  const winnerReconciliation = await reconcileSalePriceWinner(client, item.id, normalizedOffers, salePrice);
+  const offers = annotatePriceWinningPromotion(normalizedOffers, salePrice, winnerReconciliation);
   const campaigns = sellerPromotionEntries.map(normalizePromotionEntry);
 
   return {
@@ -331,7 +335,7 @@ async function enrichSellerPromotionsForItem(client, itemId, sellerPromotions, i
 function isSellerWideCouponCampaign(entry) {
   const type = normalizePromotionType(entry && (entry.type || entry.promotion_type || entry.campaign_type));
   const status = String(entry && (entry.status || entry.status_item) || '').toLowerCase();
-  return type === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN && ['started', 'active', 'pending', 'programmed', 'sync_requested'].includes(status);
+  return type === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN && ['started', 'pending'].includes(status);
 }
 
 function normalizeSellerWideCouponEntry(campaign) {
@@ -754,6 +758,7 @@ function normalizePromotionEntry(value) {
     candidate: status === 'candidate',
     is_current_price: false,
     price_role: 'unknown',
+    offer_status: null,
     display_status: displayPromotionStatus(status),
     capabilities: promotionAdapter ? summarizeAdapter(promotionAdapter) : null,
     boost: summarizeBoost(value),
@@ -798,18 +803,18 @@ function groupPromotions(entries) {
 }
 
 function classifyStatus(status) {
-  if (['started', 'active'].includes(status)) return 'active';
-  if (['pending', 'programmed', 'sync_requested'].includes(status)) return 'scheduled';
+  if (status === 'started') return 'active';
+  if (status === 'pending') return 'scheduled';
   if (['candidate'].includes(status)) return 'eligible';
-  if (['finished', 'deleted', 'restore_requested'].includes(status)) return 'finished';
+  if (status === 'finished') return 'finished';
   return 'other';
 }
 
 function apiStatusBucket(status) {
-  if (['started', 'active'].includes(status)) return 'applied';
-  if (['pending', 'programmed', 'sync_requested'].includes(status)) return 'pending';
+  if (status === 'started') return 'applied';
+  if (status === 'pending') return 'pending';
   if (['candidate'].includes(status)) return 'candidate';
-  if (['finished', 'deleted', 'restore_requested'].includes(status)) return 'finished';
+  if (status === 'finished') return 'finished';
   return 'other';
 }
 
@@ -827,46 +832,104 @@ function stackablePromotionContext(type, value = {}) {
   return String(value.stackable_context || 'discount').trim() || 'discount';
 }
 
-function annotatePriceWinningPromotion(entries, salePrice) {
-  const hasSaleContext = Boolean(salePrice && !hasError(salePrice));
+function annotatePriceWinningPromotion(entries, salePrice, winnerReconciliation = null) {
+  const hasSaleWinner = Boolean(salePricePromotionReference(salePrice));
   return (Array.isArray(entries) ? entries : [])
     .map((entry) => {
-      const isCurrentPrice = hasSaleContext && isSalePricePromotion(entry, salePrice);
+      const matchesSalePrice = isSalePricePromotion(entry, salePrice);
       const isStackable = entry && entry.is_stackable === true || isStackablePromotionType(entry && entry.type);
+      const offerStatus = reconciledOfferStatus(entry, winnerReconciliation);
+      const isCurrentPrice = matchesSalePrice && isPriceWinnerActive(entry, offerStatus);
       return Object.assign({}, entry, {
         is_current_price: isCurrentPrice,
-        price_role: hasSaleContext
-          ? isCurrentPrice ? 'current_price' : isStackable ? 'stackable' : 'not_current_price'
+        price_role: hasSaleWinner
+          ? isCurrentPrice ? 'current_price' : matchesSalePrice ? 'winner_unconfirmed' : isStackable ? 'stackable' : 'not_current_price'
           : 'unknown',
-        display_status: displayPromotionStatus(entry.status)
+        offer_status: offerStatus,
+        display_status: displayPromotionStatus(entry.status, { isCurrentPrice, isStackable, offerStatus })
       });
     })
     .sort(comparePromotionDisplayOrder);
 }
 
 function isSalePricePromotion(entry, salePrice) {
-  const metadata = salePrice && salePrice.metadata ? salePrice.metadata : {};
-  const campaignId = String(metadata.campaign_id || '').trim();
-  const promotionId = String(metadata.promotion_id || '').trim();
-  const ids = [
-    entry && entry.id,
-    entry && entry.promotion_id,
-    entry && entry.offer_id
-  ].map((value) => String(value || '').trim()).filter(Boolean);
-
-  return Boolean(
-    campaignId && ids.includes(campaignId) ||
-    promotionId && ids.includes(promotionId)
-  );
+  const reference = salePricePromotionReference(salePrice);
+  if (!reference || !entry) return false;
+  const offerId = String(entry.offer_id || '').trim();
+  if (!offerId || offerId !== reference.offerId) return false;
+  return salePricePromotionTypeMatches(entry.type, reference.type);
 }
 
-function displayPromotionStatus(status) {
+function salePricePromotionReference(salePrice) {
+  if (!salePrice || hasError(salePrice)) return null;
+  const metadata = salePrice.metadata && typeof salePrice.metadata === 'object' ? salePrice.metadata : {};
+  const offerId = String(metadata.promotion_id || '').trim();
+  if (!offerId) return null;
+  return {
+    offerId,
+    type: String(metadata.promotion_type || '').trim()
+  };
+}
+
+function salePricePromotionTypeMatches(entryType, salePriceType) {
+  const expected = normalizePromotionType(salePriceType);
+  if (!expected || ['CAMPAIGN', 'CUSTOM'].includes(expected)) return true;
+  return normalizePromotionType(entryType) === expected;
+}
+
+async function reconcileSalePriceWinner(client, itemId, entries, salePrice) {
+  if (!client || typeof client.getPromotionOffer !== 'function') return null;
+  const winner = (Array.isArray(entries) ? entries : []).find((entry) => isSalePricePromotion(entry, salePrice));
+  if (!winner || winner.is_stackable === true || String(winner.status || '').toLowerCase() === 'started' || !winner.offer_id) return null;
+
+  const response = await optional(() => client.getPromotionOffer(winner.offer_id), [400, 404]);
+  if (!response || hasError(response) || !promotionOfferMatchesWinner(response, itemId, winner)) return null;
+
+  const status = normalizePromotionOfferStatus(response);
+  if (!['active', 'programmed', 'inactive'].includes(status)) return null;
+  return { offer_id: winner.offer_id, status };
+}
+
+function promotionOfferMatchesWinner(offer, itemId, winner) {
+  const offerId = String(offer && offer.id || '').trim();
+  const winnerOfferId = String(winner && winner.offer_id || '').trim();
+  if (!offerId || offerId !== winnerOfferId) return false;
+  const offerItemId = String(offer && offer.item_id || '').trim();
+  if (offerItemId && offerItemId !== String(itemId)) return false;
+  const offerType = normalizePromotionType(offer && offer.type);
+  return !offerType || offerType === normalizePromotionType(winner && winner.type);
+}
+
+function normalizePromotionOfferStatus(value) {
+  const status = value && value.status && typeof value.status === 'object'
+    ? value.status.id
+    : value && value.status;
+  return String(status || '').trim().toLowerCase();
+}
+
+function reconciledOfferStatus(entry, reconciliation) {
+  if (!entry || !reconciliation) return null;
+  return String(entry.offer_id || '') === String(reconciliation.offer_id || '') ? reconciliation.status : null;
+}
+
+function isPriceWinnerActive(entry, offerStatus) {
+  if (offerStatus === 'inactive' || offerStatus === 'programmed') return false;
+  if (offerStatus === 'active') return true;
+  return String(entry && entry.status || '').toLowerCase() === 'started';
+}
+
+function displayPromotionStatus(status, options = {}) {
   const value = String(status || '').toLowerCase();
-  if (['candidate'].includes(value)) return 'available';
-  if (['pending', 'programmed', 'sync_requested'].includes(value)) return 'programmed';
-  if (['finished', 'deleted', 'restore_requested'].includes(value)) return 'finished';
-  if (['started', 'active'].includes(value)) {
-    return 'active';
+  const offerStatus = String(options.offerStatus || '').toLowerCase();
+  if (offerStatus === 'inactive') return 'informational';
+  if (offerStatus === 'programmed') return 'programmed';
+  if (offerStatus === 'active' && options.isCurrentPrice === true) return 'active';
+  if (value === 'candidate') return 'available';
+  if (value === 'pending') return 'programmed';
+  if (value === 'finished') return 'finished';
+  if (value === 'started') {
+    if (options.isStackable === true || options.isCurrentPrice === true) return 'active';
+    return 'participating';
   }
   return 'informational';
 }
@@ -883,10 +946,11 @@ function promotionDisplayRank(entry) {
   if (entry && entry.is_current_price === true) return 0;
   if (status === 'active' && entry && entry.is_stackable === true) return 1;
   if (status === 'active') return 2;
-  if (status === 'programmed') return 3;
-  if (status === 'available') return 4;
-  if (status === 'finished') return 5;
-  return 6;
+  if (status === 'participating') return 3;
+  if (status === 'programmed') return 4;
+  if (status === 'available') return 5;
+  if (status === 'finished') return 6;
+  return 7;
 }
 
 function summarizePromotionSalePrice(salePrice) {

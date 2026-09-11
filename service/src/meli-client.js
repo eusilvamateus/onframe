@@ -155,6 +155,10 @@ class MercadoLivreClient {
     })));
   }
 
+  async getPromotionOffer(offerId) {
+    return this.request(`/seller-promotions/offers/${encodeURIComponent(offerId)}?app_version=v2`);
+  }
+
   async createPromotionCampaign(payload) {
     return this.request('/seller-promotions/promotions?app_version=v2', {
       method: 'POST',

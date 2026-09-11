@@ -54,8 +54,10 @@
 
   function getPromotionState(summary) {
     const entries = collectPromotionGroups(summary);
-    const activeCount = currentOfferCount(entries.activeOffers);
+    const priceOffers = entries.activeOffers.concat(entries.scheduledOffers);
+    const activeCount = currentOfferCount(priceOffers);
     const appliedCount = entries.activeOffers.length;
+    const participatingCount = participatingOfferCount(entries.activeOffers);
     const eligibleCount = list(entries.eligibleOffers).filter((entry) => !isStackablePromotion(entry)).length;
     const scheduledCount = programmedOfferCount(entries);
 
@@ -63,6 +65,7 @@
       return {
         activeCount,
         appliedCount,
+        participatingCount,
         eligibleCount,
         scheduledCount,
         label: activeCount === 1 ? 'Promo ativa' : `${activeCount} ativas`,
@@ -75,6 +78,7 @@
       return {
         activeCount,
         appliedCount,
+        participatingCount,
         eligibleCount,
         scheduledCount,
         label: 'Programada',
@@ -83,10 +87,26 @@
       };
     }
 
+    if (participatingCount) {
+      return {
+        activeCount,
+        appliedCount,
+        participatingCount,
+        eligibleCount,
+        scheduledCount,
+        label: participatingCount === 1 ? 'No anúncio' : `${participatingCount} no anúncio`,
+        tone: 'muted',
+        summary: participatingCount === 1
+          ? 'O anúncio participa de uma campanha que não define o preço atual.'
+          : 'O anúncio participa de campanhas que não definem o preço atual.'
+      };
+    }
+
     if (eligibleCount) {
       return {
         activeCount,
         appliedCount,
+        participatingCount,
         eligibleCount,
         scheduledCount,
         label: 'Elegível',
@@ -98,6 +118,7 @@
     return {
       activeCount,
       appliedCount,
+      participatingCount,
       eligibleCount,
       scheduledCount,
       label: 'Sem promo',
@@ -158,11 +179,12 @@
 
   function currentOfferCount(entries) {
     const offers = list(entries).filter((entry) => !isStackablePromotion(entry));
-    const current = offers.filter((entry) => entry && (entry.is_current_price === true || entry.display_status === 'active')).length;
-    if (offers.some((entry) => entry && entry.display_status)) return current;
-    return current || offers.filter((entry) => {
-      const status = String(entry && entry.status || '').toLowerCase();
-      return ['started', 'active'].includes(status);
+    return offers.filter((entry) => entry && entry.is_current_price === true).length;
+  }
+
+  function participatingOfferCount(entries) {
+    return list(entries).filter((entry) => {
+      return !isStackablePromotion(entry) && String(entry && entry.display_status || '').toLowerCase() === 'participating';
     }).length;
   }
 
@@ -170,7 +192,10 @@
     const activeProgrammed = list(entries && entries.activeOffers).filter((entry) => {
       return !isStackablePromotion(entry) && String(entry && entry.display_status || '').toLowerCase() === 'programmed';
     });
-    const scheduled = list(entries && entries.scheduledOffers).filter((entry) => !isStackablePromotion(entry));
+    const scheduled = list(entries && entries.scheduledOffers).filter((entry) => {
+      return !isStackablePromotion(entry) && entry && entry.is_current_price !== true &&
+        String(entry.display_status || '').toLowerCase() === 'programmed';
+    });
     return uniquePromotionEntries(activeProgrammed.concat(scheduled)).length;
   }
 

@@ -1209,6 +1209,7 @@
           <div class="onframe-commerce-promotion-filter-group">
             <strong>Estado</strong>
             ${renderPromotionFilterOption('status', 'active', 'Ativas')}
+            ${renderPromotionFilterOption('status', 'participating', 'No anúncio')}
             ${renderPromotionFilterOption('status', 'programmed', 'Programadas')}
             ${renderPromotionFilterOption('status', 'available', 'Disponíveis')}
           </div>
@@ -1355,8 +1356,8 @@
     function renderPromotionListRow(row) {
       const { entry, kind, index, key, type, status } = row;
       const canCreate = !CommerceModel.isSellerWidePromotion(entry) && (kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry));
-      const canUpdate = (kind === 'active-offer' || kind === 'programmed-offer') && CommerceModel.canUpdateOffer(entry);
-      const canDelete = (kind === 'active-offer' || kind === 'programmed-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
+      const canUpdate = (kind === 'active-offer' || kind === 'participating-offer' || kind === 'programmed-offer') && CommerceModel.canUpdateOffer(entry);
+      const canDelete = (kind === 'active-offer' || kind === 'participating-offer' || kind === 'programmed-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
       const userFields = CommerceModel.getUserFields(canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
       const formOpen = state.promotionFormKey === key;
       const confirm = state.promotionConfirm && state.promotionConfirm.key === key ? state.promotionConfirm : null;
@@ -1467,7 +1468,8 @@
       const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
       const directDiscount = buildDiscountEntry();
       const sources = [
-        { kind: 'active-offer', entries: currentPromotionEntries(campaignPromotionEntries(groups.activeOffers)) },
+        { kind: 'active-offer', entries: currentPromotionEntries(campaignPromotionEntries(pricePromotionEntries(groups))) },
+        { kind: 'participating-offer', entries: participatingPromotionEntries(campaignPromotionEntries(groups.activeOffers)) },
         { kind: 'stackable-offer', entries: stackablePromotionEntries(groups) },
         { kind: 'eligible-offer', entries: promotionOpportunityEntries(groups) },
         { kind: 'discount-offer', entries: directDiscount ? [directDiscount] : [] },
@@ -1495,7 +1497,7 @@
     }
 
     function comparePromotionRows(left, right) {
-      const statusOrder = { active: 0, programmed: 1, available: 2 };
+      const statusOrder = { active: 0, participating: 1, programmed: 2, available: 3 };
       const statusDifference = (statusOrder[left.status] ?? 9) - (statusOrder[right.status] ?? 9);
       if (statusDifference) return statusDifference;
       const leftDate = promotionEndTimestamp(left.entry);
@@ -1507,6 +1509,7 @@
     function promotionListStatus(entry, kind) {
       const display = String(entry && entry.display_status || '').toLowerCase();
       if (display === 'active') return 'active';
+      if (display === 'participating') return 'participating';
       if (display === 'programmed') return 'programmed';
       if (display === 'available') return 'available';
       if (kind === 'discount-offer') {
@@ -1519,6 +1522,7 @@
     }
 
     function promotionListStatusLabel(status) {
+      if (status === 'participating') return 'No anúncio';
       if (status === 'programmed') return 'Programada';
       if (status === 'available') return 'Disponível';
       return 'Ativa';
@@ -1776,13 +1780,15 @@
     }
 
     function promotionPopoverCampaignEntry(groups) {
-      const active = currentPromotionEntry(groups && groups.activeOffers);
+      const active = currentPromotionEntry(campaignPromotionEntries(pricePromotionEntries(groups)));
       if (active) return active;
-      return programmedPromotionEntries(groups).slice().sort((left, right) => {
+      const programmed = programmedPromotionEntries(groups).slice().sort((left, right) => {
         const difference = promotionStartTimestamp(left) - promotionStartTimestamp(right);
         if (difference) return difference;
         return String(left && left.label || '').localeCompare(String(right && right.label || ''), 'pt-BR');
-      })[0] || null;
+      })[0];
+      if (programmed) return programmed;
+      return participatingPromotionEntries(campaignPromotionEntries(groups && groups.activeOffers))[0] || null;
     }
 
     function promotionPopoverCouponEntries(groups) {
@@ -2022,6 +2028,7 @@
     function promotionBenefitState(entry, kind) {
       if (kind === 'eligible-offer' || isCandidatePromotion(entry)) return 'available';
       if (kind === 'programmed-offer' || String(entry && entry.display_status || '').toLowerCase() === 'programmed') return 'programmed';
+      if (kind === 'participating-offer' || String(entry && entry.display_status || '').toLowerCase() === 'participating') return 'participating';
       return 'active';
     }
 
@@ -2054,15 +2061,31 @@
     }
 
     function currentPromotionEntries(entries) {
-      return (Array.isArray(entries) ? entries : []).filter((entry) => entry && !isStackablePromotion(entry) && (entry.is_current_price === true || entry.display_status === 'active'));
+      return (Array.isArray(entries) ? entries : []).filter((entry) => entry && !isStackablePromotion(entry) && entry.is_current_price === true);
     }
 
     function programmedPromotionEntries(groups) {
       const activeProgrammed = campaignPromotionEntries(groups.activeOffers).filter((entry) => {
         return !isStackablePromotion(entry) && String(entry && entry.display_status || '').toLowerCase() === 'programmed';
       });
-      const scheduled = campaignPromotionEntries(groups.scheduledOffers).filter((entry) => !isStackablePromotion(entry));
+      const scheduled = campaignPromotionEntries(groups.scheduledOffers).filter((entry) => {
+        return !isStackablePromotion(entry) && entry && entry.is_current_price !== true &&
+          String(entry.display_status || '').toLowerCase() === 'programmed';
+      });
       return uniquePromotionEntries(activeProgrammed.concat(scheduled));
+    }
+
+    function participatingPromotionEntries(entries) {
+      return (Array.isArray(entries) ? entries : []).filter((entry) => {
+        return entry && !isStackablePromotion(entry) && String(entry.display_status || '').toLowerCase() === 'participating';
+      });
+    }
+
+    function pricePromotionEntries(groups) {
+      return uniquePromotionEntries([
+        groups && groups.activeOffers,
+        groups && groups.scheduledOffers
+      ].flat());
     }
 
     function stackablePromotionEntries(groups) {
@@ -2080,6 +2103,7 @@
     function promotionDisplayStatusLabel(entry) {
       const status = String(entry && entry.display_status || '').toLowerCase();
       if (status === 'active') return 'Ativa';
+      if (status === 'participating') return 'No anúncio';
       if (status === 'programmed') return 'Programada';
       if (status === 'available') return 'Elegível';
       if (status === 'finished') return 'Finalizada';
@@ -2497,6 +2521,7 @@
       if (!benefit) return '';
       if (state === 'available') return `Redução de ${benefit} nas suas tarifas por venda ao participar.`;
       if (state === 'programmed') return `Reduziremos ${benefit} nas suas tarifas por venda.`;
+      if (state === 'participating') return `Condição desta campanha: redução de ${benefit} nas tarifas por venda.`;
       return `Reduzimos ${benefit} nas suas tarifas por venda.`;
     }
 
@@ -2678,6 +2703,7 @@
 
     function promotionTone(entry, kind) {
       if (kind === 'active-offer') return promotionDisplayTone(entry);
+      if (kind === 'participating-offer') return 'muted';
       if (kind === 'programmed-offer') return 'blue';
       if (kind === 'stackable-offer') return promotionDisplayTone(entry);
       if (kind === 'discount-offer') return promotionDisplayTone(entry);
@@ -2691,6 +2717,7 @@
 
     function promotionStatusLabel(entry, kind) {
       if (kind === 'active-offer') return promotionDisplayStatusLabel(entry);
+      if (kind === 'participating-offer') return 'No anúncio';
       if (kind === 'stackable-offer') return promotionDisplayStatusLabel(entry);
       if (kind === 'discount-offer') return promotionDisplayStatusLabel(entry);
       if (kind === 'eligible-offer') return 'Elegível';
@@ -2714,6 +2741,11 @@
         if (canUpdate && userFields.length) return 'Edite os valores desta promoção.';
         if (canDelete) return 'Promoção aplicada. Você pode remover daqui.';
         return 'Promoção aplicada pelo Mercado Livre.';
+      }
+      if (kind === 'participating-offer') {
+        if (canUpdate && userFields.length) return 'O anúncio participa desta campanha, mas ela não define o preço atual. Você pode editar os valores.';
+        if (canDelete) return 'O anúncio participa desta campanha, mas ela não define o preço atual. Você pode removê-la daqui.';
+        return 'O anúncio participa desta campanha, mas ela não define o preço atual.';
       }
       if (kind === 'programmed-offer') {
         if (canUpdate && userFields.length) return 'Aplicada ao anúncio. Você pode alterar antes de entrar.';
@@ -2777,7 +2809,7 @@
     }
 
     function promotionOpportunityEntries(groups) {
-      const itemOffers = uniquePromotionEntries(campaignPromotionEntries(groups.eligibleOffers), campaignPromotionEntries(groups.activeOffers))
+      const itemOffers = uniquePromotionEntries(campaignPromotionEntries(groups.eligibleOffers))
         .filter((entry) => !isStackablePromotion(entry));
       return itemOffers;
     }
@@ -4400,7 +4432,8 @@
 
     function getPromotionEntry(kind, index) {
       const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
-      if (kind === 'active-offer') return currentPromotionEntries(campaignPromotionEntries(groups.activeOffers))[index] || null;
+      if (kind === 'active-offer') return currentPromotionEntries(campaignPromotionEntries(pricePromotionEntries(groups)))[index] || null;
+      if (kind === 'participating-offer') return participatingPromotionEntries(campaignPromotionEntries(groups.activeOffers))[index] || null;
       if (kind === 'stackable-offer') return stackablePromotionEntries(groups)[index] || null;
       if (kind === 'eligible-offer') return promotionOpportunityEntries(groups)[index] || null;
       if (kind === 'discount-offer') return buildDiscountEntry();

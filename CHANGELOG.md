@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.3 - 2026-09-11
+
+### Corrigido
+
+- A classificacao de promocoes passa a separar a participacao da oferta que
+  efetivamente define o preco publico do anuncio. Apenas a oferta identificada
+  pelo Mercado Livre como vencedora aparece como ativa; participacoes iniciadas
+  que nao vencem o preco passam a aparecer como "No anuncio".
+- Popover, modal, chip e contador usam a mesma reconciliacao, evitando que duas
+  campanhas de preco sejam exibidas como ativas ao mesmo tempo.
+
 ## v0.4.2 - 2026-09-10
 
 ### Melhorado
