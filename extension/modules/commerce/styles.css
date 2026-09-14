@@ -174,6 +174,100 @@
   height: 5px;
 }
 
+.onframe-commerce-popover-coupon-list {
+  display: grid;
+  gap: 0;
+  margin: 0 0 10px;
+  overflow: hidden;
+}
+
+.onframe-commerce-popover-coupon-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.onframe-commerce-popover-coupon-list-head small {
+  color: var(--ob-ink-soft);
+  font: 600 9px/1.2 var(--ob-font-mono);
+  text-transform: uppercase;
+}
+
+.onframe-commerce-popover-coupon-list-head > span {
+  color: var(--ob-ink-soft);
+  font: 500 10px/1.25 var(--ob-font);
+  text-align: right;
+}
+
+.onframe-commerce-popover-coupon-list-rows {
+  display: grid;
+}
+
+.onframe-commerce-popover-coupon-row {
+  display: grid;
+  grid-template-columns: 24px minmax(120px, 1.3fr) minmax(72px, .65fr) minmax(52px, .5fr) minmax(122px, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.onframe-commerce-popover-coupon-row:last-child {
+  border-bottom: 0;
+}
+
+.onframe-commerce-popover-coupon-icon {
+  display: inline-grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: var(--ob-r-xs);
+  background: var(--ob-orange-050);
+  color: var(--ob-orange-700);
+}
+
+.onframe-commerce-popover-coupon-name,
+.onframe-commerce-popover-coupon-period,
+.onframe-commerce-popover-coupon-benefit,
+.onframe-commerce-popover-coupon-terms {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onframe-commerce-popover-coupon-name {
+  color: var(--ob-ink-strong);
+  font: 700 11px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-popover-coupon-period,
+.onframe-commerce-popover-coupon-terms {
+  color: var(--ob-ink-soft);
+  font: 500 10px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-popover-coupon-benefit {
+  color: var(--ob-orange-700);
+  font: 700 11px/1.25 var(--ob-font);
+}
+
+.onframe-commerce-popover-coupon-row .ob-badge {
+  min-height: 18px;
+  padding: 3px 6px;
+  font-size: 9px;
+}
+
+.onframe-commerce-popover-coupon-row .ob-badge::before {
+  width: 5px;
+  height: 5px;
+}
+
 .onframe-commerce-popover-conditions {
   display: grid;
   gap: 6px;
@@ -2011,6 +2105,14 @@
   color: var(--ob-green-700);
 }
 
+.onframe-commerce-promotion-condition-content.coupon strong {
+  color: var(--ob-orange-700);
+}
+
+.onframe-commerce-promotion-result-content.coupon strong {
+  color: var(--ob-ink-strong);
+}
+
 .onframe-commerce-promotion-result-value {
   display: inline-flex;
   align-items: center;
@@ -2407,6 +2509,51 @@
 
   .onframe-commerce-popover-campaign-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .onframe-commerce-popover-coupon-list-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .onframe-commerce-popover-coupon-list-head > span {
+    text-align: left;
+  }
+
+  .onframe-commerce-popover-coupon-row {
+    grid-template-areas:
+      'icon name status'
+      'icon period benefit'
+      'icon terms terms';
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    row-gap: 4px;
+  }
+
+  .onframe-commerce-popover-coupon-icon {
+    grid-area: icon;
+  }
+
+  .onframe-commerce-popover-coupon-name {
+    grid-area: name;
+  }
+
+  .onframe-commerce-popover-coupon-period {
+    grid-area: period;
+  }
+
+  .onframe-commerce-popover-coupon-benefit {
+    grid-area: benefit;
+    text-align: right;
+  }
+
+  .onframe-commerce-popover-coupon-terms {
+    grid-area: terms;
+  }
+
+  .onframe-commerce-popover-coupon-row .ob-badge {
+    grid-area: status;
+    justify-self: end;
   }
 
   .onframe-commerce-popover-condition-list {

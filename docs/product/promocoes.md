@@ -35,6 +35,33 @@ contador.
   consulta do `sale_price`, nenhuma promocao de preco nao acumulativa recebe o
   estado **Ativa**.
 
+## Cupons do vendedor
+
+`SELLER_COUPON_CAMPAIGN` e uma campanha de cupom do vendedor, nao uma categoria
+visual independente. A participacao do anuncio vem exclusivamente de
+`GET /seller-promotions/items/{itemId}`; campanhas retornadas apenas no escopo
+do vendedor nao sao exibidas como participacoes do item.
+
+O estado visual do cupom vem da participacao do item: `candidate` e
+**Disponivel**, `pending` e **Programada**, `started` e **Ativa**, e `finished`
+e **Finalizada**. O detalhe da campanha, consultado em
+`GET /seller-promotions/promotions/{promotionId}?promotion_type=SELLER_COUPON_CAMPAIGN`,
+enriquece a exibicao com o subtipo, desconto fixo ou percentual, compra minima,
+teto de reembolso, codigo, orcamento, saldo, usos e limite por comprador. O
+estado retornado nesse detalhe nao substitui o estado da participacao do item.
+
+O `sub_type` determina obrigatoriamente o beneficio exibido: `FIXED_PERCENTAGE`
+usa apenas `fixed_percentage` e `FIXED_AMOUNT` usa apenas `fixed_amount`. Um
+campo de outro subtipo, inclusive `fixed_amount: 0`, nunca e usado como
+fallback. O beneficio deve deixar explicito que o desconto incide sobre o total
+da compra no checkout; compra minima e teto de reembolso sao regras, nao uma
+estimativa do preco do anuncio.
+
+Cupons sao aplicados no checkout e acumulativos com a promocao de preco. Por
+isso, nao participam da resolucao de `sale_price`, nao recebem
+`is_current_price` e nao entram no contador da promocao que determina o preco
+publico do anuncio.
+
 ## Resolucao da oferta vencedora
 
 O identificador da oferta no `sale_price` e correlacionado sem usar preco,

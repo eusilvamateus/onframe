@@ -116,19 +116,17 @@ test('commerce model nao conta desconto pix acumulativo como promocao de preco',
   assert.strictEqual(state.label, 'Promo ativa');
 });
 
-test('commerce model exclui cupom global de acoes e estimativas', () => {
+test('commerce model permite acoes do cupom do item sem estimar desconto no checkout', () => {
   const coupon = {
     type: 'SELLER_COUPON_CAMPAIGN',
-    coverage: 'seller_wide',
-    estimate_eligible: false,
     capabilities: { offerCreate: ['promotion_id'], offerDelete: ['promotion_id'] }
   };
 
-  assert.strictEqual(commerceModel.isSellerWidePromotion(coupon), true);
+  assert.strictEqual(commerceModel.isCheckoutCouponPromotion(coupon), true);
   assert.strictEqual(commerceModel.canEstimatePromotion(coupon), false);
-  assert.strictEqual(commerceModel.canCreateOffer(coupon), false);
+  assert.strictEqual(commerceModel.canCreateOffer(coupon), true);
   assert.strictEqual(commerceModel.canUpdateOffer(coupon), false);
-  assert.strictEqual(commerceModel.canDeleteOffer(coupon), false);
+  assert.strictEqual(commerceModel.canDeleteOffer(coupon), true);
   assert.strictEqual(commerceModel.canEstimatePromotion({ type: 'DEAL' }), true);
 });
 
@@ -536,13 +534,14 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(styles, /\.onframe-commerce-promotion-estimate-summary-metric\.review-result strong/);
 });
 
-test('popover de promocoes separa campanha, reducao de tarifa e cupons globais', () => {
+test('popover de promocoes apresenta cupom do item como beneficio de checkout', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const popoverSource = source.slice(source.indexOf('function buildPromotionPopover'), source.indexOf('function renderModal'));
 
   assert.match(popoverSource, /renderPopoverHead\('Promoções'\)/);
-  assert.match(popoverSource, /renderPromotionPopoverCampaign\(campaign\)/);
+  assert.match(popoverSource, /const campaign = promotionPopoverCampaignEntry\(groups\)/);
+  assert.match(popoverSource, /const coupons = promotionPopoverCouponEntries\(groups\)/);
   assert.match(popoverSource, /renderPromotionPopoverCouponList\(coupons\)/);
   assert.match(popoverSource, /renderPromotionPopoverPaymentList\(paymentBenefits\)/);
   assert.match(source, /classList\.toggle\('promotions', state\.popover === 'promotions'\)/);
@@ -554,20 +553,41 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(pricePromotionEntries\(groups\)\);/);
   assert.match(source, /if \(programmed\) return programmed;\s*return null;/s);
   assert.match(source, /function promotionStartTimestamp/);
+  assert.match(source, /function formatPromotionPeriodCompact/);
   assert.match(source, /function renderPromotionPopoverCampaign/);
+  assert.match(source, /function renderPromotionPopoverCouponList/);
+  assert.match(source, /function renderPromotionPopoverCouponRow/);
+  assert.match(source, /function couponCampaignData/);
+  assert.match(source, /function couponPresentation/);
+  assert.match(source, /function couponBenefitLabel/);
+  assert.match(source, /function couponApplicationLabel/);
+  assert.match(source, /function couponCompactTerms/);
+  assert.match(source, /function couponMinimumPurchaseLabel/);
+  assert.match(source, /function couponDetailRows/);
+  assert.match(source, /function renderCouponDetailsPopoverTrigger/);
+  assert.match(source, /function toggleCouponDetailsPopover/);
+  assert.match(source, /subtype === 'FIXED_PERCENTAGE'[\s\S]*coupon\.fixed_percentage/s);
+  assert.match(source, /subtype === 'FIXED_AMOUNT'[\s\S]*coupon\.fixed_amount/s);
+  assert.match(source, /function couponAmount\(value\) \{\s*if \(value === null \|\| value === undefined \|\| value === ''\) return null;/s);
+  assert.match(source, /Aplicado sobre o total da compra/);
+  assert.doesNotMatch(source, /function couponSubtypeLabel/);
   assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
+  assert.match(source, /class="ob-card onframe-commerce-popover-coupon-list"/);
   assert.match(source, /class="ob-badge \$\{escapeAttribute\(tone\)\}"/);
   assert.match(source, /function renderPromotionPopoverFinancialBenefits/);
   assert.match(source, /Bônus do Mercado Livre/);
   assert.match(source, /function promotionPopoverCouponEntries/);
-  assert.match(source, /CommerceModel\.isSellerWidePromotion\(entry\)/);
-  assert.match(source, /Válidos para compradores elegíveis/);
-  assert.match(source, /Elegibilidade depende do comprador/);
+  assert.doesNotMatch(source, /isSellerWidePromotion/);
+  assert.doesNotMatch(source, /seller_wide/);
+  assert.doesNotMatch(source, /Cupons de marketing/);
+  assert.doesNotMatch(source, /Válidos para compradores elegíveis/);
+  assert.doesNotMatch(source, /Elegibilidade depende do comprador/);
   assert.match(source, /function renderPromotionPopoverPaymentList/);
   assert.match(source, /function promotionPopoverConditionalBenefit/);
   assert.match(source, /sellerPercentage[^\n]+seller_percentage/);
   assert.match(source, /meliPercentage[^\n]+meli_percentage/);
-  assert.match(source, /icon\('ticket', 14\)/);
+  assert.match(source, /function promotionTypeIcon/);
+  assert.match(source, /if \(type === 'coupon'\) return 'ticket';/);
   assert.match(source, /icon\('creditCard', 14\)/);
   assert.match(styles, /\.onframe-commerce-popover-root\.promotions,\s*\.onframe-commerce-popover-root\.price-summary\s*{\s*width: min\(560px/s);
   assert.match(styles, /\.onframe-commerce-popover-campaign-grid\.with-benefit\s*{\s*grid-template-columns: minmax\(0, 1\.45fr\)[\s\S]*minmax\(0, 1\.25fr\)/);
@@ -575,6 +595,10 @@ test('popover de promocoes separa campanha, reducao de tarifa e cupons globais',
   assert.match(styles, /\.onframe-commerce-compact-tooltip \.ob-tooltip-content\s*{[\s\S]*white-space: normal;/);
   assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-condition-list\s*{\s*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.onframe-commerce-popover-coupon-list\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-coupon-row\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-coupon-list-head > span/);
+  assert.match(styles, /\.onframe-commerce-promotion-result-content\.coupon strong/);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-campaign-field \+ \.onframe-commerce-popover-campaign-field/);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-field \+ \.onframe-commerce-popover-price-field/);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-price-scenario > div \+ div/);
@@ -615,7 +639,8 @@ test('modal de promocoes comunica o tipo comercial de cada campanha sem dividir 
   assert.match(typeLabelSource, /return 'Promoção';/);
   assert.doesNotMatch(typeLabelSource, /if \(type === 'campaign'\) return 'Campanha do vendedor';/);
   assert.doesNotMatch(typeLabelSource, /entry && entry\.typeLabel/);
-  assert.match(source, /function promotionAudienceRule/);
+  assert.match(source, /function couponCampaignData/);
+  assert.match(source, /function renderCouponPromotionListResult/);
   assert.match(source, /function renderPromotionListCondition/);
   assert.doesNotMatch(modalSource, /onframe-commerce-modal-summary/);
 });
@@ -1473,8 +1498,9 @@ test('promotion summary enriquece campanhas com dados do item', async () => {
   assert.strictEqual(summary.offers.eligible[0].suggested_price, 196.59);
 });
 
-test('promotion summary trata cupons globais como informativos sem usar o candidate do item', async () => {
+test('promotion summary usa somente cupom participante do item e carrega os dados da campanha', async () => {
   const promotionItemCalls = [];
+  const couponDetailCalls = [];
   const summary = await buildPromotionSummary({
     getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
     getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
@@ -1491,20 +1517,85 @@ test('promotion summary trata cupons globais como informativos sem usar o candid
     getPromotionItems: async (promotionId) => {
       promotionItemCalls.push(promotionId);
       return { results: [] };
+    },
+    getPromotion: async (promotionId, promotionType) => {
+      couponDetailCalls.push({ promotionId, promotionType });
+      return {
+        id: 'C-MLB1',
+        type: 'SELLER_COUPON_CAMPAIGN',
+        status: 'started',
+        name: 'Cupom para carrinhos abandonados',
+        sub_type: 'FIXED_PERCENTAGE',
+        fixed_amount: 0,
+        fixed_percentage: 10,
+        min_purchase_amount: 100,
+        max_purchase_amount: 200,
+        coupon_code: 'LOJACARRINHO',
+        budget: 1000,
+        remaining_budget: 800,
+        used_coupons: 20,
+        redeems_per_user: 1
+      };
     }
   }, 'MLB7186779490');
 
   assert.deepStrictEqual(promotionItemCalls, ['P-MLB1']);
+  assert.deepStrictEqual(couponDetailCalls, [{ promotionId: 'C-MLB1', promotionType: 'SELLER_COUPON_CAMPAIGN' }]);
+  assert.strictEqual(summary.offers.active.length, 0);
+  assert.strictEqual(summary.offers.scheduled.length, 0);
+  assert.strictEqual(summary.offers.eligible.length, 1);
+  assert.strictEqual(summary.offers.eligible[0].id, 'C-MLB1');
+  assert.strictEqual(summary.offers.eligible[0].status, 'candidate');
+  assert.deepStrictEqual(summary.offers.eligible[0].coupon, {
+    sub_type: 'FIXED_PERCENTAGE',
+    fixed_amount: 0,
+    fixed_percentage: 10,
+    min_purchase_amount: 100,
+    max_purchase_amount: 200,
+    coupon_code: 'LOJACARRINHO',
+    budget: 1000,
+    remaining_budget: 800,
+    used_coupons: 20,
+    redeems_per_user: 1
+  });
+});
+
+test('promotion summary preserva a participacao iniciada do cupom ao enriquecer a campanha', async () => {
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB7186779491', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+    getItemPromotions: async () => ([
+      {
+        id: 'C-MLB2',
+        type: 'SELLER_COUPON_CAMPAIGN',
+        status: 'started',
+        start_date: '2026-09-10T00:00:00Z',
+        finish_date: '2026-09-30T23:59:59Z'
+      }
+    ]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotion: async () => ({
+      id: 'C-MLB2',
+      type: 'SELLER_COUPON_CAMPAIGN',
+      status: 'pending',
+      name: 'Cupom de setembro',
+      sub_type: 'FIXED_AMOUNT',
+      fixed_amount: 15,
+      min_purchase_amount: 150,
+      budget: 500,
+      remaining_budget: 350,
+      used_coupons: 10,
+      redeems_per_user: 1
+    })
+  }, 'MLB7186779491');
+
   assert.strictEqual(summary.offers.active.length, 1);
-  assert.strictEqual(summary.offers.active[0].id, 'C-MLB1');
+  assert.strictEqual(summary.offers.active[0].label, 'Cupom de setembro');
   assert.strictEqual(summary.offers.active[0].status, 'started');
-  assert.strictEqual(summary.offers.active[0].coverage, 'seller_wide');
-  assert.strictEqual(summary.offers.active[0].estimate_eligible, false);
-  assert.strictEqual(summary.offers.scheduled.length, 1);
-  assert.strictEqual(summary.offers.scheduled[0].id, 'C-MLB2');
-  assert.strictEqual(summary.offers.scheduled[0].status, 'pending');
-  assert.strictEqual(summary.offers.scheduled[0].coverage, 'seller_wide');
-  assert.strictEqual(summary.offers.eligible.length, 0);
+  assert.strictEqual(summary.offers.active[0].display_status, 'active');
+  assert.strictEqual(summary.offers.active[0].is_current_price, false);
+  assert.strictEqual(summary.offers.active[0].coupon.fixed_amount, 15);
+  assert.strictEqual(summary.offers.active[0].coupon.remaining_budget, 350);
 });
 
 test('regressão MLB6636154166 mantém uma única promoção de preço ativa', async () => {

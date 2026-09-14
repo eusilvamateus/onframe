@@ -264,15 +264,14 @@
   }
 
   function canCreateOffer(entry) {
-    return !isSellerWidePromotion(entry) && getOfferCreateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
+    return getOfferCreateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
 
   function canUpdateOffer(entry) {
-    return !isSellerWidePromotion(entry) && getOfferUpdateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
+    return getOfferUpdateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
 
   function canDeleteOffer(entry) {
-    if (isSellerWidePromotion(entry)) return false;
     if (entry && entry.capabilities && entry.capabilities.readonly) return false;
     const fields = getOfferDeleteFields(entry);
     if (fields.length > 0) return true;
@@ -280,12 +279,12 @@
       entry && entry.capabilities && Array.isArray(entry.capabilities.offerDelete);
   }
 
-  function isSellerWidePromotion(entry) {
-    return String(entry && entry.coverage || '').toLowerCase() === 'seller_wide';
+  function isCheckoutCouponPromotion(entry) {
+    return String(entry && entry.type || '').toUpperCase() === 'SELLER_COUPON_CAMPAIGN';
   }
 
   function canEstimatePromotion(entry) {
-    return !isSellerWidePromotion(entry) && !(entry && entry.estimate_eligible === false);
+    return !isCheckoutCouponPromotion(entry) && !(entry && entry.estimate_eligible === false);
   }
 
   function getOfferCreateFields(entry) {
@@ -425,7 +424,7 @@
     getPriceState,
     getPromotionState,
     getUserFields,
-    isSellerWidePromotion,
+    isCheckoutCouponPromotion,
     parsePercentageInput,
     parseMoneyInput
   };

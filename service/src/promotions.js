@@ -155,12 +155,15 @@ async function buildPromotionSummary(client, itemId) {
 
   const itemPromotionEntries = extractEntries(itemPromotions);
   const sellerPromotionEntries = extractEntries(sellerPromotions);
-  const sellerWideCouponEntries = sellerPromotionEntries.filter(isSellerWideCouponCampaign);
-  const sellerWideCouponKeys = new Set(sellerWideCouponEntries.map(promotionEntryKey).filter(Boolean));
-  const itemScopedPromotionEntries = itemPromotionEntries.filter((entry) => !sellerWideCouponKeys.has(promotionEntryKey(entry)));
-  const enrichedItemPromotions = await enrichSellerPromotionsForItem(client, item.id, sellerPromotionEntries, itemScopedPromotionEntries);
-  const normalizedOffers = itemScopedPromotionEntries
-    .concat(enrichedItemPromotions, sellerWideCouponEntries.map(normalizeSellerWideCouponEntry))
+  const itemPromotionsWithCouponDetails = await enrichItemCouponPromotions(client, itemPromotionEntries);
+  const enrichedItemPromotions = await enrichSellerPromotionsForItem(
+    client,
+    item.id,
+    sellerPromotionEntries,
+    itemPromotionsWithCouponDetails
+  );
+  const normalizedOffers = itemPromotionsWithCouponDetails
+    .concat(enrichedItemPromotions)
     .map(normalizePromotionEntry);
   const winnerReconciliation = await reconcileSalePriceWinner(client, item.id, normalizedOffers, salePrice);
   const offers = annotatePriceWinningPromotion(normalizedOffers, salePrice, winnerReconciliation);
@@ -315,7 +318,7 @@ async function enrichSellerPromotionsForItem(client, itemId, sellerPromotions, i
   const existing = new Set(itemPromotions.map(promotionEntryKey).filter(Boolean));
   const campaigns = extractEntries(sellerPromotions)
     .filter((entry) => entry && entry.id && normalizePromotionType(entry.type || entry.promotion_type))
-    .filter((entry) => !isSellerWideCouponCampaign(entry))
+    .filter((entry) => !isSellerCouponCampaign(entry))
     .filter((entry) => !existing.has(promotionEntryKey(entry)));
 
   const lookups = await Promise.all(campaigns.map((campaign) => optional(() => client.getPromotionItems(
@@ -332,20 +335,75 @@ async function enrichSellerPromotionsForItem(client, itemId, sellerPromotions, i
   });
 }
 
-function isSellerWideCouponCampaign(entry) {
-  const type = normalizePromotionType(entry && (entry.type || entry.promotion_type || entry.campaign_type));
-  const status = String(entry && (entry.status || entry.status_item) || '').toLowerCase();
-  return type === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN && ['started', 'pending'].includes(status);
+async function enrichItemCouponPromotions(client, entries) {
+  const itemEntries = Array.isArray(entries) ? entries : [];
+  if (!client || typeof client.getPromotion !== 'function') return itemEntries;
+
+  const couponIds = Array.from(new Set(itemEntries
+    .filter(isSellerCouponCampaign)
+    .map(promotionId)
+    .filter(Boolean)));
+  if (!couponIds.length) return itemEntries;
+
+  const details = await Promise.all(couponIds.map((id) => optional(() => client.getPromotion(
+    id,
+    PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN
+  ), [400, 404])));
+  const detailById = new Map(details
+    .filter((detail) => detail && !hasError(detail))
+    .map((detail) => [promotionId(detail), detail])
+    .filter(([id]) => Boolean(id)));
+
+  return itemEntries.map((entry) => {
+    if (!isSellerCouponCampaign(entry)) return entry;
+    const detail = detailById.get(promotionId(entry));
+    return detail ? mergeCouponCampaignDetail(entry, detail) : entry;
+  });
 }
 
-function normalizeSellerWideCouponEntry(campaign) {
-  return Object.assign({}, campaign, {
-    id: campaign.id || campaign.promotion_id || null,
-    promotion_id: campaign.promotion_id || campaign.id || null,
+function isSellerCouponCampaign(entry) {
+  const type = normalizePromotionType(entry && (entry.type || entry.promotion_type || entry.campaign_type));
+  return type === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN;
+}
+
+function promotionId(entry) {
+  const id = entry && (entry.promotion_id || entry.id);
+  return String(id || '').trim();
+}
+
+function mergeCouponCampaignDetail(itemEntry, campaign) {
+  const itemStatus = itemEntry.status || itemEntry.status_item || null;
+  const id = promotionId(itemEntry) || promotionId(campaign) || null;
+  return Object.assign({}, campaign, itemEntry, {
+    id,
+    promotion_id: id,
     type: PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN,
-    coverage: 'seller_wide',
-    estimate_eligible: false
+    status: itemStatus || campaign.status || null,
+    status_item: itemStatus || itemEntry.status_item || null,
+    name: itemEntry.name || itemEntry.promotion_name || campaign.name || campaign.title || null,
+    title: itemEntry.title || campaign.title || null,
+    start_date: itemEntry.start_date || campaign.start_date || null,
+    end_date: itemEntry.end_date || itemEntry.finish_date || campaign.end_date || campaign.finish_date || null,
+    finish_date: itemEntry.finish_date || itemEntry.end_date || campaign.finish_date || campaign.end_date || null,
+    sub_type: firstDefined(campaign.sub_type, itemEntry.sub_type),
+    fixed_amount: firstDefined(campaign.fixed_amount, itemEntry.fixed_amount),
+    fixed_percentage: firstDefined(campaign.fixed_percentage, itemEntry.fixed_percentage),
+    min_purchase_amount: firstDefined(campaign.min_purchase_amount, itemEntry.min_purchase_amount),
+    max_purchase_amount: firstDefined(campaign.max_purchase_amount, itemEntry.max_purchase_amount),
+    coupon_code: firstDefined(campaign.coupon_code, itemEntry.coupon_code),
+    budget: firstDefined(campaign.budget, itemEntry.budget),
+    remaining_budget: firstDefined(campaign.remaining_budget, itemEntry.remaining_budget),
+    used_coupons: firstDefined(campaign.used_coupons, itemEntry.used_coupons),
+    redeems_per_user: firstDefined(campaign.redeems_per_user, itemEntry.redeems_per_user),
+    campaign
   });
+}
+
+function firstDefined(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return null;
 }
 
 function normalizeCampaignItemEntry(campaign, itemEntry) {
@@ -751,10 +809,9 @@ function normalizePromotionEntry(value) {
     stackable_context: isStackable ? stackablePromotionContext(type, value) : null,
     payment_method: value.payment_method || null,
     sub_type: value.sub_type || null,
+    coupon: summarizeSellerCoupon(value, type),
     start_date: value.start_date || null,
     end_date: value.end_date || value.finish_date || null,
-    coverage: value.coverage || null,
-    estimate_eligible: value.estimate_eligible !== false,
     candidate: status === 'candidate',
     is_current_price: false,
     price_role: 'unknown',
@@ -828,8 +885,24 @@ function isStackablePromotionType(type) {
 function stackablePromotionContext(type, value = {}) {
   const normalizedType = normalizePromotionType(type);
   if (normalizedType === PROMOTION_TYPES.BANK) return 'payment_method';
-  if (normalizedType === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN) return 'seller_coupon';
+  if (normalizedType === PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN) return 'checkout';
   return String(value.stackable_context || 'discount').trim() || 'discount';
+}
+
+function summarizeSellerCoupon(value, type) {
+  if (type !== PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN) return null;
+  return {
+    sub_type: value.sub_type || null,
+    fixed_amount: nullableNumberOrNull(value.fixed_amount),
+    fixed_percentage: nullableNumberOrNull(value.fixed_percentage),
+    min_purchase_amount: nullableNumberOrNull(value.min_purchase_amount),
+    max_purchase_amount: nullableNumberOrNull(value.max_purchase_amount),
+    coupon_code: stringOrNull(value.coupon_code),
+    budget: nullableNumberOrNull(value.budget),
+    remaining_budget: nullableNumberOrNull(value.remaining_budget),
+    used_coupons: nullableNumberOrNull(value.used_coupons),
+    redeems_per_user: nullableNumberOrNull(value.redeems_per_user)
+  };
 }
 
 function annotatePriceWinningPromotion(entries, salePrice, winnerReconciliation = null) {
@@ -1156,6 +1229,16 @@ async function optional(load, nullableStatuses = []) {
 function numberOrNull(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nullableNumberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+  return numberOrNull(value);
+}
+
+function stringOrNull(value) {
+  const text = String(value || '').trim();
+  return text || null;
 }
 
 function errorOrNull(value) {

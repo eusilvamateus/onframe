@@ -1048,12 +1048,14 @@
       const campaign = promotionPopoverCampaignEntry(groups);
       const coupons = promotionPopoverCouponEntries(groups);
       const paymentBenefits = promotionPopoverPaymentEntries(groups);
+      const hasPromotionContent = Boolean(campaign) || coupons.length || paymentBenefits.length;
       return `
         <section class="onframe-commerce-popover">
           ${renderPopoverHead('Promoções')}
           ${renderNotice(state.actionError, 'warn')}
-          ${campaign ? renderPromotionPopoverCampaign(campaign) : renderPromotionPopoverEmptyState()}
+          ${campaign ? renderPromotionPopoverCampaign(campaign) : ''}
           ${renderPromotionPopoverCouponList(coupons)}
+          ${hasPromotionContent ? '' : renderPromotionPopoverEmptyState()}
           ${renderPromotionPopoverPaymentList(paymentBenefits)}
           <div class="onframe-commerce-actions">
             <button class="onframe-commerce-btn primary" data-action="open-promotion-modal" type="button">${icon('tag', 14)}Gerenciar promoções</button>
@@ -1354,7 +1356,7 @@
 
     function renderPromotionListRow(row) {
       const { entry, kind, index, key, type, status } = row;
-      const canCreate = !CommerceModel.isSellerWidePromotion(entry) && (kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry));
+      const canCreate = kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry);
       const canUpdate = (kind === 'active-offer' || kind === 'programmed-offer') && CommerceModel.canUpdateOffer(entry);
       const canDelete = (kind === 'active-offer' || kind === 'programmed-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
       const userFields = CommerceModel.getUserFields(canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
@@ -1381,8 +1383,8 @@
               <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
             </div>
           </td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content">${renderPromotionListCondition(entry, type)}</div></td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content">${renderPromotionListResult(entry, key, kind)}</div></td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content ${type === 'coupon' ? 'coupon' : ''}">${renderPromotionListCondition(entry, type)}</div></td>
+          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content ${type === 'coupon' ? 'coupon' : ''}">${renderPromotionListResult(entry, key, kind)}</div></td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação"><div class="onframe-commerce-promotion-row-actions-content">${confirm ? '' : actionMarkup}</div></td>
         </tr>
         ${expanded ? `
@@ -1526,7 +1528,7 @@
 
     function promotionListType(entry) {
       const type = String(entry && entry.type || '').toUpperCase();
-      if (type === 'SELLER_COUPON_CAMPAIGN' || String(entry && entry.stackable_context || '') === 'seller_coupon') return 'coupon';
+      if (type === 'SELLER_COUPON_CAMPAIGN') return 'coupon';
       if (type === 'BANK' || String(entry && entry.stackable_context || '') === 'payment_method') return 'payment';
       if (type === 'PRICE_DISCOUNT') return 'direct';
       return 'campaign';
@@ -1550,12 +1552,8 @@
     function renderPromotionListCondition(entry, type) {
       const displayPrice = promotionDisplayPrice(entry);
       const discount = discountPercent(entry && entry.original_price, displayPrice);
-      const rule = promotionAudienceRule(entry);
       if (type === 'coupon') {
-        if (CommerceModel.isSellerWidePromotion(entry)) {
-          return '<strong>Cupom acumulativo</strong><span>Elegibilidade depende do comprador</span>';
-        }
-        return `<strong>${escapeHtml(rule || 'Cupom acumulativo')}</strong>${discount ? `<span>${escapeHtml(`${discount}% OFF`)}</span>` : ''}`;
+        return `<strong>${escapeHtml(couponBenefitLabel(entry))}</strong><span>${escapeHtml(couponApplicationLabel())}</span>`;
       }
       if (type === 'payment') {
         const payment = stackablePaymentLabel(entry);
@@ -1569,6 +1567,7 @@
     }
 
     function renderPromotionListResult(entry, key, kind) {
+      if (promotionListType(entry) === 'coupon') return renderCouponPromotionListResult(entry, key);
       if (!CommerceModel.canEstimatePromotion(entry)) {
         return '<strong>Depende do comprador</strong><span>Não entra nesta estimativa</span>';
       }
@@ -1606,6 +1605,10 @@
       return `onframe-promotion-result-${String(key || '').replace(/[^a-z0-9_-]/gi, '-')}`;
     }
 
+    function couponDetailsPopoverId(key) {
+      return `onframe-coupon-details-${String(key || '').replace(/[^a-z0-9_-]/gi, '-')}`;
+    }
+
     function togglePromotionResultPopover(button) {
       const card = button.closest('[data-entry-key]');
       const key = card && card.dataset ? card.dataset.entryKey : '';
@@ -1622,6 +1625,27 @@
       state.promotionResultPopoverAnchor = button;
       button.setAttribute('aria-expanded', 'true');
       renderPromotionResultPopover(details);
+    }
+
+    function toggleCouponDetailsPopover(button) {
+      const key = String(button && button.dataset && button.dataset.entryKey || '');
+      if (!key) return;
+      const popoverKey = `coupon:${key}`;
+      if (state.promotionResultPopoverKey === popoverKey) {
+        removePromotionResultPopover();
+        return;
+      }
+
+      const [kind, indexText] = key.split(':');
+      const entry = getPromotionEntry(kind, Number(indexText));
+      const rows = couponDetailRows(entry);
+      if (!CommerceModel.isCheckoutCouponPromotion(entry) || !rows.length) return;
+
+      removePromotionResultPopover();
+      state.promotionResultPopoverKey = popoverKey;
+      state.promotionResultPopoverAnchor = button;
+      button.setAttribute('aria-expanded', 'true');
+      renderCouponDetailsPopover({ key, entry, rows });
     }
 
     function renderPromotionResultPopover(details) {
@@ -1728,6 +1752,15 @@
       return '';
     }
 
+    function formatPromotionPeriodCompact(entry) {
+      const start = formatCompactPromotionDate(entry && (entry.start_date || entry.startDate));
+      const end = formatCompactPromotionDate(entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate));
+      if (start && end) return `${start} - ${end}`;
+      if (start) return `A partir de ${start}`;
+      if (end) return `Até ${end}`;
+      return '';
+    }
+
     function formatShortPromotionDate(value) {
       const date = parseIsoDate(value) || parseDateValue(value);
       if (!date) return '';
@@ -1735,10 +1768,174 @@
       return `${date.getDate()} de ${month}`;
     }
 
-    function promotionAudienceRule(entry) {
-      const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
-      const value = entry && (entry.audience || entry.target_audience) || raw.audience || raw.target_audience || raw.beneficiary;
-      return typeof value === 'string' ? value.trim() : '';
+    function formatCompactPromotionDate(value) {
+      const date = parseIsoDate(value) || parseDateValue(value);
+      if (!date) return '';
+      const month = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+      return `${date.getDate()} ${month}`;
+    }
+
+    function couponCampaignData(entry) {
+      return entry && entry.coupon && typeof entry.coupon === 'object' ? entry.coupon : {};
+    }
+
+    function couponBenefitLabel(entry) {
+      return couponPresentation(entry).benefit;
+    }
+
+    function couponApplicationLabel() {
+      return 'Aplicado sobre o total da compra';
+    }
+
+    function couponPresentation(entry) {
+      const coupon = couponCampaignData(entry);
+      const subtype = String(coupon.sub_type || '').trim().toUpperCase();
+      if (subtype === 'FIXED_PERCENTAGE') {
+        const percentage = couponPositiveNumber(coupon.fixed_percentage);
+        return {
+          subtype,
+          benefit: percentage === null ? 'Desconto não informado' : `${formatPercent(percentage)} OFF`
+        };
+      }
+      if (subtype === 'FIXED_AMOUNT') {
+        const amount = couponPositiveAmount(coupon.fixed_amount);
+        return {
+          subtype,
+          benefit: amount === null ? 'Desconto não informado' : `${formatCouponMoney(amount)} OFF`
+        };
+      }
+      return { subtype, benefit: 'Desconto não informado' };
+    }
+
+    function couponMinimumPurchaseLabel(entry) {
+      const amount = couponAmount(couponCampaignData(entry).min_purchase_amount);
+      return amount === null ? '' : `Compra mínima de ${formatCouponMoney(amount)}`;
+    }
+
+    function couponMaximumRefundLabel(entry) {
+      if (couponPresentation(entry).subtype !== 'FIXED_PERCENTAGE') return '';
+      const amount = couponAmount(couponCampaignData(entry).max_purchase_amount);
+      return amount === null ? '' : `Reembolso máximo de ${formatCouponMoney(amount)}`;
+    }
+
+    function couponCompactTerms(entry) {
+      const coupon = couponCampaignData(entry);
+      const minimum = couponAmount(coupon.min_purchase_amount);
+      const maximumRefund = couponPresentation(entry).subtype === 'FIXED_PERCENTAGE'
+        ? couponAmount(coupon.max_purchase_amount)
+        : null;
+      return [
+        minimum === null ? '' : `Mín. ${formatCouponMoney(minimum)}`,
+        maximumRefund === null ? '' : `Até ${formatCouponMoney(maximumRefund)}`
+      ].filter(Boolean);
+    }
+
+    function couponAmount(value) {
+      if (value === null || value === undefined || value === '') return null;
+      const amount = Number(value);
+      return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) / 100 : null;
+    }
+
+    function couponPositiveAmount(value) {
+      const amount = couponAmount(value);
+      return amount !== null && amount > 0 ? amount : null;
+    }
+
+    function couponPositiveNumber(value) {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? number : null;
+    }
+
+    function formatCouponMoney(amount) {
+      try {
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: itemCurrency(),
+          minimumFractionDigits: 2
+        }).format(amount).replace(/\u00a0/g, ' ');
+      } catch (err) {
+        return `R$ ${Number(amount).toFixed(2).replace('.', ',')}`;
+      }
+    }
+
+    function couponDetailRows(entry) {
+      const coupon = couponCampaignData(entry);
+      const rows = [];
+      const code = String(coupon.coupon_code || '').trim();
+      const remaining = couponAmount(coupon.remaining_budget);
+      const budget = couponAmount(coupon.budget);
+      const used = Number(coupon.used_coupons);
+      const redeems = Number(coupon.redeems_per_user);
+
+      if (code) rows.push({ label: 'Código do cupom', value: code });
+      if (remaining !== null && budget !== null) {
+        rows.push({ label: 'Orçamento restante', value: `${formatCouponMoney(remaining)} de ${formatCouponMoney(budget)}` });
+      } else if (remaining !== null) {
+        rows.push({ label: 'Orçamento restante', value: formatCouponMoney(remaining) });
+      } else if (budget !== null) {
+        rows.push({ label: 'Orçamento', value: formatCouponMoney(budget) });
+      }
+      if (Number.isFinite(used) && used >= 0) {
+        rows.push({ label: 'Cupons usados', value: used.toLocaleString('pt-BR') });
+      }
+      if (Number.isFinite(redeems) && redeems > 0) {
+        rows.push({ label: 'Uso por comprador', value: `${redeems.toLocaleString('pt-BR')} ${redeems === 1 ? 'vez' : 'vezes'}` });
+      }
+      return rows;
+    }
+
+    function renderCouponDetailsPopoverTrigger(entry, key) {
+      if (!couponDetailRows(entry).length) return '';
+      const id = couponDetailsPopoverId(key);
+      return `
+        <span class="ob-tooltip onframe-commerce-promotion-result-tooltip" data-placement="top">
+          <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-info" data-action="toggle-coupon-details-popover" data-entry-key="${escapeAttribute(key)}" type="button" aria-label="Ver detalhes do cupom" aria-controls="${escapeAttribute(id)}" aria-expanded="false">${icon('info', 14)}</button>
+          <span class="ob-tooltip-content" role="tooltip">Ver detalhes do cupom<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
+        </span>
+      `;
+    }
+
+    function renderCouponDetailsPopover(details) {
+      if (!details || !state.promotionResultPopoverAnchor) return;
+      if (!state.promotionResultPopoverRoot) {
+        state.promotionResultPopoverRoot = document.createElement('div');
+        state.promotionResultPopoverRoot.className = 'onframe-commerce-promotion-result-popover-root';
+        document.body.appendChild(state.promotionResultPopoverRoot);
+      }
+
+      state.promotionResultPopoverRoot.innerHTML = buildCouponDetailsPopover(details);
+      positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
+      bindButton(state.promotionResultPopoverRoot, 'close-promotion-result-popover', removePromotionResultPopover);
+    }
+
+    function buildCouponDetailsPopover({ key, entry, rows }) {
+      const id = couponDetailsPopoverId(key);
+      return `
+        <section class="ob-popover onframe-commerce-promotion-result-popover coupon" id="${escapeAttribute(id)}" role="dialog" aria-label="Detalhes do cupom">
+          <header class="onframe-commerce-promotion-result-popover-head">
+            <div>
+              <strong>Detalhes do cupom</strong>
+              <span>${escapeHtml(entry.label || 'Cupom do vendedor')}</span>
+            </div>
+            <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-popover-close" data-action="close-promotion-result-popover" type="button" aria-label="Fechar detalhes do cupom">${icon('x', 14)}</button>
+          </header>
+          <div class="onframe-commerce-promotion-result-popover-rows">
+            ${rows.map(renderPromotionResultPopoverRow).join('')}
+          </div>
+        </section>
+      `;
+    }
+
+    function renderCouponPromotionListResult(entry, key) {
+      const terms = [couponMinimumPurchaseLabel(entry), couponMaximumRefundLabel(entry)].filter(Boolean);
+      const primary = terms.shift();
+      return `
+        <div class="onframe-commerce-promotion-result-value">
+          ${primary ? `<strong>${escapeHtml(primary)}</strong>` : '<span>Regras não informadas</span>'}
+          ${renderCouponDetailsPopoverTrigger(entry, key)}
+        </div>
+        ${terms.map((term) => `<span>${escapeHtml(term)}</span>`).join('')}
+      `;
     }
 
     function promotionEndTimestamp(entry) {
@@ -1788,9 +1985,7 @@
     }
 
     function promotionPopoverCouponEntries(groups) {
-      return stackablePromotionEntries(groups).filter((entry) => {
-        return promotionListType(entry) === 'coupon' && CommerceModel.isSellerWidePromotion(entry);
-      });
+      return stackablePromotionEntries(groups).filter((entry) => promotionListType(entry) === 'coupon');
     }
 
     function promotionPopoverPaymentEntries(groups) {
@@ -1870,29 +2065,31 @@
       const list = Array.isArray(entries) ? entries : [];
       if (!list.length) return '';
       return `
-        <section class="onframe-commerce-popover-conditions" aria-label="Cupons de marketing">
-          <div class="onframe-commerce-popover-conditions-head">
-            <small>Cupons de marketing</small>
-            <span>Válidos para compradores elegíveis</span>
+        <section class="ob-card onframe-commerce-popover-coupon-list" aria-label="Cupons do vendedor">
+          <div class="onframe-commerce-popover-coupon-list-head">
+            <small>Cupons do vendedor</small>
+            <span>${escapeHtml(couponApplicationLabel())}</span>
           </div>
-          <div class="onframe-commerce-popover-condition-list">
-            ${list.map(renderPromotionPopoverCoupon).join('')}
+          <div class="onframe-commerce-popover-coupon-list-rows">
+            ${list.map(renderPromotionPopoverCouponRow).join('')}
           </div>
         </section>
       `;
     }
 
-    function renderPromotionPopoverCoupon(entry) {
-      const benefit = promotionPopoverConditionalBenefit(entry);
-      const audience = promotionAudienceRule(entry) || 'Elegibilidade depende do comprador';
+    function renderPromotionPopoverCouponRow(entry) {
+      const period = formatPromotionPeriodCompact(entry) || 'Sem vigência informada';
+      const status = promotionDisplayStatusLabel(entry);
+      const tone = promotionDisplayTone(entry);
+      const terms = couponCompactTerms(entry);
       return `
-        <div class="ob-card onframe-commerce-popover-condition coupon">
-          <span class="onframe-commerce-popover-condition-icon">${icon('ticket', 14)}</span>
-          <div>
-            <strong>${escapeHtml(entry.label || 'Cupom de marketing')}</strong>
-            <span>${escapeHtml(audience)}</span>
-          </div>
-          ${benefit ? `<b>${escapeHtml(benefit)}</b>` : ''}
+        <div class="onframe-commerce-popover-coupon-row">
+          <span class="onframe-commerce-popover-coupon-icon" aria-hidden="true">${icon('ticket', 14)}</span>
+          <strong class="onframe-commerce-popover-coupon-name">${escapeHtml(entry.label || 'Cupom')}</strong>
+          <span class="onframe-commerce-popover-coupon-period">${escapeHtml(period)}</span>
+          <strong class="onframe-commerce-popover-coupon-benefit">${escapeHtml(couponBenefitLabel(entry))}</strong>
+          <span class="onframe-commerce-popover-coupon-terms">${escapeHtml(terms.join(' · ') || 'Condições não informadas')}</span>
+          <span class="ob-badge ${escapeAttribute(tone)}">${escapeHtml(status)}</span>
         </div>
       `;
     }
@@ -2811,8 +3008,9 @@
       if (!isStackablePromotion(entry)) return null;
       const paymentMethod = String(entry && entry.payment_method || '').trim().toUpperCase();
       if (paymentMethod) return { label: 'Acumula no', value: paymentMethod };
+      const type = String(entry && entry.type || '').toUpperCase();
+      if (type === 'SELLER_COUPON_CAMPAIGN') return { label: 'Aplicação', value: 'Checkout' };
       const context = String(entry && entry.stackable_context || '').trim();
-      if (context === 'seller_coupon') return { label: 'Acumula como', value: 'Cupom' };
       if (context === 'payment_method') return { label: 'Acumula no', value: 'Pagamento' };
       return { label: 'Tipo', value: 'Acumulativo' };
     }
@@ -3010,6 +3208,7 @@
       bindButton(state.modalRoot, 'update-offer', (button) => void performPromotionAction(button, 'update'));
       bindButton(state.modalRoot, 'delete-offer', (button) => void performPromotionAction(button, 'delete'));
       bindButton(state.modalRoot, 'toggle-promotion-result-popover', togglePromotionResultPopover);
+      bindButton(state.modalRoot, 'toggle-coupon-details-popover', toggleCouponDetailsPopover);
       bindButton(state.modalRoot, 'open-direct-discount', openDirectDiscountForm);
       bindButton(state.modalRoot, 'cancel-promotion-form', cancelPromotionForm);
       bindButton(state.modalRoot, 'cancel-promotion-confirm', cancelPromotionConfirm);
