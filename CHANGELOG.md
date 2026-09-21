@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.4.4 - 2026-09-21
+
+### Melhorado
+
+- A apresentacao de cupons no popover foi simplificada: cada cupom informa em
+  uma linha o nome, a vigencia, o beneficio e as condicoes de elegibilidade,
+  sem competir com a promocao de preco do anuncio.
+
+### Corrigido
+
+- A reconciliacao de promocoes agora diferencia a participacao iniciada da
+  oferta que efetivamente vence o preco publico do anuncio, mantendo modal,
+  popover, chip e contador consistentes inclusive quando campanhas se
+  sobrepoem.
+- Cupons passam a usar somente os dados de participacao retornados pelo item,
+  sem classificacoes visuais inferidas que nao existem na API do Mercado Livre.
+
 ## v0.4.3 - 2026-09-11
 
 ### Corrigido
