@@ -8,6 +8,10 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "ACCESS_AUD": "ec5e721f6923bb7bec8a6a675e177116627340b6bbe2ecda33386563ccd6bc53",
+    "ACCESS_TEAM_DOMAIN": "https://crimson-firefly-09d2.cloudflareaccess.com"
+  },
   "routes": [
     {
       "pattern": "onframe.onblide.com",
