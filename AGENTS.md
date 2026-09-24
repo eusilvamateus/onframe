@@ -61,9 +61,12 @@ desse workflow no repositório.
 ## Segurança e Integrações
 
 Não versione tokens ou credenciais; use `.env.example` como referência de
-configuração. Use o conector `$mercado-livre` para informações do Mercado Livre.
-Se ele não estiver disponível, informe isso expressamente antes de usar qualquer
-fonte externa.
+configuração. Quando o usuário indicar um conector, MCP, documentação ou outro
+recurso oficial e confiável de um provedor, use exclusivamente essa fonte para
+pesquisa e decisões sobre o respectivo provedor. Se ela não estiver disponível,
+informe expressamente o bloqueio e não use busca externa sem autorização
+explícita do usuário. Use o conector `$mercado-livre` para informações do
+Mercado Livre.
 
 ## Verificação no Navegador
 
