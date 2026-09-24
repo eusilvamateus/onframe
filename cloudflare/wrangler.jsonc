@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "onframe-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "routes": [
+    {
+      "pattern": "onframe.onblide.com",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "ONFRAME_DB",
+      "database_name": "onframe-core",
+      "database_id": "f0265ccb-826f-4839-bfb0-20bf1200c4ee",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
