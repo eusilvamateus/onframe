@@ -16,7 +16,7 @@
     "wrangler": "4.137.0"
   },
   "dependencies": {
-    "jose": "^6.2.12",
+    "@supabase/supabase-js": "^2.117.2",
     "standardwebhooks": "1.0.0"
   }
 }

@@ -2,7 +2,7 @@
   let tooltipSequence = 0;
 
   function createApi(options = {}) {
-    const offlineMessage = options.offlineMessage || 'Vincule esta extensão ao OnFrame para continuar.';
+    const offlineMessage = options.offlineMessage || 'Entre na extensão do OnFrame para continuar.';
 
     return async function api(path, requestOptions = {}) {
       if (canUseRuntimeBridge()) {

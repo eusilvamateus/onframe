@@ -17,7 +17,7 @@
         <img src="../../assets/onblide-symbol-primary.svg" alt="">
         <div>
           <p class="ob-eyebrow">OnFrame</p>
-          <h1 class="ob-title">Controle <em>rapido</em></h1>
+          <h1 class="ob-title">Controle <em>rápido</em></h1>
         </div>
       </div>
       <div class="header-actions">
@@ -28,33 +28,87 @@
       </div>
     </header>
 
-    <section class="block ob-card">
+    <section class="block ob-card access-card" aria-labelledby="connection-title">
       <div class="block-head">
-        <h2 class="ob-card-title">Acesso remoto</h2>
+        <div>
+          <p class="ob-eyebrow">Acesso</p>
+          <h2 class="ob-card-title" id="connection-title">Acesso ao workspace</h2>
+        </div>
         <span class="ob-badge grey" id="connection-badge">Verificando</span>
       </div>
-      <p class="ob-copy" id="connection-text">Conferindo a vinculação desta extensão.</p>
-      <div class="account-list is-hidden" id="account-list" aria-label="Contas Mercado Livre do workspace"></div>
-      <div class="update-actions">
-        <button class="ob-button primary" id="manage-access" type="button">Gerenciar acesso</button>
+      <p class="ob-copy" id="connection-text">Conferindo a sessão desta extensão.</p>
+
+      <div class="connection-connect ob-auth" id="connection-connect">
+        <div class="ob-auth-tabs" role="tablist" aria-label="Acesso ao OnFrame">
+          <button type="button" role="tab" aria-selected="true" data-auth-tab="signin">Entrar</button>
+          <button type="button" role="tab" aria-selected="false" data-auth-tab="signup">Criar conta</button>
+        </div>
+        <p class="ob-auth-alert" data-auth-feedback role="alert" hidden></p>
+
+        <form class="ob-auth-form" data-auth-form="signin" novalidate>
+          <div class="ob-auth-fields">
+            <label class="ob-auth-field" for="popup-signin-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="popup-signin-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="voce@empresa.com"></span></label>
+            <div class="ob-auth-field"><label class="ob-auth-label" for="popup-signin-password">Senha</label><span class="ob-field-shell"><input class="ob-field-input" id="popup-signin-password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha"><button class="ob-auth-password-toggle" type="button" data-auth-password="popup-signin-password" aria-pressed="false" aria-label="Mostrar senha"><i class="ph ph-eye" aria-hidden="true"></i></button></span></div>
+          </div>
+          <div class="ob-auth-challenge" data-auth-challenge="signin" hidden></div>
+          <button class="ob-button primary full" type="submit">Entrar</button>
+          <div class="ob-auth-links"><button class="ob-auth-link" type="button" data-auth-action="magic">Entrar com link mágico</button><button class="ob-auth-link" type="button" data-auth-action="recovery">Esqueci minha senha</button></div>
+        </form>
+
+        <form class="ob-auth-form" data-auth-form="signup" hidden novalidate>
+          <div class="ob-auth-fields">
+            <label class="ob-auth-field" for="popup-signup-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="popup-signup-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="voce@empresa.com"></span></label>
+            <div class="ob-auth-field"><label class="ob-auth-label" for="popup-signup-password">Crie uma senha</label><span class="ob-field-shell"><input class="ob-field-input" id="popup-signup-password" name="password" type="password" autocomplete="new-password" placeholder="Crie uma senha"><button class="ob-auth-password-toggle" type="button" data-auth-password="popup-signup-password" aria-pressed="false" aria-label="Mostrar senha"><i class="ph ph-eye" aria-hidden="true"></i></button></span></div>
+            <div class="ob-auth-field"><label class="ob-auth-label" for="popup-signup-confirmation">Confirme sua senha</label><span class="ob-field-shell"><input class="ob-field-input" id="popup-signup-confirmation" name="confirmation" type="password" autocomplete="new-password" placeholder="Repita a senha"><button class="ob-auth-password-toggle" type="button" data-auth-password="popup-signup-confirmation" aria-pressed="false" aria-label="Mostrar senha"><i class="ph ph-eye" aria-hidden="true"></i></button></span></div>
+          </div>
+          <div class="ob-auth-challenge" data-auth-challenge="signup" hidden></div>
+          <button class="ob-button primary full" type="submit">Criar conta</button>
+        </form>
+
+        <form class="ob-auth-form" data-auth-form="magic" hidden novalidate>
+          <label class="ob-auth-field" for="popup-magic-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="popup-magic-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="voce@empresa.com"></span><span class="ob-field-help">Enviaremos um link de uso único. Ele não cria uma conta.</span></label>
+          <div class="ob-auth-challenge" data-auth-challenge="magic" hidden></div>
+          <button class="ob-button primary full" type="submit">Enviar link mágico</button>
+          <div class="ob-auth-links"><button class="ob-auth-link" type="button" data-auth-action="signin">Voltar</button></div>
+        </form>
+
+        <form class="ob-auth-form" data-auth-form="recovery" hidden novalidate>
+          <label class="ob-auth-field" for="popup-recovery-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="popup-recovery-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="voce@empresa.com"></span><span class="ob-field-help">Enviaremos um link para criar uma nova senha.</span></label>
+          <div class="ob-auth-challenge" data-auth-challenge="recovery" hidden></div>
+          <button class="ob-button primary full" type="submit">Enviar link de recuperação</button>
+          <div class="ob-auth-links"><button class="ob-auth-link" type="button" data-auth-action="signin">Voltar</button></div>
+        </form>
+      </div>
+
+      <div class="connection-context" id="connection-context" hidden>
+        <div class="connection-identity">
+          <span class="connection-avatar" id="connection-avatar" aria-hidden="true">O</span>
+          <div>
+            <strong id="connection-user">-</strong>
+            <span id="connection-workspace">-</span>
+          </div>
+        </div>
+        <span class="connection-expiry"><span>Sessão expira</span><strong id="connection-expires-at">-</strong></span>
+        <div class="account-list" id="account-list" aria-label="Contas Mercado Livre do workspace" hidden></div>
+        <button class="ob-button secondary full" id="manage-access" type="button">Gerenciar contas e acesso</button>
       </div>
     </section>
 
-    <section class="block ob-card" id="update-block">
+    <section class="block ob-card update-card" id="update-block" aria-labelledby="update-title">
       <div class="block-head">
-        <h2 class="ob-card-title">Atualizacao</h2>
+        <h2 class="ob-card-title" id="update-title">Atualização</h2>
         <span class="ob-badge blue" id="update-badge">Disponível</span>
       </div>
-      <p class="ob-copy" id="update-text">Use o atualizador para instalar a versão mais recente.</p>
-      <div class="update-actions">
-        <button class="ob-button primary" id="update-open" type="button">Atualizar agora</button>
-      </div>
+      <p class="ob-copy" id="update-text">Instale a versão mais recente pelo atualizador.</p>
+      <button class="ob-button secondary full" id="update-open" type="button">Abrir atualizador</button>
     </section>
   </main>
 
   <script src="../../core/icons.js"></script>
   <script src="../../core/shared.js"></script>
   <script src="../../core/toast.js"></script>
+  <script src="../../core/remote-auth.js"></script>
+  <script src="../../core/auth-controller.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

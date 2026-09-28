@@ -281,6 +281,31 @@ ${options.warning ? alert('Não foi você?', options.warning, 'warning') : ''}`;
   });
 }
 
+function linkEmail(options: {
+  title: string;
+  eyebrow: string;
+  preview: string;
+  description: string;
+  buttonLabel: string;
+  verificationUrl: string;
+  note: string;
+  warning?: string;
+}): string {
+  const content = `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">${escapeHtml(options.description)}</p>
+<div style="height:24px;line-height:24px;">&nbsp;</div>
+${actionButton(options.verificationUrl, options.buttonLabel)}
+<p style="margin:20px 0 0;color:#7a7a7a;font-size:14px;line-height:1.45;">Este link é de uso único.</p>
+${options.warning ? alert('Não foi você?', options.warning, 'warning') : ''}`;
+
+  return emailShell({
+    title: options.title,
+    eyebrow: options.eyebrow,
+    preview: options.preview,
+    content,
+    note: options.note
+  });
+}
+
 function notificationEmail(options: {
   title: string;
   eyebrow: string;
@@ -319,6 +344,27 @@ function createActionDelivery(env: AuthEmailRuntimeEnv, event: AuthEmailEvent, o
     recipient: options.recipient,
     subject: options.title,
     html: actionEmail({ ...options, token, verificationUrl: verification })
+  };
+}
+
+function createLinkDelivery(env: AuthEmailRuntimeEnv, event: AuthEmailEvent, options: {
+  actionType: string;
+  recipient: string;
+  title: string;
+  eyebrow: string;
+  preview: string;
+  description: string;
+  buttonLabel: string;
+  note: string;
+  warning?: string;
+}): AuthEmailDelivery {
+  const data = event.email_data ?? {};
+  const verification = verificationUrl(env, options.actionType, tokenHashFor(data), data.redirect_to);
+  return {
+    actionType: options.actionType,
+    recipient: options.recipient,
+    subject: options.title,
+    html: linkEmail({ ...options, verificationUrl: verification })
   };
 }
 
@@ -397,13 +443,13 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
   switch (actionType) {
     case 'signup':
     case 'email':
-      return [createActionDelivery(env, event, {
+      return [createLinkDelivery(env, event, {
         actionType,
         recipient,
         title: 'Confirme seu e-mail',
         eyebrow: 'CONTA ONFRAME',
         preview: 'Confirme seu endereço para ativar a conta OnFrame.',
-        description: 'Use o código abaixo ou o botão para confirmar seu endereço de e-mail.',
+        description: 'Use o link abaixo para confirmar seu endereço de e-mail.',
         buttonLabel: 'Confirmar e-mail',
         note: 'Se você não criou esta conta, ignore este e-mail.',
         warning: 'Nenhuma conta será ativada sem confirmar este endereço.'
@@ -421,28 +467,28 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         warning: 'O convite só será aceito depois da sua confirmação.'
       })];
     case 'magiclink':
-      return [createActionDelivery(env, event, {
+      return [createLinkDelivery(env, event, {
         actionType,
         recipient,
-        title: 'Seu código de acesso',
+        title: 'Seu link de acesso',
         eyebrow: 'LOGIN SEGURO',
-        preview: 'Use este código para entrar no OnFrame.',
-        description: 'Use o código abaixo ou o link único para entrar na sua conta.',
+        preview: 'Use este link para entrar no OnFrame.',
+        description: 'Use o link abaixo para entrar na sua conta.',
         buttonLabel: 'Entrar no OnFrame',
         note: 'Se você não solicitou este acesso, ignore este e-mail.',
-        warning: 'Nenhum acesso será concedido sem usar o código ou o link.'
+        warning: 'Nenhum acesso será concedido sem usar este link.'
       })];
     case 'recovery':
-      return [createActionDelivery(env, event, {
+      return [createLinkDelivery(env, event, {
         actionType,
         recipient,
         title: 'Redefina sua senha',
         eyebrow: 'RECUPERAÇÃO DE CONTA',
-        preview: 'Use este código para redefinir a senha da sua conta OnFrame.',
-        description: 'Use o código abaixo ou o link único para definir uma nova senha.',
+        preview: 'Use este link para redefinir a senha da sua conta OnFrame.',
+        description: 'Use o link abaixo para definir uma nova senha.',
         buttonLabel: 'Redefinir senha',
         note: 'Se você não solicitou esta recuperação, ignore este e-mail. Sua senha não será alterada.',
-        warning: 'Nenhuma senha será alterada sem usar o código ou o link.'
+        warning: 'Nenhuma senha será alterada sem usar este link.'
       })];
     case 'reauthentication':
       return [createActionDelivery(env, event, {

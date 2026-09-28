@@ -17,10 +17,16 @@
     manageAccess: document.getElementById('manage-access'),
     connectionBadge: document.getElementById('connection-badge'),
     connectionText: document.getElementById('connection-text'),
+    connectionConnect: document.getElementById('connection-connect'),
+    connectionContext: document.getElementById('connection-context'),
+    connectionAvatar: document.getElementById('connection-avatar'),
+    connectionUser: document.getElementById('connection-user'),
+    connectionWorkspace: document.getElementById('connection-workspace'),
+    connectionExpiresAt: document.getElementById('connection-expires-at'),
     accountList: document.getElementById('account-list'),
     updateOpen: document.getElementById('update-open')
   };
-  const state = { busy: false, editorVisible: true };
+  const state = { busy: false, connected: false, editorVisible: true, authController: null };
 
   decorateButtons();
   mountTooltips(document);
@@ -38,79 +44,113 @@
     await loadEditorPreference();
     try {
       const connection = await sendRemoteMessage('status');
-      await renderConnection(connection);
+      renderConnection(connection);
+      if (state.connected) await loadAccounts();
     } catch (error) {
+      state.connected = false;
+      renderAccounts([]);
+      elements.connectionConnect.hidden = false;
+      elements.connectionContext.hidden = true;
       setBadge(elements.connectionBadge, 'Indisponível', 'warn');
       elements.connectionText.textContent = toUserError(error);
-      renderAccounts([]);
+      ensureAuthController();
     } finally {
       setBusy(false);
     }
   }
 
-  async function renderConnection(connection) {
-    if (!connection || !connection.connected) {
-      setBadge(elements.connectionBadge, 'Não vinculada', 'warn');
-      elements.connectionText.textContent = 'Vincule esta extensão ao seu workspace no OnFrame.';
-      elements.manageAccess.textContent = 'Vincular extensão';
+  function renderConnection(connection) {
+    const connected = Boolean(connection && connection.connected && connection.user && connection.workspace);
+    state.connected = connected;
+    elements.connectionConnect.hidden = connected;
+    elements.connectionContext.hidden = !connected;
+
+    if (!connected) {
+      setBadge(elements.connectionBadge, 'Não conectada', 'warn');
+      elements.connectionText.textContent = connection && connection.reason === 'auth_pending'
+        ? 'Confira o link enviado para seu e-mail. Ao abrir esta janela novamente, o acesso será concluído.'
+        : connection && connection.reason === 'expired'
+          ? 'A sessão desta extensão expirou. Entre novamente para continuar.'
+          : 'Entre para conectar esta extensão ao seu workspace.';
+      elements.connectionUser.textContent = '-';
+      elements.connectionWorkspace.textContent = '-';
+      elements.connectionExpiresAt.textContent = '-';
+      elements.connectionAvatar.textContent = 'O';
       renderAccounts([]);
+      ensureAuthController();
+      renderControls();
       return;
     }
 
-    const result = await sendRemoteMessage('accounts');
-    const accounts = result && Array.isArray(result.accounts) ? result.accounts : [];
-    const enabled = accounts.filter((account) => account.enabled !== false).length;
-    setBadge(elements.connectionBadge, enabled ? 'Conectada' : 'Sem contas', enabled ? 'ok' : 'warn');
-    elements.connectionText.textContent = accounts.length
-      ? enabled + '/' + accounts.length + ' contas habilitadas no workspace ' + connection.workspace.name + '.'
-      : 'Nenhuma conta foi conectada ao workspace ' + connection.workspace.name + '.';
-    elements.manageAccess.textContent = 'Gerenciar acesso';
-    renderAccounts(accounts);
+    const name = String(connection.user.name || connection.user.email || 'OnFrame');
+    setBadge(elements.connectionBadge, 'Conectada', 'ok');
+    elements.connectionText.textContent = 'Esta extensão usa o acesso remoto do seu workspace.';
+    elements.connectionUser.textContent = name;
+    elements.connectionWorkspace.textContent = String(connection.workspace.name || 'Workspace OnFrame');
+    elements.connectionExpiresAt.textContent = formatExpiration(connection.expiresAt);
+    elements.connectionAvatar.textContent = name.slice(0, 1).toUpperCase();
+    renderControls();
+  }
+
+  async function loadAccounts() {
+    if (!state.connected) return;
+    try {
+      const result = await sendRemoteMessage('accounts');
+      renderAccounts(result && Array.isArray(result.accounts) ? result.accounts : []);
+    } catch (error) {
+      if (error && error.code === 'extension_session_unauthorized') {
+        renderConnection({ connected: false, reason: 'expired' });
+        return;
+      }
+      elements.connectionText.textContent = toUserError(error);
+    }
   }
 
   function renderAccounts(accounts) {
     elements.accountList.replaceChildren();
-    if (!accounts.length) {
-      elements.accountList.classList.add('is-hidden');
+    if (!state.connected || !accounts.length) {
+      elements.accountList.hidden = true;
       return;
     }
-    accounts.forEach((account) => {
-      const enabled = account.enabled !== false;
-      const userId = String(account.user_id || '');
-      const nickname = String(account.nickname || 'Conta ' + userId);
-      const card = document.createElement('article');
-      card.className = 'account-card ' + (enabled ? 'is-connected' : 'is-disabled');
 
-      const avatar = document.createElement('span');
-      avatar.className = 'account-avatar';
-      const fallback = document.createElement('span');
-      fallback.className = 'account-avatar-fallback';
-      fallback.textContent = nickname[0] || '?';
-      avatar.appendChild(fallback);
-      const logo = trustedLogo(account.logo);
-      if (logo) {
-        const image = document.createElement('img');
-        image.className = 'account-avatar-image';
-        image.src = logo;
-        image.alt = '';
-        image.referrerPolicy = 'no-referrer';
-        image.addEventListener('error', () => image.remove(), { once: true });
-        avatar.appendChild(image);
-      }
+    accounts.forEach((account) => elements.accountList.appendChild(createAccountCard(account)));
+    elements.accountList.hidden = false;
+  }
 
-      const main = document.createElement('span');
-      main.className = 'account-main';
-      const name = document.createElement('strong');
-      name.textContent = nickname;
-      const id = document.createElement('small');
-      id.textContent = 'ID: ' + (userId || '-');
-      const status = document.createElement('em');
-      status.textContent = enabled ? 'Habilitada' : 'Desativada';
-      main.append(name, id, status);
-      card.append(avatar, main);
-      elements.accountList.appendChild(card);
-    });
-    elements.accountList.classList.remove('is-hidden');
+  function createAccountCard(account) {
+    const enabled = account.enabled !== false;
+    const userId = String(account.user_id || '');
+    const nickname = String(account.nickname || 'Conta ' + userId);
+    const card = document.createElement('article');
+    card.className = 'account-card ' + (enabled ? 'is-connected' : 'is-disabled');
+
+    const avatar = document.createElement('span');
+    avatar.className = 'account-avatar';
+    const fallback = document.createElement('span');
+    fallback.className = 'account-avatar-fallback';
+    fallback.textContent = nickname[0] || '?';
+    avatar.appendChild(fallback);
+    const logo = trustedLogo(account.logo);
+    if (logo) {
+      const image = document.createElement('img');
+      image.className = 'account-avatar-image';
+      image.src = logo;
+      image.alt = '';
+      image.referrerPolicy = 'no-referrer';
+      image.addEventListener('error', () => image.remove(), { once: true });
+      avatar.appendChild(image);
+    }
+
+    const main = document.createElement('span');
+    main.className = 'account-main';
+    const name = document.createElement('strong');
+    name.textContent = nickname;
+    const status = document.createElement('span');
+    status.className = 'ob-badge ' + (enabled ? 'green' : 'grey');
+    status.textContent = enabled ? 'Habilitada' : 'Desativada';
+    main.append(name, status);
+    card.append(avatar, main);
+    return card;
   }
 
   function trustedLogo(value) {
@@ -153,7 +193,12 @@
 
   function openVersionLink(event) {
     event.preventDefault();
-    chrome.tabs.create({ url: elements.versionTag.href || RELEASES_URL });
+    openExternalUrl(elements.versionTag.href || RELEASES_URL);
+  }
+
+  function openExternalUrl(url) {
+    const target = String(url || '').trim();
+    if (target) chrome.tabs.create({ url: target });
   }
 
   function renderVersionTag() {
@@ -162,25 +207,22 @@
     setTooltip(elements.versionTag, 'OnFrame v' + version, { placement: 'bottom' });
   }
 
-  function sendRemoteMessage(action, payload = {}) {
-    return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(Object.assign({ type: 'onframe:remote', action }, payload), (response) => {
-        const runtimeError = chrome.runtime.lastError;
-        if (runtimeError) return reject(new Error(runtimeError.message || 'Não consegui acessar o OnFrame remoto.'));
-        if (!response || response.ok !== true) {
-          const error = new Error(response && response.error ? response.error : 'Não consegui acessar o OnFrame remoto.');
-          error.code = response && response.code ? response.code : '';
-          error.technicalError = response && response.technicalError ? response.technicalError : error.message;
-          return reject(error);
-        }
-        resolve(response.body || {});
-      });
-    });
+  function renderControls() {
+    elements.manageAccess.disabled = state.busy || !state.connected;
   }
 
-  async function loadEditorPreference() {
-    state.editorVisible = await new Promise((resolve) => chrome.storage.local.get({ [EDITOR_VISIBLE_KEY]: true }, (result) => resolve(result && result[EDITOR_VISIBLE_KEY] !== false)));
-    renderEditorToggle();
+  function formatExpiration(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
+  }
+
+  function loadEditorPreference() {
+    return new Promise((resolve) => chrome.storage.local.get({ [EDITOR_VISIBLE_KEY]: true }, (result) => {
+      state.editorVisible = result && result[EDITOR_VISIBLE_KEY] !== false;
+      renderEditorToggle();
+      resolve();
+    }));
   }
 
   function saveEditorPreference(value) {
@@ -211,6 +253,22 @@
     }));
   }
 
+  function sendRemoteMessage(action, payload = {}) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(Object.assign({ type: 'onframe:remote', action }, payload), (response) => {
+        const runtimeError = chrome.runtime.lastError;
+        if (runtimeError) return reject(new Error(runtimeError.message || 'Não consegui acessar o OnFrame remoto.'));
+        if (!response || response.ok !== true) {
+          const error = new Error(response && response.error ? response.error : 'Não consegui acessar o OnFrame remoto.');
+          error.code = response && response.code ? response.code : '';
+          error.technicalError = response && response.technicalError ? response.technicalError : error.message;
+          return reject(error);
+        }
+        resolve(response.body || {});
+      });
+    });
+  }
+
   function toActionError(error) {
     const message = String(error && error.message || error || '').toLowerCase();
     return message.includes('receiving end does not exist') || message.includes('could not establish connection') ? 'Recarregue esta aba.' : toUserError(error);
@@ -220,17 +278,34 @@
     state.busy = value;
     elements.refresh.disabled = value;
     elements.toggleEditor.disabled = value;
-    elements.manageAccess.disabled = value;
+    elements.openOptions.disabled = value;
     elements.updateOpen.disabled = value;
+    renderControls();
   }
 
   function decorateButtons() {
     addIcon(elements.refresh, 'refresh');
     addIcon(elements.openOptions, 'gear');
+    addIcon(elements.manageAccess, 'gear');
     addIcon(elements.updateOpen, 'arrowSquareOut');
   }
 
   function showFeedback(title, tone) {
     toast.show({ title, tone });
+  }
+
+  function ensureAuthController() {
+    if (state.authController) return;
+    state.authController = window.OnFrameAuthController.create(elements.connectionConnect, {
+      onConnected: async (connection) => {
+        renderConnection(connection);
+        await loadAccounts();
+        showFeedback('Extensão conectada ao workspace.', 'success');
+      },
+      onPending: () => {
+        elements.connectionText.textContent = 'Confira o link enviado para seu e-mail. Ao abrir esta janela novamente, o acesso será concluído.';
+      }
+    });
+    void state.authController.init();
   }
 })();

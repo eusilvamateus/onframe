@@ -108,13 +108,12 @@ function runtime(db: FakeD1) {
   };
 }
 
-test('renderiza OTP como CodeInput e preserva a verificação do Supabase', () => {
+test('renderiza magic link sem transformar o acesso em OTP', () => {
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), event('magiclink'));
 
   assert.equal(delivery.recipient, 'pessoa@example.com');
-  assert.equal(delivery.subject, 'Seu código de acesso');
-  assert.equal((delivery.html.match(/class="code-cell"/g) ?? []).length, 8);
-  assert.match(delivery.html, /width:48px;height:56px;border:2px solid #0a4ee4/);
+  assert.equal(delivery.subject, 'Seu link de acesso');
+  assert.doesNotMatch(delivery.html, /class="code-cell"/);
   assert.match(delivery.html, /onblide-horizontal-primary\.png/);
   assert.match(delivery.html, /auth\/v1\/verify\?token=token-hash-principal&amp;type=magiclink/);
 });

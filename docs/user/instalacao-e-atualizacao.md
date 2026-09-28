@@ -4,7 +4,7 @@
 
 - Windows ou macOS 13 Ventura ou superior;
 - Chrome ou Edge com o modo desenvolvedor ativado;
-- acesso ao workspace OnFrame para gerar o código de pareamento.
+- conta OnFrame com acesso ao workspace.
 
 Não é necessário instalar Node.js, iniciar um serviço ou autorizar contas do
 Mercado Livre no computador.
@@ -35,16 +35,18 @@ A instalação padrão fica em `%LOCALAPPDATA%\OnFrame` no Windows e em
 3. Clique em `Carregar sem compactação`.
 4. Selecione a pasta `extension` da instalação.
 
-## Parear e conectar contas
+## Entrar e conectar contas
 
 1. Abra as opções da extensão.
-2. Use `Abrir pareamento`, autentique-se e gere o código.
-3. Cole o código nas opções e selecione `Vincular`.
+2. Entre com e-mail e senha ou crie a conta. O link mágico é uma alternativa
+   opcional; ele não substitui o acesso por senha.
+3. Para cadastro confirmado, link mágico ou recuperação, abra o link recebido
+   por e-mail e depois volte às opções ou ao popup da extensão.
 4. Em `Contas do workspace`, escolha conectar uma conta do Mercado Livre.
 5. Conclua a autorização na aba aberta.
 
 As contas e suas credenciais pertencem ao workspace remoto. O computador guarda
-apenas a sessão revogável da extensão.
+apenas a sessão revogável da extensão, nunca a senha nem o bearer do Supabase.
 
 ## Atualizar
 

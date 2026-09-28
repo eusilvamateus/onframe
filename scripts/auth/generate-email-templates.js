@@ -18,12 +18,10 @@ const templates = {
 <p><a href="{{ .ConfirmationURL }}">Aceitar convite</a></p>
 <p>Se você não esperava este convite, ignore este e-mail.</p>`,
   'magic-link.html': `
-<h2>Seu código de acesso ao OnFrame</h2>
-<p>Use o código abaixo para entrar:</p>
-<p style="font-size: 32px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
-  {{ .Token }}
-</p>
-<p>O código expira em 15 minutos.</p>
+<h2>Seu link de acesso ao OnFrame</h2>
+<p>Use o link abaixo para entrar:</p>
+<p><a href="{{ .ConfirmationURL }}">Entrar no OnFrame</a></p>
+<p>O link expira em 15 minutos.</p>
 <p>Se você não pediu este código, ignore este e-mail.</p>`,
   'recovery.html': `
 <h2>Redefina sua senha do OnFrame</h2>
@@ -75,13 +73,17 @@ const templates = {
 const check = process.argv.includes('--check');
 const stale = [];
 
+function normalizeTemplate(content) {
+  return String(content).replace(/\r\n/g, '\n').trim() + '\n';
+}
+
 for (const [filename, content] of Object.entries(templates)) {
   const target = path.join(templatesDir, filename);
-  const normalized = `${content.trim()}\n`;
+  const normalized = normalizeTemplate(content);
   const existing = fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : null;
 
   if (check) {
-    if (existing !== normalized) stale.push(filename);
+    if (existing === null || normalizeTemplate(existing) !== normalized) stale.push(filename);
     continue;
   }
 

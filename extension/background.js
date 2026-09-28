@@ -1,7 +1,8 @@
 const REMOTE_SERVICE = 'https://onframe.onblide.com';
 const REMOTE_SESSION_KEY = 'onframeRemoteSession';
-const PAIRING_CODE_PATTERN = /^OF-[A-Za-z0-9_-]{24}$/u;
+const REMOTE_AUTH_FLOW_KEY = 'onframeRemoteAuthFlow';
 const REMOTE_SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+const SUPABASE_ACCESS_TOKEN_PATTERN = /^[A-Za-z0-9._-]{20,4096}$/u;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return false;
@@ -34,7 +35,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleRemoteMessage(message) {
   const action = String(message.action || '');
   if (action === 'status') return getRemoteConnection();
-  if (action === 'claim') return claimRemoteConnection(message.pairingCode);
+  if (action === 'authenticate') return authenticateRemoteConnection(message.accessToken);
+  if (action === 'auth-flow-start') return startExtensionAuthFlow();
   if (action === 'disconnect') return disconnectRemoteConnection();
   if (action === 'accounts') return listRemoteAccounts();
   if (action === 'oauth-start') return startRemoteAuth();
@@ -43,22 +45,21 @@ async function handleRemoteMessage(message) {
   throw new Error('Ação remota inválida.');
 }
 
-async function claimRemoteConnection(value) {
-  const pairingCode = String(value || '').trim();
-  if (!PAIRING_CODE_PATTERN.test(pairingCode)) {
-    throw new Error('Informe um código de pareamento válido.');
+async function authenticateRemoteConnection(value) {
+  const accessToken = String(value || '').trim();
+  if (!SUPABASE_ACCESS_TOKEN_PATTERN.test(accessToken)) {
+    throw new Error('A sessão de acesso recebida é inválida.');
   }
 
-  const claim = await requestRemote('/v1/extension-sessions', {
+  const claim = await requestRemote('/v1/extension-sessions/from-auth', {
     method: 'POST',
-    body: JSON.stringify({
-      pairingCode,
-      label: 'Extensão OnFrame'
-    })
+    headers: { authorization: `Bearer ${accessToken}` },
+    body: '{}'
   });
 
   const session = normalizeRemoteSession(claim);
   await writeRemoteSession(session);
+  await removePendingAuthFlow();
 
   try {
     return await getRemoteConnection();
@@ -68,8 +69,28 @@ async function claimRemoteConnection(value) {
   }
 }
 
+async function startExtensionAuthFlow() {
+  const result = await requestRemote('/v1/extension-auth-flows', {
+    method: 'POST',
+    body: '{}'
+  });
+  const flow = normalizePendingAuthFlow(result);
+  await storageSet({ [REMOTE_AUTH_FLOW_KEY]: flow });
+  return {
+    expiresAt: flow.expiresAt,
+    redirectTo: `${REMOTE_SERVICE}/connect?flow=${encodeURIComponent(flow.token)}`
+  };
+}
+
 async function getRemoteConnection() {
-  const session = await readRemoteSession();
+  let session = await readRemoteSession();
+  if (!session) {
+    const pending = await consumePendingAuthFlow();
+    if (pending.status === 'pending') {
+      return { connected: false, reason: 'auth_pending', expiresAt: pending.expiresAt };
+    }
+    session = pending.session;
+  }
   if (!session) return { connected: false };
 
   if (isRemoteSessionExpired(session)) {
@@ -93,7 +114,10 @@ async function getRemoteConnection() {
 
 async function disconnectRemoteConnection() {
   const session = await readRemoteSession();
-  if (!session) return { connected: false };
+  if (!session) {
+    await removePendingAuthFlow();
+    return { connected: false };
+  }
 
   try {
     await requestRemote('/v1/extension-session', {
@@ -105,6 +129,7 @@ async function disconnectRemoteConnection() {
   }
 
   await removeRemoteSession();
+  await removePendingAuthFlow();
   return { connected: false };
 }
 
@@ -190,12 +215,60 @@ async function requireRemoteSession() {
   const session = await readRemoteSession();
   if (!session || isRemoteSessionExpired(session)) {
     await removeRemoteSession();
-    const error = new Error('A vinculação desta extensão não é mais válida.');
+    const error = new Error('A sessão desta extensão não é mais válida.');
     error.code = 'extension_session_unauthorized';
     error.status = 401;
     throw error;
   }
   return session;
+}
+
+function normalizePendingAuthFlow(payload) {
+  const token = String(payload && payload.flow || '');
+  const expiresAt = String(payload && payload.expiresAt || '');
+  if (!REMOTE_SESSION_TOKEN_PATTERN.test(token) || !Number.isFinite(Date.parse(expiresAt))) {
+    const error = new Error('O OnFrame remoto retornou um fluxo de acesso inválido.');
+    error.code = 'invalid_remote_auth_flow';
+    throw error;
+  }
+  return { token, expiresAt };
+}
+
+function normalizeStoredPendingAuthFlow(value) {
+  if (!value || typeof value !== 'object') return null;
+  const token = String(value.token || '');
+  const expiresAt = String(value.expiresAt || '');
+  if (!REMOTE_SESSION_TOKEN_PATTERN.test(token) || !Number.isFinite(Date.parse(expiresAt))) return null;
+  return { token, expiresAt };
+}
+
+async function consumePendingAuthFlow() {
+  const flow = await readPendingAuthFlow();
+  if (!flow) return { status: 'absent', session: null };
+  if (Date.parse(flow.expiresAt) <= Date.now()) {
+    await removePendingAuthFlow();
+    return { status: 'absent', session: null };
+  }
+
+  try {
+    const result = await requestRemote(`/v1/extension-auth-flows/${encodeURIComponent(flow.token)}`);
+    if (result && result.status === 'pending') {
+      return { status: 'pending', expiresAt: flow.expiresAt, session: null };
+    }
+    if (!result || result.status !== 'authenticated') {
+      throw new Error('O OnFrame remoto retornou um fluxo de acesso inválido.');
+    }
+    const session = normalizeRemoteSession(result);
+    await writeRemoteSession(session);
+    await removePendingAuthFlow();
+    return { status: 'authenticated', session };
+  } catch (error) {
+    if (error && (error.status === 404 || error.status === 409)) {
+      await removePendingAuthFlow();
+      return { status: 'absent', session: null };
+    }
+    throw error;
+  }
 }
 
 function normalizeRemoteSession(payload) {
@@ -272,9 +345,8 @@ async function requestRemoteResponse(path, options = {}) {
 }
 
 function remoteErrorMessage(code, status, fallbackMessage) {
-  if (code === 'invalid_pairing_code') return 'O código de pareamento é inválido.';
-  if (code === 'pairing_unavailable') return 'Esse código expirou ou já foi usado. Gere outro código.';
-  if (code === 'extension_session_unauthorized') return 'A vinculação desta extensão não é mais válida.';
+  if (code === 'auth_flow_unavailable') return 'Esse link de acesso expirou ou já foi usado. Solicite outro pela extensão.';
+  if (code === 'extension_session_unauthorized') return 'A sessão desta extensão não é mais válida.';
   if (code === 'remote_oauth_unconfigured') return 'A conexão remota do Mercado Livre ainda não está configurada.';
   if (code === 'workspace_account_access_forbidden') return 'Seu acesso não pode conectar contas ao workspace.';
   if (code === 'workspace_account_unavailable') return 'Nenhuma conta do Mercado Livre está conectada neste workspace.';
@@ -305,6 +377,19 @@ function readRemoteSession() {
   });
 }
 
+function readPendingAuthFlow() {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get({ [REMOTE_AUTH_FLOW_KEY]: null }, (result) => {
+      const runtimeError = chrome.runtime.lastError;
+      if (runtimeError) {
+        reject(new Error(runtimeError.message || 'Não foi possível ler o acesso pendente.'));
+        return;
+      }
+      resolve(normalizeStoredPendingAuthFlow(result && result[REMOTE_AUTH_FLOW_KEY]));
+    });
+  });
+}
+
 function normalizeStoredRemoteSession(value) {
   const token = String(value.token || '');
   const sessionId = String(value.sessionId || '');
@@ -325,6 +410,19 @@ function removeRemoteSession() {
       const runtimeError = chrome.runtime.lastError;
       if (runtimeError) {
         reject(new Error(runtimeError.message || 'Não foi possível remover a sessão remota.'));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+function removePendingAuthFlow() {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.remove(REMOTE_AUTH_FLOW_KEY, () => {
+      const runtimeError = chrome.runtime.lastError;
+      if (runtimeError) {
+        reject(new Error(runtimeError.message || 'Não foi possível remover o acesso pendente.'));
         return;
       }
       resolve();
@@ -363,7 +461,7 @@ async function handleApiMessage(message) {
     return {
       ok: false,
       status: 401,
-      error: 'Vincule esta extensão ao OnFrame para editar anúncios.',
+      error: 'Entre na extensão do OnFrame para editar anúncios.',
       code: 'extension_session_unauthorized',
       technicalError: remoteSession ? 'extension_session_expired' : 'extension_session_missing'
     };

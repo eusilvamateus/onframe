@@ -16,8 +16,8 @@ Não há servidor local, token local ou fallback para `localhost`.
 - `modules/` implementa fotos, descrição, características e comércio.
 - `background.js` mantém exclusivamente o bearer de sessão do OnFrame e
   encaminha contratos `/api/*` para `https://onframe.onblide.com/v1/api/*`.
-- `ui/options/` pareia a extensão e administra as contas do workspace.
-- `ui/popup/` mostra o estado remoto, as contas habilitadas e o atualizador.
+- `ui/options/` e `ui/popup/` autenticam a pessoa, mostram a sessão do
+  workspace e administram as contas conectadas.
 
 ### Worker remoto (`cloudflare/`)
 
@@ -28,8 +28,16 @@ Não há servidor local, token local ou fallback para `localhost`.
   Supabase Auth, renderiza os e-mails transacionais e os entrega pelo Resend.
   O segredo de assinatura, a chave do Resend e os OTPs não são armazenados no
   D1; somente o estado idempotente de entrega é registrado.
-- `/connect`, protegido pelo Cloudflare Access, emite um código de uso único.
-  A extensão o troca por uma sessão em `POST /v1/extension-sessions`.
+- `POST /v1/extension-sessions/from-auth` valida o bearer emitido pelo
+  Supabase Auth e cria a sessão revogável da extensão. Nenhum código de
+  autenticação adicional é exibido para a pessoa.
+- `POST /v1/extension-auth-flows`, o callback público `/connect` e
+  `GET /v1/extension-auth-flows/:token` concluem cadastro confirmado, link
+  mágico e recuperação de senha sem transferir o bearer do Supabase para a
+  interface visível da extensão.
+- `/auth/challenge` hospeda o Turnstile dentro de um `iframe` com origem
+  `onframe.onblide.com`, permitindo que páginas da extensão Manifest V3 usem
+  a confirmação de segurança sem carregar scripts remotos.
 - `POST /v1/mercadolivre/oauth/start` inicia a autorização de uma conta; o
   callback público `/oauth/mercadolivre/callback` conclui a troca de tokens.
 - `GET /v1/accounts`, `PATCH /v1/accounts/:meliUserId` e
@@ -81,11 +89,10 @@ parte do produto nem do pacote de instalação.
   entrega. Cada envio também usa uma chave de idempotência determinística no
   Resend, sem armazenar endereços, links ou códigos no D1.
 - O Supabase Auth exige token do Turnstile para cadastro, login e recuperação
-  de senha. O widget aceita apenas `onframe.onblide.com`; seu segredo é
-  injetado em `supabase config push` como `SUPABASE_TURNSTILE_SECRET`, nunca
-  no Worker, na extensão ou no repositório.
-- A ausência ou expiração da sessão bloqueia contratos `/api/*` até novo
-  pareamento.
+  de senha. O token é produzido pelo `iframe` com origem
+  `onframe.onblide.com`; o segredo é injetado em `supabase config push` como
+  `SUPABASE_TURNSTILE_SECRET`, nunca no Worker, na extensão ou no repositório.
+- A ausência ou expiração da sessão bloqueia contratos `/api/*` até novo login.
 
 ## Referências
 

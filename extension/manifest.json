@@ -16,7 +16,8 @@
   ],
   "host_permissions": [
     "https://*.mercadolivre.com.br/*",
-    "https://onframe.onblide.com/*"
+    "https://onframe.onblide.com/*",
+    "https://ignrkxityihpvreaimxe.supabase.co/*"
   ],
   "options_ui": {
     "page": "ui/options/index.html",

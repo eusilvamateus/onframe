@@ -1,14 +1,12 @@
 (function () {
   const Shared = window.OnFrameShared;
   const addIcon = Shared.addIcon;
-  const escapeHtml = Shared.escapeHtml;
   const mountTooltips = Shared.mountTooltips;
   const setBadge = Shared.setBadge;
   const setTooltip = Shared.setTooltip;
   const toUserError = Shared.toUserError;
   const toast = window.OnFrameToast;
   const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
-  const REMOTE_CONNECT_URL = 'https://onframe.onblide.com/connect';
 
   const elements = {
     refresh: document.getElementById('refresh'),
@@ -16,10 +14,8 @@
     remoteBadge: document.getElementById('remote-badge'),
     remoteText: document.getElementById('remote-text'),
     remoteConnect: document.getElementById('remote-connect'),
-    remotePairingCode: document.getElementById('remote-pairing-code'),
-    remoteClaim: document.getElementById('remote-claim'),
-    remoteOpenConnect: document.getElementById('remote-open-connect'),
     remoteContext: document.getElementById('remote-context'),
+    remoteAvatar: document.getElementById('remote-avatar'),
     remoteUser: document.getElementById('remote-user'),
     remoteWorkspace: document.getElementById('remote-workspace'),
     remoteExpiresAt: document.getElementById('remote-expires-at'),
@@ -30,99 +26,80 @@
     remoteAccountsText: document.getElementById('remote-accounts-text'),
     remoteAccountsList: document.getElementById('remote-accounts-list'),
     remoteAccountConnect: document.getElementById('remote-account-connect'),
+    remoteAccountConnectEmpty: document.getElementById('remote-account-connect-empty'),
     updateOpen: document.getElementById('update-open')
   };
-  const state = { busy: false, connected: false, accounts: [], pendingRemoveUserId: '' };
+  const state = { busy: false, connected: false, accounts: [], pendingRemoveUserId: '', authController: null };
 
   decorateButtons();
   mountTooltips(document);
   elements.refresh.addEventListener('click', () => void loadOptions());
   elements.versionTag.addEventListener('click', openVersionLink);
-  elements.remotePairingCode.addEventListener('input', renderControls);
-  elements.remoteClaim.addEventListener('click', () => void claimConnection());
-  elements.remoteOpenConnect.addEventListener('click', () => openExternalUrl(REMOTE_CONNECT_URL));
   elements.remoteDisconnect.addEventListener('click', () => void disconnectConnection());
   elements.remoteAccountConnect.addEventListener('click', () => void startRemoteAuth());
+  elements.remoteAccountConnectEmpty.addEventListener('click', () => void startRemoteAuth());
   elements.updateOpen.addEventListener('click', openUpdater);
-  window.addEventListener('focus', () => {
-    if (state.connected && !state.busy) void loadAccounts();
-  });
+  window.addEventListener('focus', () => { if (!state.busy) void loadOptions(); });
   void loadOptions();
 
   async function loadOptions() {
     setBusy(true);
-    resetView();
+    renderVersionTag();
     try {
       const connection = await sendRemoteMessage('status');
       renderConnection(connection);
       if (state.connected) await loadAccounts();
     } catch (error) {
+      state.connected = false;
+      state.accounts = [];
+      renderAccounts([]);
+      elements.remoteConnect.hidden = false;
+      elements.remoteContext.hidden = true;
+      elements.remoteActions.hidden = true;
+      elements.remoteAccountsPanel.hidden = true;
       setBadge(elements.remoteBadge, 'Indisponível', 'warn');
       elements.remoteText.textContent = toUserError(error);
-      renderConnection({ connected: false });
+      ensureAuthController();
     } finally {
       setBusy(false);
     }
-  }
-
-  function resetView() {
-    renderVersionTag();
-    state.connected = false;
-    state.accounts = [];
-    state.pendingRemoveUserId = '';
-    elements.remotePairingCode.value = '';
-    renderConnection({ connected: false });
-    renderAccounts([]);
-    setBadge(elements.remoteAccountsBadge, 'Verificando', 'muted');
-    elements.remoteAccountsText.textContent = 'Buscando contas vinculadas ao workspace.';
   }
 
   function renderConnection(connection) {
     const connected = Boolean(connection && connection.connected && connection.user && connection.workspace);
     state.connected = connected;
-    elements.remoteConnect.classList.toggle('is-hidden', connected);
-    elements.remoteContext.classList.toggle('is-hidden', !connected);
-    elements.remoteActions.classList.toggle('is-hidden', !connected);
-    elements.remoteAccountsPanel.classList.toggle('is-hidden', !connected);
+    elements.remoteConnect.hidden = connected;
+    elements.remoteContext.hidden = !connected;
+    elements.remoteActions.hidden = !connected;
+    elements.remoteAccountsPanel.hidden = !connected;
 
     if (!connected) {
-      setBadge(elements.remoteBadge, 'Não vinculada', 'warn');
-      elements.remoteText.textContent = connection && connection.reason === 'expired'
-        ? 'A sessão anterior expirou. Vincule esta extensão novamente.'
-        : 'Vincule esta extensão ao seu workspace no OnFrame.';
+      state.accounts = [];
+      state.pendingRemoveUserId = '';
+      setBadge(elements.remoteBadge, 'Não conectada', 'warn');
+      elements.remoteText.textContent = connection && connection.reason === 'auth_pending'
+        ? 'Confira o link enviado para seu e-mail. Quando voltar, a extensão concluirá o acesso automaticamente.'
+        : connection && connection.reason === 'expired'
+          ? 'A sessão desta extensão expirou. Entre novamente para continuar.'
+          : 'Entre para conectar este navegador ao seu workspace do OnFrame.';
       elements.remoteUser.textContent = '-';
       elements.remoteWorkspace.textContent = '-';
       elements.remoteExpiresAt.textContent = '-';
+      elements.remoteAvatar.textContent = 'O';
+      renderAccounts([]);
+      ensureAuthController();
       renderControls();
       return;
     }
 
-    setBadge(elements.remoteBadge, 'Vinculada', 'ok');
-    elements.remoteText.textContent = 'Esta extensão está vinculada ao seu workspace remoto.';
-    elements.remoteUser.textContent = String(connection.user.name || connection.user.email);
-    elements.remoteWorkspace.textContent = String(connection.workspace.name);
+    const name = String(connection.user.name || connection.user.email || 'OnFrame');
+    setBadge(elements.remoteBadge, 'Conectada', 'ok');
+    elements.remoteText.textContent = 'Esta extensão está autorizada a usar as contas deste workspace.';
+    elements.remoteUser.textContent = name;
+    elements.remoteWorkspace.textContent = String(connection.workspace.name || 'Workspace OnFrame');
     elements.remoteExpiresAt.textContent = formatExpiration(connection.expiresAt);
+    elements.remoteAvatar.textContent = name.slice(0, 1).toUpperCase();
     renderControls();
-  }
-
-  async function claimConnection() {
-    const pairingCode = elements.remotePairingCode.value.trim();
-    if (!pairingCode) {
-      elements.remotePairingCode.focus();
-      return showFeedback('Informe o código de pareamento.', 'warning');
-    }
-    setBusy(true);
-    try {
-      const connection = await sendRemoteMessage('claim', { pairingCode });
-      elements.remotePairingCode.value = '';
-      renderConnection(connection);
-      await loadAccounts();
-      showFeedback('Extensão vinculada ao acesso remoto.', 'success');
-    } catch (error) {
-      showFeedback(toUserError(error), 'danger');
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function disconnectConnection() {
@@ -131,8 +108,7 @@
       await sendRemoteMessage('disconnect');
       state.accounts = [];
       renderConnection({ connected: false });
-      renderAccounts([]);
-      showFeedback('Extensão desvinculada do acesso remoto.', 'success');
+      showFeedback('Sessão encerrada neste navegador.', 'success');
     } catch (error) {
       showFeedback(toUserError(error), 'danger');
     } finally {
@@ -148,9 +124,7 @@
       renderAccounts(state.accounts);
     } catch (error) {
       if (error && error.code === 'extension_session_unauthorized') {
-        state.accounts = [];
         renderConnection({ connected: false, reason: 'expired' });
-        renderAccounts([]);
         return;
       }
       setBadge(elements.remoteAccountsBadge, 'Indisponível', 'warn');
@@ -160,21 +134,22 @@
 
   function renderAccounts(accounts) {
     elements.remoteAccountsList.replaceChildren();
+    elements.remoteAccountConnectEmpty.hidden = true;
     if (!state.connected) return;
+
     const enabled = accounts.filter((account) => account.enabled !== false).length;
     setBadge(elements.remoteAccountsBadge, accounts.length === 1 ? '1 conta' : accounts.length + ' contas', accounts.length ? 'ok' : 'muted');
     elements.remoteAccountsText.textContent = accounts.length
-      ? enabled + '/' + accounts.length + ' contas habilitadas no workspace.'
-      : 'Nenhuma conta vinculada ao workspace.';
+      ? enabled + '/' + accounts.length + ' contas habilitadas neste workspace.'
+      : 'Nenhuma conta foi conectada a este workspace ainda.';
     if (!accounts.length) {
-      elements.remoteAccountsList.classList.add('is-hidden');
+      elements.remoteAccountsList.hidden = true;
+      elements.remoteAccountConnectEmpty.hidden = false;
       return;
     }
 
-    accounts.forEach((account) => {
-      elements.remoteAccountsList.appendChild(createAccountCard(account));
-    });
-    elements.remoteAccountsList.classList.remove('is-hidden');
+    accounts.forEach((account) => elements.remoteAccountsList.appendChild(createAccountCard(account)));
+    elements.remoteAccountsList.hidden = false;
     mountTooltips(elements.remoteAccountsList);
   }
 
@@ -183,7 +158,7 @@
     const userId = String(account.user_id || '');
     const nickname = String(account.nickname || 'Conta ' + userId);
     const card = document.createElement('article');
-    card.className = 'account-card ' + (enabled ? 'is-connected' : 'is-disabled');
+    card.className = 'account-card account-card-manage ' + (enabled ? 'is-connected' : 'is-disabled');
 
     const avatar = document.createElement('span');
     avatar.className = 'account-avatar';
@@ -208,7 +183,8 @@
     name.textContent = nickname;
     const id = document.createElement('small');
     id.textContent = 'ID: ' + (userId || '-');
-    const status = document.createElement('em');
+    const status = document.createElement('span');
+    status.className = 'ob-badge ' + (enabled ? 'green' : 'grey');
     status.textContent = enabled ? 'Habilitada' : 'Desativada';
     main.append(name, id, status);
 
@@ -226,7 +202,7 @@
     const profileUrl = String(account.permalink || '');
     if (profileUrl) {
       const profile = document.createElement('button');
-      profile.className = 'account-icon-btn';
+      profile.className = 'ob-button secondary ob-icon-button compact-icon';
       profile.type = 'button';
       profile.dataset.tooltip = 'Abrir perfil';
       profile.setAttribute('aria-label', 'Abrir perfil');
@@ -236,11 +212,9 @@
     }
     const pending = state.pendingRemoveUserId === userId;
     const remove = document.createElement('button');
-    remove.className = 'account-icon-btn danger' + (pending ? ' is-confirming' : '');
+    remove.className = 'ob-button danger compact account-remove';
     remove.type = 'button';
-    remove.dataset.tooltip = pending ? 'Confirmar remoção' : 'Remover conta';
-    remove.setAttribute('aria-label', pending ? 'Confirmar remoção' : 'Remover conta');
-    remove.innerHTML = icon(pending ? 'checkCircle' : 'x', 16);
+    remove.textContent = pending ? 'Confirmar remoção' : 'Remover';
     remove.addEventListener('click', () => void removeAccount(userId));
     actions.appendChild(remove);
     card.append(avatar, main, toggle, actions);
@@ -266,7 +240,8 @@
     if (state.pendingRemoveUserId !== userId) {
       state.pendingRemoveUserId = userId;
       renderAccounts(state.accounts);
-      return showFeedback('Clique novamente para remover a conta.', 'warning');
+      showFeedback('Confirme a remoção da conta.', 'warning');
+      return;
     }
     setBusy(true);
     try {
@@ -313,12 +288,9 @@
   }
 
   function renderControls() {
-    const canClaim = !state.busy && !state.connected && Boolean(elements.remotePairingCode.value.trim());
-    elements.remotePairingCode.disabled = state.busy || state.connected;
-    elements.remoteClaim.disabled = !canClaim;
-    elements.remoteOpenConnect.disabled = state.busy || state.connected;
     elements.remoteDisconnect.disabled = state.busy || !state.connected;
     elements.remoteAccountConnect.disabled = state.busy || !state.connected;
+    elements.remoteAccountConnectEmpty.disabled = state.busy || !state.connected;
   }
 
   function setBusy(value) {
@@ -338,7 +310,7 @@
   function formatExpiration(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '-';
-    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit' }).format(date);
   }
 
   function trustedLogo(value) {
@@ -364,10 +336,9 @@
 
   function decorateButtons() {
     addIcon(elements.refresh, 'refresh');
-    addIcon(elements.remoteClaim, 'link');
-    addIcon(elements.remoteOpenConnect, 'arrowSquareOut');
     addIcon(elements.remoteDisconnect, 'x');
     addIcon(elements.remoteAccountConnect, 'plus');
+    addIcon(elements.remoteAccountConnectEmpty, 'plus');
     addIcon(elements.updateOpen, 'arrowSquareOut');
   }
 
@@ -377,5 +348,20 @@
 
   function showFeedback(title, tone) {
     toast.show({ title, tone });
+  }
+
+  function ensureAuthController() {
+    if (state.authController) return;
+    state.authController = window.OnFrameAuthController.create(elements.remoteConnect, {
+      onConnected: async (connection) => {
+        renderConnection(connection);
+        await loadAccounts();
+        showFeedback('Extensão conectada ao workspace.', 'success');
+      },
+      onPending: () => {
+        elements.remoteText.textContent = 'Confira o link enviado para seu e-mail. Quando voltar, a extensão concluirá o acesso automaticamente.';
+      }
+    });
+    void state.authController.init();
   }
 })();

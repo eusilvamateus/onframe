@@ -12,7 +12,7 @@
   const ModuleRegistry = window.OnFrameModuleRegistry;
   const ContentShell = window.OnFrameContentShell;
   const toast = window.OnFrameToast;
-  const api = Shared.createApi({ offlineMessage: 'Vincule esta extensão ao OnFrame para editar anúncios.' });
+  const api = Shared.createApi({ offlineMessage: 'Entre na extensão do OnFrame para editar anúncios.' });
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const root = document.createElement('div');
   root.id = 'onblide-ml-root';

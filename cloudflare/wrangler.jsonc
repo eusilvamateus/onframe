@@ -9,11 +9,11 @@
     "enabled": true
   },
   "vars": {
-    "ACCESS_AUD": "ec5e721f6923bb7bec8a6a675e177116627340b6bbe2ecda33386563ccd6bc53",
-    "ACCESS_TEAM_DOMAIN": "https://crimson-firefly-09d2.cloudflareaccess.com",
     "MELI_REDIRECT_URI": "https://onframe.onblide.com/oauth/mercadolivre/callback",
     "AUTH_EMAIL_FROM": "OnFrame <acesso@onframe.onblide.com>",
-    "SUPABASE_URL": "https://ignrkxityihpvreaimxe.supabase.co"
+    "SUPABASE_URL": "https://ignrkxityihpvreaimxe.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_e4YLeOdiFZ7N0QIkIL7wJA_rOeaS6ux",
+    "TURNSTILE_SITEKEY": "0x4AAAAAAFIJHY8iacQ0d-dn"
   },
   "secrets": {
     "required": ["RESEND_API_KEY", "SUPABASE_SEND_EMAIL_HOOK_SECRET"]

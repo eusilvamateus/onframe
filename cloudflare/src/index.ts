@@ -1,11 +1,15 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { handleSupabaseSendEmailHook, type AuthEmailRuntimeEnv } from './auth-email';
+import {
+  authenticateSupabaseRequest,
+  SupabaseAuthError,
+  type SupabaseIdentity
+} from './browser-auth';
+import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, resultPage } from './connect-page';
 import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTokenValue, type EncryptedValue } from './token-cipher';
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 
-const PAIRING_TTL_MS = 10 * 60 * 1000;
-const PAIRING_COOKIE_NAME = 'onframe_pairing';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
 const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const MELI_OAUTH_TRANSACTION_TTL_MS = 10 * 60 * 1000;
 const MELI_AUTHORIZATION_URL = 'https://auth.mercadolivre.com.br/authorization';
@@ -18,15 +22,11 @@ type RuntimeEnv = Env & AuthEmailRuntimeEnv & {
   MELI_CLIENT_SECRET?: string;
   MELI_REDIRECT_URI?: string;
   MELI_TOKEN_CIPHER_KEY?: CryptoKey;
+  SUPABASE_PUBLISHABLE_KEY?: string;
+  TURNSTILE_SITEKEY?: string;
 };
 
-type AccessIdentity = {
-  email: string;
-  name: string;
-  subject: string;
-};
-
-type Actor = AccessIdentity & {
+type Actor = SupabaseIdentity & {
   userId: string;
   workspaceId: string;
 };
@@ -37,9 +37,9 @@ type HealthResponse = {
   timestamp: string;
 };
 
-type Pairing = {
-  code: string;
+type ExtensionAuthFlow = {
   expiresAt: number;
+  token: string;
 };
 
 type ExtensionSessionActor = {
@@ -104,7 +104,9 @@ function json(payload: unknown, status = 200, headers?: HeadersInit): Response {
 function html(content: string, status = 200, headers?: HeadersInit): Response {
   const responseHeaders = new Headers(headers);
   responseHeaders.set('cache-control', 'no-store');
-  responseHeaders.set('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+  if (!responseHeaders.has('content-security-policy')) {
+    responseHeaders.set('content-security-policy', "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'");
+  }
   responseHeaders.set('content-type', 'text/html; charset=utf-8');
   responseHeaders.set('x-content-type-options', 'nosniff');
 
@@ -118,42 +120,10 @@ function now(): number {
   return Date.now();
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
 function randomSecret(byteLength: number): string {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
   return base64Url(bytes);
-}
-
-function cookieValue(request: Request, name: string): string | null {
-  const cookies = request.headers.get('cookie');
-  if (!cookies) return null;
-
-  for (const entry of cookies.split(';')) {
-    const [key, ...value] = entry.trim().split('=');
-    if (key !== name) continue;
-
-    try {
-      return decodeURIComponent(value.join('='));
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-}
-
-function pairingCookie(pairing: Pairing): string {
-  const maxAge = Math.max(1, Math.floor((pairing.expiresAt - now()) / 1000));
-  return `${PAIRING_COOKIE_NAME}=${encodeURIComponent(pairing.code)}; Max-Age=${maxAge}; Path=/connect; HttpOnly; Secure; SameSite=Strict`;
 }
 
 async function sha256(value: string): Promise<string> {
@@ -325,51 +295,34 @@ function logFailure(requestId: string, request: Request, error: unknown): void {
   }));
 }
 
-async function authenticateAccess(request: Request, env: Env): Promise<AccessIdentity> {
-  const token = request.headers.get('cf-access-jwt-assertion');
-  if (!token) throw new RequestError('access_unauthorized', 401);
+async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Actor> {
+  const existingUsers = await env.ONFRAME_DB.prepare(`
+    SELECT id
+    FROM users
+    WHERE identity_subject = ? OR email = ?
+    ORDER BY created_at
+    LIMIT 2
+  `).bind(identity.subject, identity.email).all<{ id: string }>();
+  const knownIds = Array.from(new Set(existingUsers.results.map((user) => user.id)));
+  if (knownIds.length > 1) throw new RequestError('identity_conflict', 409);
 
-  const issuer = env.ACCESS_TEAM_DOMAIN;
-  const jwks = createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`));
-
-  try {
-    const { payload } = await jwtVerify(token, jwks, {
-      audience: env.ACCESS_AUD,
-      issuer
-    });
-
-    if (typeof payload.sub !== 'string' || typeof payload.email !== 'string') {
-      throw new RequestError('access_identity_incomplete', 401);
-    }
-
-    const email = payload.email.trim().toLowerCase();
-    if (!email) throw new RequestError('access_identity_incomplete', 401);
-
-    return {
-      email,
-      name: typeof payload.name === 'string' && payload.name.trim()
-        ? payload.name.trim()
-        : email.split('@')[0],
-      subject: payload.sub
-    };
-  } catch (error) {
-    if (error instanceof RequestError) throw error;
-    throw new RequestError('access_unauthorized', 401);
-  }
-}
-
-async function provisionActor(env: Env, identity: AccessIdentity): Promise<Actor> {
-  const [userId, workspaceId] = await Promise.all([
-    stableId('usr', identity.subject),
-    stableId('wsp', identity.subject)
-  ]);
+  const userId = knownIds[0] || await stableId('usr', identity.subject);
+  const existingWorkspace = await env.ONFRAME_DB.prepare(`
+    SELECT id
+    FROM workspaces
+    WHERE created_by_user_id = ?
+    ORDER BY created_at
+    LIMIT 1
+  `).bind(userId).first<{ id: string }>();
+  const workspaceId = existingWorkspace?.id || await stableId('wsp', identity.subject);
   const timestamp = now();
 
   await env.ONFRAME_DB.batch([
     env.ONFRAME_DB.prepare(`
       INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
-      ON CONFLICT(identity_subject) DO UPDATE SET
+      ON CONFLICT(id) DO UPDATE SET
+        identity_subject = excluded.identity_subject,
         email = excluded.email,
         display_name = excluded.display_name,
         updated_at = excluded.updated_at
@@ -389,52 +342,160 @@ async function provisionActor(env: Env, identity: AccessIdentity): Promise<Actor
   return { ...identity, userId, workspaceId };
 }
 
-async function createPairing(env: Env, actor: Actor): Promise<Pairing> {
-  const code = `OF-${randomSecret(18)}`;
-  const timestamp = now();
-  const expiresAt = timestamp + PAIRING_TTL_MS;
-
-  await env.ONFRAME_DB.prepare(`
-    INSERT INTO extension_pairings (id, code_hash, user_id, workspace_id, expires_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(
-    crypto.randomUUID(),
-    await sha256(code),
-    actor.userId,
-    actor.workspaceId,
-    expiresAt,
-    timestamp
-  ).run();
-
-  return { code, expiresAt };
+function configuredRuntimeText(value: string | undefined, code: string): string {
+  const text = String(value || '').trim();
+  if (!text) throw new RequestError(code, 503);
+  return text;
 }
 
-async function getPairing(request: Request, env: Env, actor: Actor): Promise<{ isNew: boolean; pairing: Pairing }> {
-  const code = cookieValue(request, PAIRING_COOKIE_NAME);
-  if (code && /^OF-[A-Za-z0-9_-]{24}$/u.test(code)) {
-    const timestamp = now();
-    const existing = await env.ONFRAME_DB.prepare(`
-      SELECT expires_at
-      FROM extension_pairings
-      WHERE code_hash = ?
-        AND user_id = ?
-        AND workspace_id = ?
-        AND claimed_at IS NULL
-        AND expires_at > ?
-    `).bind(await sha256(code), actor.userId, actor.workspaceId, timestamp).first<{ expires_at: number }>();
+function newExtensionSession(): { createdAt: number; expiresAt: number; sessionId: string; token: string } {
+  const timestamp = now();
+  return {
+    createdAt: timestamp,
+    expiresAt: timestamp + SESSION_TTL_MS,
+    sessionId: crypto.randomUUID(),
+    token: randomSecret(32)
+  };
+}
 
-    if (existing) {
-      return {
-        isNew: false,
-        pairing: { code, expiresAt: existing.expires_at }
-      };
-    }
+async function createExtensionSession(
+  env: Env,
+  actor: Pick<Actor, 'userId' | 'workspaceId'>,
+  label: string | null = 'Extensão OnFrame'
+): Promise<{ expiresAt: number; sessionId: string; token: string }> {
+  const session = newExtensionSession();
+
+  await env.ONFRAME_DB.prepare(`
+    INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    session.sessionId,
+    await sha256(session.token),
+    actor.userId,
+    actor.workspaceId,
+    label,
+    session.expiresAt,
+    session.createdAt
+  ).run();
+
+  return session;
+}
+
+function createdExtensionSessionPayload(session: { expiresAt: number; sessionId: string; token: string }) {
+  return {
+    expiresAt: new Date(session.expiresAt).toISOString(),
+    sessionId: session.sessionId,
+    token: session.token
+  };
+}
+
+async function createSessionFromSupabaseAuth(request: Request, env: RuntimeEnv, requestId: string): Promise<Response> {
+  const actor = await provisionActor(env, await authenticateSupabaseRequest(request, env));
+  const session = await createExtensionSession(env, actor);
+  console.log(JSON.stringify({
+    event: 'extension_session_created_from_auth',
+    requestId,
+    sessionId: session.sessionId,
+    userId: actor.userId,
+    workspaceId: actor.workspaceId,
+    expiresAt: session.expiresAt
+  }));
+  return json(createdExtensionSessionPayload(session), 201);
+}
+
+function parseExtensionAuthFlowToken(value: string): string {
+  if (!SESSION_TOKEN_PATTERN.test(value)) throw new RequestError('auth_flow_invalid', 400);
+  return value;
+}
+
+async function createExtensionAuthFlow(env: Env): Promise<ExtensionAuthFlow> {
+  const token = randomSecret(32);
+  const timestamp = now();
+  const expiresAt = timestamp + AUTH_FLOW_TTL_MS;
+  await env.ONFRAME_DB.prepare(`
+    INSERT INTO extension_auth_flows (id, token_hash, expires_at, created_at)
+    VALUES (?, ?, ?, ?)
+  `).bind(crypto.randomUUID(), await sha256(token), expiresAt, timestamp).run();
+  return { token, expiresAt };
+}
+
+async function completeExtensionAuthFlow(
+  request: Request,
+  env: RuntimeEnv,
+  flowToken: string,
+  requestId: string
+): Promise<Response> {
+  const actor = await provisionActor(env, await authenticateSupabaseRequest(request, env));
+  const timestamp = now();
+  const result = await env.ONFRAME_DB.prepare(`
+    UPDATE extension_auth_flows
+    SET user_id = ?, workspace_id = ?, completed_at = ?
+    WHERE token_hash = ?
+      AND user_id IS NULL
+      AND expires_at > ?
+  `).bind(actor.userId, actor.workspaceId, timestamp, await sha256(flowToken), timestamp).run();
+  if (result.meta.changes !== 1) throw new RequestError('auth_flow_unavailable', 409);
+
+  console.log(JSON.stringify({
+    event: 'extension_auth_flow_completed',
+    requestId,
+    userId: actor.userId,
+    workspaceId: actor.workspaceId
+  }));
+  return json({ completed: true });
+}
+
+async function consumeExtensionAuthFlow(env: Env, flowToken: string, requestId: string): Promise<Response> {
+  const timestamp = now();
+  const flow = await env.ONFRAME_DB.prepare(`
+    SELECT id, user_id, workspace_id, expires_at, claimed_at
+    FROM extension_auth_flows
+    WHERE token_hash = ?
+  `).bind(await sha256(flowToken)).first<{
+    id: string;
+    user_id: string | null;
+    workspace_id: string | null;
+    expires_at: number;
+    claimed_at: number | null;
+  }>();
+
+  if (!flow || flow.claimed_at || flow.expires_at <= timestamp) {
+    throw new RequestError('auth_flow_unavailable', 404);
+  }
+  if (!flow.user_id || !flow.workspace_id) {
+    return json({ status: 'pending', expiresAt: new Date(flow.expires_at).toISOString() });
   }
 
-  return {
-    isNew: true,
-    pairing: await createPairing(env, actor)
-  };
+  const session = newExtensionSession();
+  const results = await env.ONFRAME_DB.batch([
+    env.ONFRAME_DB.prepare(`
+      UPDATE extension_auth_flows
+      SET claimed_at = ?
+      WHERE id = ? AND claimed_at IS NULL AND expires_at > ?
+    `).bind(timestamp, flow.id, timestamp),
+    env.ONFRAME_DB.prepare(`
+      INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      session.sessionId,
+      await sha256(session.token),
+      flow.user_id,
+      flow.workspace_id,
+      'Extensão OnFrame',
+      session.expiresAt,
+      session.createdAt
+    )
+  ]);
+  if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) {
+    throw new RequestError('auth_flow_unavailable', 409);
+  }
+  console.log(JSON.stringify({
+    event: 'extension_auth_flow_consumed',
+    requestId,
+    sessionId: session.sessionId,
+    expiresAt: session.expiresAt
+  }));
+  return json({ status: 'authenticated', ...createdExtensionSessionPayload(session) });
 }
 
 function sessionToken(request: Request): string {
@@ -825,152 +886,6 @@ async function auditRemoteApiRequest(input: {
   ).run();
 }
 
-async function parseSessionClaim(request: Request): Promise<{ pairingCode: string; label: string | null }> {
-  const contentType = request.headers.get('content-type') ?? '';
-  if (!contentType.includes('application/json')) throw new RequestError('invalid_content_type', 415);
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    throw new RequestError('invalid_json', 400);
-  }
-
-  if (!body || typeof body !== 'object') throw new RequestError('invalid_request', 400);
-  const { pairingCode, label } = body as Record<string, unknown>;
-  if (typeof pairingCode !== 'string' || !/^OF-[A-Za-z0-9_-]{24}$/u.test(pairingCode)) {
-    throw new RequestError('invalid_pairing_code', 400);
-  }
-  if (label !== undefined && (typeof label !== 'string' || label.length > 80)) {
-    throw new RequestError('invalid_session_label', 400);
-  }
-
-  return {
-    pairingCode,
-    label: typeof label === 'string' ? label.trim() || null : null
-  };
-}
-
-async function claimExtensionSession(
-  request: Request,
-  env: Env
-): Promise<{ expiresAt: number; sessionId: string; token: string }> {
-  const { pairingCode, label } = await parseSessionClaim(request);
-  const timestamp = now();
-  const sessionId = crypto.randomUUID();
-  const token = randomSecret(32);
-  const expiresAt = timestamp + SESSION_TTL_MS;
-  const pairingHash = await sha256(pairingCode);
-  const tokenHash = await sha256(token);
-
-  const results = await env.ONFRAME_DB.batch([
-    env.ONFRAME_DB.prepare(`
-      UPDATE extension_pairings
-      SET claimed_at = ?, claimed_session_id = ?
-      WHERE code_hash = ? AND claimed_at IS NULL AND expires_at > ?
-    `).bind(timestamp, sessionId, pairingHash, timestamp),
-    env.ONFRAME_DB.prepare(`
-      INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at)
-      SELECT ?, ?, user_id, workspace_id, ?, ?, ?
-      FROM extension_pairings
-      WHERE code_hash = ? AND claimed_session_id = ?
-    `).bind(sessionId, tokenHash, label, expiresAt, timestamp, pairingHash, sessionId)
-  ]);
-
-  if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) {
-    throw new RequestError('pairing_unavailable', 409);
-  }
-
-  return { expiresAt, sessionId, token };
-}
-
-function appPage(actor: Actor): string {
-  return `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OnFrame</title>
-    <style>
-      :root { color: #202124; font-family: Arial, sans-serif; }
-      body { margin: 0; background: #f7f8fa; }
-      main { box-sizing: border-box; max-width: 640px; margin: 10vh auto; padding: 32px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
-      p { margin: 0 0 12px; color: #5f6368; } h1 { margin: 0 0 8px; font-size: 24px; } a { color: #1a73e8; font-weight: 600; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <p>ONFRAME</p>
-      <h1>${escapeHtml(actor.name)}</h1>
-      <p>${escapeHtml(actor.email)}</p>
-      <a href="/connect">Conectar extensão</a>
-    </main>
-  </body>
-</html>`;
-}
-
-function connectPage(actor: Actor, pairing: Pairing): string {
-  const expiresAt = new Intl.DateTimeFormat('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'America/Sao_Paulo'
-  }).format(new Date(pairing.expiresAt));
-
-  return `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Parear extensão - OnFrame</title>
-    <style>
-      :root { color: #202124; font-family: Arial, sans-serif; }
-      body { margin: 0; background: #f7f8fa; }
-      main { box-sizing: border-box; max-width: 640px; margin: 10vh auto; padding: 32px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
-      p { margin: 0 0 12px; color: #5f6368; } h1 { margin: 0 0 20px; font-size: 24px; } code { display: block; padding: 16px; border: 1px solid #dfe3eb; border-radius: 6px; color: #202124; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <p>ONFRAME</p>
-      <h1>Código de pareamento</h1>
-      <code>${pairing.code}</code>
-      <p>Expira às ${expiresAt}.</p>
-      <p>${escapeHtml(actor.email)}</p>
-    </main>
-  </body>
-</html>`;
-}
-
-function meliCallbackPage(options: { connected: boolean; nickname?: string | null }): string {
-  const title = options.connected ? 'Conta conectada' : 'Não foi possível conectar';
-  const message = options.connected
-    ? `${options.nickname ? `${escapeHtml(options.nickname)} foi vinculada ao workspace.` : 'A conta foi vinculada ao workspace.'} Volte para as opções da extensão.`
-    : 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.';
-
-  return `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${title} - OnFrame</title>
-    <style>
-      :root { color: #202124; font-family: Arial, sans-serif; }
-      body { margin: 0; background: #f7f8fa; }
-      main { box-sizing: border-box; max-width: 640px; margin: 10vh auto; padding: 32px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; }
-      p { margin: 0 0 12px; color: #5f6368; } h1 { margin: 0 0 8px; font-size: 24px; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <p>ONFRAME</p>
-      <h1>${title}</h1>
-      <p>${message}</p>
-    </main>
-  </body>
-</html>`;
-}
-
 async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: string): Promise<Response> {
   const url = new URL(request.url);
 
@@ -981,7 +896,13 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
     const code = url.searchParams.get('code') || '';
 
     if (authorizationError || !code) {
-      return html(meliCallbackPage({ connected: false }), 400);
+      return html(resultPage({
+        title: 'Conta não conectada - OnFrame',
+        eyebrow: 'MERCADO LIVRE',
+        heading: 'Não foi possível conectar a conta',
+        message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
+        tone: 'danger'
+      }), 400);
     }
 
     const token = await exchangeMeliAuthorizationCode(env, code, transaction);
@@ -993,10 +914,22 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
       accountId: account.accountId,
       workspaceId: transaction.workspace_id
     }));
-    return html(meliCallbackPage({ connected: true, nickname: account.nickname }));
+    return html(resultPage({
+      title: 'Conta conectada - OnFrame',
+      eyebrow: 'MERCADO LIVRE',
+      heading: 'Conta conectada',
+      message: `${account.nickname || 'A conta'} foi vinculada ao workspace. Volte para as opções da extensão.`,
+      tone: 'success'
+    }));
   } catch (error) {
     logFailure(requestId, request, error);
-    return html(meliCallbackPage({ connected: false }), error instanceof RequestError ? error.status : 503);
+    return html(resultPage({
+      title: 'Conta não conectada - OnFrame',
+      eyebrow: 'MERCADO LIVRE',
+      heading: 'Não foi possível conectar a conta',
+      message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
+      tone: 'danger'
+    }), error instanceof RequestError ? error.status : 503);
   }
 }
 
@@ -1022,45 +955,66 @@ export default {
         return json(payload);
       }
 
-      if (request.method === 'GET' && url.pathname === '/app') {
-        const actor = await provisionActor(env, await authenticateAccess(request, env));
-        return html(appPage(actor));
+      if (request.method === 'GET' && (url.pathname === '/app' || url.pathname === '/connect')) {
+        const supabaseUrl = configuredRuntimeText(env.SUPABASE_URL, 'supabase_auth_unconfigured');
+        const supabasePublishableKey = configuredRuntimeText(env.SUPABASE_PUBLISHABLE_KEY, 'supabase_auth_unconfigured');
+        return html(connectionPage({
+          title: 'Conectar extensão - OnFrame',
+          eyebrow: 'ACESSO À EXTENSÃO',
+          heading: 'Conclua o acesso ao <em>OnFrame</em>',
+          description: 'Esta página confirma o link enviado pela extensão.',
+          supabaseUrl,
+          supabasePublishableKey
+        }), 200, {
+          'content-security-policy': interactivePageCsp(supabaseUrl)
+        });
       }
 
-      if (request.method === 'GET' && url.pathname === '/connect') {
-        const actor = await provisionActor(env, await authenticateAccess(request, env));
-        const { isNew, pairing } = await getPairing(request, env, actor);
-        if (isNew) {
-          console.log(JSON.stringify({
-            event: 'extension_pairing_issued',
-            requestId,
-            userId: actor.userId,
-            workspaceId: actor.workspaceId,
-            expiresAt: pairing.expiresAt
-          }));
-        }
-        return html(connectPage(actor, pairing), 200, {
-          'set-cookie': pairingCookie(pairing)
+      if (request.method === 'GET' && url.pathname === '/auth/challenge') {
+        const siteKey = configuredRuntimeText(env.TURNSTILE_SITEKEY, 'turnstile_unconfigured');
+        return html(captchaPage(siteKey), 200, {
+          'content-security-policy': captchaPageCsp()
+        });
+      }
+
+      if (request.method === 'GET' && url.pathname === '/v1/auth/config') {
+        return json({
+          supabaseUrl: configuredRuntimeText(env.SUPABASE_URL, 'supabase_auth_unconfigured'),
+          supabasePublishableKey: configuredRuntimeText(env.SUPABASE_PUBLISHABLE_KEY, 'supabase_auth_unconfigured')
+        });
+      }
+
+      if (request.method === 'POST' && url.pathname === '/v1/extension-sessions/from-auth') {
+        return createSessionFromSupabaseAuth(request, env, requestId);
+      }
+
+      if (request.method === 'POST' && url.pathname === '/v1/extension-auth-flows') {
+        const flow = await createExtensionAuthFlow(env);
+        return json({
+          flow: flow.token,
+          expiresAt: new Date(flow.expiresAt).toISOString()
+        }, 201);
+      }
+
+      const authFlowPath = /^\/v1\/extension-auth-flows\/([A-Za-z0-9_-]{43})$/u.exec(url.pathname);
+      if (authFlowPath && request.method === 'POST') {
+        return completeExtensionAuthFlow(request, env, parseExtensionAuthFlowToken(authFlowPath[1]), requestId);
+      }
+
+      if (authFlowPath && request.method === 'GET') {
+        return consumeExtensionAuthFlow(env, parseExtensionAuthFlowToken(authFlowPath[1]), requestId);
+      }
+
+      if (request.method === 'GET' && url.pathname === '/v1/app/session') {
+        const actor = await provisionActor(env, await authenticateSupabaseRequest(request, env));
+        return json({
+          user: { id: actor.userId, email: actor.email, name: actor.name },
+          workspace: { id: actor.workspaceId, name: `OnFrame - ${actor.name}` }
         });
       }
 
       if (request.method === 'GET' && url.pathname === '/oauth/mercadolivre/callback') {
         return handleMeliCallback(request, env, requestId);
-      }
-
-      if (request.method === 'POST' && url.pathname === '/v1/extension-sessions') {
-        const session = await claimExtensionSession(request, env);
-        console.log(JSON.stringify({
-          event: 'extension_session_claimed',
-          requestId,
-          sessionId: session.sessionId,
-          expiresAt: session.expiresAt
-        }));
-        return json({
-          expiresAt: new Date(session.expiresAt).toISOString(),
-          sessionId: session.sessionId,
-          token: session.token
-        }, 201);
       }
 
       if (url.pathname === '/v1/extension-session') {
@@ -1143,7 +1097,7 @@ export default {
 
       return json({ error: 'not_found', requestId }, 404);
     } catch (error) {
-      if (error instanceof RequestError) {
+      if (error instanceof RequestError || error instanceof SupabaseAuthError) {
         return json({ error: error.code, requestId }, error.status);
       }
 

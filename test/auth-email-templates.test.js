@@ -9,7 +9,7 @@ const generator = path.join(root, 'scripts', 'auth', 'generate-email-templates.j
 const templates = {
   confirmation: ['confirmation.html', '{{ .ConfirmationURL }}'],
   invite: ['invite.html', '{{ .ConfirmationURL }}'],
-  magicLink: ['magic-link.html', '{{ .Token }}'],
+  magicLink: ['magic-link.html', '{{ .ConfirmationURL }}'],
   recovery: ['recovery.html', '{{ .ConfirmationURL }}'],
   emailChange: ['email-change.html', '{{ .NewEmail }}'],
   reauthentication: ['reauthentication.html', '{{ .Token }}'],
@@ -47,12 +47,14 @@ test('templates do Supabase são contingências textuais mínimas', () => {
   }
 });
 
-test('templates de código mantêm o OTP inteiro sem compor uma interface', () => {
-  for (const file of ['magic-link.html', 'reauthentication.html']) {
-    const content = fs.readFileSync(path.join(root, 'supabase', 'templates', file), 'utf8');
-    assert.ok(content.includes('{{ .Token }}'));
-    assert.doesNotMatch(content, /index \.Token|code-cell|code-gap/);
-  }
+test('somente os fluxos que exigem confirmação manual preservam o OTP', () => {
+  const magicLink = fs.readFileSync(path.join(root, 'supabase', 'templates', 'magic-link.html'), 'utf8');
+  const reauthentication = fs.readFileSync(path.join(root, 'supabase', 'templates', 'reauthentication.html'), 'utf8');
+
+  assert.doesNotMatch(magicLink, /\{\{ \.Token \}\}/);
+  assert.match(magicLink, /\{\{ \.ConfirmationURL \}\}/);
+  assert.match(reauthentication, /\{\{ \.Token \}\}/);
+  assert.doesNotMatch(reauthentication, /index \.Token|code-cell|code-gap/);
 });
 
 test('templates rastreados correspondem ao gerador de contingência', () => {

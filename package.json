@@ -13,8 +13,8 @@
     "auth:templates:check": "node scripts/auth/generate-email-templates.js --check",
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
-    "test": "node --test && tsx --test cloudflare/test/auth-email-hook.test.ts",
-    "test:all": "node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/remote-architecture.test.js && tsx --test cloudflare/test/auth-email-hook.test.ts"
+    "test": "node --test && tsx --test cloudflare/test/auth-email-hook.test.ts cloudflare/test/connect-page.test.ts",
+    "test:all": "node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/remote-architecture.test.js && tsx --test cloudflare/test/auth-email-hook.test.ts cloudflare/test/connect-page.test.ts"
   },
   "engines": {
     "node": ">=20"

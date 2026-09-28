@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OnFrame - Opcoes</title>
+  <title>OnFrame - Opções</title>
   <link rel="stylesheet" href="../../vendor/phosphor/phosphor.css">
   <link rel="stylesheet" href="../../styles/foundations.css">
   <link rel="stylesheet" href="../../styles/components.css">
@@ -12,12 +12,12 @@
 </head>
 <body class="ob-shell">
   <main class="page">
-    <header class="header">
+    <header class="header page-header">
       <div class="ob-brand">
         <img src="../../assets/onblide-symbol-primary.svg" alt="">
         <div>
           <p class="ob-eyebrow">OnFrame</p>
-          <h1 class="ob-title">Opcoes da <em>extensao</em></h1>
+          <h1 class="ob-title">Acesso da <em>extensão</em></h1>
         </div>
       </div>
       <div class="header-actions">
@@ -28,55 +28,105 @@
 
     <section class="panel ob-card remote-panel" aria-labelledby="remote-title">
       <div class="panel-header">
-        <h2 class="ob-card-title" id="remote-title">Acesso remoto</h2>
+        <div>
+          <p class="ob-eyebrow">Workspace</p>
+          <h2 class="ob-card-title" id="remote-title">Acesso desta extensão</h2>
+        </div>
         <span class="ob-badge grey" id="remote-badge">Verificando</span>
       </div>
-      <p class="ob-copy" id="remote-text">Conferindo a vinculação desta extensão.</p>
-      <div class="remote-connect" id="remote-connect">
-        <label class="ob-label" for="remote-pairing-code">Código de pareamento</label>
-        <div class="remote-code-controls">
-          <input class="ob-field" id="remote-pairing-code" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="27" placeholder="OF-...">
-          <button class="ob-button primary compact" id="remote-claim" type="button">Vincular</button>
+      <p class="ob-copy remote-copy" id="remote-text">Conferindo a sessão desta extensão.</p>
+
+      <div class="remote-connect ob-auth" id="remote-connect">
+        <div class="ob-auth-tabs" role="tablist" aria-label="Acesso ao OnFrame">
+          <button type="button" role="tab" aria-selected="true" data-auth-tab="signin">Entrar</button>
+          <button type="button" role="tab" aria-selected="false" data-auth-tab="signup">Criar conta</button>
         </div>
-        <button class="ob-button ghost compact remote-pairing-link" id="remote-open-connect" type="button">Abrir pareamento</button>
+        <p class="ob-auth-alert" data-auth-feedback role="alert" hidden></p>
+
+        <form class="ob-auth-form" data-auth-form="signin" novalidate>
+          <div class="ob-auth-fields">
+            <label class="ob-auth-field" for="remote-signin-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="remote-signin-email" name="email" type="email" autocomplete="username" inputmode="email" placeholder="voce@empresa.com"></span></label>
+            <div class="ob-auth-field"><label class="ob-auth-label" for="remote-signin-password">Senha</label><span class="ob-field-shell"><input class="ob-field-input" id="remote-signin-password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha"><button class="ob-auth-password-toggle" type="button" data-auth-password="remote-signin-password" aria-pressed="false" aria-label="Mostrar senha"><i class="ph ph-eye" aria-hidden="true"></i></button></span></div>
+          </div>
+          <div class="ob-auth-challenge" data-auth-challenge="signin" hidden></div>
+          <button class="ob-button primary" type="submit">Entrar</button>
+          <div class="ob-auth-links"><button class="ob-auth-link" type="button" data-auth-action="magic">Entrar com link mágico</button><button class="ob-auth-link" type="button" data-auth-action="recovery">Esqueci minha senha</button></div>
+        </form>
+
+        <form class="ob-auth-form" data-auth-form="signup" hidden novalidate>
+          <div class="ob-auth-fields">
+            <label class="ob-auth-field" for="remote-signup-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="remote-signup-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="voce@empresa.com"></span></label>
+            <div class="ob-auth-field"><label class="ob-auth-label" for="remote-signup-password">Crie uma senha</label><span class="ob-field-shell"><input class="ob-field-input" id="remote-signup-password" name="password" type="password" autocomplete="new-password" placeholder="Crie uma senha"><button class="ob-auth-password-toggle" type="button" data-auth-password="remote-signup-password" aria-pressed="false" aria-label="Mostrar senha"><i class="ph ph-eye" aria-hidden="true"></i></button></span></div>
+            <div class="ob-auth-field"><label class="ob-auth-label" for="remote-signup-confirmation">Confirme sua senha</label><span class="ob-field-shell"><input class="ob-field-input" id="remote-signup-confirmation" name="confirmation" type="password" autocomplete="new-password" placeholder="Repita a senha"><button class="ob-auth-password-toggle" type="button" data-auth-password="remote-signup-confirmation" aria-pressed="false" aria-label="Mostrar senha"><i class="ph ph-eye" aria-hidden="true"></i></button></span></div>
+          </div>
+          <div class="ob-auth-challenge" data-auth-challenge="signup" hidden></div>
+          <button class="ob-button primary" type="submit">Criar conta</button>
+        </form>
+
+        <form class="ob-auth-form" data-auth-form="magic" hidden novalidate>
+          <label class="ob-auth-field" for="remote-magic-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="remote-magic-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="voce@empresa.com"></span><span class="ob-field-help">Enviaremos um link de uso único. Ele não cria uma conta.</span></label>
+          <div class="ob-auth-challenge" data-auth-challenge="magic" hidden></div>
+          <button class="ob-button primary" type="submit">Enviar link mágico</button>
+          <div class="ob-auth-links"><button class="ob-auth-link" type="button" data-auth-action="signin">Voltar</button></div>
+        </form>
+
+        <form class="ob-auth-form" data-auth-form="recovery" hidden novalidate>
+          <label class="ob-auth-field" for="remote-recovery-email"><span class="ob-auth-label">E-mail</span><span class="ob-field-shell"><input class="ob-field-input" id="remote-recovery-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="voce@empresa.com"></span><span class="ob-field-help">Enviaremos um link para criar uma nova senha.</span></label>
+          <div class="ob-auth-challenge" data-auth-challenge="recovery" hidden></div>
+          <button class="ob-button primary" type="submit">Enviar link de recuperação</button>
+          <div class="ob-auth-links"><button class="ob-auth-link" type="button" data-auth-action="signin">Voltar</button></div>
+        </form>
       </div>
-      <div class="remote-context is-hidden" id="remote-context">
-        <span><small>Conta</small><strong id="remote-user">-</strong></span>
-        <span><small>Workspace</small><strong id="remote-workspace">-</strong></span>
-        <span><small>Sessão expira</small><strong id="remote-expires-at">-</strong></span>
+
+      <div class="remote-context" id="remote-context" hidden>
+        <div class="context-identity">
+          <span class="context-avatar" id="remote-avatar" aria-hidden="true">O</span>
+          <div><strong id="remote-user">-</strong><span id="remote-workspace">-</span></div>
+        </div>
+        <dl class="context-metadata">
+          <div><dt>Sessão expira</dt><dd id="remote-expires-at">-</dd></div>
+          <div><dt>Navegador</dt><dd>Autorizado</dd></div>
+        </dl>
       </div>
-      <div class="remote-actions is-hidden" id="remote-actions">
-        <button class="ob-button secondary compact" id="remote-disconnect" type="button">Desvincular</button>
+      <div class="remote-actions" id="remote-actions" hidden>
+        <button class="ob-button danger compact" id="remote-disconnect" type="button">Sair deste navegador</button>
       </div>
     </section>
 
-    <section class="panel ob-card remote-accounts-panel is-hidden" id="remote-accounts-panel" aria-labelledby="remote-accounts-title">
+    <section class="panel ob-card remote-accounts-panel" id="remote-accounts-panel" aria-labelledby="remote-accounts-title" hidden>
       <div class="panel-header">
-        <h2 class="ob-card-title" id="remote-accounts-title">Contas do workspace</h2>
+        <div>
+          <p class="ob-eyebrow">Mercado Livre</p>
+          <h2 class="ob-card-title" id="remote-accounts-title">Contas do workspace</h2>
+        </div>
         <span class="panel-actions">
           <span class="ob-badge grey" id="remote-accounts-badge">Verificando</span>
           <button class="ob-button secondary ob-icon-button compact-icon" id="remote-account-connect" data-tooltip="Conectar conta do Mercado Livre" type="button" aria-label="Conectar conta do Mercado Livre"></button>
         </span>
       </div>
       <p class="ob-copy" id="remote-accounts-text">Buscando contas vinculadas ao workspace.</p>
-      <div class="account-list is-hidden" id="remote-accounts-list" aria-label="Contas Mercado Livre do workspace"></div>
+      <div class="account-list" id="remote-accounts-list" aria-label="Contas Mercado Livre do workspace" hidden></div>
+      <button class="ob-button secondary compact account-connect-empty" id="remote-account-connect-empty" type="button" hidden>Conectar conta do Mercado Livre</button>
     </section>
 
     <section class="panel ob-card update-block" id="update-block" aria-labelledby="update-title">
       <div class="panel-header">
-        <h2 class="ob-card-title" id="update-title">Atualizacao</h2>
+        <div>
+          <p class="ob-eyebrow">Aplicativo</p>
+          <h2 class="ob-card-title" id="update-title">Atualização</h2>
+        </div>
         <span class="ob-badge blue" id="update-badge">Disponível</span>
       </div>
-      <p class="ob-copy" id="update-text">Use o atualizador para instalar a versão mais recente.</p>
-      <div class="update-actions">
-        <button class="ob-button primary" id="update-open" type="button">Atualizar agora</button>
-      </div>
+      <p class="ob-copy" id="update-text">Instale a versão mais recente pelo atualizador.</p>
+      <div class="update-actions"><button class="ob-button secondary" id="update-open" type="button">Abrir atualizador</button></div>
     </section>
   </main>
 
   <script src="../../core/icons.js"></script>
   <script src="../../core/shared.js"></script>
   <script src="../../core/toast.js"></script>
+  <script src="../../core/remote-auth.js"></script>
+  <script src="../../core/auth-controller.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

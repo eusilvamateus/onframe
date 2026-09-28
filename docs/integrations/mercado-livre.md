@@ -8,16 +8,24 @@ diretamente e não guarda credenciais de conta no computador.
 
 ## Autenticação
 
-1. A pessoa autenticada no Cloudflare Access abre `/connect` e recebe um
-   código de pareamento de uso único, válido por dez minutos.
-2. A extensão troca o código em `POST /v1/extension-sessions` e guarda o
-   bearer dessa sessão apenas no `background`.
-3. Uma pessoa administradora inicia `POST /v1/mercadolivre/oauth/start`.
+1. A pessoa usa `ui/options/` ou `ui/popup/` para entrar com e-mail e senha ou
+   criar a conta no Supabase Auth. O link mágico continua opcional e a
+   recuperação de senha é iniciada nas mesmas interfaces.
+2. O Turnstile é hospedado por `/auth/challenge` dentro de um `iframe` com
+   origem `onframe.onblide.com`. A extensão entrega o token ao Supabase, sem
+   carregar o script do provedor no contexto Manifest V3.
+3. Após login por senha, a extensão envia o bearer do Supabase apenas ao
+   `background`; `POST /v1/extension-sessions/from-auth` o valida e devolve o
+   bearer revogável da sessão da extensão. O bearer do Supabase não é guardado.
+4. Cadastro confirmado, link mágico e recuperação usam um fluxo opaco de vida
+   curta. O callback `/connect` conclui o fluxo e o `background` consome a
+   sessão sem apresentar um código para a pessoa.
+5. Uma pessoa administradora inicia `POST /v1/mercadolivre/oauth/start`.
    O Worker gera `state`, `code_verifier` e o desafio PKCE `S256`.
-4. O Mercado Livre retorna para
+6. O Mercado Livre retorna para
    `https://onframe.onblide.com/oauth/mercadolivre/callback`. O Worker
    valida o estado, troca o código por tokens e consulta `/users/me`.
-5. A conta é associada ao workspace e fica disponível para as extensões
+7. A conta é associada ao workspace e fica disponível para as extensões
    vinculadas a ele.
 
 O callback deve estar registrado exatamente como
@@ -68,6 +76,6 @@ interface está em [Estados de promoções](../product/promocoes.md).
 ## Falhas
 
 Uma sessão ausente, expirada ou revogada bloqueia a edição e orienta a pessoa a
-parear novamente a extensão. Se nenhuma conta habilitada for dona do anúncio,
+entrar novamente na extensão. Se nenhuma conta habilitada for dona do anúncio,
 a operação é recusada. Falhas de credencial exigem nova autorização da conta
 no workspace.

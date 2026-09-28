@@ -768,6 +768,193 @@
   color: var(--ob-danger);
 }
 
+.ob-auth {
+  display: grid;
+  gap: var(--ob-s-4);
+}
+
+.ob-auth[hidden] {
+  display: none;
+}
+
+.ob-auth-tabs {
+  display: inline-flex;
+  gap: 4px;
+  width: fit-content;
+  padding: 3px;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-bg-alt);
+}
+
+.ob-auth-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: var(--ob-r-sm);
+  background: transparent;
+  color: var(--ob-fg-mute);
+  cursor: pointer;
+  font-family: var(--ob-font);
+  font-size: 13px;
+  font-weight: var(--ob-w-semibold);
+  transition: all 150ms var(--ob-ease);
+}
+
+.ob-auth-tabs button[aria-selected="true"] {
+  background: var(--ob-surface);
+  color: var(--ob-fg-strong);
+  box-shadow: var(--ob-shadow-sm);
+}
+
+.ob-auth-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ob-auth-form {
+  display: grid;
+  gap: var(--ob-s-3);
+}
+
+.ob-auth-form[hidden] {
+  display: none;
+}
+
+.ob-auth-fields {
+  display: grid;
+  gap: var(--ob-s-3);
+}
+
+.ob-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ob-auth-label {
+  color: var(--ob-fg-strong);
+  font-size: 12px;
+  font-weight: var(--ob-w-semibold);
+}
+
+.ob-auth-password-toggle {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  border: 1.5px solid transparent;
+  border-radius: var(--ob-r-control);
+  background: transparent;
+  color: var(--ob-fg-soft);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 14px;
+  transition: background 160ms var(--ob-ease), color 160ms var(--ob-ease), border-color 160ms var(--ob-ease);
+}
+
+.ob-auth-password-toggle:hover:not(:disabled) {
+  background: var(--ob-line-soft);
+}
+
+.ob-auth-password-toggle[aria-pressed="true"] {
+  z-index: 1;
+  border-color: transparent;
+  background: var(--ob-blue-100);
+  color: var(--ob-blue-700);
+}
+
+.ob-auth-password-toggle:focus-visible {
+  z-index: 2;
+  box-shadow: 0 0 0 3px var(--ob-focus-ring);
+  outline: none;
+}
+
+.ob-auth-password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* O controle de visibilidade pertence ao botão da extensão, não ao navegador. */
+.ob-field-input[type="password"]::-ms-reveal,
+.ob-field-input[type="password"]::-ms-clear {
+  display: none;
+}
+
+.ob-auth-challenge {
+  min-height: 65px;
+}
+
+.ob-auth-challenge[hidden] {
+  display: none;
+}
+
+.ob-auth-challenge-frame {
+  display: block;
+  width: 100%;
+  height: 65px;
+  border: 0;
+}
+
+.ob-auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ob-s-2);
+}
+
+.ob-auth-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ob-fg-accent);
+  cursor: pointer;
+  font: var(--ob-w-medium) 13px/1.45 var(--ob-font);
+}
+
+.ob-auth-link:hover:not(:disabled) {
+  opacity: 0.75;
+}
+
+.ob-auth-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ob-auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ob-s-2);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ob-blue) 28%, transparent);
+  border-radius: var(--ob-r-md);
+  background: var(--ob-blue-050);
+  color: var(--ob-fg);
+  font: var(--ob-w-medium) 12px/1.45 var(--ob-font);
+}
+
+.ob-auth-alert[data-tone="info"] {
+  border-color: color-mix(in srgb, var(--ob-blue) 28%, transparent);
+  background: var(--ob-blue-050);
+}
+
+.ob-auth-alert[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--ob-danger) 28%, transparent);
+  background: var(--ob-danger-bg);
+  color: var(--ob-danger);
+}
+
+.ob-auth-alert[hidden] {
+  display: none;
+}
+
 .ob-field-select {
   -webkit-appearance: none;
   appearance: none;
@@ -1415,7 +1602,7 @@
   opacity: 0.75;
 }
 
-.ob-shell :focus-visible,
+.ob-shell :focus-visible:not(.ob-field-input),
 .onblide-ml-tray :focus-visible,
 .onblide-ml-dialog-root :focus-visible,
 .onframe-commerce-inline :focus-visible,

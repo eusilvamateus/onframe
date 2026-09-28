@@ -11,7 +11,7 @@ tenha uma fonte canonica.
 - [Guia do usuario](user/guia-do-usuario.md) - fluxo diario na pagina do
   anuncio.
 - [Instalacao e atualizacao](user/instalacao-e-atualizacao.md) - instalacao,
-  pareamento e atualizacao no Windows e macOS.
+  acesso e atualizacao no Windows e macOS.
 - [Editar descricao](user/editar-descricao.md) - edicao do texto no contexto do
   anuncio.
 - [Editar caracteristicas](user/editar-caracteristicas.md) - revisao da ficha
