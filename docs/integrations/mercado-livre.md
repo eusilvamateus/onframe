@@ -2,53 +2,38 @@
 
 ## Finalidade
 
-O OnFrame usa um servico local para autenticar contas, acessar a API do Mercado
-Livre e devolver dados normalizados para a extensao. O contexto da pagina nunca
-recebe tokens da conta.
+O caminho principal do OnFrame e o Worker em `onframe.onblide.com`: ele guarda
+as credenciais das contas por workspace, chama a API do Mercado Livre e devolve
+os contratos normalizados para a extensao. O contexto da pagina nunca recebe
+tokens da conta, nem o bearer da extensao.
 
 ## Sistemas externos
 
-- `https://connect.onblide.com` atua como broker da autorizacao e da troca
-  ou renovacao de tokens. A base pode ser alterada com
-  `ONBLIDE_CONNECT_BASE_URL`.
 - `https://api.mercadolibre.com` fornece itens, descricoes,
   caracteristicas, imagens, precos e promocoes.
 
 ## Autenticacao
 
-1. A extensao solicita `POST /auth/start` ao servico local.
-2. O servico cria `state`, `code_verifier` e o desafio PKCE
-   `S256`, e pede ao broker a URL de autorizacao.
-3. O navegador conclui a autorizacao do Mercado Livre e retorna para o callback
-   local `/auth/mercadolivre/callback`.
-4. O servico valida o estado pendente, troca o codigo pelo token por meio do
-   broker e consulta `/users/me` para completar o perfil da conta.
-5. O token e o perfil sao armazenados localmente; a extensao recebe apenas os
-   dados necessarios para operar a conta.
-
-Estados de autorizacao pendentes expiram em dez minutos. O servico renova o
-access token quando ele esta ausente ou faltam menos de cinco minutos para a
-expiracao.
+1. A pessoa autenticada no Cloudflare Access abre `/connect` e gera um codigo
+   de uso unico, valido por dez minutos.
+2. A extensao troca o codigo por um bearer de sessao via
+   `POST /v1/extension-sessions`; esse bearer fica apenas no `background`.
+3. A pessoa administradora inicia `POST /v1/mercadolivre/oauth/start`. O
+   Worker gera `state`, `code_verifier` e o desafio PKCE `S256`.
+4. O Mercado Livre retorna para
+   `https://onframe.onblide.com/oauth/mercadolivre/callback`. O Worker valida
+   o estado, troca o codigo por tokens e consulta `/users/me`.
+5. O Worker associa a conta ao workspace. A extensao recebe somente dados de
+   operacao e nunca um token do Mercado Livre.
 
 ## Contas e propriedade do anuncio
 
-O armazenamento suporta varias contas conectadas. Uma conta pode ser desativada
-sem ser removida. Quando a requisicao informa `owner_user_id`, o servico usa
-essa conta; caso contrario, testa as contas habilitadas e seleciona aquela que
+O workspace suporta varias contas conectadas. Uma conta pode ser desativada sem
+ser removida. Quando a requisicao informa `owner_user_id`, o Worker usa essa
+conta; caso contrario, testa as contas habilitadas e seleciona aquela que
 comprovar ser dona do anuncio. Contas desativadas nao podem editar anuncios.
 
 ## Segredos e armazenamento
-
-A instalacao normal define `ML_TOKEN_STORE_PATH` para
-`.onframe/tokens.json` dentro da pasta do OnFrame. O arquivo e cifrado
-com `AES-256-GCM`. O bootstrap gera e guarda um
-`ONBLIDE_TOKEN_SECRET` local em `.env` quando ele ainda nao existe.
-
-Nao versione `.env`, tokens, `ONBLIDE_TOKEN_SECRET` ou arquivos em
-`.onframe/`. A configuracao de exemplo e
-[.env.example](../../.env.example); ela nao contem segredos.
-
-## Acesso remoto em transicao
 
 O Worker em `onframe.onblide.com` vincula uma instalacao da extensao a um
 workspace por um codigo temporario protegido pelo Cloudflare Access. O bearer
@@ -73,18 +58,28 @@ sao secrets do Worker, e `MELI_TOKEN_CIPHER_KEY` e a chave AES-GCM. Nenhum
 desses valores, nem access token ou refresh token, e devolvido para a
 extensao ou registrado em logs.
 
-O refresh token do Mercado Livre e rotativo e de uso unico. As futuras rotas
-remotas que consumirem a API renovarao a credencial somente quando necessario,
-gravando atomica e imediatamente o novo refresh token retornado pela API.
-Enquanto essas rotas nao forem migradas, as operacoes de anuncios continuam
-usando `127.0.0.1`.
+Com uma sessao remota valida, o `background` encaminha todos os contratos da
+extensao iniciados em `/api/` para `/v1/api/` no Worker. O Worker preserva as
+regras normalizadas de itens, fotos, descricao, caracteristicas, precos,
+promocoes e acoes em massa e chama a API do Mercado Livre em nome da conta do
+workspace. O contexto da pagina continua sem bearer da sessao e sem token do
+Mercado Livre.
+
+O refresh token do Mercado Livre e rotativo e de uso unico. Antes de renova-lo,
+o Worker obtem um lock temporario por credencial no D1. A requisicao que detem
+o lock grava imediatamente o novo access token e refresh token cifrados; as
+demais esperam essa atualizacao em vez de reutilizar o refresh token antigo.
+
+Instalacoes ainda nao vinculadas podem usar o armazenamento local de
+compatibilidade em `.onframe/tokens.json`, cifrado com `AES-256-GCM`. Nunca
+versione `.env`, tokens, `ONBLIDE_TOKEN_SECRET` ou arquivos em `.onframe/`.
 
 ## Contratos e fronteiras
 
-- A extensao acessa somente o servico local em `127.0.0.1`.
-- A tela de opcoes tambem pode acessar `onframe.onblide.com` pelo `background`
-  para vincular e administrar a sessao remota; os modulos injetados nao usam
-  esse bearer.
+- A extensao vinculada acessa `onframe.onblide.com` somente pelo `background`.
+  Os modulos injetados nao recebem o bearer remoto.
+- Sem vinculacao remota, a extensao mantem o servico local em `127.0.0.1` como
+  caminho de compatibilidade.
 - Requisicoes com `Origin` precisam vir da extensao autorizada pelo
   `manifest.json`, salvo `GET /health` e o callback de autorizacao.
 - O servico expõe rotas por dominio para itens, descricao, caracteristicas,
@@ -95,17 +90,19 @@ usando `127.0.0.1`.
 
 ## Falhas e recuperacao
 
-Erros de autenticacao invalidam a operacao e orientam a pessoa usuaria a
-conectar novamente. Se nenhuma conta habilitada for dona do anuncio, a edicao e
-recusada. Diagnostique o processo e os logs conforme
-[Servico local](../operations/servico-local.md).
+Erros de autenticacao remota removem a sessao da extensao e orientam a pessoa
+usuaria a vincular novamente. Se nenhuma conta habilitada for dona do anuncio,
+a edicao e recusada. O Worker registra a operacao no historico de auditoria do
+workspace. O diagnostico do [Servico local](../operations/servico-local.md) se
+aplica apenas ao caminho de compatibilidade.
 
 ## Configuracao
 
 | Variavel | Finalidade |
 | --- | --- |
-| `ML_SERVICE_PORT` | Porta do servico local; padrao `4765`. |
-| `ONBLIDE_CONNECT_BASE_URL` | Base do broker de autenticacao. |
-| `ONBLIDE_TOKEN_SECRET` | Segredo local usado para cifrar tokens. |
-| `ML_TOKEN_STORE_PATH` | Caminho local do banco cifrado de contas. |
-| `ONFRAME_ALLOWED_ORIGINS` | Lista opcional de origens permitidas, separadas por virgula. |
+| `MELI_CLIENT_ID` | Secret do Worker com o identificador do aplicativo. |
+| `MELI_CLIENT_SECRET` | Secret do Worker para a troca e renovacao de tokens. |
+| `MELI_TOKEN_CIPHER_KEY` | Chave `secret_key` AES-GCM do Worker. |
+| `MELI_REDIRECT_URI` | Callback OAuth remoto registrado no aplicativo. |
+| `ML_SERVICE_PORT` | Porta do servico local de compatibilidade; padrao `4765`. |
+| `ONBLIDE_TOKEN_SECRET` | Segredo do armazenamento local de compatibilidade. |

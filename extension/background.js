@@ -92,7 +92,7 @@ async function getRemoteConnection() {
   const session = await readRemoteSession();
   if (!session) return { connected: false };
 
-  if (Date.parse(session.expiresAt) <= Date.now()) {
+  if (isRemoteSessionExpired(session)) {
     await removeRemoteSession();
     return { connected: false, reason: 'expired' };
   }
@@ -167,7 +167,7 @@ async function startRemoteAuth() {
 
 async function requireRemoteSession() {
   const session = await readRemoteSession();
-  if (!session || Date.parse(session.expiresAt) <= Date.now()) {
+  if (!session || isRemoteSessionExpired(session)) {
     await removeRemoteSession();
     const error = new Error('A vinculação desta extensão não é mais válida.');
     error.code = 'extension_session_unauthorized';
@@ -211,6 +211,11 @@ function serializeRemoteConnection(session, context) {
 }
 
 async function requestRemote(path, options = {}) {
+  const result = await requestRemoteResponse(path, options);
+  return result.body;
+}
+
+async function requestRemoteResponse(path, options = {}) {
   let response;
   try {
     response = await fetch(`${REMOTE_SERVICE}${path}`, {
@@ -232,21 +237,31 @@ async function requestRemote(path, options = {}) {
 
   const body = parseJson(await response.text());
   if (!response.ok) {
-    const failure = new Error(remoteErrorMessage(body && body.error, response.status));
-    failure.code = body && body.error ? body.error : 'remote_request_failed';
+    const code = body && (body.code || body.error) ? (body.code || body.error) : 'remote_request_failed';
+    const failure = new Error(remoteErrorMessage(code, response.status, body && body.error));
+    failure.code = code;
     failure.status = response.status;
     failure.technicalError = failure.code;
     throw failure;
   }
-  return body || {};
+  return {
+    body: body || {},
+    status: response.status
+  };
 }
 
-function remoteErrorMessage(code, status) {
+function remoteErrorMessage(code, status, fallbackMessage) {
   if (code === 'invalid_pairing_code') return 'O código de pareamento é inválido.';
   if (code === 'pairing_unavailable') return 'Esse código expirou ou já foi usado. Gere outro código.';
   if (code === 'extension_session_unauthorized') return 'A vinculação desta extensão não é mais válida.';
   if (code === 'remote_oauth_unconfigured') return 'A conexão remota do Mercado Livre ainda não está configurada.';
   if (code === 'workspace_account_access_forbidden') return 'Seu acesso não pode conectar contas ao workspace.';
+  if (code === 'workspace_account_unavailable') return 'Nenhuma conta do Mercado Livre está conectada neste workspace.';
+  if (code === 'workspace_accounts_disabled') return 'Nenhuma conta habilitada para detectar anúncios.';
+  if (code === 'remote_credentials_unavailable') return 'A conta remota precisa ser conectada novamente.';
+  if (typeof fallbackMessage === 'string' && fallbackMessage.trim() && !/^[a-z_]+$/u.test(fallbackMessage)) {
+    return fallbackMessage;
+  }
   return `Não foi possível acessar o OnFrame remoto. Código ${status}.`;
 }
 
@@ -312,6 +327,20 @@ function storageSet(value) {
 async function handleApiMessage(message) {
   const path = normalizePath(message.path);
   const options = normalizeRequestOptions(message.options);
+  const remoteSession = await readRemoteSession();
+  if (path.startsWith('/api/') && remoteSession) {
+    if (isRemoteSessionExpired(remoteSession)) {
+      await removeRemoteSession();
+      return {
+        ok: false,
+        status: 401,
+        error: 'A vinculação desta extensão não é mais válida.',
+        code: 'extension_session_unauthorized',
+        technicalError: 'extension_session_expired'
+      };
+    }
+    return handleRemoteApiMessage(path, options, remoteSession);
+  }
   const response = await fetch(`${SERVICE}${path}`, options);
   const requestId = response.headers.get('x-onframe-request-id') || '';
   const text = await response.text();
@@ -333,6 +362,39 @@ async function handleApiMessage(message) {
     requestId,
     body: body || {}
   };
+}
+
+function isRemoteSessionExpired(session) {
+  const expiresAt = Date.parse(String(session && session.expiresAt || ''));
+  return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+}
+
+async function handleRemoteApiMessage(path, options, session) {
+  try {
+    const response = await requestRemoteResponse(`/v1${path}`, {
+      method: options.method,
+      headers: Object.assign({}, options.headers || {}, {
+        authorization: `Bearer ${session.token}`
+      }),
+      body: options.body
+    });
+    const body = response.body || {};
+    return {
+      ok: true,
+      status: response.status,
+      requestId: body.requestId || '',
+      body
+    };
+  } catch (error) {
+    if (error && error.status === 401) await removeRemoteSession();
+    return {
+      ok: false,
+      status: error && error.status ? error.status : 0,
+      error: error && error.message ? error.message : 'Não consegui acessar o OnFrame remoto.',
+      code: error && error.code ? error.code : '',
+      technicalError: error && error.technicalError ? error.technicalError : (error && error.message ? error.message : String(error))
+    };
+  }
 }
 
 function normalizePath(value) {

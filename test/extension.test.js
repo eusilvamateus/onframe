@@ -173,6 +173,9 @@ test('background vincula e revoga a sessao remota sem expor o bearer', async () 
           authorizationUrl: 'https://auth.mercadolivre.com.br/authorization?response_type=code'
         }, { status: 201 });
       }
+      if (url.endsWith('/v1/api/resolve/quick')) {
+        return Response.json({ item: { id: 'MLB1234567890' }, quick: true });
+      }
       if (request.method === 'DELETE') return Response.json({ revokedAt: '2026-09-28T00:00:00.000Z' });
       return Response.json({
         user: { email: 'mateus@example.com', name: 'Mateus' },
@@ -210,11 +213,43 @@ test('background vincula e revoga a sessao remota sem expor o bearer', async () 
   assert.strictEqual(requests[3].headers.get('authorization'), `Bearer ${token}`);
   assert.strictEqual(openedTabs[0].url, 'https://auth.mercadolivre.com.br/authorization?response_type=code');
 
+  const remoteApi = await send({
+    type: 'onframe:api',
+    path: '/api/resolve/quick',
+    options: { method: 'POST', body: '{}' }
+  });
+  assert.strictEqual(remoteApi.ok, true);
+  assert.strictEqual(remoteApi.body.quick, true);
+  assert.strictEqual(requests[4].url.endsWith('/v1/api/resolve/quick'), true);
+  assert.strictEqual(requests[4].headers.get('authorization'), `Bearer ${token}`);
+
+  storage.onframeRemoteSession = {
+    token,
+    sessionId: 'session-1',
+    expiresAt: '2000-01-01T00:00:00.000Z'
+  };
+  const requestCountBeforeExpiredSession = requests.length;
+  const expiredRemoteApi = await send({
+    type: 'onframe:api',
+    path: '/api/resolve/quick',
+    options: { method: 'POST', body: '{}' }
+  });
+  assert.strictEqual(expiredRemoteApi.ok, false);
+  assert.strictEqual(expiredRemoteApi.status, 401);
+  assert.strictEqual(expiredRemoteApi.code, 'extension_session_unauthorized');
+  assert.strictEqual(requests.length, requestCountBeforeExpiredSession);
+  assert.strictEqual(storage.onframeRemoteSession, undefined);
+
+  storage.onframeRemoteSession = {
+    token,
+    sessionId: 'session-1',
+    expiresAt: '2099-01-01T00:00:00.000Z'
+  };
   const disconnected = await send({ type: 'onframe:remote', action: 'disconnect' });
   assert.strictEqual(disconnected.ok, true);
   assert.strictEqual(disconnected.body.connected, false);
-  assert.strictEqual(requests[4].method, 'DELETE');
-  assert.strictEqual(requests[4].headers.get('authorization'), `Bearer ${token}`);
+  assert.strictEqual(requests[5].method, 'DELETE');
+  assert.strictEqual(requests[5].headers.get('authorization'), `Bearer ${token}`);
   assert.strictEqual(storage.onframeRemoteSession, undefined);
 });
 
@@ -224,6 +259,7 @@ test('extensao declara o acesso remoto e o Worker protege a sessao por bearer', 
   const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
   const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
   const worker = fs.readFileSync(path.join(__dirname, '..', 'cloudflare', 'src', 'index.ts'), 'utf8');
+  const tokenCipher = fs.readFileSync(path.join(__dirname, '..', 'cloudflare', 'src', 'token-cipher.ts'), 'utf8');
 
   assert.ok(manifest.host_permissions.includes('https://onframe.onblide.com/*'));
   assert.match(optionsHtml, /id="remote-pairing-code"/);
@@ -236,8 +272,9 @@ test('extensao declara o acesso remoto e o Worker protege a sessao por bearer', 
   assert.match(worker, /url\.pathname === '\/v1\/extension-session'/);
   assert.match(worker, /url\.pathname === '\/v1\/mercadolivre\/oauth\/start'/);
   assert.match(worker, /url\.pathname === '\/oauth\/mercadolivre\/callback'/);
+  assert.match(worker, /url\.pathname\.startsWith\('\/v1\/api\/'\)/);
   assert.match(worker, /MELI_TOKEN_CIPHER_KEY/);
-  assert.match(worker, /AES-GCM/);
+  assert.match(tokenCipher, /AES-GCM/);
   assert.match(worker, /extension_session_unauthorized/);
   assert.match(worker, /extension_session_revoked/);
 });

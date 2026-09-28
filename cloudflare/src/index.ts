@@ -1,4 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTokenValue, type EncryptedValue } from './token-cipher';
+import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 
 const PAIRING_TTL_MS = 10 * 60 * 1000;
 const PAIRING_COOKIE_NAME = 'onframe_pairing';
@@ -9,8 +11,6 @@ const MELI_AUTHORIZATION_URL = 'https://auth.mercadolivre.com.br/authorization';
 const MELI_TOKEN_URL = 'https://api.mercadolibre.com/oauth/token';
 const MELI_ME_URL = 'https://api.mercadolibre.com/users/me';
 const MELI_TOKEN_KEY_VERSION = 1;
-const AES_GCM_IV_LENGTH = 12;
-const AES_GCM_AUTH_TAG_LENGTH = 16;
 
 type RuntimeEnv = Env & {
   MELI_CLIENT_ID?: string;
@@ -75,12 +75,6 @@ type MeliProfile = {
   picture_url?: string;
 };
 
-type EncryptedValue = {
-  authTag: string;
-  ciphertext: string;
-  iv: string;
-};
-
 type OAuthTransaction = {
   id: string;
   user_id: string;
@@ -132,12 +126,6 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#039;');
 }
 
-function base64Url(bytes: Uint8Array): string {
-  let value = '';
-  for (const byte of bytes) value += String.fromCharCode(byte);
-  return btoa(value).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
-}
-
 function randomSecret(byteLength: number): string {
   const bytes = new Uint8Array(byteLength);
   crypto.getRandomValues(bytes);
@@ -179,13 +167,6 @@ async function sha256Base64Url(value: string): Promise<string> {
   return base64Url(digest);
 }
 
-function base64UrlBytes(value: string): Uint8Array {
-  const normalized = value.replaceAll('-', '+').replaceAll('_', '/');
-  const padding = '='.repeat((4 - normalized.length % 4) % 4);
-  const binary = atob(`${normalized}${padding}`);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
 function meliRedirectUri(env: RuntimeEnv): string {
   return String(env.MELI_REDIRECT_URI || '').trim();
 }
@@ -208,32 +189,12 @@ function assertMeliConfigured(env: RuntimeEnv): asserts env is RuntimeEnv & {
 
 async function encryptValue(env: RuntimeEnv, value: string): Promise<EncryptedValue> {
   assertMeliConfigured(env);
-  const iv = new Uint8Array(AES_GCM_IV_LENGTH);
-  crypto.getRandomValues(iv);
-  const plaintext = new TextEncoder().encode(value);
-  const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, env.MELI_TOKEN_CIPHER_KEY, plaintext));
-  const authTag = encrypted.slice(-AES_GCM_AUTH_TAG_LENGTH);
-  const ciphertext = encrypted.slice(0, -AES_GCM_AUTH_TAG_LENGTH);
-
-  return {
-    authTag: base64Url(authTag),
-    ciphertext: base64Url(ciphertext),
-    iv: base64Url(iv)
-  };
+  return encryptTokenValue(env.MELI_TOKEN_CIPHER_KEY, value);
 }
 
 async function decryptValue(env: RuntimeEnv, encrypted: EncryptedValue): Promise<string> {
   assertMeliConfigured(env);
-  const ciphertext = base64UrlBytes(encrypted.ciphertext);
-  const authTag = base64UrlBytes(encrypted.authTag);
-  const payload = new Uint8Array(ciphertext.length + authTag.length);
-  payload.set(ciphertext);
-  payload.set(authTag, ciphertext.length);
-  const plaintext = await crypto.subtle.decrypt({
-    name: 'AES-GCM',
-    iv: base64UrlBytes(encrypted.iv)
-  }, env.MELI_TOKEN_CIPHER_KEY, payload);
-  return new TextDecoder().decode(plaintext);
+  return decryptTokenValue(env.MELI_TOKEN_CIPHER_KEY, encrypted);
 }
 
 function meliAuthorizationUrl(env: RuntimeEnv, state: string, codeChallenge: string): string {
@@ -763,6 +724,34 @@ async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionAct
   }));
 }
 
+async function auditRemoteApiRequest(input: {
+  actor: ExtensionSessionActor;
+  env: RuntimeEnv;
+  method: string;
+  path: string;
+  requestId: string;
+  statusCode: number;
+  outcome: 'success' | 'failure';
+}): Promise<void> {
+  const itemId = input.path.match(/\/(MLB\d+)/u)?.[1] ?? null;
+  await input.env.ONFRAME_DB.prepare(`
+    INSERT INTO audit_events (
+      id, workspace_id, user_id, seller_account_id, request_id, operation, target_type, target_id, outcome, status_code, metadata_json, created_at
+    ) VALUES (?, ?, ?, NULL, ?, ?, 'extension_api', ?, ?, ?, ?, ?)
+  `).bind(
+    crypto.randomUUID(),
+    input.actor.workspaceId,
+    input.actor.userId,
+    input.requestId,
+    `${input.method} ${input.path}`,
+    itemId,
+    input.outcome,
+    input.statusCode,
+    JSON.stringify({ method: input.method, path: input.path }),
+    now()
+  ).run();
+}
+
 async function parseSessionClaim(request: Request): Promise<{ pairingCode: string; label: string | null }> {
   const contentType = request.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) throw new RequestError('invalid_content_type', 415);
@@ -1012,6 +1001,35 @@ export default {
             sessionId: actor.sessionId
           }));
           return json({ revokedAt: new Date(now()).toISOString() });
+        }
+      }
+
+      if (url.pathname.startsWith('/v1/api/')) {
+        const actor = await authenticateExtensionSession(request, env);
+        try {
+          const payload = await handleRemoteApiRequest({ actor, env, request, url });
+          await auditRemoteApiRequest({
+            actor,
+            env,
+            method: request.method,
+            path: url.pathname.slice('/v1'.length),
+            requestId,
+            statusCode: 200,
+            outcome: 'success'
+          }).catch(() => undefined);
+          return json(payload);
+        } catch (error) {
+          const failure = remoteApiErrorPayload(error, requestId);
+          await auditRemoteApiRequest({
+            actor,
+            env,
+            method: request.method,
+            path: url.pathname.slice('/v1'.length),
+            requestId,
+            statusCode: failure.status,
+            outcome: 'failure'
+          }).catch(() => undefined);
+          return json(failure.payload, failure.status);
         }
       }
 

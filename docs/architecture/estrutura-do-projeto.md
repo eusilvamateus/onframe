@@ -4,9 +4,8 @@
 
 O OnFrame permite que vendedores do Mercado Livre gerenciem anuncios a partir
 da pagina publica do produto. A arquitetura separa o codigo executado pelo
-navegador das operacoes autenticadas. Durante a migracao, essas operacoes
-continuam no servico local e o acesso remoto centralizado e provido por um
-Worker separado.
+navegador das operacoes autenticadas. Quando a extensao esta vinculada a um
+workspace, essas operacoes sao executadas pelo Worker remoto centralizado.
 
 ## Componentes envolvidos
 
@@ -41,7 +40,11 @@ Worker separado.
   autorizacao e `GET /v1/accounts` lista as contas do workspace.
 - O callback publico `/oauth/mercadolivre/callback` troca o codigo OAuth no
   servidor, consulta o perfil e cifra o par de tokens antes de grava-lo no D1.
-- Nenhum endpoint de edicao do Mercado Livre foi migrado nesta etapa.
+- As requisicoes de dominio da extensao usam `/v1/api/*`, preservando os
+  contratos de itens, fotos, descricao, caracteristicas, precos, promocoes e
+  operacoes em massa sem expor token ao navegador.
+- O refresh token e serializado por conta no D1 antes de ser rotacionado pelo
+  Mercado Livre.
 
 ### Scripts (`scripts/`)
 
@@ -58,12 +61,16 @@ dos scripts e telas que precisam permanecer estaveis.
 
 1. A extensao reconhece uma pagina de anuncio e injeta somente o modulo
    aplicavel.
-2. O modulo chama a API HTTP do servico local para ler ou alterar dados do
-   anuncio.
-3. O servico usa as credenciais locais da conta conectada para chamar a API do
-   Mercado Livre e normaliza a resposta para a extensao.
+2. O modulo envia o contrato `/api/*` ao `background` da extensao.
+3. Com uma sessao remota vinculada, o `background` o encaminha ao Worker; ele
+   seleciona a conta do workspace, usa a credencial cifrada e normaliza a
+   resposta do Mercado Livre.
 4. A extensao atualiza a interface com o resultado, sem expor credenciais ao
    contexto da pagina.
+
+Instalacoes que ainda nao foram vinculadas mantem o servico local como
+compatibilidade temporaria. Uma extensao vinculada nao depende do processo
+local para os contratos `/api/*`.
 
 ## Vinculacao remota
 
@@ -78,8 +85,9 @@ dos scripts e telas que precisam permanecer estaveis.
 ## Contratos e fronteiras
 
 - A extensao nao chama a API autenticada do Mercado Livre diretamente.
-- Tokens e outros segredos pertencem ao servico local e nao devem ser
-  versionados nem enviados para o contexto da pagina.
+- Tokens e outros segredos pertencem ao Worker e ao D1 cifrado quando a sessao
+  remota esta vinculada; eles nao devem ser versionados nem enviados para o
+  contexto da pagina.
 - O bearer remoto identifica a extensao e o workspace, mas nao e um token do
   Mercado Livre. As credenciais dessa API ficam somente no Worker e no D1
   cifrado; elas nunca sao devolvidas para a extensao.
