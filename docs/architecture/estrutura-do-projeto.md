@@ -4,7 +4,9 @@
 
 O OnFrame permite que vendedores do Mercado Livre gerenciem anuncios a partir
 da pagina publica do produto. A arquitetura separa o codigo executado pelo
-navegador das operacoes autenticadas, que dependem de um servico local.
+navegador das operacoes autenticadas. Durante a migracao, essas operacoes
+continuam no servico local e o acesso remoto centralizado e provido por um
+Worker separado.
 
 ## Componentes envolvidos
 
@@ -26,6 +28,16 @@ navegador das operacoes autenticadas, que dependem de um servico local.
 - `src/routes/` organiza os contratos por dominio.
 - Os modulos de `src/` acessam o Mercado Livre, armazenam credenciais locais e
   aplicam regras de negocio, incluindo precificacao e promocoes.
+
+### Worker remoto (`cloudflare/`)
+
+- O Worker em `onframe.onblide.com` concentra a identidade do workspace e as
+  sessoes da extensao em D1.
+- A pagina protegida `/connect` emite um codigo temporario; a extensao o troca
+  por um bearer de sessao por `POST /v1/extension-sessions`.
+- O bearer fica restrito ao `background` da extensao e valida
+  `GET` e `DELETE /v1/extension-session`. A revogacao e persistida no D1.
+- Nenhum endpoint de edicao do Mercado Livre foi migrado nesta etapa.
 
 ### Scripts (`scripts/`)
 
@@ -49,11 +61,24 @@ dos scripts e telas que precisam permanecer estaveis.
 4. A extensao atualiza a interface com o resultado, sem expor credenciais ao
    contexto da pagina.
 
+## Vinculacao remota
+
+1. A pessoa autenticada no Cloudflare Access abre `/connect` e recebe um
+   codigo de uso unico, valido por dez minutos.
+2. A tela de opcoes envia esse codigo ao `background` da extensao.
+3. O `background` troca o codigo por um bearer e o mantem fora da pagina e dos
+   modulos injetados.
+4. O Worker associa a sessao ao usuario e ao workspace; a extensao pode
+   consultar esse contexto e revogar a propria sessao.
+
 ## Contratos e fronteiras
 
 - A extensao nao chama a API autenticada do Mercado Livre diretamente.
 - Tokens e outros segredos pertencem ao servico local e nao devem ser
   versionados nem enviados para o contexto da pagina.
+- O bearer remoto identifica a extensao e o workspace, mas nao e um token do
+  Mercado Livre. As credenciais dessa API continuarao fora da extensao quando
+  o OAuth remoto for implementado.
 - `scripts/bootstrap/` e um contrato distribuido publicamente; seus nomes e
   comportamentos devem permanecer compativeis.
 - A pagina de atualizacao e uma tela interna da extensao. Ela aciona o

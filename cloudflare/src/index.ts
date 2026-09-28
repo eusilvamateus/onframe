@@ -3,6 +3,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 const PAIRING_TTL_MS = 10 * 60 * 1000;
 const PAIRING_COOKIE_NAME = 'onframe_pairing';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 
 type AccessIdentity = {
   email: string;
@@ -23,6 +24,17 @@ type HealthResponse = {
 
 type Pairing = {
   code: string;
+  expiresAt: number;
+};
+
+type ExtensionSessionActor = {
+  sessionId: string;
+  userId: string;
+  workspaceId: string;
+  email: string;
+  displayName: string;
+  workspaceName: string;
+  label: string | null;
   expiresAt: number;
 };
 
@@ -234,6 +246,93 @@ async function getPairing(request: Request, env: Env, actor: Actor): Promise<{ i
   };
 }
 
+function sessionToken(request: Request): string {
+  const authorization = request.headers.get('authorization') ?? '';
+  const match = /^Bearer ([A-Za-z0-9_-]+)$/u.exec(authorization);
+  if (!match || !SESSION_TOKEN_PATTERN.test(match[1])) {
+    throw new RequestError('extension_session_unauthorized', 401);
+  }
+  return match[1];
+}
+
+async function authenticateExtensionSession(request: Request, env: Env): Promise<ExtensionSessionActor> {
+  const timestamp = now();
+  const record = await env.ONFRAME_DB.prepare(`
+    SELECT
+      extension_sessions.id AS session_id,
+      extension_sessions.user_id,
+      extension_sessions.workspace_id,
+      extension_sessions.label,
+      extension_sessions.expires_at,
+      users.email,
+      users.display_name,
+      workspaces.name AS workspace_name
+    FROM extension_sessions
+    INNER JOIN users ON users.id = extension_sessions.user_id
+    INNER JOIN workspaces ON workspaces.id = extension_sessions.workspace_id
+    WHERE extension_sessions.token_hash = ?
+      AND extension_sessions.revoked_at IS NULL
+      AND extension_sessions.expires_at > ?
+  `).bind(await sha256(sessionToken(request)), timestamp).first<{
+    session_id: string;
+    user_id: string;
+    workspace_id: string;
+    label: string | null;
+    expires_at: number;
+    email: string;
+    display_name: string | null;
+    workspace_name: string;
+  }>();
+
+  if (!record) throw new RequestError('extension_session_unauthorized', 401);
+
+  await env.ONFRAME_DB.prepare(`
+    UPDATE extension_sessions
+    SET last_seen_at = ?
+    WHERE id = ? AND revoked_at IS NULL
+  `).bind(timestamp, record.session_id).run();
+
+  return {
+    sessionId: record.session_id,
+    userId: record.user_id,
+    workspaceId: record.workspace_id,
+    email: record.email,
+    displayName: record.display_name || record.email,
+    workspaceName: record.workspace_name,
+    label: record.label,
+    expiresAt: record.expires_at
+  };
+}
+
+function extensionSessionPayload(actor: ExtensionSessionActor): Record<string, unknown> {
+  return {
+    session: {
+      id: actor.sessionId,
+      label: actor.label,
+      expiresAt: new Date(actor.expiresAt).toISOString()
+    },
+    user: {
+      id: actor.userId,
+      email: actor.email,
+      name: actor.displayName
+    },
+    workspace: {
+      id: actor.workspaceId,
+      name: actor.workspaceName
+    }
+  };
+}
+
+async function revokeExtensionSession(actor: ExtensionSessionActor, env: Env): Promise<void> {
+  const result = await env.ONFRAME_DB.prepare(`
+    UPDATE extension_sessions
+    SET revoked_at = ?
+    WHERE id = ? AND revoked_at IS NULL
+  `).bind(now(), actor.sessionId).run();
+
+  if (result.meta.changes !== 1) throw new RequestError('extension_session_unauthorized', 401);
+}
+
 async function parseSessionClaim(request: Request): Promise<{ pairingCode: string; label: string | null }> {
   const contentType = request.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) throw new RequestError('invalid_content_type', 415);
@@ -404,6 +503,24 @@ export default {
           sessionId: session.sessionId,
           token: session.token
         }, 201);
+      }
+
+      if (url.pathname === '/v1/extension-session') {
+        const actor = await authenticateExtensionSession(request, env);
+
+        if (request.method === 'GET') {
+          return json(extensionSessionPayload(actor));
+        }
+
+        if (request.method === 'DELETE') {
+          await revokeExtensionSession(actor, env);
+          console.log(JSON.stringify({
+            event: 'extension_session_revoked',
+            requestId,
+            sessionId: actor.sessionId
+          }));
+          return json({ revokedAt: new Date(now()).toISOString() });
+        }
       }
 
       return json({ error: 'not_found', requestId }, 404);

@@ -48,9 +48,23 @@ Nao versione `.env`, tokens, `ONBLIDE_TOKEN_SECRET` ou arquivos em
 `.onframe/`. A configuracao de exemplo e
 [.env.example](../../.env.example); ela nao contem segredos.
 
+## Acesso remoto em transicao
+
+O Worker em `onframe.onblide.com` ja vincula uma instalacao da extensao a um
+workspace por um codigo temporario protegido pelo Cloudflare Access. O bearer
+emitido nessa troca fica no `background` da extensao e serve apenas para a API
+do OnFrame.
+
+Ele nao e enviado ao Mercado Livre e ainda nao substitui o servico local: as
+rotas que leem ou alteram anuncios continuam usando `127.0.0.1` ate que o
+OAuth e o cofre remoto de credenciais sejam implementados.
+
 ## Contratos e fronteiras
 
 - A extensao acessa somente o servico local em `127.0.0.1`.
+- A tela de opcoes tambem pode acessar `onframe.onblide.com` pelo `background`
+  para vincular e administrar a sessao remota; os modulos injetados nao usam
+  esse bearer.
 - Requisicoes com `Origin` precisam vir da extensao autorizada pelo
   `manifest.json`, salvo `GET /health` e o callback de autorizacao.
 - O servico expõe rotas por dominio para itens, descricao, caracteristicas,

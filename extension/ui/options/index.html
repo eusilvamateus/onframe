@@ -40,6 +40,30 @@
       </div>
     </section>
 
+    <section class="panel ob-card remote-panel" aria-labelledby="remote-title">
+      <div class="panel-header">
+        <h2 class="ob-card-title" id="remote-title">Acesso remoto</h2>
+        <span class="ob-badge grey" id="remote-badge">Verificando</span>
+      </div>
+      <p class="ob-copy" id="remote-text">Conferindo a vinculação desta extensão.</p>
+      <div class="remote-connect" id="remote-connect">
+        <label class="ob-label" for="remote-pairing-code">Código de pareamento</label>
+        <div class="remote-code-controls">
+          <input class="ob-field" id="remote-pairing-code" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="27" placeholder="OF-...">
+          <button class="ob-button primary compact" id="remote-claim" type="button">Vincular</button>
+        </div>
+        <button class="ob-button ghost compact remote-pairing-link" id="remote-open-connect" type="button">Abrir pareamento</button>
+      </div>
+      <div class="remote-context is-hidden" id="remote-context">
+        <span><small>Conta</small><strong id="remote-user">-</strong></span>
+        <span><small>Workspace</small><strong id="remote-workspace">-</strong></span>
+        <span><small>Sessão expira</small><strong id="remote-expires-at">-</strong></span>
+      </div>
+      <div class="remote-actions is-hidden" id="remote-actions">
+        <button class="ob-button secondary compact" id="remote-disconnect" type="button">Desvincular</button>
+      </div>
+    </section>
+
     <section class="panel ob-card update-block is-hidden" id="update-block" aria-labelledby="update-title">
       <div class="panel-header">
         <h2 class="ob-card-title" id="update-title">Atualizacao</h2>

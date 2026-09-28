@@ -10,6 +10,7 @@
   const toUserError = Shared.toUserError;
   const toast = window.OnFrameToast;
   const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
+  const REMOTE_CONNECT_URL = 'https://onframe.onblide.com/connect';
 
   const elements = {
     refresh: document.getElementById('refresh'),
@@ -22,6 +23,18 @@
     serviceRestart: document.getElementById('service-restart'),
     serviceStop: document.getElementById('service-stop'),
     serviceCheck: document.getElementById('service-check'),
+    remoteBadge: document.getElementById('remote-badge'),
+    remoteText: document.getElementById('remote-text'),
+    remoteConnect: document.getElementById('remote-connect'),
+    remotePairingCode: document.getElementById('remote-pairing-code'),
+    remoteClaim: document.getElementById('remote-claim'),
+    remoteOpenConnect: document.getElementById('remote-open-connect'),
+    remoteContext: document.getElementById('remote-context'),
+    remoteUser: document.getElementById('remote-user'),
+    remoteWorkspace: document.getElementById('remote-workspace'),
+    remoteExpiresAt: document.getElementById('remote-expires-at'),
+    remoteActions: document.getElementById('remote-actions'),
+    remoteDisconnect: document.getElementById('remote-disconnect'),
     updateBlock: document.getElementById('update-block'),
     updateBadge: document.getElementById('update-badge'),
     updateText: document.getElementById('update-text'),
@@ -37,7 +50,9 @@
     accounts: [],
     canConnect: false,
     serviceOnline: false,
-    pendingRemoveUserId: ''
+    pendingRemoveUserId: '',
+    remoteConnected: false,
+    busy: false
   };
 
   decorateButtons();
@@ -49,6 +64,10 @@
   elements.serviceRestart.addEventListener('click', () => openLocalServiceAction('restart'));
   elements.serviceStop.addEventListener('click', () => openLocalServiceAction('stop'));
   elements.serviceCheck.addEventListener('click', () => openLocalServiceAction('check'));
+  elements.remotePairingCode.addEventListener('input', renderRemoteControls);
+  elements.remoteClaim.addEventListener('click', () => void claimRemoteConnection());
+  elements.remoteOpenConnect.addEventListener('click', openRemotePairing);
+  elements.remoteDisconnect.addEventListener('click', () => void disconnectRemoteConnection());
   elements.updateOpen.addEventListener('click', () => openUpdatePage());
   elements.updateStart.addEventListener('click', () => void copyUpdateCommand());
 
@@ -57,7 +76,10 @@
   async function loadOptions(options = {}) {
     setBusy(true);
     resetView();
-    await loadServiceAndAccounts(options);
+    await Promise.all([
+      loadServiceAndAccounts(options),
+      loadRemoteConnection()
+    ]);
     setBusy(false);
   }
 
@@ -68,6 +90,15 @@
     elements.accountText.textContent = 'Buscando conta conectada.';
     elements.accountList.classList.add('is-hidden');
     elements.accountList.innerHTML = '';
+    setBadge(elements.remoteBadge, 'Verificando', 'muted');
+    elements.remoteText.textContent = 'Conferindo a vinculação desta extensão.';
+    elements.remotePairingCode.value = '';
+    elements.remoteConnect.classList.remove('is-hidden');
+    elements.remoteContext.classList.add('is-hidden');
+    elements.remoteActions.classList.add('is-hidden');
+    elements.remoteUser.textContent = '-';
+    elements.remoteWorkspace.textContent = '-';
+    elements.remoteExpiresAt.textContent = '-';
     elements.updateBlock.classList.add('is-hidden');
     setBadge(elements.updateBadge, 'Verificando', 'muted');
     elements.updateText.textContent = 'Conferindo releases.';
@@ -78,7 +109,9 @@
     state.canConnect = false;
     state.serviceOnline = false;
     state.pendingRemoveUserId = '';
+    state.remoteConnected = false;
     renderServiceControls();
+    renderRemoteControls();
     renderVersionTag(null);
   }
 
@@ -345,7 +378,135 @@
     }
   }
 
+  async function loadRemoteConnection() {
+    try {
+      renderRemoteConnection(await sendRemoteMessage('status'));
+    } catch (err) {
+      state.remoteConnected = false;
+      setBadge(elements.remoteBadge, 'Indisponível', 'warn');
+      elements.remoteText.textContent = 'Não foi possível consultar o OnFrame remoto.';
+      elements.remoteConnect.classList.remove('is-hidden');
+      elements.remoteContext.classList.add('is-hidden');
+      elements.remoteActions.classList.add('is-hidden');
+      renderRemoteControls();
+    }
+  }
+
+  async function claimRemoteConnection() {
+    const pairingCode = elements.remotePairingCode.value.trim();
+    if (!pairingCode) {
+      elements.remotePairingCode.focus();
+      showActionFeedback('Informe o código de pareamento.', 'warn');
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const connection = await sendRemoteMessage('claim', { pairingCode });
+      elements.remotePairingCode.value = '';
+      renderRemoteConnection(connection);
+      showActionFeedback('Extensão vinculada ao acesso remoto.', 'ok');
+    } catch (err) {
+      showActionFeedback(toUserError(err), 'danger');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function openRemotePairing() {
+    openExternalUrl(REMOTE_CONNECT_URL);
+  }
+
+  async function disconnectRemoteConnection() {
+    setBusy(true);
+    try {
+      await sendRemoteMessage('disconnect');
+      renderRemoteConnection({ connected: false });
+      showActionFeedback('Extensão desvinculada do acesso remoto.', 'ok');
+    } catch (err) {
+      showActionFeedback(toUserError(err), 'danger');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function renderRemoteConnection(connection) {
+    const connected = Boolean(connection && connection.connected && connection.user && connection.workspace);
+    state.remoteConnected = connected;
+    elements.remoteConnect.classList.toggle('is-hidden', connected);
+    elements.remoteContext.classList.toggle('is-hidden', !connected);
+    elements.remoteActions.classList.toggle('is-hidden', !connected);
+
+    if (!connected) {
+      const expired = connection && connection.reason === 'expired';
+      setBadge(elements.remoteBadge, 'Não vinculada', 'warn');
+      elements.remoteText.textContent = expired
+        ? 'A sessão anterior expirou. Vincule esta extensão novamente.'
+        : 'Vincule esta extensão ao seu workspace no OnFrame.';
+      elements.remoteUser.textContent = '-';
+      elements.remoteWorkspace.textContent = '-';
+      elements.remoteExpiresAt.textContent = '-';
+      renderRemoteControls();
+      return;
+    }
+
+    setBadge(elements.remoteBadge, 'Vinculada', 'ok');
+    elements.remoteText.textContent = 'Esta extensão está vinculada ao seu workspace remoto.';
+    elements.remoteUser.textContent = String(connection.user.name || connection.user.email);
+    elements.remoteWorkspace.textContent = String(connection.workspace.name);
+    elements.remoteExpiresAt.textContent = formatRemoteExpiration(connection.expiresAt);
+    renderRemoteControls();
+  }
+
+  function formatRemoteExpiration(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  }
+
+  function sendRemoteMessage(action, payload = {}) {
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.runtime.sendMessage(Object.assign({ type: 'onframe:remote', action }, payload), (response) => {
+          const runtimeError = chrome.runtime.lastError;
+          if (runtimeError) {
+            const error = new Error('Não foi possível acessar o OnFrame remoto.');
+            error.technicalError = runtimeError.message || String(runtimeError);
+            reject(error);
+            return;
+          }
+          if (!response || response.ok !== true) {
+            const error = new Error(response && response.error ? response.error : 'Não foi possível acessar o OnFrame remoto.');
+            error.code = response && response.code ? response.code : '';
+            error.technicalError = response && response.technicalError ? response.technicalError : error.code || error.message;
+            reject(error);
+            return;
+          }
+          resolve(response.body || {});
+        });
+      } catch (err) {
+        const error = new Error('Não foi possível acessar o OnFrame remoto.');
+        error.technicalError = err && err.message ? err.message : String(err);
+        reject(error);
+      }
+    });
+  }
+
+  function renderRemoteControls() {
+    const canClaim = !state.busy && !state.remoteConnected && Boolean(elements.remotePairingCode.value.trim());
+    elements.remotePairingCode.disabled = state.busy || state.remoteConnected;
+    elements.remoteClaim.disabled = !canClaim;
+    elements.remoteOpenConnect.disabled = state.busy || state.remoteConnected;
+    elements.remoteDisconnect.disabled = state.busy || !state.remoteConnected;
+  }
+
   function setBusy(value) {
+    state.busy = value;
     elements.refresh.disabled = value;
     elements.connect.disabled = value || !state.canConnect;
     elements.serviceStart.disabled = value;
@@ -357,6 +518,7 @@
     elements.accountList.querySelectorAll('button').forEach((button) => {
       button.disabled = value;
     });
+    renderRemoteControls();
   }
 
   function renderServiceControls() {
@@ -393,6 +555,9 @@
     setServiceActionIcon(elements.serviceRestart, 'refresh');
     setServiceActionIcon(elements.serviceStop, 'stop');
     setServiceActionIcon(elements.serviceCheck, 'checkCircle');
+    addIcon(elements.remoteClaim, 'link');
+    addIcon(elements.remoteOpenConnect, 'arrowSquareOut');
+    addIcon(elements.remoteDisconnect, 'x');
     addIcon(elements.updateOpen, 'arrowSquareOut');
     addIcon(elements.updateStart, 'copy');
   }

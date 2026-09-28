@@ -104,6 +104,111 @@ test('manifest e telas referenciam arquivos existentes', () => {
   assert.strictEqual(manifest.action.default_icon['48'], 'assets/icons/icon-48.png');
 });
 
+test('background vincula e revoga a sessao remota sem expor o bearer', async () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'background.js'), 'utf8');
+  const pairingCode = 'OF-abcdefghijklmnopqrstuvwx';
+  const token = 'a'.repeat(43);
+  const storage = {};
+  const requests = [];
+  let listener = null;
+
+  const chrome = {
+    runtime: {
+      lastError: null,
+      onMessage: {
+        addListener(value) {
+          listener = value;
+        }
+      }
+    },
+    storage: {
+      local: {
+        get(defaults, callback) {
+          callback(Object.assign({}, defaults, storage));
+        },
+        set(value, callback) {
+          Object.assign(storage, value);
+          callback();
+        },
+        remove(key, callback) {
+          delete storage[key];
+          callback();
+        }
+      }
+    },
+    tabs: {
+      async create() {}
+    }
+  };
+
+  const sandbox = {
+    chrome,
+    console,
+    fetch: async (url, options = {}) => {
+      const request = {
+        url,
+        method: options.method || 'GET',
+        headers: new Headers(options.headers || {}),
+        body: options.body || ''
+      };
+      requests.push(request);
+
+      if (url.endsWith('/v1/extension-sessions')) {
+        return Response.json({
+          token,
+          sessionId: 'session-1',
+          expiresAt: '2099-01-01T00:00:00.000Z'
+        }, { status: 201 });
+      }
+      if (request.method === 'DELETE') return Response.json({ revokedAt: '2026-09-28T00:00:00.000Z' });
+      return Response.json({
+        user: { email: 'mateus@example.com', name: 'Mateus' },
+        workspace: { name: 'OnFrame - Mateus' }
+      });
+    },
+    Headers,
+    Response
+  };
+  vm.runInNewContext(source, sandbox);
+
+  function send(message) {
+    return new Promise((resolve) => {
+      assert.strictEqual(listener(message, {}, resolve), true);
+    });
+  }
+
+  const claimed = await send({ type: 'onframe:remote', action: 'claim', pairingCode });
+  assert.strictEqual(claimed.ok, true);
+  assert.strictEqual(claimed.body.connected, true);
+  assert.strictEqual(claimed.body.token, undefined);
+  assert.strictEqual(storage.onframeRemoteSession.token, token);
+  assert.strictEqual(JSON.parse(requests[0].body).pairingCode, pairingCode);
+  assert.strictEqual(requests[1].headers.get('authorization'), `Bearer ${token}`);
+
+  const disconnected = await send({ type: 'onframe:remote', action: 'disconnect' });
+  assert.strictEqual(disconnected.ok, true);
+  assert.strictEqual(disconnected.body.connected, false);
+  assert.strictEqual(requests[2].method, 'DELETE');
+  assert.strictEqual(requests[2].headers.get('authorization'), `Bearer ${token}`);
+  assert.strictEqual(storage.onframeRemoteSession, undefined);
+});
+
+test('extensao declara o acesso remoto e o Worker protege a sessao por bearer', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+  const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
+  const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
+  const worker = fs.readFileSync(path.join(__dirname, '..', 'cloudflare', 'src', 'index.ts'), 'utf8');
+
+  assert.ok(manifest.host_permissions.includes('https://onframe.onblide.com/*'));
+  assert.match(optionsHtml, /id="remote-pairing-code"/);
+  assert.match(optionsHtml, /id="remote-disconnect"/);
+  assert.match(optionsJs, /type: 'onframe:remote'/);
+  assert.match(worker, /function authenticateExtensionSession/);
+  assert.match(worker, /url\.pathname === '\/v1\/extension-session'/);
+  assert.match(worker, /extension_session_unauthorized/);
+  assert.match(worker, /extension_session_revoked/);
+});
+
 test('module registry cria modulos com contrato estavel', () => {
   const calls = [];
   const photosModule = {
