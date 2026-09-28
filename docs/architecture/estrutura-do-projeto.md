@@ -80,6 +80,10 @@ parte do produto nem do pacote de instalação.
   autenticidade é verificada pelo padrão Standard Webhooks antes de qualquer
   entrega. Cada envio também usa uma chave de idempotência determinística no
   Resend, sem armazenar endereços, links ou códigos no D1.
+- O Supabase Auth exige token do Turnstile para cadastro, login e recuperação
+  de senha. O widget aceita apenas `onframe.onblide.com`; seu segredo é
+  injetado em `supabase config push` como `SUPABASE_TURNSTILE_SECRET`, nunca
+  no Worker, na extensão ou no repositório.
 - A ausência ou expiração da sessão bloqueia contratos `/api/*` até novo
   pareamento.
 

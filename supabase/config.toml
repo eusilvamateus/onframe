@@ -9,6 +9,12 @@ enabled = true
 uri = "https://onframe.onblide.com/hooks/supabase/send-email"
 secrets = "env(SUPABASE_SEND_EMAIL_HOOK_SECRET)"
 
+# O segredo do Turnstile e injetado somente ao publicar a configuracao.
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(SUPABASE_TURNSTILE_SECRET)"
+
 [auth.email.template.confirmation]
 subject = "Confirme seu e-mail no OnFrame"
 content_path = "./supabase/templates/confirmation.html"

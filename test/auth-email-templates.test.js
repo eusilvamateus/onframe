@@ -32,6 +32,11 @@ test('configura todos os templates de autenticação e notificações do Supabas
   }
 });
 
+test('protege os fluxos de Auth com Turnstile sem versionar seu segredo', () => {
+  assert.match(config, /\[auth\.captcha\]\s+enabled = true\s+provider = "turnstile"\s+secret = "env\(SUPABASE_TURNSTILE_SECRET\)"/);
+  assert.doesNotMatch(config, /secret = "0x[^"]+"/i);
+});
+
 test('templates do Supabase são contingências textuais mínimas', () => {
   for (const [name, [file, variable]] of Object.entries(templates)) {
     const content = fs.readFileSync(path.join(root, 'supabase', 'templates', file), 'utf8');
