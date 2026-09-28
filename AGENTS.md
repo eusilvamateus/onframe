@@ -38,9 +38,17 @@ Use CommonJS, indentação de dois espaços, ponto e vírgula e aspas simples. U
 `camelCase` para funções e variáveis locais, `UPPER_SNAKE_CASE` para constantes
 e nomes descritivos em português para os testes. Mantenha comportamento de DOM
 nos módulos da extensão, transformações reutilizáveis de estado nos modelos e
-integrações de API/Mercado Livre no Worker. Siga o sistema de design em
-`C:\Users\Mateus\onblide-design-system`; não introduza tipografia, controles ou
-retornos visuais ad hoc.
+integrações de API/Mercado Livre no Worker.
+
+## Design System Obrigatório
+
+Use exclusivamente o design system vigente em
+`C:\Users\Mateus\onblide-design-system` para toda decisão visual e de interação
+do OnFrame: componentes, variantes, tokens, tipografia, ícones, tamanhos,
+espaçamentos, estados e acessibilidade. Não crie, simule, combine ou customize
+variações visuais fora das especificações documentadas. Quando a necessidade não
+tiver componente, variante ou regra documentada, interrompa a implementação e
+informe a lacuna ao usuário; não improvise uma solução visual.
 
 ## Diretrizes de Teste
 
