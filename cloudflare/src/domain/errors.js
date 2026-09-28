@@ -169,13 +169,13 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
     return 'Anúncio mudou. Atualize a página.';
   }
   if (text.includes('failed to fetch') || text.includes('econnrefused') || text.includes('connect econnrefused')) {
-    return 'Serviço local desligado. Abra o OnFrame.';
+    return 'Não foi possível acessar o OnFrame remoto. Tente novamente.';
   }
   if (status >= 500) {
     return 'Falha temporária. Tente de novo.';
   }
   if (text.includes('endpoint nao encontrado') || text.includes('endpoint não encontrado')) {
-    return 'Versões diferentes. Reinicie o serviço.';
+    return 'Versões diferentes. Atualize a extensão.';
   }
   return sanitized || 'Não consegui concluir. Tente de novo.';
 }

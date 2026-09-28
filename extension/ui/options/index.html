@@ -26,20 +26,6 @@
       </div>
     </header>
 
-    <section class="panel ob-card" aria-labelledby="service-title">
-      <div class="panel-header">
-        <h2 class="ob-card-title" id="service-title">Status do OnFrame</h2>
-        <span class="ob-badge grey" id="service-badge">Verificando</span>
-      </div>
-      <p class="ob-copy" id="service-text">Conferindo se o OnFrame esta pronto para editar fotos.</p>
-      <div class="service-actions" aria-label="Controles do servico local">
-        <button class="ob-button primary compact service-primary" id="service-start" type="button">Iniciar</button>
-        <button class="ob-button secondary compact is-hidden" id="service-restart" type="button">Reiniciar</button>
-        <button class="ob-button secondary compact service-danger is-hidden" id="service-stop" type="button">Parar</button>
-        <button class="ob-button secondary compact" id="service-check" type="button">Verificar</button>
-      </div>
-    </section>
-
     <section class="panel ob-card remote-panel" aria-labelledby="remote-title">
       <div class="panel-header">
         <h2 class="ob-card-title" id="remote-title">Acesso remoto</h2>
@@ -76,28 +62,15 @@
       <div class="account-list is-hidden" id="remote-accounts-list" aria-label="Contas Mercado Livre do workspace"></div>
     </section>
 
-    <section class="panel ob-card update-block is-hidden" id="update-block" aria-labelledby="update-title">
+    <section class="panel ob-card update-block" id="update-block" aria-labelledby="update-title">
       <div class="panel-header">
         <h2 class="ob-card-title" id="update-title">Atualizacao</h2>
-        <span class="ob-badge grey" id="update-badge">Verificando</span>
+        <span class="ob-badge blue" id="update-badge">Disponível</span>
       </div>
-      <p class="ob-copy" id="update-text">Conferindo releases.</p>
+      <p class="ob-copy" id="update-text">Use o atualizador para instalar a versão mais recente.</p>
       <div class="update-actions">
         <button class="ob-button primary" id="update-open" type="button">Atualizar agora</button>
-        <button class="ob-button secondary" id="update-start" type="button">Copiar comando</button>
       </div>
-    </section>
-
-    <section class="panel ob-card" aria-labelledby="account-title">
-      <div class="panel-header">
-        <h2 class="ob-card-title" id="account-title">Conta</h2>
-        <span class="panel-actions">
-          <span class="ob-badge grey" id="account-badge">Verificando</span>
-          <button class="ob-button secondary ob-icon-button compact-icon" id="connect" data-tooltip="Conectar conta" type="button" aria-label="Conectar conta"></button>
-        </span>
-      </div>
-      <p class="ob-copy" id="account-text">Buscando conta conectada.</p>
-      <div class="account-list is-hidden" id="account-list" aria-label="Contas Mercado Livre conectadas"></div>
     </section>
   </main>
 

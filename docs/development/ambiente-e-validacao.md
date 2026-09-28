@@ -1,68 +1,52 @@
-# Ambiente e validacao
+# Ambiente e validação
 
 ## Objetivo
 
-Este documento orienta contribuicoes no repositorio. Ele cobre o ambiente local,
-os comandos de verificacao e os limites entre desenvolvimento e instalacao de
-usuario.
+Este guia descreve o ambiente do repositório e as verificações antes da entrega.
+O produto não possui servidor Node local para iniciar ou diagnosticar.
 
-## Pre-requisitos
+## Pré-requisitos
 
-- Node.js 20 ou superior para executar o projeto localmente.
-- Dependencias instaladas a partir de `package-lock.json`.
-- PowerShell no Windows quando for validar os scripts `.ps1`.
-- `/bin/sh` no macOS ou Linux quando for validar os scripts `.sh`.
+- Node.js 20 ou superior para testes, scripts de release e o projeto Worker.
+- Dependências instaladas a partir de `package-lock.json`.
+- PowerShell no Windows para validar scripts `.ps1`.
+- `/bin/sh` no macOS ou Linux para validar scripts `.sh`.
 
-A instalacao de usuario e independente deste ambiente. Ela usa os scripts de
-bootstrap e, no macOS, instala um runtime Node.js privado. Consulte
-[Instalacao e atualizacao](../user/instalacao-e-atualizacao.md) para esse fluxo.
+Na raiz do repositório:
 
-## Preparacao
-
-Na raiz do repositorio:
-
-```powershell
+`B`powershell
 npm ci
-```
+`B`
 
-Inicie o servico local para desenvolvimento com:
-
-```powershell
-npm start
-```
-
-O processo escuta apenas em `127.0.0.1`. Os detalhes operacionais ficam em
-[Servico local](../operations/servico-local.md).
-
-## Validacao
+## Validação
 
 | Objetivo | Comando |
 | --- | --- |
-| Testes padrao | `npm test` |
-| Suite completa nomeada | `npm run test:all` |
-| Diagnostico da instalacao no Windows | `npm run check` |
-| Consistencia de versao | `npm run version:check` |
+| Testes padrão | `npm test` |
+| Suíte nomeada | `npm run test:all` |
+| Consistência de versão | `npm run version:check` |
 | Pacote de release | `npm run package:release` |
-| Validacao completa de release | `npm run release:check` |
+| Worker | `npm run check` dentro de `cloudflare/` |
+| Validação completa de release | `npm run release:check` |
 
-Use `npm run test:all` antes de entregar alteracoes de comportamento. A
-validacao de release tambem executa a verificacao de versao, a auditoria de
-dependencias, os testes e o empacotamento.
+Use `npm run test:all` antes de entregar alterações de comportamento. A
+validação de release executa verificação de versão, auditoria de dependências,
+testes e empacotamento.
 
-## Escopo das alteracoes
+## Escopo das alterações
 
-- Mudancas em `extension/` devem preservar a separacao entre codigo
-  compartilhado, modulos de dominio e telas nativas.
-- Mudancas em `service/` devem manter segredos no servico local e
-  contratos HTTP compativeis com a extensao.
-- Mudancas em `scripts/bootstrap/` precisam considerar Windows e macOS,
-  porque esses arquivos sao baixados e executados em instalacoes existentes.
-- Mudancas em regras de produto devem atualizar a fonte correspondente em
-  `docs/product/` na mesma entrega.
+- Mudanças em `extension/` devem preservar a bridge pelo `background` e
+  nunca introduzir chamadas autenticadas diretas.
+- Mudanças em `cloudflare/src/domain/` precisam manter o contrato usado por
+  `legacy-contracts.ts` e pela suíte Node.
+- Mudanças no Worker devem validar tipos e, para deploy, usar exclusivamente os
+  recursos oficiais da Cloudflare.
+- Mudanças em `scripts/bootstrap/` precisam considerar Windows e macOS,
+  pois os arquivos são baixados por instalações existentes.
+- Mudanças de produto devem atualizar a fonte correspondente em `docs/`.
 
 ## Git e releases
 
-O fluxo de branches, commits, versao e publicacao pertence exclusivamente a
-skill `fluxo-git-releases`; ele nao possui uma copia no repositorio. Para a
-composicao tecnica do artefato distribuido, consulte
+O fluxo de branches, commits, versão e publicação pertence exclusivamente à
+skill `fluxo-git-releases`. Para a composição técnica do artefato, consulte
 [Pacote de release](../reference/pacote-de-release.md).

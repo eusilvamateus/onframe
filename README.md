@@ -1,6 +1,6 @@
 # OnFrame
 
-OnFrame e uma extensao local para Chrome e Edge que ajuda vendedores do Mercado
+OnFrame e uma extensao para Chrome e Edge que ajuda vendedores do Mercado
 Livre a gerenciar anuncios diretamente pela pagina publica do produto.
 
 ## Recursos
@@ -22,6 +22,5 @@ Livre a gerenciar anuncios diretamente pela pagina publica do produto.
 
 - [Arquitetura](docs/architecture/estrutura-do-projeto.md)
 - [Ambiente e validacao](docs/development/ambiente-e-validacao.md)
-- [Servico local](docs/operations/servico-local.md)
 
 Execute `npm run test:all` para rodar a suite automatizada completa.

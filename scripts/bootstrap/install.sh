@@ -2,195 +2,72 @@
 
 set -eu
 
-REPO="${ONFRAME_UPDATE_REPO:-eusilvamateus/onframe}"
+REPOSITORY="${ONFRAME_UPDATE_REPO:-eusilvamateus/onframe}"
 INSTALL_ROOT="${ONFRAME_HOME:-$HOME/Library/Application Support/OnFrame}"
-MODE="${ONFRAME_INSTALL_MODE:-install}"
 
 fail() {
-  printf '\n[ERRO] %s\n\n' "$1" >&2
+  printf '\n[ERRO] %s\n' "$1" >&2
   exit 1
 }
 
-github_get() {
-  url="$1"
-  if [ -n "${GITHUB_TOKEN:-}" ]; then
-    /usr/bin/curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$url"
-  elif [ -n "${GH_TOKEN:-}" ]; then
-    /usr/bin/curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$url"
-  else
-    /usr/bin/curl -fsSL -H "Accept: application/vnd.github+json" "$url"
-  fi
-}
-
 [ "$(uname -s)" = "Darwin" ] || fail "Este instalador e exclusivo para macOS."
-mac_major="$(/usr/bin/sw_vers -productVersion | cut -d. -f1)"
-[ "$mac_major" -ge 13 ] || fail "O OnFrame requer macOS 13 Ventura ou superior."
 [ -n "$INSTALL_ROOT" ] && [ "$INSTALL_ROOT" != "/" ] || fail "Pasta de instalacao insegura."
 case "$INSTALL_ROOT" in
-  "$HOME"|"$HOME/"|"$HOME/Library"|"$HOME/Library/") fail "Pasta de instalacao insegura: $INSTALL_ROOT" ;;
   "$HOME/"*) ;;
   *) fail "A instalacao deve permanecer dentro do perfil do usuario." ;;
 esac
-case "/$INSTALL_ROOT/" in
-  */../*|*/./*) fail "A pasta de instalacao nao pode conter atalhos de caminho." ;;
-esac
-if [ -e "$INSTALL_ROOT" ]; then
-  resolved_root="$(CDPATH='' cd -- "$INSTALL_ROOT" 2>/dev/null && pwd -P)" || fail "Nao foi possivel validar a pasta de instalacao."
-  case "$resolved_root" in
-    "$HOME/"*) ;;
-    *) fail "A pasta de instalacao aponta para fora do perfil do usuario." ;;
-  esac
-fi
 
-SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)"
-if [ -f "$SCRIPT_DIR/common.sh" ]; then
-  # shellcheck source=scripts/bootstrap/common.sh
-  . "$SCRIPT_DIR/common.sh"
-fi
-
-_width=74
-if command -v onframe_tui_width >/dev/null 2>&1; then
-  _width="$(onframe_tui_width)"
-fi
-
-if command -v onframe_header_3l >/dev/null 2>&1; then
-  if [ "$MODE" = "update" ]; then
-    onframe_header_3l "↻ ATUALIZAÇÃO LOCAL" "Download Seguro & Renovação do Serviço" "amber" "$_width" "Atualizador Oficial do Aplicativo • macOS"
+github_get() {
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    /usr/bin/curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$1"
+  elif [ -n "${GH_TOKEN:-}" ]; then
+    /usr/bin/curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$1"
   else
-    onframe_header_3l "↓ INSTALAÇÃO LOCAL" "Instalação & Configuração do OnFrame" "brand" "$_width" "Instalador Oficial do Aplicativo • macOS"
+    /usr/bin/curl -fsSL -H "Accept: application/vnd.github+json" "$1"
   fi
-else
-  printf '\n  ONFRAME\n'
-  printf '  Onblide local toolkit\n'
-  printf '  ----------------------------------------------------------\n'
-  printf '  %-10s %s\n' "Modo" "$(if [ "$MODE" = "update" ]; then printf 'Atualizacao'; else printf 'Instalacao'; fi)"
-  printf '  %-10s %s\n' "Pasta" "$INSTALL_ROOT"
-  printf '  %-10s %s\n' "Repo" "$REPO"
-  printf '  ----------------------------------------------------------\n'
-fi
+}
 
-printf '\n  [PREPARANDO]\n'
-printf '  [>] 01/09 Validando destino.\n'
-if [ -e "$INSTALL_ROOT" ] && [ ! -f "$INSTALL_ROOT/package.json" ]; then
-  printf '       ! Pasta local parcial encontrada; os arquivos serao restaurados e a configuracao preservada.\n'
-fi
-if [ -d "$INSTALL_ROOT/.git" ]; then
-  fail "Esta pasta e um checkout de desenvolvimento. Use outra pasta para instalar."
-fi
+temporary="$(mktemp -d "${TMPDIR:-/tmp}/onframe-install.XXXXXX")"
+trap 'rm -rf "$temporary"' EXIT HUP INT TERM
+release_json="$temporary/release.json"
+archive="$temporary/release.zip"
+extract="$temporary/extract"
+mkdir -p "$extract"
 
-temp_root="$(mktemp -d "${TMPDIR:-/tmp}/onframe-install.XXXXXX")"
-trap 'rm -rf "$temp_root"' EXIT HUP INT TERM
-release_json="$temp_root/release.json"
-archive_path="$temp_root/release.zip"
-extract_path="$temp_root/extract"
-mkdir -p "$extract_path"
-
-printf '\n  [BAIXANDO]\n'
-printf '  [>] 02/09 Consultando ultima release.\n'
-github_get "https://api.github.com/repos/$REPO/releases/latest" > "$release_json"
+printf '\nONFRAME\nInstalacao da extensao e do atualizador\n\n'
+printf '[1/4] Consultando a release mais recente...\n'
+github_get "https://api.github.com/repos/$REPOSITORY/releases/latest" > "$release_json"
 tag="$(sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' "$release_json" | head -n 1)"
 asset_url="$(sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]*onframe-v[^"]*\.zip\)".*/\1/p' "$release_json" | head -n 1)"
 [ -n "$tag" ] || fail "A API do GitHub nao retornou uma release valida."
 [ -n "$asset_url" ] || fail "A release $tag nao possui o pacote ZIP do OnFrame."
-printf '       + Release encontrada: %s\n' "$tag"
 
-printf '  [>] 03/09 Baixando pacote.\n'
-/usr/bin/curl -fsSL "$asset_url" -o "$archive_path"
-
-printf '  [>] 04/09 Extraindo e validando pacote.\n'
-/usr/bin/ditto -x -k "$archive_path" "$extract_path"
-package_file="$(find "$extract_path" -type f -name package.json | head -n 1)"
+printf '[2/4] Baixando pacote %s...\n' "$tag"
+/usr/bin/curl -fsSL "$asset_url" -o "$archive"
+/usr/bin/ditto -x -k "$archive" "$extract"
+package_file="$(find "$extract" -type f -name package.json | head -n 1)"
 [ -n "$package_file" ] || fail "Pacote vazio ou invalido."
 source_root="$(dirname "$package_file")"
-for required in package.json extension service scripts; do
+for required in package.json extension scripts/bootstrap; do
   [ -e "$source_root/$required" ] || fail "Pacote invalido: $required ausente."
 done
-[ -f "$source_root/scripts/bootstrap/common.sh" ] || fail "Esta release ainda nao oferece suporte ao macOS."
 
-printf '\n  [APLICANDO]\n'
-printf '  [>] 05/09 Encerrando instalacao anterior.\n'
-if [ -x "$INSTALL_ROOT/scripts/bootstrap/stop.sh" ]; then
-  ONFRAME_HOME="$INSTALL_ROOT" "$INSTALL_ROOT/scripts/bootstrap/stop.sh" >/dev/null 2>&1 || true
-fi
-
-printf '  [>] 06/09 Copiando arquivos.\n'
+printf '[3/4] Instalando extensao e atualizador...\n'
 mkdir -p "$INSTALL_ROOT"
-for target in extension service scripts; do
-  rm -rf "${INSTALL_ROOT:?}/$target"
-  if [ -e "$source_root/$target" ]; then
-    cp -R "$source_root/$target" "$INSTALL_ROOT/$target"
-  fi
+for entry in extension scripts; do
+  rm -rf "${INSTALL_ROOT:?}/$entry"
+  cp -R "$source_root/$entry" "$INSTALL_ROOT/$entry"
 done
-rm -rf "${INSTALL_ROOT:?}/docs"
-rm -f "$INSTALL_ROOT/package-lock.json" "$INSTALL_ROOT/README.md" "$INSTALL_ROOT/CHANGELOG.md" "$INSTALL_ROOT/RELEASE.md"
-for file in package.json .env.example; do
-  if [ -f "$source_root/$file" ]; then
-    cp "$source_root/$file" "$INSTALL_ROOT/$file"
-  fi
+cp "$source_root/package.json" "$INSTALL_ROOT/package.json"
+for legacy in service docs .env .env.example .onframe .runtime package-lock.json README.md CHANGELOG.md RELEASE.md; do
+  rm -rf "${INSTALL_ROOT:?}/$legacy"
 done
 find "$INSTALL_ROOT/scripts/bootstrap" -type f -name '*.sh' -exec chmod 700 {} \;
 
-ONFRAME_HOME="$INSTALL_ROOT"
-export ONFRAME_HOME
-. "$INSTALL_ROOT/scripts/bootstrap/common.sh"
-onframe_assert_install_root
+printf '[4/4] Registrando atualizacao por um clique...\n'
+ONFRAME_HOME="$INSTALL_ROOT" "$INSTALL_ROOT/scripts/bootstrap/register-updater-protocol.sh"
 
-printf '  [>] 07/09 Preparando configuracao e runtime privado.\n'
-onframe_ensure_env
-onframe_ensure_runtime
-runtime_node="$(onframe_runtime_node)"
-runtime_version="$("$runtime_node" -p 'process.versions.node')"
-printf '       + Node.js %s instalado somente para o OnFrame.\n' "$runtime_version"
-
-printf '\n  [FINALIZANDO]\n'
-printf '  [>] 08/09 Registrando servico e controles locais.\n'
-onframe_write_agent
-onframe_register_launcher
-
-printf '  [>] 09/09 Iniciando e validando servico.\n'
-onframe_start_service
-
-_suc_tmp="$(mktemp "${TMPDIR:-/tmp}/onframe-install-suc.XXXXXX")"
-trap 'rm -f "$_suc_tmp"' EXIT
-
-_bar_len=$(( _width - 32 ))
-[ "$_bar_len" -lt 14 ] && _bar_len=14
-_final_bar="$(onframe_progress_bar 100.0 "$_bar_len" green)"
-
-if [ "$MODE" = "update" ]; then
-  _suc_badge="● ATUALIZADO COM SUCESSO"
-  _suc_title="Atualização do OnFrame concluída com sucesso."
-  _suc_card="Atualização Concluída"
-else
-  _suc_badge="● INSTALADO COM SUCESSO"
-  _suc_title="Instalação do OnFrame concluída com sucesso."
-  _suc_card="Instalação Concluída"
-fi
-
-{
-  onframe_badge "$_suc_badge" 119 158 61
-  printf '\n%s%s%s\n' "$ONFRAME_CLR_BOLD" "$_suc_title" "$ONFRAME_CLR_RESET"
-  printf '%sSeus arquivos e extensões estão prontos para uso.%s\n\n' "$ONFRAME_CLR_MUTED" "$ONFRAME_CLR_RESET"
-  printf '   %s●%s %sVersão:%s %s\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET" "$tag"
-  printf '   %s●%s %sExtensão:%s %s/extension\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET" "$INSTALL_ROOT"
-  printf '   %s●%s %sChrome:%s chrome://extensions/\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
-  printf '   %s●%s %sEdge:%s edge://extensions/\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$ONFRAME_CLR_BOLD" "$ONFRAME_CLR_RESET"
-  printf '   %s●%s Recarregue ou carregue a extensão nessa página.\n\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET"
-  printf '%s✔%s Status final:  %s\n' "$ONFRAME_CLR_GREEN" "$ONFRAME_CLR_RESET" "$_final_bar"
-} > "$_suc_tmp"
-
-printf '\033[H\033[2J' 2>/dev/null || true
-if [ "$MODE" = "update" ]; then
-  onframe_header_3l "↻ ATUALIZAÇÃO LOCAL" "Download Seguro & Renovação do Serviço" "amber" "$_width" "Atualizador Oficial do Aplicativo • macOS"
-else
-  onframe_header_3l "↓ INSTALAÇÃO LOCAL" "Instalação & Configuração do OnFrame" "brand" "$_width" "Instalador Oficial do Aplicativo • macOS"
-fi
-onframe_print_card "${ONFRAME_CLR_GREEN}✔${ONFRAME_CLR_RESET} $_suc_card" "$_suc_tmp" "$_width" 119 158 61
-
-_footer_text="$ONFRAME_CLR_MUTED● Instalação concluída com sucesso. Pressione $ONFRAME_CLR_BOLD$(onframe_truecolor_fg 230 235 245)[Enter]$ONFRAME_CLR_RESET$ONFRAME_CLR_MUTED para retornar...$ONFRAME_CLR_RESET"
-_fpad="$(onframe_center_padding "$(onframe_display_width "$_footer_text")")"
-printf '\n%s%s\n' "$_fpad" "$_footer_text"
-
-if [ -t 0 ] && [ "${NO_PAUSE:-0}" = "0" ]; then
-  read -r _ || true
-fi
+printf '\nInstalacao concluida.\n'
+printf 'Extensao: %s/extension\n' "$INSTALL_ROOT"
+printf 'Chrome: chrome://extensions/\n'
+printf 'Edge: edge://extensions/\n'

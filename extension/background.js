@@ -1,4 +1,3 @@
-const SERVICE = 'http://127.0.0.1:4765';
 const REMOTE_SERVICE = 'https://onframe.onblide.com';
 const REMOTE_SESSION_KEY = 'onframeRemoteSession';
 const PAIRING_CODE_PATTERN = /^OF-[A-Za-z0-9_-]{24}$/u;
@@ -6,16 +5,6 @@ const REMOTE_SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message.type !== 'string') return false;
-
-  if (message.type === 'onframe:openLauncher') {
-    openLauncher(message.action)
-      .then((payload) => sendResponse(payload))
-      .catch((err) => sendResponse({
-        ok: false,
-        error: err && err.message ? err.message : 'Não consegui abrir o controle local.'
-      }));
-    return true;
-  }
 
   if (message.type === 'onframe:remote') {
     handleRemoteMessage(message)
@@ -36,22 +25,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .catch((err) => sendResponse({
       ok: false,
       status: 0,
-      error: 'Serviço local desligado. Abra o OnFrame.',
+      error: 'Não consegui acessar o OnFrame remoto.',
       technicalError: err && err.message ? err.message : String(err)
     }));
   return true;
 });
-
-async function openLauncher(action) {
-  const name = String(action || '').toLowerCase();
-  if (!['start', 'stop', 'restart', 'check', 'update'].includes(name)) {
-    throw new Error('Ação local inválida.');
-  }
-  await chrome.tabs.create({
-    url: chrome.runtime.getURL(`ui/launcher/index.html?action=${encodeURIComponent(name)}`)
-  });
-  return { ok: true };
-}
 
 async function handleRemoteMessage(message) {
   const action = String(message.action || '');
@@ -60,6 +38,8 @@ async function handleRemoteMessage(message) {
   if (action === 'disconnect') return disconnectRemoteConnection();
   if (action === 'accounts') return listRemoteAccounts();
   if (action === 'oauth-start') return startRemoteAuth();
+  if (action === 'account-update') return updateRemoteAccount(message.userId, message.enabled);
+  if (action === 'account-remove') return removeRemoteAccount(message.userId);
   throw new Error('Ação remota inválida.');
 }
 
@@ -134,12 +114,53 @@ async function listRemoteAccounts() {
     const result = await requestRemote('/v1/accounts', {
       headers: { authorization: `Bearer ${session.token}` }
     });
-    const accounts = result && Array.isArray(result.accounts) ? result.accounts : [];
-    return { accounts };
+    return { accounts: normalizeRemoteAccounts(result && result.accounts) };
   } catch (error) {
     if (error && error.status === 401) await removeRemoteSession();
     throw error;
   }
+}
+
+async function updateRemoteAccount(userId, enabled) {
+  const session = await requireRemoteSession();
+  const result = await requestRemote(`/v1/accounts/${encodeURIComponent(normalizeRemoteAccountUserId(userId))}`, {
+    method: 'PATCH',
+    headers: { authorization: `Bearer ${session.token}` },
+    body: JSON.stringify({ enabled: Boolean(enabled) })
+  });
+  return { accounts: normalizeRemoteAccounts(result && result.accounts) };
+}
+
+async function removeRemoteAccount(userId) {
+  const session = await requireRemoteSession();
+  const result = await requestRemote(`/v1/accounts/${encodeURIComponent(normalizeRemoteAccountUserId(userId))}`, {
+    method: 'DELETE',
+    headers: { authorization: `Bearer ${session.token}` }
+  });
+  return { accounts: normalizeRemoteAccounts(result && result.accounts) };
+}
+
+function normalizeRemoteAccountUserId(value) {
+  const userId = String(value || '').trim();
+  if (!/^\d+$/u.test(userId)) {
+    const error = new Error('Conta do Mercado Livre inválida.');
+    error.code = 'invalid_account_id';
+    error.status = 400;
+    throw error;
+  }
+  return userId;
+}
+
+function normalizeRemoteAccounts(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((account) => ({
+    id: account && account.id ? String(account.id) : '',
+    user_id: account && account.userId ? String(account.userId) : '',
+    nickname: account && account.nickname ? String(account.nickname) : '',
+    permalink: account && account.profileUrl ? String(account.profileUrl) : '',
+    logo: account && account.logoUrl ? String(account.logoUrl) : '',
+    enabled: !(account && account.enabled === false)
+  })).filter((account) => account.user_id);
 }
 
 async function startRemoteAuth() {
@@ -327,41 +348,27 @@ function storageSet(value) {
 async function handleApiMessage(message) {
   const path = normalizePath(message.path);
   const options = normalizeRequestOptions(message.options);
-  const remoteSession = await readRemoteSession();
-  if (path.startsWith('/api/') && remoteSession) {
-    if (isRemoteSessionExpired(remoteSession)) {
-      await removeRemoteSession();
-      return {
-        ok: false,
-        status: 401,
-        error: 'A vinculação desta extensão não é mais válida.',
-        code: 'extension_session_unauthorized',
-        technicalError: 'extension_session_expired'
-      };
-    }
-    return handleRemoteApiMessage(path, options, remoteSession);
-  }
-  const response = await fetch(`${SERVICE}${path}`, options);
-  const requestId = response.headers.get('x-onframe-request-id') || '';
-  const text = await response.text();
-  const body = parseJson(text);
-
-  if (!response.ok) {
+  if (!path.startsWith('/api/')) {
     return {
       ok: false,
-      status: response.status,
-      error: body && body.error ? body.error : `Falha na ação. Código ${response.status}.`,
-      code: body && body.code ? body.code : '',
-      requestId: body && body.requestId ? body.requestId : requestId
+      status: 404,
+      error: 'Endpoint da extensão não encontrado.',
+      code: 'endpoint_not_found'
     };
   }
 
-  return {
-    ok: true,
-    status: response.status,
-    requestId,
-    body: body || {}
-  };
+  const remoteSession = await readRemoteSession();
+  if (!remoteSession || isRemoteSessionExpired(remoteSession)) {
+    if (remoteSession) await removeRemoteSession();
+    return {
+      ok: false,
+      status: 401,
+      error: 'Vincule esta extensão ao OnFrame para editar anúncios.',
+      code: 'extension_session_unauthorized',
+      technicalError: remoteSession ? 'extension_session_expired' : 'extension_session_missing'
+    };
+  }
+  return handleRemoteApiMessage(path, options, remoteSession);
 }
 
 function isRemoteSessionExpired(session) {
@@ -400,7 +407,7 @@ async function handleRemoteApiMessage(path, options, session) {
 function normalizePath(value) {
   const path = String(value || '');
   if (!path.startsWith('/') || path.startsWith('//')) {
-    throw new Error('Caminho local inválido.');
+    throw new Error('Caminho da extensão inválido.');
   }
   return path;
 }

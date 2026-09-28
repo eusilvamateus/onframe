@@ -4,171 +4,81 @@ param(
 )
 
 Set-StrictMode -Version Latest
-$ProgressPreference = 'SilentlyContinue'
-$global:ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 
-. (Join-Path $PSScriptRoot 'common.ps1')
-
-$Repo = if ($env:ONFRAME_UPDATE_REPO) { $env:ONFRAME_UPDATE_REPO } else { 'eusilvamateus/onframe' }
+$Repository = if ($env:ONFRAME_UPDATE_REPO) { $env:ONFRAME_UPDATE_REPO } else { 'eusilvamateus/onframe' }
 $InstallRoot = if ($Root) { $Root } elseif ($env:ONFRAME_HOME) { $env:ONFRAME_HOME } else { Join-Path $env:LOCALAPPDATA 'OnFrame' }
 
-function Fail-Install {
-  param([string]$Message)
-  throw $Message
-}
-
-function Register-OnFrameUpdaterProtocol {
-  param([string]$Root)
-
-  $registerScript = Join-Path $Root 'scripts/bootstrap/register-updater-protocol.ps1'
-  if (-not (Test-Path -LiteralPath $registerScript -PathType Leaf)) {
-    Write-OnFrameSubStep 'Script de protocolo nao encontrado; use o comando manual para atualizar.' 'warning'
-    return $false
-  }
-
-  try {
-    $output = @(& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $registerScript -Root $Root 2>&1)
-    $exitCode = $LASTEXITCODE
-    if ($exitCode -ne 0) {
-      throw "registro retornou codigo ${exitCode}: $($output -join [Environment]::NewLine)"
-    }
-    Write-OnFrameSubStep 'Atualizador por um clique registrado.' 'ok'
-    return $true
-  } catch {
-    Write-OnFrameSubStep "Atualizador por um clique indisponivel: $($_.Exception.Message)" 'warning'
-    return $false
-  }
-}
-
 function Get-LatestRelease {
-  param([string]$Repository)
-
-  $headers = @{
-    Accept = 'application/vnd.github+json'
-    'User-Agent' = 'onframe-bootstrap-installer'
-  }
-  if ($env:GITHUB_TOKEN) {
-    $headers.Authorization = "Bearer $env:GITHUB_TOKEN"
-  } elseif ($env:GH_TOKEN) {
-    $headers.Authorization = "Bearer $env:GH_TOKEN"
-  }
+  $headers = @{ Accept = 'application/vnd.github+json'; 'User-Agent' = 'onframe-installer' }
+  if ($env:GITHUB_TOKEN) { $headers.Authorization = "Bearer $env:GITHUB_TOKEN" }
+  elseif ($env:GH_TOKEN) { $headers.Authorization = "Bearer $env:GH_TOKEN" }
 
   $release = Invoke-RestMethod -Method Get -Uri "https://api.github.com/repos/$Repository/releases/latest" -Headers $headers -TimeoutSec 30
-  $assets = @($release.assets)
-  $asset = $assets |
-    Where-Object { $_.name -match '^onframe-v?\d+\.\d+\.\d+.*\.zip$' } |
-    Select-Object -First 1
-  if (-not $asset) {
-    $asset = $assets |
-      Where-Object { $_.name -match '^onframe-release-v?\d+\.\d+\.\d+.*\.zip$' } |
-      Select-Object -First 1
+  $asset = @($release.assets) | Where-Object { $_.name -match '^onframe-v?\d+\.\d+\.\d+.*\.zip$' } | Select-Object -First 1
+  if (-not $asset) { throw 'A release mais recente não possui o pacote ZIP do OnFrame.' }
+  return [pscustomobject]@{ Tag = [string]$release.tag_name; Url = [string]$asset.browser_download_url }
+}
+
+function Copy-ReleaseFiles {
+  param([string]$Source, [string]$Destination)
+
+  foreach ($required in @('package.json', 'extension', 'scripts/bootstrap')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $Source $required))) {
+      throw "Pacote inválido: $required ausente."
+    }
   }
-  if (-not $asset) {
-    throw 'Release sem pacote ZIP.'
+  New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+  foreach ($entry in @('extension', 'scripts')) {
+    $target = Join-Path $Destination $entry
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    Copy-Item -LiteralPath (Join-Path $Source $entry) -Destination $target -Recurse -Force
   }
-  return [pscustomobject]@{
-    Tag = [string]$release.tag_name
-    AssetName = [string]$asset.name
-    AssetUrl = [string]$asset.browser_download_url
+  Copy-Item -LiteralPath (Join-Path $Source 'package.json') -Destination (Join-Path $Destination 'package.json') -Force
+
+  foreach ($legacy in @('service', 'docs', '.env', '.env.example', '.onframe', '.runtime', 'package-lock.json', 'README.md', 'CHANGELOG.md', 'RELEASE.md')) {
+    $target = Join-Path $Destination $legacy
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
   }
 }
 
 try {
-  $mode = 'Instalacao'
-  if (Test-Path $InstallRoot) {
-    $mode = 'Atualizacao pela instalacao'
+  Write-Host ''
+  Write-Host 'ONFRAME' -ForegroundColor Blue
+  Write-Host 'Instalação da extensão e do atualizador'
+  Write-Host ''
+  Write-Host '[1/4] Consultando a release mais recente...'
+  $release = Get-LatestRelease
+  Write-Host "      $($release.Tag)" -ForegroundColor Green
+
+  $temporary = Join-Path ([System.IO.Path]::GetTempPath()) ("onframe-install-" + [guid]::NewGuid().ToString('N'))
+  $archive = Join-Path $temporary 'release.zip'
+  $extract = Join-Path $temporary 'extract'
+  New-Item -ItemType Directory -Force -Path $extract | Out-Null
+  try {
+    Write-Host '[2/4] Baixando pacote...'
+    Invoke-WebRequest -UseBasicParsing -Uri $release.Url -OutFile $archive -TimeoutSec 120
+    Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+    $package = Get-ChildItem -LiteralPath $extract -Recurse -Filter package.json -File | Select-Object -First 1
+    if (-not $package) { throw 'Pacote vazio ou inválido.' }
+
+    Write-Host '[3/4] Instalando extensão e atualizador...'
+    Copy-ReleaseFiles -Source $package.Directory.FullName -Destination $InstallRoot
+
+    Write-Host '[4/4] Registrando atualização por um clique...'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallRoot 'scripts/bootstrap/register-updater-protocol.ps1') -Root $InstallRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Não foi possível registrar o atualizador.' }
+  } finally {
+    Remove-Item -LiteralPath $temporary -Recurse -Force -ErrorAction SilentlyContinue
   }
 
-  Start-OnFrameWorkflow -Mode $mode -Total 4 -RootPath $InstallRoot -Repository $Repo -NoPause:$NoPause
-  Write-OnFrameHeader -Mode $mode -RootPath $InstallRoot -Repository $Repo
-
-  Write-OnFrameSection 'PREPARANDO'
-  Write-OnFrameStep 1 4 'Verificando ambiente do sistema...'
-  if (Test-Path $InstallRoot) {
-    $existingPackage = Join-Path $InstallRoot 'package.json'
-    if (Test-Path $existingPackage) {
-      Write-OnFrameSubStep 'Instalacao existente encontrada; os arquivos serao atualizados.' 'warning'
-    } else {
-      Write-OnFrameSubStep 'Pasta local parcial encontrada; os arquivos serao restaurados e a configuracao preservada.' 'warning'
-    }
-  } else {
-    Write-OnFrameSubStep 'Conferindo permissoes e integridade dos componentes locais.' 'ok'
-  }
-
-  Write-OnFrameSection 'BAIXANDO PACOTE'
-  Write-OnFrameStep 2 4 'Obtendo a versão mais recente do OnFrame...'
-  $release = Get-LatestRelease -Repository $Repo
-  Write-OnFrameSubStep "Release encontrada: $($release.Tag) / $($release.AssetName)" 'ok'
-
-  $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("onframe-install-" + [guid]::NewGuid().ToString('N'))
-  $zipPath = Join-Path $tempRoot 'release.zip'
-  $extractPath = Join-Path $tempRoot 'extract'
-  New-Item -ItemType Directory -Force -Path $tempRoot, $extractPath | Out-Null
-
-  Invoke-OnFrameAnimatedDownload -Uri $release.AssetUrl -OutFile $zipPath -TargetPercent 58.0 -TimeoutSec 120
-  Write-OnFrameSubStep 'Download seguro concluido com validacao de integridade.' 'ok'
-
-  Write-OnFrameSection 'CONFIGURANDO ARQUIVOS'
-  Write-OnFrameStep 3 4 'Descompactando e configurando o OnFrame...'
-  Expand-OnFrameArchive -ZipPath $zipPath -DestinationPath $extractPath
-  $source = Get-ChildItem -LiteralPath $extractPath -Directory | Select-Object -First 1
-  if (-not $source) { Fail-Install 'Pacote vazio.' }
-  $sourceRoot = $source.FullName
-
-  foreach ($required in @('package.json', 'extension', 'service', 'scripts')) {
-    if (-not (Test-Path (Join-Path $sourceRoot $required))) {
-      Fail-Install "Pacote invalido: $required ausente."
-    }
-  }
-
-  New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
-  foreach ($target in @('extension', 'service', 'scripts')) {
-    $destination = Join-Path $InstallRoot $target
-    if (Test-Path $destination) { Remove-Item -LiteralPath $destination -Recurse -Force }
-    Copy-Item -LiteralPath (Join-Path $sourceRoot $target) -Destination $destination -Recurse -Force
-  }
-  foreach ($legacyPath in @('docs', 'package-lock.json', 'README.md', 'CHANGELOG.md', 'RELEASE.md')) {
-    $path = Join-Path $InstallRoot $legacyPath
-    if (Test-Path $path) { Remove-Item -LiteralPath $path -Recurse -Force }
-  }
-  foreach ($file in @('package.json', '.env.example')) {
-    $sourceFile = Join-Path $sourceRoot $file
-    if (Test-Path $sourceFile) {
-      Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $InstallRoot $file) -Force
-    }
-  }
-
-  $envPath = Join-Path $InstallRoot '.env'
-  $envExamplePath = Join-Path $InstallRoot '.env.example'
-  if (-not (Test-Path $envPath) -and (Test-Path $envExamplePath)) {
-    Copy-Item -LiteralPath $envExamplePath -Destination $envPath
-    Write-OnFrameSubStep 'Arquivo .env criado com a configuracao padrao.' 'warning'
-  } else {
-    Write-OnFrameSubStep 'Instalando arquivos, scripts e dependencias da aplicacao.' 'ok'
-  }
-
-  Write-OnFrameSection 'PREPARANDO EXTENSÃO'
-  Write-OnFrameStep 4 4 'Preparando a extensão para o navegador...'
-  Register-OnFrameUpdaterProtocol -Root $InstallRoot | Out-Null
-
-  $global:LASTEXITCODE = 0
-  & (Join-Path $InstallRoot 'scripts/bootstrap/start.ps1') -Root $InstallRoot -Quiet
-  if ($global:LASTEXITCODE -ne 0) {
-    Fail-Install 'Arquivos instalados, mas o servico local nao iniciou.'
-  }
-  Write-OnFrameSubStep 'Organizando pasta descompactada para o Chrome ou Edge.' 'ok'
-
-  Write-OnFrameSuccess 'Instalação Completa' @(
-    "Versao: $($release.Tag)",
-    "Extensao: $((Join-Path $InstallRoot 'extension'))",
-    'Gerenciador de extensoes:',
-    'Chrome: chrome://extensions/',
-    'Edge: edge://extensions/',
-    'Recarregue ou carregue a extensao nessa pagina.'
-  )
-  $global:LASTEXITCODE = 0
+  Write-Host ''
+  Write-Host 'Instalação concluída.' -ForegroundColor Green
+  Write-Host "Extensão: $(Join-Path $InstallRoot 'extension')"
+  Write-Host 'Chrome: chrome://extensions/'
+  Write-Host 'Edge: edge://extensions/'
 } catch {
-  Write-OnFrameFailure $_.Exception.Message
-  $global:LASTEXITCODE = 1
+  Write-Error $_.Exception.Message
+  exit 1
 }

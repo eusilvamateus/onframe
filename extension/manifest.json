@@ -16,8 +16,7 @@
   ],
   "host_permissions": [
     "https://*.mercadolivre.com.br/*",
-    "https://onframe.onblide.com/*",
-    "http://127.0.0.1:4765/*"
+    "https://onframe.onblide.com/*"
   ],
   "options_ui": {
     "page": "ui/options/index.html",

@@ -1,35 +1,16 @@
 (function (root) {
-  const SERVICE = 'http://127.0.0.1:4765';
   let tooltipSequence = 0;
 
   function createApi(options = {}) {
-    const offlineMessage = options.offlineMessage || 'Serviço local desligado. Abra o OnFrame.';
+    const offlineMessage = options.offlineMessage || 'Vincule esta extensão ao OnFrame para continuar.';
 
     return async function api(path, requestOptions = {}) {
       if (canUseRuntimeBridge()) {
         return callViaRuntimeBridge(path, requestOptions, offlineMessage);
       }
-
-      let response;
-      try {
-        response = await fetch(`${SERVICE}${path}`, Object.assign({
-          headers: { 'content-type': 'application/json' }
-        }, requestOptions));
-      } catch (err) {
-        const friendly = new Error(offlineMessage);
-        friendly.technicalError = err && err.message ? err.message : String(err);
-        throw friendly;
-      }
-
-      const text = await response.text();
-      const body = text ? JSON.parse(text) : {};
-      if (!response.ok) {
-        const err = new Error(body.error || `Falha na ação. Código ${response.status}.`);
-        err.status = response.status;
-        err.technicalError = body.technicalError || body.error || `HTTP ${response.status}`;
-        throw err;
-      }
-      return body;
+      const friendly = new Error(offlineMessage);
+      friendly.technicalError = 'extension_runtime_unavailable';
+      throw friendly;
     };
   }
 
@@ -326,7 +307,6 @@
   }
 
   root.OnFrameShared = {
-    SERVICE,
     addIcon,
     badgeTone,
     createApi,

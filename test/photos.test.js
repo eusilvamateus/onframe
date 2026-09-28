@@ -276,10 +276,8 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /Este é um anúncio de catálogo/);
   assert.match(source, /if \(isCatalogListing\(\)\) return renderCatalogPhotoNotice\(\);/);
   assert.match(source, /if \(isCatalogListing\(\)\) return 'Fotos definidas pelo catálogo\.';/);
-  assert.match(source, /LOCAL_SERVICE_OFFLINE_MESSAGE = 'Serviço local desligado\. Abra o OnFrame\.'/);
-  assert.match(source, /data-action="start-service"/);
-  assert.match(source, /function openLocalServiceLauncher\(\)/);
-  assert.match(source, /type: 'onframe:openLauncher', action: 'start'/);
+  assert.match(source, /sendRemoteMessage\('oauth-start'\)/);
+  assert.doesNotMatch(source, /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/);
   assert.doesNotMatch(source, /onblide-ml-expand/);
   assert.match(styles, /\.onblide-ml-dock-tab \{/);
   assert.match(styles, /width: 160px;/);
@@ -288,7 +286,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-catalog-notice \{/);
   assert.match(styles, /\.onblide-ml-dock-catalog-notice \{[\s\S]*?align-items: center;/);
   assert.match(styles, /bottom: calc\(100% - 1px\);/);
-  assert.match(styles, /\.onblide-ml-start-service \{/);
+  assert.doesNotMatch(styles, /\.onblide-ml-start-service \{/);
   assert.match(styles, /\.onblide-ml-dock-command-stack \{/);
   assert.match(styles, /flex: 0 0 150px;/);
   assert.match(styles, /grid-template-columns: 56px minmax\(0, 1fr\);/);

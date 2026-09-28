@@ -1,9 +1,6 @@
 (function () {
   const Shared = window.OnFrameShared;
-  const api = Shared.createApi({ offlineMessage: 'OnFrame fechado. Abra o OnFrame.' });
   const addIcon = Shared.addIcon;
-  const escapeAttribute = Shared.escapeAttribute;
-  const escapeHtml = Shared.escapeHtml;
   const mountTooltips = Shared.mountTooltips;
   const setBadge = Shared.setBadge;
   const setTooltip = Shared.setTooltip;
@@ -15,337 +12,135 @@
   const elements = {
     refresh: document.getElementById('refresh'),
     versionTag: document.getElementById('version-tag'),
-    connect: document.getElementById('connect'),
     toggleEditor: document.getElementById('toggle-editor'),
     openOptions: document.getElementById('open-options'),
-    updateBlock: document.getElementById('update-block'),
-    updateBadge: document.getElementById('update-badge'),
-    updateText: document.getElementById('update-text'),
-    updateOpen: document.getElementById('update-open'),
-    updateStart: document.getElementById('update-start'),
-    serviceBadge: document.getElementById('service-badge'),
-    serviceText: document.getElementById('service-text'),
-    serviceActions: document.querySelector('.service-actions'),
-    serviceStart: document.getElementById('service-start'),
-    serviceRestart: document.getElementById('service-restart'),
-    serviceStop: document.getElementById('service-stop'),
-    serviceCheck: document.getElementById('service-check'),
-    accountBadge: document.getElementById('account-badge'),
-    accountText: document.getElementById('account-text'),
-    accountList: document.getElementById('account-list')
+    manageAccess: document.getElementById('manage-access'),
+    connectionBadge: document.getElementById('connection-badge'),
+    connectionText: document.getElementById('connection-text'),
+    accountList: document.getElementById('account-list'),
+    updateOpen: document.getElementById('update-open')
   };
-
-  const state = {
-    updateStatus: null,
-    accounts: [],
-    canConnect: false,
-    serviceOnline: false,
-    editorVisible: true,
-    pendingRemoveUserId: ''
-  };
+  const state = { busy: false, editorVisible: true };
 
   decorateButtons();
   mountTooltips(document);
-  elements.refresh.addEventListener('click', () => void loadPopup({ forceUpdate: true }));
-  elements.versionTag.addEventListener('click', (event) => openVersionLink(event));
-  elements.connect.addEventListener('click', () => void startAuth());
+  elements.refresh.addEventListener('click', () => void loadPopup());
+  elements.versionTag.addEventListener('click', openVersionLink);
   elements.toggleEditor.addEventListener('click', () => void toggleEditor());
   elements.openOptions.addEventListener('click', openOptions);
-  elements.updateOpen.addEventListener('click', () => openUpdatePage());
-  elements.updateStart.addEventListener('click', () => void copyUpdateCommand());
-  elements.serviceStart.addEventListener('click', () => openLocalServiceAction('start'));
-  elements.serviceRestart.addEventListener('click', () => openLocalServiceAction('restart'));
-  elements.serviceStop.addEventListener('click', () => openLocalServiceAction('stop'));
-  elements.serviceCheck.addEventListener('click', () => openLocalServiceAction('check'));
-
+  elements.manageAccess.addEventListener('click', openOptions);
+  elements.updateOpen.addEventListener('click', openUpdater);
   void loadPopup();
 
-  async function loadPopup(options = {}) {
+  async function loadPopup() {
     setBusy(true);
-    resetView();
+    renderVersionTag();
     await loadEditorPreference();
-    await loadServiceAndAccount(options);
-    setBusy(false);
-  }
-
-  function resetView() {
-    setBadge(elements.serviceBadge, 'Verificando', 'muted');
-    setBadge(elements.accountBadge, 'Verificando', 'muted');
-    elements.serviceText.textContent = 'Conferindo se esta pronto para uso.';
-    elements.accountText.textContent = 'Buscando conta conectada.';
-    elements.accountList.classList.add('is-hidden');
-    elements.accountList.innerHTML = '';
-    elements.updateBlock.classList.add('is-hidden');
-    setBadge(elements.updateBadge, 'Verificando', 'muted');
-    elements.updateText.textContent = 'Conferindo releases.';
-    elements.updateOpen.disabled = true;
-    elements.updateStart.disabled = true;
-    state.updateStatus = null;
-    state.canConnect = false;
-    state.serviceOnline = false;
-    state.pendingRemoveUserId = '';
-    renderVersionTag(null);
-    renderEditorToggle();
-    renderServiceControls();
-  }
-
-  async function loadServiceAndAccount(options = {}) {
     try {
-      const diagnostics = await api('/diagnostics');
-      state.serviceOnline = true;
-      renderServiceControls();
-      setBadge(elements.serviceBadge, diagnostics.ready ? 'Pronto' : 'Com avisos', diagnostics.ready ? 'ok' : 'warn');
-      elements.serviceText.textContent = diagnostics.ready
-        ? 'OnFrame pronto para editar anuncios.'
-        : firstAction(diagnostics, 'OnFrame precisa de ajuste.');
-
-      await loadUpdateStatus(options);
-
-      const accountsResult = await api('/auth/accounts');
-      const accounts = accountsResult && Array.isArray(accountsResult.accounts) ? accountsResult.accounts : [];
-      state.accounts = accounts;
-      const active = accounts.find((account) => account.active) || null;
-      if (!active) {
-        setBadge(elements.accountBadge, 'Desconectada', 'warn');
-        elements.accountText.textContent = 'Nenhuma conta conectada.';
-        renderAccountList([]);
-        elements.connect.disabled = false;
-        state.canConnect = true;
-        return;
-      }
-      const enabledAccounts = accounts.filter((account) => account.enabled !== false);
-
-      setBadge(elements.accountBadge, enabledAccounts.length ? 'Conectada' : 'Desativada', enabledAccounts.length ? 'ok' : 'warn');
-      elements.accountText.textContent = accounts.length === 1
-        ? enabledAccounts.length ? '1 conta habilitada.' : '1 conta desativada.'
-        : `${enabledAccounts.length}/${accounts.length} contas habilitadas.`;
-      renderAccountList(accounts);
-      elements.connect.disabled = false;
-      state.canConnect = true;
-    } catch (err) {
-      state.serviceOnline = false;
-      renderServiceControls();
-      setBadge(elements.serviceBadge, 'Fechado', 'error');
-      setBadge(elements.accountBadge, 'Indisponivel', 'warn');
-      elements.serviceText.textContent = 'Use Iniciar para abrir o servico local.';
-      elements.accountText.textContent = 'Conta indisponível.';
-      renderAccountList([]);
-      elements.connect.disabled = true;
-      state.canConnect = false;
-      renderUpdateUnavailable();
+      const connection = await sendRemoteMessage('status');
+      await renderConnection(connection);
+    } catch (error) {
+      setBadge(elements.connectionBadge, 'Indisponível', 'warn');
+      elements.connectionText.textContent = toUserError(error);
+      renderAccounts([]);
+    } finally {
+      setBusy(false);
     }
   }
 
-  function renderAccountList(accounts) {
-    if (!accounts || !accounts.length) {
-      elements.accountList.classList.add('is-hidden');
-      elements.accountList.innerHTML = '';
+  async function renderConnection(connection) {
+    if (!connection || !connection.connected) {
+      setBadge(elements.connectionBadge, 'Não vinculada', 'warn');
+      elements.connectionText.textContent = 'Vincule esta extensão ao seu workspace no OnFrame.';
+      elements.manageAccess.textContent = 'Vincular extensão';
+      renderAccounts([]);
       return;
     }
-    elements.accountList.innerHTML = accounts.map((account) => {
+
+    const result = await sendRemoteMessage('accounts');
+    const accounts = result && Array.isArray(result.accounts) ? result.accounts : [];
+    const enabled = accounts.filter((account) => account.enabled !== false).length;
+    setBadge(elements.connectionBadge, enabled ? 'Conectada' : 'Sem contas', enabled ? 'ok' : 'warn');
+    elements.connectionText.textContent = accounts.length
+      ? enabled + '/' + accounts.length + ' contas habilitadas no workspace ' + connection.workspace.name + '.'
+      : 'Nenhuma conta foi conectada ao workspace ' + connection.workspace.name + '.';
+    elements.manageAccess.textContent = 'Gerenciar acesso';
+    renderAccounts(accounts);
+  }
+
+  function renderAccounts(accounts) {
+    elements.accountList.replaceChildren();
+    if (!accounts.length) {
+      elements.accountList.classList.add('is-hidden');
+      return;
+    }
+    accounts.forEach((account) => {
       const enabled = account.enabled !== false;
-      return `
-      <article class="account-card ${enabled ? 'is-connected' : 'is-disabled'}" data-user-id="${escapeAttribute(account.user_id)}">
-        ${renderAccountAvatar(account)}
-        <span class="account-main">
-          <strong>${escapeHtml(account.nickname || `Conta ${account.user_id}`)}</strong>
-          <small>ID: ${escapeHtml(account.user_id || '-')}</small>
-          <em>${enabled ? 'Habilitada' : 'Desativada'}</em>
-        </span>
-        <button class="account-switch ${enabled ? 'is-on' : ''}" data-action="toggle-account" data-user-id="${escapeAttribute(account.user_id)}" data-tooltip="${enabled ? 'Desativar conta' : 'Habilitar conta'}" role="switch" aria-checked="${enabled ? 'true' : 'false'}" type="button" aria-label="${enabled ? 'Desativar conta' : 'Habilitar conta'}"></button>
-        <span class="account-card-actions">
-          ${account.permalink ? `<button class="account-icon-btn" data-action="open-account" data-url="${escapeAttribute(account.permalink)}" data-tooltip="Abrir perfil" type="button" aria-label="Abrir perfil">${icon('arrowSquareOut', 16)}</button>` : ''}
-          <button class="account-icon-btn danger${String(state.pendingRemoveUserId) === String(account.user_id) ? ' is-confirming' : ''}" data-action="remove-account" data-user-id="${escapeAttribute(account.user_id)}" data-tooltip="${String(state.pendingRemoveUserId) === String(account.user_id) ? 'Confirmar remoção' : 'Remover conta'}" type="button" aria-label="${String(state.pendingRemoveUserId) === String(account.user_id) ? 'Confirmar remoção' : 'Remover conta'}">${icon(String(state.pendingRemoveUserId) === String(account.user_id) ? 'checkCircle' : 'x', 16)}</button>
-        </span>
-      </article>
-    `;
-    }).join('');
+      const userId = String(account.user_id || '');
+      const nickname = String(account.nickname || 'Conta ' + userId);
+      const card = document.createElement('article');
+      card.className = 'account-card ' + (enabled ? 'is-connected' : 'is-disabled');
+
+      const avatar = document.createElement('span');
+      avatar.className = 'account-avatar';
+      const fallback = document.createElement('span');
+      fallback.className = 'account-avatar-fallback';
+      fallback.textContent = nickname[0] || '?';
+      avatar.appendChild(fallback);
+      const logo = trustedLogo(account.logo);
+      if (logo) {
+        const image = document.createElement('img');
+        image.className = 'account-avatar-image';
+        image.src = logo;
+        image.alt = '';
+        image.referrerPolicy = 'no-referrer';
+        image.addEventListener('error', () => image.remove(), { once: true });
+        avatar.appendChild(image);
+      }
+
+      const main = document.createElement('span');
+      main.className = 'account-main';
+      const name = document.createElement('strong');
+      name.textContent = nickname;
+      const id = document.createElement('small');
+      id.textContent = 'ID: ' + (userId || '-');
+      const status = document.createElement('em');
+      status.textContent = enabled ? 'Habilitada' : 'Desativada';
+      main.append(name, id, status);
+      card.append(avatar, main);
+      elements.accountList.appendChild(card);
+    });
     elements.accountList.classList.remove('is-hidden');
-    mountTooltips(elements.accountList);
-    bindAccountActions();
   }
 
-  function getAccountInitial(account) {
-    const label = String(account && (account.nickname || account.user_id) || '?').trim();
-    return label ? label[0].toUpperCase() : '?';
-  }
-
-  function renderAccountAvatar(account) {
-    const initial = escapeHtml(getAccountInitial(account));
-    const logo = getAccountLogo(account);
-    return `<span class="account-avatar"><span class="account-avatar-fallback">${initial}</span>${logo ? `<img class="account-avatar-image" src="${escapeAttribute(logo)}" alt="" referrerpolicy="no-referrer">` : ''}</span>`;
-  }
-
-  function getAccountLogo(account) {
-    const logo = String(account && account.logo || '').trim();
-    return /^https:\/\/(?:[a-z0-9-]+\.)*mlstatic\.com\//i.test(logo) ? logo : '';
-  }
-
-  function bindAccountActions() {
-    elements.accountList.querySelectorAll('.account-avatar-image').forEach((image) => {
-      image.addEventListener('error', () => image.remove(), { once: true });
-    });
-    elements.accountList.querySelectorAll('[data-action="open-account"]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        openExternalUrl(button.dataset.url);
-      });
-    });
-    elements.accountList.querySelectorAll('[data-action="toggle-account"]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        void toggleAccountEnabled(button.dataset.userId, button.getAttribute('aria-checked') !== 'true');
-      });
-    });
-    elements.accountList.querySelectorAll('[data-action="remove-account"]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        void removeAccount(button.dataset.userId);
-      });
-    });
-  }
-
-  async function toggleAccountEnabled(userId, enabled) {
-    if (!userId) return;
-    setBusy(true);
-    try {
-      const result = await api(`/auth/accounts/${encodeURIComponent(userId)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ enabled })
-      });
-      const accounts = result && Array.isArray(result.accounts) ? result.accounts : state.accounts;
-      state.accounts = accounts;
-      renderAccountList(accounts);
-      const enabledCount = accounts.filter((account) => account.enabled !== false).length;
-      setBadge(elements.accountBadge, enabledCount ? 'Conectada' : 'Desativada', enabledCount ? 'ok' : 'warn');
-      elements.accountText.textContent = accounts.length === 1
-        ? enabledCount ? '1 conta habilitada.' : '1 conta desativada.'
-        : `${enabledCount}/${accounts.length} contas habilitadas.`;
-      showActionFeedback(enabled ? 'Conta habilitada.' : 'Conta desativada.', 'ok');
-    } catch (err) {
-      showActionFeedback(toUserError(err), 'danger');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function loadUpdateStatus(options = {}) {
-    try {
-      const status = await api(options.forceUpdate ? '/updates/status?force=1' : '/updates/status');
-      state.updateStatus = status;
-      renderUpdateStatus(status);
-    } catch (err) {
-      renderUpdateUnavailable();
-    }
-  }
-
-  function renderUpdateStatus(status) {
-    const visible = Boolean(status && status.updateAvailable);
-    renderVersionTag(status);
-    elements.updateBlock.classList.toggle('is-hidden', !visible);
-    if (!visible) return;
-
-    setBadge(elements.updateBadge, 'Disponivel', 'blue');
-    elements.updateText.textContent = `${status.message || `Versão ${status.latestVersion} disponível.`} Abra o atualizador ou copie o comando.`;
-    elements.updateOpen.disabled = !status.updateAvailable;
-    elements.updateStart.disabled = !status.updateCommand;
-  }
-
-  function renderUpdateUnavailable() {
-    renderVersionTag(null);
-    elements.updateBlock.classList.add('is-hidden');
-    state.updateStatus = null;
-  }
-
-  function openUpdatePage() {
-    if (!state.updateStatus || !state.updateStatus.updateAvailable) return;
-    openLocalServiceAction('update');
-    elements.updateBlock.classList.remove('is-hidden');
-    setBadge(elements.updateBadge, 'Abrindo', 'blue');
-    elements.updateText.textContent = 'A pagina de atualizacao foi aberta.';
-  }
-
-  function renderVersionTag(status) {
-    const manifestVersion = getInstalledVersion();
-    const currentVersion = status && status.currentVersion ? status.currentVersion : manifestVersion;
-    const latestVersion = status && status.latestVersion ? status.latestVersion : currentVersion;
-    const hasUpdate = Boolean(status && status.updateAvailable && latestVersion);
-    elements.versionTag.textContent = hasUpdate ? `v${latestVersion}` : `v${currentVersion}`;
-    elements.versionTag.classList.toggle('has-update', hasUpdate);
-    setTooltip(elements.versionTag, hasUpdate ? `Versão ${latestVersion} disponível` : `OnFrame v${currentVersion}`, { placement: 'bottom' });
-    elements.versionTag.href = status && status.releaseUrl ? status.releaseUrl : RELEASES_URL;
-  }
-
-  async function copyUpdateCommand() {
-    if (!state.updateStatus || !state.updateStatus.updateCommand) return;
-    setBusy(true);
-    try {
-      await copyText(state.updateStatus.updateCommand);
-      elements.updateBlock.classList.remove('is-hidden');
-      setBadge(elements.updateBadge, 'Copiado', 'ok');
-      elements.updateText.textContent = `Comando copiado. Cole no ${state.updateStatus.shellLabel || 'PowerShell'}.`;
-      elements.updateStart.disabled = true;
-    } catch (err) {
-      elements.updateBlock.classList.remove('is-hidden');
-      setBadge(elements.updateBadge, 'Erro', 'error');
-      elements.updateText.textContent = toUserError(err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function startAuth() {
-    setBusy(true);
-    try {
-      const result = await api('/auth/start', { method: 'POST', body: '{}' });
-      chrome.tabs.create({ url: result.authUrl });
-      elements.accountText.textContent = 'Autorize e atualize.';
-      state.canConnect = true;
-    } catch (err) {
-      elements.accountText.textContent = toUserError(err);
-    } finally {
-      setBusy(false);
-    }
+  function trustedLogo(value) {
+    const logo = String(value || '').trim();
+    return /^https:\/\/(?:[a-z0-9-]+\.)*mlstatic\.com\//iu.test(logo) ? logo : '';
   }
 
   async function toggleEditor() {
     setBusy(true);
     try {
-      const nextVisible = !state.editorVisible;
-      await saveEditorPreference(nextVisible);
-      state.editorVisible = nextVisible;
+      const visible = !state.editorVisible;
+      await saveEditorPreference(visible);
+      state.editorVisible = visible;
       renderEditorToggle();
       const tab = await getActiveProductTab();
-      const nextStatus = await sendToTab(tab.id, { type: 'onframe:setEditorVisibility', visible: nextVisible });
-      ensureProductStatus(nextStatus);
-      showActionFeedback(nextVisible ? 'Editor visível.' : 'Editor oculto.', 'ok');
-    } catch (err) {
-      showActionFeedback(toActionError(err), 'danger');
+      const status = await sendToTab(tab.id, { type: 'onframe:setEditorVisibility', visible });
+      if (!status || !status.isProductPage) throw new Error('Abra um anúncio do Mercado Livre.');
+      showFeedback(visible ? 'Editor visível.' : 'Editor oculto.', 'success');
+    } catch (error) {
+      showFeedback(toActionError(error), 'danger');
     } finally {
       setBusy(false);
     }
   }
 
-  async function removeAccount(userId) {
-    if (!userId) return;
-    if (String(state.pendingRemoveUserId) !== String(userId)) {
-      state.pendingRemoveUserId = String(userId);
-      renderAccountList(state.accounts);
-      showActionFeedback('Clique novamente para remover a conta.', 'warn');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      await api(`/auth/accounts/${encodeURIComponent(userId)}`, { method: 'DELETE' });
-      state.pendingRemoveUserId = '';
-      showActionFeedback('Conta removida.', 'ok');
-      await loadServiceAndAccount();
-    } catch (err) {
-      showActionFeedback(toUserError(err), 'danger');
-    } finally {
-      setBusy(false);
-    }
+  function openUpdater() {
+    const link = document.createElement('a');
+    link.href = 'onframe-updater://update';
+    link.click();
+    showFeedback('Atualizador aberto.', 'success');
   }
 
   function openOptions() {
@@ -358,110 +153,38 @@
 
   function openVersionLink(event) {
     event.preventDefault();
-    openExternalUrl(elements.versionTag.href || RELEASES_URL);
+    chrome.tabs.create({ url: elements.versionTag.href || RELEASES_URL });
   }
 
-  function openExternalUrl(url) {
-    const target = String(url || '').trim();
-    if (!target) return;
-    chrome.tabs.create({ url: target });
+  function renderVersionTag() {
+    const version = chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : '-';
+    elements.versionTag.textContent = 'v' + version;
+    setTooltip(elements.versionTag, 'OnFrame v' + version, { placement: 'bottom' });
   }
 
-  function openLocalServiceAction(action) {
-    openExternalUrl(chrome.runtime.getURL(`ui/launcher/index.html?action=${encodeURIComponent(action)}`));
-    showActionFeedback('Janela de controle aberta.', 'ok');
-  }
-
-  function getActiveTab() {
-    return new Promise((resolve) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        resolve(tabs && tabs.length ? tabs[0] : null);
-      });
-    });
-  }
-
-  async function getActiveProductTab() {
-    const tab = await getActiveTab();
-    if (!tab || !tab.id) {
-      throw new Error('Aba ativa não identificada.');
-    }
-    if (!isMercadoLivreUrl(tab.url)) {
-      throw new Error('Abra um anúncio do Mercado Livre.');
-    }
-    return tab;
-  }
-
-  function sendToTab(tabId, message) {
+  function sendRemoteMessage(action, payload = {}) {
     return new Promise((resolve, reject) => {
-      chrome.tabs.sendMessage(tabId, message, (response) => {
+      chrome.runtime.sendMessage(Object.assign({ type: 'onframe:remote', action }, payload), (response) => {
         const runtimeError = chrome.runtime.lastError;
-        if (runtimeError) {
-          reject(new Error(runtimeError.message));
-          return;
+        if (runtimeError) return reject(new Error(runtimeError.message || 'Não consegui acessar o OnFrame remoto.'));
+        if (!response || response.ok !== true) {
+          const error = new Error(response && response.error ? response.error : 'Não consegui acessar o OnFrame remoto.');
+          error.code = response && response.code ? response.code : '';
+          error.technicalError = response && response.technicalError ? response.technicalError : error.message;
+          return reject(error);
         }
-        if (response && response.ok === false) {
-          reject(new Error(response.error || 'Aba indisponível.'));
-          return;
-        }
-        resolve(response);
+        resolve(response.body || {});
       });
-    });
-  }
-
-  function ensureProductStatus(status) {
-    if (!status || !status.isProductPage) {
-      throw new Error('Abra um anúncio do Mercado Livre.');
-    }
-  }
-
-  function toActionError(err) {
-    const message = String(err && err.message || err || '').toLowerCase();
-    if (message.includes('receiving end does not exist') || message.includes('could not establish connection')) {
-      return 'Recarregue esta aba.';
-    }
-    return toUserError(err);
-  }
-
-  function setBusy(value) {
-    elements.refresh.disabled = value;
-    elements.toggleEditor.disabled = value;
-    elements.connect.disabled = value || !state.canConnect;
-    elements.serviceStart.disabled = value;
-    elements.serviceRestart.disabled = value;
-    elements.serviceStop.disabled = value;
-    elements.serviceCheck.disabled = value;
-    elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updateAvailable;
-    elements.updateStart.disabled = value || !state.updateStatus || !state.updateStatus.updateCommand;
-    elements.accountList.querySelectorAll('button').forEach((button) => {
-      button.disabled = value;
     });
   }
 
   async function loadEditorPreference() {
-    state.editorVisible = await readEditorPreference();
+    state.editorVisible = await new Promise((resolve) => chrome.storage.local.get({ [EDITOR_VISIBLE_KEY]: true }, (result) => resolve(result && result[EDITOR_VISIBLE_KEY] !== false)));
     renderEditorToggle();
   }
 
-  function readEditorPreference() {
-    return new Promise((resolve) => {
-      if (!window.chrome || !chrome.storage || !chrome.storage.local) {
-        resolve(true);
-        return;
-      }
-      chrome.storage.local.get({ [EDITOR_VISIBLE_KEY]: true }, (result) => {
-        resolve(result && result[EDITOR_VISIBLE_KEY] !== false);
-      });
-    });
-  }
-
   function saveEditorPreference(value) {
-    return new Promise((resolve) => {
-      if (!window.chrome || !chrome.storage || !chrome.storage.local) {
-        resolve();
-        return;
-      }
-      chrome.storage.local.set({ [EDITOR_VISIBLE_KEY]: Boolean(value) }, resolve);
-    });
+    return new Promise((resolve) => chrome.storage.local.set({ [EDITOR_VISIBLE_KEY]: Boolean(value) }, resolve));
   }
 
   function renderEditorToggle() {
@@ -472,70 +195,42 @@
     setTooltip(elements.toggleEditor, label, { placement: 'bottom' });
   }
 
-  function renderServiceControls() {
-    elements.serviceStart.classList.toggle('is-hidden', state.serviceOnline);
-    elements.serviceRestart.classList.toggle('is-hidden', !state.serviceOnline);
-    elements.serviceStop.classList.toggle('is-hidden', !state.serviceOnline);
-    const visibleActions = [...elements.serviceActions.querySelectorAll('.ob-button')]
-      .filter((button) => !button.classList.contains('is-hidden')).length;
-    elements.serviceActions.dataset.actionCount = String(visibleActions);
+  function getActiveProductTab() {
+    return new Promise((resolve, reject) => chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tab = tabs && tabs[0];
+      if (!tab || !tab.id || !/^https:\/\/(?:[\w-]+\.)*mercadolivre\.com\.br\//iu.test(String(tab.url || ''))) return reject(new Error('Abra um anúncio do Mercado Livre.'));
+      resolve(tab);
+    }));
   }
 
-  function showActionFeedback(message, tone) {
-    const mappedTone = tone === 'ok' ? 'success' : tone === 'danger' ? 'danger' : 'warning';
-    toast.show({ tone: mappedTone, title: message });
+  function sendToTab(tabId, message) {
+    return new Promise((resolve, reject) => chrome.tabs.sendMessage(tabId, message, (response) => {
+      const error = chrome.runtime.lastError;
+      if (error) return reject(new Error(error.message));
+      resolve(response);
+    }));
   }
 
-  function firstAction(diagnostics, fallback) {
-    const actions = diagnostics && Array.isArray(diagnostics.nextActions) ? diagnostics.nextActions : [];
-    return actions[0] || fallback;
+  function toActionError(error) {
+    const message = String(error && error.message || error || '').toLowerCase();
+    return message.includes('receiving end does not exist') || message.includes('could not establish connection') ? 'Recarregue esta aba.' : toUserError(error);
   }
 
-  function isMercadoLivreUrl(value) {
-    return /^https:\/\/[^/]*mercadolivre\.com\.br\//i.test(String(value || ''));
+  function setBusy(value) {
+    state.busy = value;
+    elements.refresh.disabled = value;
+    elements.toggleEditor.disabled = value;
+    elements.manageAccess.disabled = value;
+    elements.updateOpen.disabled = value;
   }
 
   function decorateButtons() {
     addIcon(elements.refresh, 'refresh');
-    addIcon(elements.connect, 'plus');
     addIcon(elements.openOptions, 'gear');
     addIcon(elements.updateOpen, 'arrowSquareOut');
-    addIcon(elements.updateStart, 'copy');
-    setServiceActionIcon(elements.serviceStart, 'play');
-    setServiceActionIcon(elements.serviceRestart, 'refresh');
-    setServiceActionIcon(elements.serviceStop, 'stop');
-    setServiceActionIcon(elements.serviceCheck, 'checkCircle');
   }
 
-  function setServiceActionIcon(button, name) {
-    if (!button || !window.OnblideIcons) return;
-    const label = button.textContent.trim();
-    button.innerHTML = `${window.OnblideIcons.render(name, 14)}<span class="service-action-label">${escapeHtml(label)}</span>`;
-    button.dataset.iconReady = 'true';
+  function showFeedback(title, tone) {
+    toast.show({ title, tone });
   }
-
-  function icon(name, size) {
-    return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
-  }
-
-  function getInstalledVersion() {
-    return chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : '-';
-  }
-
-  async function copyText(value) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(value);
-      return;
-    }
-    const textarea = document.createElement('textarea');
-    textarea.value = value;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    textarea.remove();
-  }
-
 })();

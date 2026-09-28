@@ -724,6 +724,78 @@ async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionAct
   }));
 }
 
+async function updateWorkspaceAccount(
+  request: Request,
+  env: RuntimeEnv,
+  actor: ExtensionSessionActor,
+  meliUserId: string,
+  requestId: string
+): Promise<Array<Record<string, unknown>>> {
+  await assertWorkspaceCanManageAccounts(actor, env);
+  if (!/^\d+$/u.test(meliUserId)) throw new RequestError('invalid_account_id', 400);
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    throw new RequestError('invalid_json', 400);
+  }
+  const enabled = body && typeof body === 'object' ? (body as Record<string, unknown>).enabled : undefined;
+  if (typeof enabled !== 'boolean') throw new RequestError('invalid_account_update', 400);
+
+  const result = await env.ONFRAME_DB.prepare(`
+    UPDATE seller_accounts
+    SET enabled = ?, updated_at = ?
+    WHERE workspace_id = ? AND meli_user_id = ?
+  `).bind(enabled ? 1 : 0, now(), actor.workspaceId, meliUserId).run();
+  if (result.meta.changes !== 1) throw new RequestError('workspace_account_not_found', 404);
+
+  await auditWorkspaceAccountChange(env, actor, requestId, 'seller_account_updated', meliUserId);
+  return listWorkspaceAccounts(env, actor);
+}
+
+async function deleteWorkspaceAccount(
+  env: RuntimeEnv,
+  actor: ExtensionSessionActor,
+  meliUserId: string,
+  requestId: string
+): Promise<Array<Record<string, unknown>>> {
+  await assertWorkspaceCanManageAccounts(actor, env);
+  if (!/^\d+$/u.test(meliUserId)) throw new RequestError('invalid_account_id', 400);
+
+  const result = await env.ONFRAME_DB.prepare(`
+    DELETE FROM seller_accounts
+    WHERE workspace_id = ? AND meli_user_id = ?
+  `).bind(actor.workspaceId, meliUserId).run();
+  if (result.meta.changes !== 1) throw new RequestError('workspace_account_not_found', 404);
+
+  await auditWorkspaceAccountChange(env, actor, requestId, 'seller_account_deleted', meliUserId);
+  return listWorkspaceAccounts(env, actor);
+}
+
+async function auditWorkspaceAccountChange(
+  env: RuntimeEnv,
+  actor: ExtensionSessionActor,
+  requestId: string,
+  operation: string,
+  meliUserId: string
+): Promise<void> {
+  await env.ONFRAME_DB.prepare(`
+    INSERT INTO audit_events (
+      id, workspace_id, user_id, seller_account_id, request_id, operation, target_type, target_id, outcome, status_code, metadata_json, created_at
+    ) VALUES (?, ?, ?, NULL, ?, ?, 'seller_account', ?, 'success', 200, ?, ?)
+  `).bind(
+    crypto.randomUUID(),
+    actor.workspaceId,
+    actor.userId,
+    requestId,
+    operation,
+    meliUserId,
+    JSON.stringify({ meliUserId }),
+    now()
+  ).run();
+}
+
 async function auditRemoteApiRequest(input: {
   actor: ExtensionSessionActor;
   env: RuntimeEnv;
@@ -1030,6 +1102,18 @@ export default {
             outcome: 'failure'
           }).catch(() => undefined);
           return json(failure.payload, failure.status);
+        }
+      }
+
+      const workspaceAccountMatch = url.pathname.match(/^\/v1\/accounts\/(\d+)$/u);
+      if (workspaceAccountMatch) {
+        const actor = await authenticateExtensionSession(request, env);
+        const meliUserId = workspaceAccountMatch[1];
+        if (request.method === 'PATCH') {
+          return json({ accounts: await updateWorkspaceAccount(request, env, actor, meliUserId, requestId) });
+        }
+        if (request.method === 'DELETE') {
+          return json({ accounts: await deleteWorkspaceAccount(env, actor, meliUserId, requestId) });
         }
       }
 

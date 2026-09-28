@@ -152,17 +152,6 @@
   margin-bottom: 10px;
 }
 
-.onblide-ml-start-service {
-  border-color: var(--ob-green);
-  background: var(--ob-green);
-  color: var(--ob-fg-on-color);
-}
-
-.onblide-ml-start-service:hover:not(:disabled) {
-  border-color: var(--ob-green-700);
-  background: var(--ob-green-700);
-}
-
 .onblide-ml-dock-main {
   display: flex;
   align-items: center;

@@ -40,7 +40,7 @@ const {
 const {
   buildBulkPreview,
   commitBulkAction
-} = require('../service/src/bulk-actions');
+} = require('../cloudflare/src/domain/bulk-actions');
 
 test('commerce model resume estado de preco e bloqueios', () => {
   const editable = commerceModel.getPriceState({
@@ -254,8 +254,8 @@ test('commerce model envia datas de promocao em formato local', () => {
 
 test('commerce model preserva mensagem amigavel ja traduzida', () => {
   assert.strictEqual(
-    commerceModel.friendlyError('Serviço local desligado. Abra o OnFrame.'),
-    'Serviço local desligado. Abra o OnFrame.'
+    commerceModel.friendlyError('Vincule esta extensão ao OnFrame para editar anúncios.'),
+    'Vincule esta extensão ao OnFrame para editar anúncios.'
   );
 });
 
@@ -1970,7 +1970,7 @@ test('promotion delete bloqueia oferta relampago ativa antes de chamar API', asy
   assert.strictEqual(deleteCalled, false);
 });
 
-test('api pricing e promotions expõem rotas locais', async (t) => {
+test('api pricing e promotions expõem contratos por item', async (t) => {
   const server = await listen(createApp({
     store: { read: async () => ({ refresh_token: 'TG-secret' }) },
     client: {
@@ -2057,7 +2057,7 @@ test('api pricing e promotions expõem rotas locais', async (t) => {
   assert.strictEqual(estimatesBody.estimates[0].dealPrice, 90);
 });
 
-test('api bulk preview expõe contrato local por item', async (t) => {
+test('api bulk preview expõe contrato por item', async (t) => {
   const items = {
     MLB2000000001: {
       id: 'MLB2000000001',

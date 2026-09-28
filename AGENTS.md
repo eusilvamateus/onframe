@@ -21,17 +21,15 @@ neste arquivo.
 
 Antes de alterar autenticacao, contas conectadas, tokens ou chamadas ao Mercado
 Livre, leia [a integracao Mercado Livre](docs/integrations/mercado-livre.md).
-Antes de alterar o servico local ou os scripts de bootstrap, leia
-[Servico local](docs/operations/servico-local.md).
+Antes de alterar o Worker ou os scripts de bootstrap, leia
+[a arquitetura do projeto](docs/architecture/estrutura-do-projeto.md).
 
 ## Comandos de Build, Teste e Desenvolvimento
 
 Execute os comandos na raiz do repositório com Node.js 20 ou superior:
 
-- `npm start`: inicia o serviço local.
 - `npm test`: executa o executor de testes do Node.js.
 - `npm run test:all`: executa toda a suíte nomeada antes da entrega.
-- `npm run check`: executa o diagnóstico de instalação.
 - `npm run release:check`: valida versão, dependências, testes e pacote de lançamento.
 
 ## Estilo de Código e Convenções de Nomenclatura
@@ -40,7 +38,7 @@ Use CommonJS, indentação de dois espaços, ponto e vírgula e aspas simples. U
 `camelCase` para funções e variáveis locais, `UPPER_SNAKE_CASE` para constantes
 e nomes descritivos em português para os testes. Mantenha comportamento de DOM
 nos módulos da extensão, transformações reutilizáveis de estado nos modelos e
-integrações de API/Mercado Livre no serviço. Siga o sistema de design em
+integrações de API/Mercado Livre no Worker. Siga o sistema de design em
 `C:\Users\Mateus\onblide-design-system`; não introduza tipografia, controles ou
 retornos visuais ad hoc.
 
@@ -60,8 +58,7 @@ desse workflow no repositório.
 
 ## Segurança e Integrações
 
-Não versione tokens ou credenciais; use `.env.example` como referência de
-configuração. Quando o usuário indicar um conector, MCP, documentação ou outro
+Não versione tokens ou credenciais. Quando o usuário indicar um conector, MCP, documentação ou outro
 recurso oficial e confiável de um provedor, use exclusivamente essa fonte para
 pesquisa e decisões sobre o respectivo provedor. Se ela não estiver disponível,
 informe expressamente o bloqueio e não use busca externa sem autorização

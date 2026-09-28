@@ -11,7 +11,7 @@ tenha uma fonte canonica.
 - [Guia do usuario](user/guia-do-usuario.md) - fluxo diario na pagina do
   anuncio.
 - [Instalacao e atualizacao](user/instalacao-e-atualizacao.md) - instalacao,
-  comandos locais e atualizacao no Windows e macOS.
+  pareamento e atualizacao no Windows e macOS.
 - [Editar descricao](user/editar-descricao.md) - edicao do texto no contexto do
   anuncio.
 - [Editar caracteristicas](user/editar-caracteristicas.md) - revisao da ficha
@@ -27,7 +27,7 @@ tenha uma fonte canonica.
 ## Arquitetura
 
 - [Estrutura do projeto](architecture/estrutura-do-projeto.md) - fronteiras da
-  extensao, do servico local, dos scripts e dos testes.
+  extensao, do Worker, dos scripts e dos testes.
 
 ## Desenvolvimento
 
@@ -37,12 +37,7 @@ tenha uma fonte canonica.
 ## Integracoes
 
 - [Mercado Livre](integrations/mercado-livre.md) - autenticacao, contas,
-  armazenamento local de tokens e contratos externos.
-
-## Operacoes
-
-- [Servico local](operations/servico-local.md) - execucao, diagnostico, logs e
-  recuperacao do processo local.
+  armazenamento remoto de tokens e contratos externos.
 
 ## Referencias
 

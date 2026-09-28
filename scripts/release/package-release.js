@@ -11,10 +11,8 @@ const zipPath = path.join(distDir, `onframe-v${version}.zip`);
 
 const entries = [
   'extension',
-  'service',
   'scripts/bootstrap',
-  'package.json',
-  '.env.example'
+  'package.json'
 ];
 
 fs.rmSync(packageDir, { recursive: true, force: true });

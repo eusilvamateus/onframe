@@ -17,7 +17,6 @@
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const EDITOR_MORPH_OPEN_DURATION = 900;
   const EDITOR_MORPH_CLOSE_DURATION = 950;
-  const LOCAL_SERVICE_OFFLINE_MESSAGE = 'Serviço local desligado. Abra o OnFrame.';
 
   const state = {
     context: null,
@@ -345,15 +344,6 @@
 
   function buildTrayContent() {
     if (!state.context) {
-      if (isLocalServiceOffline()) {
-        return `
-          <div class="onblide-ml-tray-bar">
-            ${renderStatus()}
-            <button class="onblide-ml-btn onblide-ml-start-service" data-action="start-service" type="button">${icon('play', 14)}Iniciar serviço</button>
-            <button class="onblide-ml-btn" data-action="reload" type="button">Recarregar</button>
-          </div>
-        `;
-      }
       return `
         <div class="onblide-ml-tray-bar">
           ${renderStatus()}
@@ -794,9 +784,6 @@
     container.querySelectorAll('[data-action="connect"]').forEach((button) => {
       button.addEventListener('click', () => void startAuth());
     });
-    container.querySelectorAll('[data-action="start-service"]').forEach((button) => {
-      button.addEventListener('click', openLocalServiceLauncher);
-    });
     container.querySelectorAll('[data-action="reload"]').forEach((button) => {
       button.addEventListener('click', () => void reloadEditor());
     });
@@ -1089,8 +1076,7 @@
       state.message = 'Abrindo autorização...';
       state.error = '';
       rerenderTray();
-      const result = await api('/auth/start', { method: 'POST', body: '{}' });
-      window.open(result.authUrl, '_blank', 'noopener,noreferrer');
+      await sendRemoteMessage('oauth-start');
       state.message = '';
       showToast('info', 'Autorização aberta', 'Conclua a autorização e recarregue a página.');
     } catch (err) {
@@ -1103,12 +1089,27 @@
     }
   }
 
-  function openLocalServiceLauncher() {
-    if (!window.chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') return;
-    chrome.runtime.sendMessage({ type: 'onframe:openLauncher', action: 'start' }, (response) => {
-      if (!chrome.runtime.lastError && response && response.ok) return;
-      state.error = response && response.error ? response.error : 'Não consegui abrir o controle local.';
-      rerenderTray();
+  function sendRemoteMessage(action, payload = {}) {
+    return new Promise((resolve, reject) => {
+      if (!window.chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') {
+        reject(new Error('A extensão OnFrame não está disponível.'));
+        return;
+      }
+      chrome.runtime.sendMessage(Object.assign({ type: 'onframe:remote', action }, payload), (response) => {
+        const runtimeError = chrome.runtime.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message || 'Não consegui acessar o OnFrame remoto.'));
+          return;
+        }
+        if (!response || response.ok !== true) {
+          const error = new Error(response && response.error ? response.error : 'Não consegui acessar o OnFrame remoto.');
+          error.code = response && response.code ? response.code : '';
+          error.technicalError = response && response.technicalError ? response.technicalError : error.message;
+          reject(error);
+          return;
+        }
+        resolve(response.body || {});
+      });
     });
   }
 
@@ -2041,10 +2042,6 @@
 
   function isCatalogListing() {
     return Boolean(state.context && state.context.item && state.context.item.catalog_listing);
-  }
-
-  function isLocalServiceOffline() {
-    return String(state.error || '').trim() === LOCAL_SERVICE_OFFLINE_MESSAGE;
   }
 
   function isPictureEditingBlocked() {

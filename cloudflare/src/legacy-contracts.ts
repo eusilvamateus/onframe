@@ -1,10 +1,10 @@
 // @ts-nocheck
 
-// The existing service modules are intentionally reused while their public
-// HTTP contract is moved to the Worker. They remain CommonJS and are covered
-// by the repository's established service test suite.
-export { createItemRouteCache, handleResolve, handleResolveQuick } from '../../service/src/routes/items.js';
-export { handlePriceSummary, handleStandardPriceUpdate } from '../../service/src/routes/pricing.js';
+// The commercial domain stays CommonJS while the Worker owns its HTTP
+// boundary. The modules below are runtime-compatible with Workers and are
+// covered by the established domain test suite.
+export { createItemRouteCache, handleResolve, handleResolveQuick } from './domain/routes/items.js';
+export { handlePriceSummary, handleStandardPriceUpdate } from './domain/routes/pricing.js';
 export {
   handleCampaignList,
   handleCreateCampaign,
@@ -16,14 +16,14 @@ export {
   handlePromotionSummary,
   handleUpdateCampaign,
   handleUpdateOffer
-} from '../../service/src/routes/promotions.js';
-export { handleDescriptionBulkUpdate, handleDescriptionGet, handleDescriptionUpdate } from '../../service/src/routes/descriptions.js';
+} from './domain/routes/promotions.js';
+export { handleDescriptionBulkUpdate, handleDescriptionGet, handleDescriptionUpdate } from './domain/routes/descriptions.js';
 export {
   handleCharacteristicsBulkUpdate,
   handleCharacteristicsGet,
   handleCharacteristicsUpdate
-} from '../../service/src/routes/characteristics.js';
-export { handlePictureCommit, handlePictureFixSize, handlePictureQuality, handlePictureUpload } from '../../service/src/routes/pictures.js';
-export { handleBulkCommit, handleBulkPreview } from '../../service/src/routes/bulk.js';
-export { resolveItemClient } from '../../service/src/account-client.js';
-export { sanitizeError, userFriendlyError } from '../../service/src/errors.js';
+} from './domain/routes/characteristics.js';
+export { handlePictureCommit, handlePictureFixSize, handlePictureQuality, handlePictureUpload } from './domain/routes/pictures.js';
+export { handleBulkCommit, handleBulkPreview } from './domain/routes/bulk.js';
+export { resolveItemClient } from './domain/account-client.js';
+export { sanitizeError, userFriendlyError } from './domain/errors.js';

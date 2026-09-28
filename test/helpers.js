@@ -7,23 +7,19 @@ const vm = require('vm');
 const {
   buildCommitPayload,
   pickMode
-} = require('../service/src/items');
-const { TokenStore, decrypt, encrypt } = require('../service/src/token-store');
-const { MercadoLivreClient } = require('../service/src/meli-client');
-const { createApp, sanitizeError, userFriendlyError } = require('../service/src/app');
-const updateManager = require('../service/src/update-manager');
-const { parseValue } = require('../service/src/dotenv');
+} = require('../cloudflare/src/domain/items');
+const { createApp, sanitizeError, userFriendlyError } = require('./support/domain-api');
 const {
   buildPictureQualityReport,
   calculateOptimizedDimensions,
   calculateResolutionScore,
   extractImageDimensions,
   extractOfficialDimensions
-} = require('../service/src/picture-quality');
+} = require('../cloudflare/src/domain/picture-quality');
 const {
   buildPriceSummary,
   updateStandardPrice
-} = require('../service/src/pricing');
+} = require('../cloudflare/src/domain/pricing');
 const {
   buildPromotionSummary,
   createCampaign,
@@ -31,9 +27,9 @@ const {
   deleteOffer,
   estimatePromotionImpact,
   estimatePromotionImpacts
-} = require('../service/src/promotions');
-const descriptions = require('../service/src/descriptions');
-const characteristics = require('../service/src/characteristics');
+} = require('../cloudflare/src/domain/promotions');
+const descriptions = require('../cloudflare/src/domain/descriptions');
+const characteristics = require('../cloudflare/src/domain/characteristics');
 const detection = require('../extension/core/detection');
 const photosModel = require('../extension/modules/photos/model');
 const commerceModel = require('../extension/modules/commerce/model');
@@ -111,14 +107,9 @@ module.exports = {
   vm,
   buildCommitPayload,
   pickMode,
-  MercadoLivreClient,
-  TokenStore,
-  decrypt,
-  encrypt,
   createApp,
   sanitizeError,
   userFriendlyError,
-  parseValue,
   buildPictureQualityReport,
   calculateOptimizedDimensions,
   calculateResolutionScore,
@@ -126,7 +117,6 @@ module.exports = {
   extractOfficialDimensions,
   buildPriceSummary,
   updateStandardPrice,
-  updateManager,
   buildPromotionSummary,
   createCampaign,
   createOffer,
