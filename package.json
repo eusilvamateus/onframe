@@ -9,6 +9,8 @@
     "release:notes": "node scripts/release/prepare-release-notes.js",
     "version:check": "node scripts/release/check-version.js",
     "version:set": "node scripts/release/set-version.js",
+    "auth:templates:build": "node scripts/auth/generate-email-templates.js",
+    "auth:templates:check": "node scripts/auth/generate-email-templates.js --check",
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
     "test": "node --test",
