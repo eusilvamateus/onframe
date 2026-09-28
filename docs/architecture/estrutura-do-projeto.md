@@ -24,6 +24,10 @@ Não há servidor local, token local ou fallback para `localhost`.
 - O Worker em `onframe.onblide.com` concentra usuários, workspaces, sessões de
   extensão, contas do Mercado Livre, operações e auditoria.
 - O D1 armazena dados de workspace e credenciais do Mercado Livre cifradas.
+- `POST /hooks/supabase/send-email` recebe exclusivamente webhooks assinados do
+  Supabase Auth, renderiza os e-mails transacionais e os entrega pelo Resend.
+  O segredo de assinatura, a chave do Resend e os OTPs não são armazenados no
+  D1; somente o estado idempotente de entrega é registrado.
 - `/connect`, protegido pelo Cloudflare Access, emite um código de uso único.
   A extensão o troca por uma sessão em `POST /v1/extension-sessions`.
 - `POST /v1/mercadolivre/oauth/start` inicia a autorização de uma conta; o
@@ -71,6 +75,11 @@ parte do produto nem do pacote de instalação.
   sessão revogável do workspace.
 - Access e refresh tokens ficam cifrados no D1; `MELI_CLIENT_ID`,
   `MELI_CLIENT_SECRET` e `MELI_TOKEN_CIPHER_KEY` são secrets do Worker.
+- `RESEND_API_KEY` e `SUPABASE_SEND_EMAIL_HOOK_SECRET` são secrets do Worker.
+  O endpoint de e-mail é público somente para receber o webhook, cuja
+  autenticidade é verificada pelo padrão Standard Webhooks antes de qualquer
+  entrega. Cada envio também usa uma chave de idempotência determinística no
+  Resend, sem armazenar endereços, links ou códigos no D1.
 - A ausência ou expiração da sessão bloqueia contratos `/api/*` até novo
   pareamento.
 

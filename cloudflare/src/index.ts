@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { handleSupabaseSendEmailHook, type AuthEmailRuntimeEnv } from './auth-email';
 import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTokenValue, type EncryptedValue } from './token-cipher';
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 
@@ -12,7 +13,7 @@ const MELI_TOKEN_URL = 'https://api.mercadolibre.com/oauth/token';
 const MELI_ME_URL = 'https://api.mercadolibre.com/users/me';
 const MELI_TOKEN_KEY_VERSION = 1;
 
-type RuntimeEnv = Env & {
+type RuntimeEnv = Env & AuthEmailRuntimeEnv & {
   MELI_CLIENT_ID?: string;
   MELI_CLIENT_SECRET?: string;
   MELI_REDIRECT_URI?: string;
@@ -1005,6 +1006,10 @@ export default {
     const requestId = crypto.randomUUID();
 
     try {
+      if (url.pathname === '/hooks/supabase/send-email') {
+        return handleSupabaseSendEmailHook(request, env);
+      }
+
       if (request.method === 'GET' && url.pathname === '/health') {
         const result = await env.ONFRAME_DB.prepare('SELECT 1 AS ok').first<{ ok: number }>();
         if (result?.ok !== 1) throw new Error('D1 health query returned an invalid result.');

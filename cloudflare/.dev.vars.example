@@ -1,3 +1,5 @@
 # Defina os valores reais apenas em .dev.vars local ou nos Secrets do Worker.
 MELI_CLIENT_ID=
 MELI_CLIENT_SECRET=
+RESEND_API_KEY=
+SUPABASE_SEND_EMAIL_HOOK_SECRET=

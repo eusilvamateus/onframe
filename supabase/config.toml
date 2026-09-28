@@ -3,6 +3,12 @@
 # administrados no Supabase até que as respectivas superfícies do OnFrame existam.
 project_id = "onframe"
 
+# O segredo e configurado no ambiente de deploy; ele nunca e versionado.
+[auth.hook.send_email]
+enabled = true
+uri = "https://onframe.onblide.com/hooks/supabase/send-email"
+secrets = "env(SUPABASE_SEND_EMAIL_HOOK_SECRET)"
+
 [auth.email.template.confirmation]
 subject = "Confirme seu e-mail no OnFrame"
 content_path = "./supabase/templates/confirmation.html"

@@ -11,7 +11,12 @@
   "vars": {
     "ACCESS_AUD": "ec5e721f6923bb7bec8a6a675e177116627340b6bbe2ecda33386563ccd6bc53",
     "ACCESS_TEAM_DOMAIN": "https://crimson-firefly-09d2.cloudflareaccess.com",
-    "MELI_REDIRECT_URI": "https://onframe.onblide.com/oauth/mercadolivre/callback"
+    "MELI_REDIRECT_URI": "https://onframe.onblide.com/oauth/mercadolivre/callback",
+    "AUTH_EMAIL_FROM": "OnFrame <acesso@onframe.onblide.com>",
+    "SUPABASE_URL": "https://ignrkxityihpvreaimxe.supabase.co"
+  },
+  "secrets": {
+    "required": ["RESEND_API_KEY", "SUPABASE_SEND_EMAIL_HOOK_SECRET"]
   },
   "routes": [
     {
