@@ -37,6 +37,10 @@ Worker separado.
   por um bearer de sessao por `POST /v1/extension-sessions`.
 - O bearer fica restrito ao `background` da extensao e valida
   `GET` e `DELETE /v1/extension-session`. A revogacao e persistida no D1.
+- Com uma sessao valida, `POST /v1/mercadolivre/oauth/start` inicia a
+  autorizacao e `GET /v1/accounts` lista as contas do workspace.
+- O callback publico `/oauth/mercadolivre/callback` troca o codigo OAuth no
+  servidor, consulta o perfil e cifra o par de tokens antes de grava-lo no D1.
 - Nenhum endpoint de edicao do Mercado Livre foi migrado nesta etapa.
 
 ### Scripts (`scripts/`)
@@ -77,8 +81,8 @@ dos scripts e telas que precisam permanecer estaveis.
 - Tokens e outros segredos pertencem ao servico local e nao devem ser
   versionados nem enviados para o contexto da pagina.
 - O bearer remoto identifica a extensao e o workspace, mas nao e um token do
-  Mercado Livre. As credenciais dessa API continuarao fora da extensao quando
-  o OAuth remoto for implementado.
+  Mercado Livre. As credenciais dessa API ficam somente no Worker e no D1
+  cifrado; elas nunca sao devolvidas para a extensao.
 - `scripts/bootstrap/` e um contrato distribuido publicamente; seus nomes e
   comportamentos devem permanecer compativeis.
 - A pagina de atualizacao e uma tela interna da extensao. Ela aciona o

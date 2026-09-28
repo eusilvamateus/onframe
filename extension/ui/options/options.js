@@ -35,6 +35,11 @@
     remoteExpiresAt: document.getElementById('remote-expires-at'),
     remoteActions: document.getElementById('remote-actions'),
     remoteDisconnect: document.getElementById('remote-disconnect'),
+    remoteAccountsPanel: document.getElementById('remote-accounts-panel'),
+    remoteAccountsBadge: document.getElementById('remote-accounts-badge'),
+    remoteAccountsText: document.getElementById('remote-accounts-text'),
+    remoteAccountsList: document.getElementById('remote-accounts-list'),
+    remoteAccountConnect: document.getElementById('remote-account-connect'),
     updateBlock: document.getElementById('update-block'),
     updateBadge: document.getElementById('update-badge'),
     updateText: document.getElementById('update-text'),
@@ -52,6 +57,7 @@
     serviceOnline: false,
     pendingRemoveUserId: '',
     remoteConnected: false,
+    remoteAccounts: [],
     busy: false
   };
 
@@ -68,10 +74,14 @@
   elements.remoteClaim.addEventListener('click', () => void claimRemoteConnection());
   elements.remoteOpenConnect.addEventListener('click', openRemotePairing);
   elements.remoteDisconnect.addEventListener('click', () => void disconnectRemoteConnection());
+  elements.remoteAccountConnect.addEventListener('click', () => void startRemoteAuth());
   elements.updateOpen.addEventListener('click', () => openUpdatePage());
   elements.updateStart.addEventListener('click', () => void copyUpdateCommand());
 
   void loadOptions();
+  window.addEventListener('focus', () => {
+    if (state.remoteConnected && !state.busy) void loadRemoteAccounts();
+  });
 
   async function loadOptions(options = {}) {
     setBusy(true);
@@ -99,6 +109,11 @@
     elements.remoteUser.textContent = '-';
     elements.remoteWorkspace.textContent = '-';
     elements.remoteExpiresAt.textContent = '-';
+    elements.remoteAccountsPanel.classList.add('is-hidden');
+    elements.remoteAccountsList.classList.add('is-hidden');
+    elements.remoteAccountsList.innerHTML = '';
+    setBadge(elements.remoteAccountsBadge, 'Verificando', 'muted');
+    elements.remoteAccountsText.textContent = 'Buscando contas vinculadas ao workspace.';
     elements.updateBlock.classList.add('is-hidden');
     setBadge(elements.updateBadge, 'Verificando', 'muted');
     elements.updateText.textContent = 'Conferindo releases.';
@@ -110,6 +125,7 @@
     state.serviceOnline = false;
     state.pendingRemoveUserId = '';
     state.remoteConnected = false;
+    state.remoteAccounts = [];
     renderServiceControls();
     renderRemoteControls();
     renderVersionTag(null);
@@ -380,7 +396,9 @@
 
   async function loadRemoteConnection() {
     try {
-      renderRemoteConnection(await sendRemoteMessage('status'));
+      const connection = await sendRemoteMessage('status');
+      renderRemoteConnection(connection);
+      if (connection && connection.connected) await loadRemoteAccounts();
     } catch (err) {
       state.remoteConnected = false;
       setBadge(elements.remoteBadge, 'Indisponível', 'warn');
@@ -388,6 +406,7 @@
       elements.remoteConnect.classList.remove('is-hidden');
       elements.remoteContext.classList.add('is-hidden');
       elements.remoteActions.classList.add('is-hidden');
+      elements.remoteAccountsPanel.classList.add('is-hidden');
       renderRemoteControls();
     }
   }
@@ -405,6 +424,7 @@
       const connection = await sendRemoteMessage('claim', { pairingCode });
       elements.remotePairingCode.value = '';
       renderRemoteConnection(connection);
+      await loadRemoteAccounts();
       showActionFeedback('Extensão vinculada ao acesso remoto.', 'ok');
     } catch (err) {
       showActionFeedback(toUserError(err), 'danger');
@@ -430,6 +450,91 @@
     }
   }
 
+  async function loadRemoteAccounts() {
+    if (!state.remoteConnected) {
+      renderRemoteAccounts([]);
+      return;
+    }
+
+    try {
+      const result = await sendRemoteMessage('accounts');
+      const accounts = result && Array.isArray(result.accounts) ? result.accounts : [];
+      state.remoteAccounts = accounts;
+      renderRemoteAccounts(accounts);
+    } catch (err) {
+      if (err && err.code === 'extension_session_unauthorized') {
+        renderRemoteConnection({ connected: false, reason: 'unauthorized' });
+        return;
+      }
+      elements.remoteAccountsPanel.classList.remove('is-hidden');
+      elements.remoteAccountsList.classList.add('is-hidden');
+      setBadge(elements.remoteAccountsBadge, 'Indisponível', 'warn');
+      elements.remoteAccountsText.textContent = 'Não foi possível consultar as contas do workspace.';
+    }
+  }
+
+  async function startRemoteAuth() {
+    setBusy(true);
+    try {
+      await sendRemoteMessage('oauth-start');
+      elements.remoteAccountsText.textContent = 'Autorize a conta do Mercado Livre na aba aberta.';
+      showActionFeedback('Autorize a conta do Mercado Livre na aba aberta.', 'ok');
+    } catch (err) {
+      showActionFeedback(toUserError(err), 'danger');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function renderRemoteAccounts(accounts) {
+    const visible = state.remoteConnected;
+    elements.remoteAccountsPanel.classList.toggle('is-hidden', !visible);
+    if (!visible) {
+      elements.remoteAccountsList.classList.add('is-hidden');
+      elements.remoteAccountsList.innerHTML = '';
+      return;
+    }
+
+    const count = accounts.length;
+    setBadge(elements.remoteAccountsBadge, count === 1 ? '1 conta' : `${count} contas`, count ? 'ok' : 'muted');
+    elements.remoteAccountsText.textContent = count
+      ? `${count === 1 ? '1 conta vinculada' : `${count} contas vinculadas`} ao workspace.`
+      : 'Nenhuma conta vinculada ao workspace.';
+
+    if (!count) {
+      elements.remoteAccountsList.classList.add('is-hidden');
+      elements.remoteAccountsList.innerHTML = '';
+      return;
+    }
+
+    elements.remoteAccountsList.innerHTML = accounts.map((account) => {
+      const enabled = account && account.enabled !== false;
+      const userId = String(account && account.userId || '');
+      const nickname = String(account && account.nickname || `Conta ${userId}`);
+      const logo = String(account && account.logoUrl || '');
+      const profileUrl = String(account && account.profileUrl || '');
+      return `
+        <article class="account-card ${enabled ? 'is-connected' : 'is-disabled'}">
+          ${renderAccountAvatar({ nickname, user_id: userId, logo })}
+          <span class="account-main">
+            <strong>${escapeHtml(nickname)}</strong>
+            <span>Mercado Livre</span>
+            <em>${enabled ? 'Habilitada' : 'Desativada'}</em>
+          </span>
+          ${profileUrl ? `<span class="account-card-actions"><button class="account-icon-btn" data-action="open-remote-account" data-url="${escapeAttribute(profileUrl)}" data-tooltip="Abrir perfil" type="button" aria-label="Abrir perfil">${icon('arrowSquareOut', 16)}</button></span>` : ''}
+        </article>
+      `;
+    }).join('');
+    elements.remoteAccountsList.classList.remove('is-hidden');
+    elements.remoteAccountsList.querySelectorAll('.account-avatar-image').forEach((image) => {
+      image.addEventListener('error', () => image.remove(), { once: true });
+    });
+    elements.remoteAccountsList.querySelectorAll('[data-action="open-remote-account"]').forEach((button) => {
+      button.addEventListener('click', () => openExternalUrl(button.dataset.url));
+    });
+    mountTooltips(elements.remoteAccountsList);
+  }
+
   function renderRemoteConnection(connection) {
     const connected = Boolean(connection && connection.connected && connection.user && connection.workspace);
     state.remoteConnected = connected;
@@ -446,6 +551,8 @@
       elements.remoteUser.textContent = '-';
       elements.remoteWorkspace.textContent = '-';
       elements.remoteExpiresAt.textContent = '-';
+      state.remoteAccounts = [];
+      renderRemoteAccounts([]);
       renderRemoteControls();
       return;
     }
@@ -503,6 +610,7 @@
     elements.remoteClaim.disabled = !canClaim;
     elements.remoteOpenConnect.disabled = state.busy || state.remoteConnected;
     elements.remoteDisconnect.disabled = state.busy || !state.remoteConnected;
+    elements.remoteAccountConnect.disabled = state.busy || !state.remoteConnected;
   }
 
   function setBusy(value) {
@@ -516,6 +624,9 @@
     elements.updateOpen.disabled = value || !state.updateStatus || !state.updateStatus.updateAvailable;
     elements.updateStart.disabled = value || !state.updateStatus || !state.updateStatus.updateCommand;
     elements.accountList.querySelectorAll('button').forEach((button) => {
+      button.disabled = value;
+    });
+    elements.remoteAccountsList.querySelectorAll('button').forEach((button) => {
       button.disabled = value;
     });
     renderRemoteControls();
@@ -558,6 +669,7 @@
     addIcon(elements.remoteClaim, 'link');
     addIcon(elements.remoteOpenConnect, 'arrowSquareOut');
     addIcon(elements.remoteDisconnect, 'x');
+    addIcon(elements.remoteAccountConnect, 'plus');
     addIcon(elements.updateOpen, 'arrowSquareOut');
     addIcon(elements.updateStart, 'copy');
   }

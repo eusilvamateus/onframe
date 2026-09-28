@@ -50,14 +50,34 @@ Nao versione `.env`, tokens, `ONBLIDE_TOKEN_SECRET` ou arquivos em
 
 ## Acesso remoto em transicao
 
-O Worker em `onframe.onblide.com` ja vincula uma instalacao da extensao a um
+O Worker em `onframe.onblide.com` vincula uma instalacao da extensao a um
 workspace por um codigo temporario protegido pelo Cloudflare Access. O bearer
 emitido nessa troca fica no `background` da extensao e serve apenas para a API
 do OnFrame.
 
-Ele nao e enviado ao Mercado Livre e ainda nao substitui o servico local: as
-rotas que leem ou alteram anuncios continuam usando `127.0.0.1` ate que o
-OAuth e o cofre remoto de credenciais sejam implementados.
+Para contas remotas, a extensao pede `POST /v1/mercadolivre/oauth/start` ao
+Worker. Ele cria `state` de uso unico e um `code_verifier` PKCE, ambos validos
+por dez minutos. Apenas o hash do `state` e armazenado; o `code_verifier` e
+cifrado antes de ser gravado no D1.
+
+O Mercado Livre retorna para
+`https://onframe.onblide.com/oauth/mercadolivre/callback`, que precisa estar
+registrado exatamente assim no aplicativo do Mercado Livre. O Worker troca o
+codigo por tokens em `POST https://api.mercadolibre.com/oauth/token`, consulta
+`GET https://api.mercadolibre.com/users/me` com o access token no header e
+associa a conta ao workspace.
+
+Os tokens sao cifrados por AES-GCM com uma chave `secret_key` do Worker antes
+de entrar em `seller_credentials`. `MELI_CLIENT_ID` e `MELI_CLIENT_SECRET`
+sao secrets do Worker, e `MELI_TOKEN_CIPHER_KEY` e a chave AES-GCM. Nenhum
+desses valores, nem access token ou refresh token, e devolvido para a
+extensao ou registrado em logs.
+
+O refresh token do Mercado Livre e rotativo e de uso unico. As futuras rotas
+remotas que consumirem a API renovarao a credencial somente quando necessario,
+gravando atomica e imediatamente o novo refresh token retornado pela API.
+Enquanto essas rotas nao forem migradas, as operacoes de anuncios continuam
+usando `127.0.0.1`.
 
 ## Contratos e fronteiras
 

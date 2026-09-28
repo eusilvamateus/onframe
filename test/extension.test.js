@@ -110,6 +110,7 @@ test('background vincula e revoga a sessao remota sem expor o bearer', async () 
   const token = 'a'.repeat(43);
   const storage = {};
   const requests = [];
+  const openedTabs = [];
   let listener = null;
 
   const chrome = {
@@ -137,7 +138,9 @@ test('background vincula e revoga a sessao remota sem expor o bearer', async () 
       }
     },
     tabs: {
-      async create() {}
+      async create(options) {
+        openedTabs.push(options);
+      }
     }
   };
 
@@ -158,6 +161,16 @@ test('background vincula e revoga a sessao remota sem expor o bearer', async () 
           token,
           sessionId: 'session-1',
           expiresAt: '2099-01-01T00:00:00.000Z'
+        }, { status: 201 });
+      }
+      if (url.endsWith('/v1/accounts')) {
+        return Response.json({
+          accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }]
+        });
+      }
+      if (url.endsWith('/v1/mercadolivre/oauth/start')) {
+        return Response.json({
+          authorizationUrl: 'https://auth.mercadolivre.com.br/authorization?response_type=code'
         }, { status: 201 });
       }
       if (request.method === 'DELETE') return Response.json({ revokedAt: '2026-09-28T00:00:00.000Z' });
@@ -185,16 +198,29 @@ test('background vincula e revoga a sessao remota sem expor o bearer', async () 
   assert.strictEqual(JSON.parse(requests[0].body).pairingCode, pairingCode);
   assert.strictEqual(requests[1].headers.get('authorization'), `Bearer ${token}`);
 
+  const accounts = await send({ type: 'onframe:remote', action: 'accounts' });
+  assert.strictEqual(accounts.ok, true);
+  assert.strictEqual(accounts.body.accounts[0].userId, '123');
+  assert.strictEqual(requests[2].headers.get('authorization'), `Bearer ${token}`);
+
+  const oauthStarted = await send({ type: 'onframe:remote', action: 'oauth-start' });
+  assert.strictEqual(oauthStarted.ok, true);
+  assert.strictEqual(oauthStarted.body.started, true);
+  assert.strictEqual(requests[3].method, 'POST');
+  assert.strictEqual(requests[3].headers.get('authorization'), `Bearer ${token}`);
+  assert.strictEqual(openedTabs[0].url, 'https://auth.mercadolivre.com.br/authorization?response_type=code');
+
   const disconnected = await send({ type: 'onframe:remote', action: 'disconnect' });
   assert.strictEqual(disconnected.ok, true);
   assert.strictEqual(disconnected.body.connected, false);
-  assert.strictEqual(requests[2].method, 'DELETE');
-  assert.strictEqual(requests[2].headers.get('authorization'), `Bearer ${token}`);
+  assert.strictEqual(requests[4].method, 'DELETE');
+  assert.strictEqual(requests[4].headers.get('authorization'), `Bearer ${token}`);
   assert.strictEqual(storage.onframeRemoteSession, undefined);
 });
 
 test('extensao declara o acesso remoto e o Worker protege a sessao por bearer', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+  const backgroundJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'background.js'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'index.html'), 'utf8');
   const optionsJs = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'options', 'options.js'), 'utf8');
   const worker = fs.readFileSync(path.join(__dirname, '..', 'cloudflare', 'src', 'index.ts'), 'utf8');
@@ -202,9 +228,16 @@ test('extensao declara o acesso remoto e o Worker protege a sessao por bearer', 
   assert.ok(manifest.host_permissions.includes('https://onframe.onblide.com/*'));
   assert.match(optionsHtml, /id="remote-pairing-code"/);
   assert.match(optionsHtml, /id="remote-disconnect"/);
+  assert.match(optionsHtml, /id="remote-account-connect"/);
   assert.match(optionsJs, /type: 'onframe:remote'/);
+  assert.match(backgroundJs, /action === 'oauth-start'/);
+  assert.match(backgroundJs, /\/v1\/mercadolivre\/oauth\/start/);
   assert.match(worker, /function authenticateExtensionSession/);
   assert.match(worker, /url\.pathname === '\/v1\/extension-session'/);
+  assert.match(worker, /url\.pathname === '\/v1\/mercadolivre\/oauth\/start'/);
+  assert.match(worker, /url\.pathname === '\/oauth\/mercadolivre\/callback'/);
+  assert.match(worker, /MELI_TOKEN_CIPHER_KEY/);
+  assert.match(worker, /AES-GCM/);
   assert.match(worker, /extension_session_unauthorized/);
   assert.match(worker, /extension_session_revoked/);
 });

@@ -58,6 +58,8 @@ async function handleRemoteMessage(message) {
   if (action === 'status') return getRemoteConnection();
   if (action === 'claim') return claimRemoteConnection(message.pairingCode);
   if (action === 'disconnect') return disconnectRemoteConnection();
+  if (action === 'accounts') return listRemoteAccounts();
+  if (action === 'oauth-start') return startRemoteAuth();
   throw new Error('Ação remota inválida.');
 }
 
@@ -124,6 +126,55 @@ async function disconnectRemoteConnection() {
 
   await removeRemoteSession();
   return { connected: false };
+}
+
+async function listRemoteAccounts() {
+  const session = await requireRemoteSession();
+  try {
+    const result = await requestRemote('/v1/accounts', {
+      headers: { authorization: `Bearer ${session.token}` }
+    });
+    const accounts = result && Array.isArray(result.accounts) ? result.accounts : [];
+    return { accounts };
+  } catch (error) {
+    if (error && error.status === 401) await removeRemoteSession();
+    throw error;
+  }
+}
+
+async function startRemoteAuth() {
+  const session = await requireRemoteSession();
+  let result;
+  try {
+    result = await requestRemote('/v1/mercadolivre/oauth/start', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${session.token}` },
+      body: '{}'
+    });
+  } catch (error) {
+    if (error && error.status === 401) await removeRemoteSession();
+    throw error;
+  }
+  const authUrl = String(result && result.authorizationUrl || '');
+  if (!/^https:\/\/auth\.mercadolivre\.com\.br\/authorization\?/u.test(authUrl)) {
+    const error = new Error('O OnFrame remoto retornou uma autorização inválida.');
+    error.code = 'invalid_remote_authorization';
+    throw error;
+  }
+  await chrome.tabs.create({ url: authUrl });
+  return { started: true };
+}
+
+async function requireRemoteSession() {
+  const session = await readRemoteSession();
+  if (!session || Date.parse(session.expiresAt) <= Date.now()) {
+    await removeRemoteSession();
+    const error = new Error('A vinculação desta extensão não é mais válida.');
+    error.code = 'extension_session_unauthorized';
+    error.status = 401;
+    throw error;
+  }
+  return session;
 }
 
 function normalizeRemoteSession(payload) {
@@ -194,7 +245,9 @@ function remoteErrorMessage(code, status) {
   if (code === 'invalid_pairing_code') return 'O código de pareamento é inválido.';
   if (code === 'pairing_unavailable') return 'Esse código expirou ou já foi usado. Gere outro código.';
   if (code === 'extension_session_unauthorized') return 'A vinculação desta extensão não é mais válida.';
-  return `Não foi possível concluir a vinculação. Código ${status}.`;
+  if (code === 'remote_oauth_unconfigured') return 'A conexão remota do Mercado Livre ainda não está configurada.';
+  if (code === 'workspace_account_access_forbidden') return 'Seu acesso não pode conectar contas ao workspace.';
+  return `Não foi possível acessar o OnFrame remoto. Código ${status}.`;
 }
 
 function readRemoteSession() {
