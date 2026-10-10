@@ -23,6 +23,8 @@ tenha uma fonte canonica.
 
 - [Estados de promocoes](product/promocoes.md) - regras que distinguem uma
   oportunidade, uma participacao programada e a promocao de preco vigente.
+- [Workspaces e acessos](product/workspaces-e-acessos.md) - papeis,
+  atribuicoes de contas e convites do painel.
 
 ## Arquitetura
 

@@ -1,4 +1,4 @@
-import { decryptValue, encryptValue } from './token-cipher';
+import { decryptValue, encryptValue, importAesGcmKeyBase64 } from './token-cipher';
 import {
   handleResolve,
   handleResolveQuick,
@@ -43,7 +43,7 @@ type RemoteRuntimeEnv = {
   ONFRAME_DB: D1Database;
   MELI_CLIENT_ID?: string;
   MELI_CLIENT_SECRET?: string;
-  MELI_TOKEN_CIPHER_KEY?: CryptoKey;
+  MELI_TOKEN_CIPHER_KEY_BASE64?: string;
 };
 
 export type RemoteApiActor = {
@@ -352,12 +352,28 @@ function unwrapLegacyRouteResult(value: unknown): unknown {
 
 async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiActor): Promise<RemoteApiContext> {
   assertRemoteMeliConfigured(env);
+  const membership = await env.ONFRAME_DB.prepare(`
+    SELECT role
+    FROM workspace_members
+    WHERE workspace_id = ? AND user_id = ?
+  `).bind(actor.workspaceId, actor.userId).first<{ role: 'admin' | 'collaborator' }>();
+  if (!membership) throw new RemoteApiError('workspace_access_forbidden', 403, 'Você não faz mais parte deste workspace.');
+
   const records = await env.ONFRAME_DB.prepare(`
     SELECT id, meli_user_id, nickname, site_id, profile_url, enabled
     FROM seller_accounts
     WHERE workspace_id = ?
+      AND (
+        ? = 'admin'
+        OR EXISTS (
+          SELECT 1
+          FROM account_members
+          WHERE account_members.seller_account_id = seller_accounts.id
+            AND account_members.user_id = ?
+        )
+      )
     ORDER BY created_at ASC
-  `).bind(actor.workspaceId).all<{
+  `).bind(actor.workspaceId, membership.role, actor.userId).all<{
     id: string;
     meli_user_id: string;
     nickname: string | null;
@@ -583,7 +599,7 @@ async function readSellerCredential(env: RemoteRuntimeEnv, account: SellerAccoun
 
   let tokenPayload: unknown;
   try {
-    tokenPayload = JSON.parse(await decryptValue(env.MELI_TOKEN_CIPHER_KEY, {
+    tokenPayload = JSON.parse(await decryptValue(await importMeliTokenCipherKey(env), {
       ciphertext: record.token_ciphertext,
       iv: record.token_iv,
       authTag: record.token_auth_tag
@@ -628,7 +644,7 @@ async function refreshSellerCredential(env: RemoteRuntimeEnv, account: SellerAcc
       }
 
       const refreshed = await requestMeliRefresh(env, latest.token.refresh_token);
-      const encrypted = await encryptValue(env.MELI_TOKEN_CIPHER_KEY as CryptoKey, JSON.stringify(refreshed));
+      const encrypted = await encryptValue(await importMeliTokenCipherKey(env), JSON.stringify(refreshed));
       const expiresAt = Date.now() + Math.max(0, Number(refreshed.expires_in || 0)) * 1000;
       const write = await env.ONFRAME_DB.prepare(`
         UPDATE seller_credentials
@@ -747,9 +763,17 @@ function errorCodeForStatus(status: number): string {
 function assertRemoteMeliConfigured(env: RemoteRuntimeEnv): asserts env is RemoteRuntimeEnv & {
   MELI_CLIENT_ID: string;
   MELI_CLIENT_SECRET: string;
-  MELI_TOKEN_CIPHER_KEY: CryptoKey;
+  MELI_TOKEN_CIPHER_KEY_BASE64: string;
 } {
-  if (!String(env.MELI_CLIENT_ID || '').trim() || !String(env.MELI_CLIENT_SECRET || '').trim() || !env.MELI_TOKEN_CIPHER_KEY) {
+  if (!String(env.MELI_CLIENT_ID || '').trim() || !String(env.MELI_CLIENT_SECRET || '').trim() || !String(env.MELI_TOKEN_CIPHER_KEY_BASE64 || '').trim()) {
+    throw new RemoteApiError('remote_oauth_unconfigured', 503, 'A conexao remota do Mercado Livre ainda nao esta configurada.');
+  }
+}
+
+async function importMeliTokenCipherKey(env: RemoteRuntimeEnv): Promise<CryptoKey> {
+  try {
+    return await importAesGcmKeyBase64(env.MELI_TOKEN_CIPHER_KEY_BASE64 || '');
+  } catch {
     throw new RemoteApiError('remote_oauth_unconfigured', 503, 'A conexao remota do Mercado Livre ainda nao esta configurada.');
   }
 }

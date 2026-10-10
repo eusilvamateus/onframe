@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, resultPage } from '../src/connect-page.ts';
+import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, invitationPage, resultPage } from '../src/connect-page.ts';
 
 test('página pública conclui o fluxo iniciado pela extensão sem exibir código de pareamento', () => {
   const page = connectionPage({
@@ -60,4 +60,11 @@ test('resultado OAuth mantém um resultado sem controles interativos aninhados',
   });
   assert.match(page, /Tudo certo\./);
   assert.doesNotMatch(page, /<a[^>]*>\s*<button/);
+});
+
+test('convite hospedado encaminha para as opções sem expor um bearer', () => {
+  const page = invitationPage('chrome-extension://example/ui/options/index.html?invite=abc');
+  assert.match(page, /CONVITE PARA WORKSPACE/);
+  assert.match(page, /chrome-extension:\/\/example\/ui\/options\/index\.html\?invite=abc/);
+  assert.doesNotMatch(page, /access_token|refresh_token|supabase\.co/);
 });

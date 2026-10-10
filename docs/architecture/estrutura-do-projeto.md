@@ -17,7 +17,14 @@ Não há servidor local, token local ou fallback para `localhost`.
 - `background.js` mantém exclusivamente o bearer de sessão do OnFrame e
   encaminha contratos `/api/*` para `https://onframe.onblide.com/v1/api/*`.
 - `ui/options/` e `ui/popup/` autenticam a pessoa, mostram a sessão do
-  workspace e administram as contas conectadas.
+  workspace e administram contas, pessoas, convites, perfil e segurança. As
+  opções são o painel completo; o popup mostra o resumo operacional.
+- `ui/shared/` concentra a bridge de mensagens, o fluxo de autenticação e a
+  composição React comum às duas superfícies. Os controles visuais são
+  importados exclusivamente de `@onblide/ui`.
+- `ui/options/app.jsx` e `ui/popup/app.jsx` são as fontes React. O build gera
+  os respectivos `app.js`, `app.css` e `assets/` dentro de cada diretório para
+  que a extensão distribuída não dependa de `node_modules`.
 
 ### Worker remoto (`cloudflare/`)
 
@@ -42,6 +49,9 @@ Não há servidor local, token local ou fallback para `localhost`.
   callback público `/oauth/mercadolivre/callback` conclui a troca de tokens.
 - `GET /v1/accounts`, `PATCH /v1/accounts/:meliUserId` e
   `DELETE /v1/accounts/:meliUserId` administram as contas do workspace.
+- `/v1/app/*`, `/v1/profile`, `/v1/members` e `/v1/invitations` formam a API
+  do painel do workspace. Convites por e-mail e link compartilhável expiram
+  em sete dias, podem ser revogados e nunca expõem um bearer do Supabase.
 - `/v1/api/*` preserva os contratos da extensão para itens, fotos, descrição,
   características, preços, promoções e ações em massa.
 
@@ -57,6 +67,8 @@ suíte Node os usa diretamente e com um adaptador HTTP exclusivo de teste em
 - `bootstrap/` instala ou atualiza a extensão no Windows e macOS.
 - `onframe-updater://update` inicia o atualizador registrado no computador.
 - `release/` valida versão, prepara notas e monta o pacote distribuído.
+- `build-extension-ui.js` empacota as duas entradas React e seus ativos antes
+  de testes completos e da montagem do pacote de distribuição.
 
 ### Testes (`test/`)
 
@@ -82,8 +94,12 @@ parte do produto nem do pacote de instalação.
 - O bearer da extensão fica apenas em `chrome.storage.local` e identifica uma
   sessão revogável do workspace.
 - Access e refresh tokens ficam cifrados no D1; `MELI_CLIENT_ID`,
-  `MELI_CLIENT_SECRET` e `MELI_TOKEN_CIPHER_KEY` são secrets do Worker.
+  `MELI_CLIENT_SECRET` e `MELI_TOKEN_CIPHER_KEY_BASE64` são secrets do Worker.
+  A última contém exatamente 32 bytes em Base64 e é importada como chave
+  AES-GCM somente em memória durante a execução.
 - `RESEND_API_KEY` e `SUPABASE_SEND_EMAIL_HOOK_SECRET` são secrets do Worker.
+  `SUPABASE_SERVICE_ROLE_KEY` é usado somente pelo Worker para gravar avatares
+  no bucket público `onframe-avatars`; não é enviado à extensão.
   O endpoint de e-mail é público somente para receber o webhook, cuja
   autenticidade é verificada pelo padrão Standard Webhooks antes de qualquer
   entrega. Cada envio também usa uma chave de idempotência determinística no

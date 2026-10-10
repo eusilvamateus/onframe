@@ -20,6 +20,15 @@ function base64UrlBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
+export async function importAesGcmKeyBase64(value: string): Promise<CryptoKey> {
+  const source = String(value || '').trim();
+  if (!/^[A-Za-z0-9+/]+={0,2}$/u.test(source)) throw new Error('invalid_aes_gcm_key');
+  const binary = atob(source);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  if (bytes.length !== 32) throw new Error('invalid_aes_gcm_key');
+  return crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
 export async function encryptValue(key: CryptoKey, value: string): Promise<EncryptedValue> {
   const iv = new Uint8Array(AES_GCM_IV_LENGTH);
   crypto.getRandomValues(iv);

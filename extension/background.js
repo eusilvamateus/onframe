@@ -42,6 +42,20 @@ async function handleRemoteMessage(message) {
   if (action === 'oauth-start') return startRemoteAuth();
   if (action === 'account-update') return updateRemoteAccount(message.userId, message.enabled);
   if (action === 'account-remove') return removeRemoteAccount(message.userId);
+  if (action === 'app-overview') return requestPlatform('/v1/app/overview');
+  if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
+  if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
+  if (action === 'profile') return requestPlatform('/v1/profile');
+  if (action === 'profile-update') return requestPlatform('/v1/profile', { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
+  if (action === 'profile-avatar') return requestPlatform('/v1/profile/avatar', { method: 'POST', body: JSON.stringify({ dataUrl: message.dataUrl }) });
+  if (action === 'profile-session-remove') return requestPlatform(`/v1/profile/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, { method: 'DELETE' });
+  if (action === 'members') return requestPlatform('/v1/members');
+  if (action === 'member-update') return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
+  if (action === 'member-remove') return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, { method: 'DELETE' });
+  if (action === 'invitations') return requestPlatform('/v1/invitations');
+  if (action === 'invitation-create') return requestPlatform('/v1/invitations', { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'invitation-revoke') return requestPlatform(`/v1/invitations/${encodeURIComponent(String(message.invitationId || ''))}`, { method: 'DELETE' });
+  if (action === 'invitation-accept') return acceptWorkspaceInvitation(message.token);
   throw new Error('Ação remota inválida.');
 }
 
@@ -163,6 +177,45 @@ async function removeRemoteAccount(userId) {
     headers: { authorization: `Bearer ${session.token}` }
   });
   return { accounts: normalizeRemoteAccounts(result && result.accounts) };
+}
+
+async function requestPlatform(path, options = {}) {
+  const session = await requireRemoteSession();
+  try {
+    return await requestRemote(path, Object.assign({}, options, {
+      headers: Object.assign({}, options.headers || {}, { authorization: `Bearer ${session.token}` })
+    }));
+  } catch (error) {
+    if (error && error.status === 401) await removeRemoteSession();
+    throw error;
+  }
+}
+
+async function activateWorkspace(workspaceId) {
+  const session = await requireRemoteSession();
+  const id = String(workspaceId || '').trim();
+  if (!id) throw new Error('Workspace inválido.');
+  const result = await requestRemote(`/v1/app/workspaces/${encodeURIComponent(id)}/activate`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.token}` },
+    body: '{}'
+  });
+  const nextSession = normalizeRemoteSession(result);
+  await writeRemoteSession(nextSession);
+  return getRemoteConnection();
+}
+
+async function acceptWorkspaceInvitation(token) {
+  const session = await requireRemoteSession();
+  const value = String(token || '').trim();
+  if (!REMOTE_SESSION_TOKEN_PATTERN.test(value)) throw new Error('Convite inválido.');
+  const result = await requestRemote(`/v1/invitations/accept/${encodeURIComponent(value)}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${session.token}` },
+    body: '{}'
+  });
+  await writeRemoteSession(normalizeRemoteSession(result));
+  return getRemoteConnection();
 }
 
 function normalizeRemoteAccountUserId(value) {
@@ -293,13 +346,16 @@ function serializeRemoteConnection(session, context) {
   }
   return {
     connected: true,
-    expiresAt: session.expiresAt,
     user: {
+      id: String(user.id || ''),
       email: String(user.email),
-      name: String(user.name || user.email)
+      name: String(user.name || user.email),
+      avatarUrl: typeof user.avatarUrl === 'string' ? user.avatarUrl : ''
     },
     workspace: {
-      name: String(workspace.name)
+      id: String(workspace.id || ''),
+      name: String(workspace.name),
+      role: workspace.role === 'admin' ? 'admin' : 'collaborator'
     }
   };
 }
@@ -349,6 +405,18 @@ function remoteErrorMessage(code, status, fallbackMessage) {
   if (code === 'extension_session_unauthorized') return 'A sessão desta extensão não é mais válida.';
   if (code === 'remote_oauth_unconfigured') return 'A conexão remota do Mercado Livre ainda não está configurada.';
   if (code === 'workspace_account_access_forbidden') return 'Seu acesso não pode conectar contas ao workspace.';
+  if (code === 'workspace_admin_required') return 'Esta ação exige uma pessoa administradora do workspace.';
+  if (code === 'workspace_last_admin_required') return 'O workspace precisa manter pelo menos uma pessoa administradora.';
+  if (code === 'workspace_access_forbidden') return 'Você não tem acesso a este workspace.';
+  if (code === 'workspace_invitation_delivery_failed') return 'Não foi possível enviar o convite agora. Tente novamente.';
+  if (code === 'avatar_storage_unconfigured') return 'O envio de avatar ainda não foi configurado.';
+  if (code === 'avatar_storage_authorization_failed') return 'O serviço de imagens não aceitou a configuração atual. Tente novamente mais tarde.';
+  if (code === 'avatar_storage_bucket_unavailable') return 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.';
+  if (code === 'avatar_storage_unavailable') return 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.';
+  if (code === 'avatar_upload_failed') return 'Não foi possível enviar a imagem agora. Tente novamente.';
+  if (code === 'avatar_profile_update_failed') return 'A imagem foi recebida, mas não foi possível atualizar seu perfil. Tente novamente.';
+  if (code === 'avatar_too_large') return 'Escolha uma imagem de até 2 MB.';
+  if (code === 'invalid_avatar') return 'Escolha uma imagem PNG, JPEG ou WebP válida.';
   if (code === 'workspace_account_unavailable') return 'Nenhuma conta do Mercado Livre está conectada neste workspace.';
   if (code === 'workspace_accounts_disabled') return 'Nenhuma conta habilitada para detectar anúncios.';
   if (code === 'remote_credentials_unavailable') return 'A conta remota precisa ser conectada novamente.';

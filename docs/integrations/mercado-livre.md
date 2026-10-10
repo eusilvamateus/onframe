@@ -28,6 +28,19 @@ diretamente e não guarda credenciais de conta no computador.
 7. A conta é associada ao workspace e fica disponível para as extensões
    vinculadas a ele.
 
+## Pessoas e workspaces
+
+Há somente dois papéis: `admin` e `collaborator`. Administradores gerenciam
+contas, pessoas, convites e o nome do workspace. Colaboradores usam apenas as
+contas Mercado Livre atribuídas a eles; podem participar de um workspace sem
+nenhuma conta atribuída.
+
+O painel permite convidar por e-mail ou por link compartilhável. Ambos são de
+uso único, expiram em sete dias e podem ser revogados. O link abre uma página
+em `onframe.onblide.com` que direciona para a extensão, onde a pessoa entra ou
+cria a conta antes de aceitar o convite. A sessão resultante é vinculada ao
+workspace convidado.
+
 O callback deve estar registrado exatamente como
 `https://onframe.onblide.com/oauth/mercadolivre/callback` no aplicativo
 do Mercado Livre.
@@ -48,13 +61,22 @@ As telas da extensão usam:
 Essas operações exigem uma sessão de extensão vinculada e permissão de
 administração do workspace.
 
+Para chamadas `/v1/api/*`, o Worker aplica a mesma regra: um administrador
+enxerga as contas do workspace, enquanto um colaborador só pode operar contas
+atribuídas explicitamente.
+
 ## Segredos e armazenamento
 
-`MELI_CLIENT_ID` e `MELI_CLIENT_SECRET` são secrets do Worker.
-`MELI_TOKEN_CIPHER_KEY` é uma `secret_key` usada em AES-GCM para cifrar
-credenciais antes de gravá-las em `seller_credentials` no D1. Nenhum desses
+`MELI_CLIENT_ID`, `MELI_CLIENT_SECRET` e `MELI_TOKEN_CIPHER_KEY_BASE64` são
+secrets do Worker. A última é uma chave AES-GCM de 32 bytes codificada em
+Base64, importada em memória para cifrar credenciais antes de gravá-las em
+`seller_credentials` no D1. Nenhum desses
 valores, access token ou refresh token é devolvido para a extensão ou
 registrado em logs.
+
+Uma rotação da chave invalida a leitura das credenciais já cifradas. Depois de
+rotacioná-la, reconecte as contas Mercado Livre pelo painel do workspace; a
+nova autorização substitui a credencial anterior com a chave vigente.
 
 O refresh token é rotativo e de uso único. Antes de renová-lo, o Worker obtém
 um lock temporário por credencial no D1. A requisição que detém o lock grava o
