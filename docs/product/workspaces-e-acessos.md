@@ -33,3 +33,17 @@ Cada pessoa pode atualizar nome, imagem de perfil, senha e e-mail. Avatares
 aceitam PNG, JPEG e WebP ate 2 MB. O arquivo fica no bucket publico
 `onframe-avatars`; a gravacao ocorre exclusivamente pelo Worker com a chave
 de servico do Supabase.
+
+## Painel do workspace
+
+As opções da extensão organizam o painel em três destinos principais:
+
+- `Início` apresenta o contexto do workspace, as contas Mercado Livre
+  disponíveis, pendências reais de convite e a atividade recente. Sem contas,
+  mostra a próxima ação compatível com o papel da pessoa.
+- `Integrações` concentra as contas Mercado Livre conectadas ou atribuídas.
+  Administradores podem conectar, habilitar, desativar e remover contas.
+- `Configurações` agrupa a conta pessoal, o workspace e o aplicativo. A aba
+  `Conta` contém perfil, credenciais e sessões; `Workspace` é exclusiva de
+  administradores e reúne nome, pessoas, permissões e convites; `Aplicativo`
+  concentra a atualização da extensão.

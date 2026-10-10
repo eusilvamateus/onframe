@@ -29,7 +29,10 @@ Antes de alterar o Worker ou os scripts de bootstrap, leia
 Execute os comandos na raiz do repositório com Node.js 20 ou superior:
 
 - `npm test`: executa o executor de testes do Node.js.
-- `npm run test:all`: executa toda a suíte nomeada antes da entrega.
+- `npm run build:extension-ui`: compila popup e opções React, incluindo os
+  ativos locais do pacote `@onblide/ui`.
+- `npm run test:all`: compila as interfaces e executa toda a suíte nomeada
+  antes da entrega.
 - `npm run release:check`: valida versão, dependências, testes e pacote de lançamento.
 
 ## Estilo de Código e Convenções de Nomenclatura

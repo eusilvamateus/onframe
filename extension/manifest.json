@@ -41,10 +41,12 @@
       "resources": [
         "assets/*.svg",
         "fonts/*.ttf",
-        "vendor/phosphor/*"
+        "vendor/phosphor/*",
+        "ui/options/index.html"
       ],
       "matches": [
-        "https://*.mercadolivre.com.br/*"
+        "https://*.mercadolivre.com.br/*",
+        "https://onframe.onblide.com/*"
       ]
     }
   ],
