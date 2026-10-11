@@ -849,12 +849,18 @@ function OptionsApp() {
   const meta = settingsDetail || VIEW_META[view];
   const breadcrumbs = settingsDetail
     ? [
+      { label: 'Início', icon: 'house', href: '#inicio' },
       { label: 'Configurações', icon: 'gear-six', href: '#configuracoes' },
       { label: settingsTabLabels[settingsTab] },
       ...(settingsTab === 'account' && settingsPage === 'sessions' ? [{ label: 'Segurança e login', href: '#configuracoes-account-security' }] : []),
       { label: meta.title }
     ]
-    : undefined;
+    : view === 'home'
+      ? [{ label: 'Início', icon: 'house' }]
+      : [
+        { label: 'Início', icon: 'house', href: '#inicio' },
+        { label: meta.title }
+      ];
   const goBackFromSettingsDetail = settingsDetail
     ? () => {
       if (settingsTab === 'account' && settingsPage === 'sessions') {
@@ -866,13 +872,19 @@ function OptionsApp() {
     : undefined;
   const navigateBreadcrumb = (item) => {
     const targets = {
+      '#inicio': { view: 'home' },
       '#configuracoes': { tab: 'account', page: 'index' },
       '#configuracoes-account-security': { tab: 'account', page: 'security' }
     };
     const target = targets[item.href];
     if (target) {
+      if (target.view) {
+        setView(target.view);
+        return;
+      }
       setSettingsTab(target.tab);
       setSettingsPage(target.page);
+      setView('settings');
     }
   };
   const admin = workspace.role === 'admin';
@@ -913,12 +925,12 @@ function OptionsApp() {
       width={220}
     />
   ) : null;
-  const detailContext = settingsDetail ? (
+  const pageContext = (
     <div className="onframe-options-context-crumbs">
-      <Button kind="primary" size="sm" icon={<Ph n="caret-left" size={16} />} onClick={goBackFromSettingsDetail}>Voltar</Button>
+      {settingsDetail && <Button kind="primary" size="sm" icon={<Ph n="caret-left" size={16} />} onClick={goBackFromSettingsDetail}>Voltar</Button>}
       <Breadcrumbs items={breadcrumbs} size="sm" onNavigate={navigateBreadcrumb} />
     </div>
-  ) : undefined;
+  );
   const pageHeaderActions = workspaceControl || undefined;
 
   return (
@@ -940,14 +952,14 @@ function OptionsApp() {
         />
       </aside>
       <div className="onframe-options-column">
-        {settingsDetail && <div className="onframe-options-desktop-context">{detailContext}</div>}
+        <div className="onframe-options-desktop-context">{pageContext}</div>
         <div className="onframe-options-mobile-nav">
           <Navbar
             layout="context"
             size="sm"
             sticky
             onMenuToggle={() => setMobileNavigationOpen(true)}
-            crumbs={detailContext || <Breadcrumbs size="sm" items={[{ label: 'OnFrame', icon: 'squares-four' }, { label: meta.title }]} />}
+            crumbs={pageContext}
           />
         </div>
         <section className="onframe-options-main">
@@ -955,7 +967,7 @@ function OptionsApp() {
             <PageHeader
               meta={meta}
               actions={pageHeaderActions}
-              reserveContextSpace={Boolean(settingsDetail)}
+              reserveContextSpace
             />
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
