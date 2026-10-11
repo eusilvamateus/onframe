@@ -302,22 +302,26 @@ function ProfileSettings({ profile, loading, onSave, onAvatar }) {
   return (
     <section className="onframe-stack onframe-settings-form" aria-label="Dados pessoais">
       <SectionHeader title="Dados pessoais" copy="Defina como sua conta aparece no OnFrame." />
-      <div className="onframe-row">
-        <Avatar name={profile.user.name || profile.user.email} src={profile.user.avatarUrl} alt="" size={64} />
-        <FileUpload
-          variant="button"
-          multiple={false}
-          accept="image/png,image/jpeg,image/webp"
-          acceptLabel="PNG, JPEG ou WebP"
-          maxSize={2 * 1024 * 1024}
-          buttonLabel="Trocar imagem"
-          hint="PNG, JPEG ou WebP de até 2 MB"
-          disabled={loading}
-          upload={onAvatar}
-        />
+      <div className="onframe-profile-layout">
+        <div className="onframe-profile-media">
+          <Avatar name={profile.user.name || profile.user.email} src={profile.user.avatarUrl} alt="" size={128} />
+          <FileUpload
+            variant="button"
+            multiple={false}
+            accept="image/png,image/jpeg,image/webp"
+            acceptLabel="PNG, JPEG ou WebP"
+            maxSize={2 * 1024 * 1024}
+            buttonLabel="Atualizar foto"
+            disabled={loading}
+            upload={onAvatar}
+          />
+          <p className="onframe-muted">PNG, JPEG ou WebP. Até 2 MB.</p>
+        </div>
+        <div className="onframe-profile-fields">
+          <Input label="Nome" value={name} autoComplete="name" disabled={loading} onChange={(event) => setName(event.target.value)} />
+          <Input label="E-mail" value={profile.user.email || ''} disabled />
+        </div>
       </div>
-      <Input label="Nome" value={name} autoComplete="name" disabled={loading} onChange={(event) => setName(event.target.value)} />
-      <Input label="E-mail" value={profile.user.email || ''} disabled />
       <footer className="onframe-settings-action-bar" aria-label="Ações do perfil">
         <div className="onframe-settings-action-bar-content">
           <Divider decorative />

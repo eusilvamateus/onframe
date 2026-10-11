@@ -106,6 +106,13 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /ApplicationUpdatesSettings/);
   assert.doesNotMatch(options, /eyebrow: 'CONFIGURAÇÕES'/);
   assert.match(options, /FileUpload/);
+  assert.match(options, /className="onframe-profile-layout"/);
+  assert.match(options, /<Avatar name=\{profile\.user\.name \|\| profile\.user\.email\} src=\{profile\.user\.avatarUrl\} alt="" size=\{128\} \/>/);
+  assert.match(options, /buttonLabel="Atualizar foto"/);
+  assert.doesNotMatch(options, /buttonLabel="Trocar imagem"/);
+  assert.doesNotMatch(options, /hint="PNG, JPEG ou WebP de até 2 MB"/);
+  assert.match(optionsCss, /\.onframe-profile-layout\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(160px, 200px\) minmax\(0, 440px\);/);
+  assert.match(optionsCss, /\.onframe-profile-fields\s*\{[^}]*display: flex;[^}]*gap: var\(--ob-s-4\);/);
   assert.match(popup, /Switch/);
   assert.match(authPanel, /FieldShell/);
   assert.match(authPanel, /eye-closed/);
