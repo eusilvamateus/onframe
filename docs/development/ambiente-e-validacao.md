@@ -8,7 +8,7 @@ O produto não possui servidor Node local para iniciar ou diagnosticar.
 ## Pré-requisitos
 
 - Node.js 20 ou superior para testes, scripts de release e o projeto Worker.
-- Dependências instaladas a partir de `package-lock.json`.
+- Dependências instaladas a partir de `package-lock.json` na raiz e em `cloudflare/`.
 - PowerShell no Windows para validar scripts `.ps1`.
 - `/bin/sh` no macOS ou Linux para validar scripts `.sh`.
 
@@ -44,6 +44,9 @@ testes e empacotamento.
 - Mudanças em `scripts/bootstrap/` precisam considerar Windows e macOS,
   pois os arquivos são baixados por instalações existentes.
 - Mudanças de produto devem atualizar a fonte correspondente em `docs/`.
+- Testes de identidade executam as migrações PostgreSQL com PGlite e as
+  migrações D1 com Miniflare, sem acessar bancos remotos. Para a ativação,
+  consulte [Publicação da identidade](../operations/publicacao-identidade.md).
 
 ## Git e releases
 

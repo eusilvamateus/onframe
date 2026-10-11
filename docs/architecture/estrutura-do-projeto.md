@@ -30,13 +30,17 @@ Não há servidor local, token local ou fallback para `localhost`.
 
 - O Worker em `onframe.onblide.com` concentra usuários, workspaces, sessões de
   extensão, contas do Mercado Livre, operações e auditoria.
+- A identidade pertence exclusivamente ao Supabase Auth. O D1 mantém a
+  projeção do e-mail e referencia o UUID do provedor; nunca associa usuários
+  diferentes pelo e-mail. Consulte [Identidade e sessões](identidade-e-sessoes.md).
 - O D1 armazena dados de workspace e credenciais do Mercado Livre cifradas.
 - `POST /hooks/supabase/send-email` recebe exclusivamente webhooks assinados do
   Supabase Auth, renderiza os e-mails transacionais e os entrega pelo Resend.
   O segredo de assinatura, a chave do Resend e os OTPs não são armazenados no
   D1; somente o estado idempotente de entrega é registrado.
 - `POST /v1/extension-sessions/from-auth` valida o bearer emitido pelo
-  Supabase Auth e cria a sessão revogável da extensão. Nenhum código de
+  Supabase Auth e cria a sessão revogável da extensão vinculada à sessão do
+  provedor e à versão de segurança da identidade. Nenhum código de
   autenticação adicional é exibido para a pessoa.
 - `POST /v1/extension-auth-flows`, o callback público `/connect` e
   `GET /v1/extension-auth-flows/:token` concluem cadastro confirmado, link
@@ -98,8 +102,9 @@ parte do produto nem do pacote de instalação.
   A última contém exatamente 32 bytes em Base64 e é importada como chave
   AES-GCM somente em memória durante a execução.
 - `RESEND_API_KEY` e `SUPABASE_SEND_EMAIL_HOOK_SECRET` são secrets do Worker.
-  `SUPABASE_SERVICE_ROLE_KEY` é usado somente pelo Worker para gravar avatares
-  no bucket público `onframe-avatars`; não é enviado à extensão.
+  `SUPABASE_SERVICE_ROLE_KEY` é usado somente pelo Worker para consultar a RPC
+  restrita `onframe_identity_state` e gravar avatares no bucket público
+  `onframe-avatars`; não é enviado à extensão.
   O endpoint de e-mail é público somente para receber o webhook, cuja
   autenticidade é verificada pelo padrão Standard Webhooks antes de qualquer
   entrega. Cada envio também usa uma chave de idempotência determinística no
@@ -109,6 +114,10 @@ parte do produto nem do pacote de instalação.
   `onframe.onblide.com`; o segredo é injetado em `supabase config push` como
   `SUPABASE_TURNSTILE_SECRET`, nunca no Worker, na extensão ou no repositório.
 - A ausência ou expiração da sessão bloqueia contratos `/api/*` até novo login.
+- Mudanças confirmadas de senha/e-mail e remoção de MFA invalidam as sessões
+  operacionais anteriores. A verificação consulta o estado canônico a cada
+  requisição; uma falha do provedor bloqueia a operação com `503`, preservando
+  a sessão local para uma nova tentativa.
 
 ## Referências
 

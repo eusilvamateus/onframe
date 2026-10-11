@@ -3,6 +3,10 @@
 # administrados no Supabase até que as respectivas superfícies do OnFrame existam.
 project_id = "onframe"
 
+[auth.email]
+enable_confirmations = true
+double_confirm_changes = true
+
 # O segredo e configurado no ambiente de deploy; ele nunca e versionado.
 [auth.hook.send_email]
 enabled = true

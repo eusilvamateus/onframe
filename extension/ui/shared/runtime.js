@@ -20,6 +20,10 @@ export function sendRemoteMessage(action, payload = {}) {
 export function userError(error, fallback = 'Não foi possível concluir a ação.') {
   const code = String(error?.code || '');
   const messages = {
+    identity_conflict: 'Esta identidade não pôde ser vinculada. Entre em contato com a administração para revisar a conta.',
+    identity_session_invalid: 'Sua sessão foi encerrada após uma alteração de segurança. Entre novamente.',
+    identity_security_unconfigured: 'A verificação de segurança do acesso ainda não foi configurada.',
+    identity_security_unavailable: 'Não foi possível verificar seu acesso agora. Tente novamente em instantes.',
     workspace_admin_required: 'Esta ação exige uma pessoa administradora.',
     workspace_last_admin_required: 'O workspace precisa manter uma pessoa administradora.',
     avatar_storage_unconfigured: 'O envio de avatar ainda não foi configurado.',

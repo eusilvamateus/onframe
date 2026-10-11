@@ -172,6 +172,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const token = 'a'.repeat(43);
   const storage = {};
   const requests = [];
+  let identityUnavailable = false;
   let listener = null;
   const chrome = {
     runtime: {
@@ -192,6 +193,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
     fetch: async (url, options = {}) => {
       const request = { url, method: options.method || 'GET', headers: new Headers(options.headers || {}), body: options.body || '' };
       requests.push(request);
+      if (identityUnavailable && url.endsWith('/v1/identity/synchronize')) return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
       if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST') return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/extension-sessions/from-auth')) return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts')) return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
@@ -219,6 +221,13 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(storage.onframeRemoteAuthFlow, undefined);
   assert.equal(requests.find((request) => request.url.endsWith('/v1/extension-sessions/from-auth')).headers.get('authorization'), 'Bearer ' + 'a'.repeat(20));
 
+  const beforeSync = JSON.stringify(storage);
+  const synchronized = await send({ type: 'onframe:remote', action: 'identity-sync', accessToken: 'c'.repeat(20) });
+  assert.equal(synchronized.ok, true);
+  assert.equal(requests.at(-1).url.endsWith('/v1/identity/synchronize'), true);
+  assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + 'c'.repeat(20));
+  assert.equal(JSON.stringify(storage), beforeSync);
+
   const accounts = await send({ type: 'onframe:remote', action: 'accounts' });
   assert.equal(accounts.ok, true);
   assert.equal(accounts.body.accounts[0].user_id, '123');
@@ -238,6 +247,15 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(noSession.ok, false);
   assert.equal(noSession.status, 401);
   assert.equal(noSession.code, 'extension_session_unauthorized');
+
+  await send({ type: 'onframe:remote', action: 'authenticate', accessToken: 'a'.repeat(20) });
+  await send({ type: 'onframe:remote', action: 'auth-flow-start' });
+  identityUnavailable = true;
+  const changedPassword = await send({ type: 'onframe:remote', action: 'identity-sync', accessToken: 'c'.repeat(20), disconnect: true });
+  assert.equal(changedPassword.ok, false);
+  assert.equal(changedPassword.code, 'identity_security_unavailable');
+  assert.equal(storage.onframeRemoteSession, undefined);
+  assert.equal(storage.onframeRemoteAuthFlow, undefined);
 });
 
 test('Worker mantém as contas e o contrato remoto como única fronteira', () => {

@@ -8,6 +8,7 @@ import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, invita
 import { storageObjectUrl, storagePublicObjectPath, storageUploadFailureCode } from './avatar-storage';
 import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTokenValue, importAesGcmKeyBase64, type EncryptedValue } from './token-cipher';
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
+import { IdentitySecurityError, requireIdentitySession } from './identity-security';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -56,6 +57,9 @@ type ExtensionSessionActor = {
   workspaceRole: 'admin' | 'collaborator';
   label: string | null;
   expiresAt: number;
+  subject: string;
+  authSessionId: string;
+  identityVersion: number;
 };
 
 type MeliToken = {
@@ -312,12 +316,16 @@ async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Act
   const existingUsers = await env.ONFRAME_DB.prepare(`
     SELECT id
     FROM users
-    WHERE identity_subject = ? OR email = ?
+    WHERE identity_subject = ?
     ORDER BY created_at
     LIMIT 2
-  `).bind(identity.subject, identity.email).all<{ id: string }>();
+  `).bind(identity.subject).all<{ id: string }>();
   const knownIds = Array.from(new Set(existingUsers.results.map((user) => user.id)));
   if (knownIds.length > 1) throw new RequestError('identity_conflict', 409);
+  const emailConflict = await env.ONFRAME_DB.prepare(`
+    SELECT id FROM users WHERE email = ? AND (identity_subject IS NULL OR identity_subject <> ?)
+  `).bind(identity.email, identity.subject).first<{ id: string }>();
+  if (emailConflict) throw new RequestError('identity_conflict', 409);
 
   const userId = knownIds[0] || await stableId('usr', identity.subject);
   const existingWorkspace = await env.ONFRAME_DB.prepare(`
@@ -332,14 +340,16 @@ async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Act
 
   await env.ONFRAME_DB.batch([
     env.ONFRAME_DB.prepare(`
-      INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at, identity_version)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         identity_subject = excluded.identity_subject,
         email = excluded.email,
-        display_name = excluded.display_name,
-        updated_at = excluded.updated_at
-    `).bind(userId, identity.subject, identity.email, identity.name, timestamp, timestamp),
+        display_name = COALESCE(users.display_name, excluded.display_name),
+        updated_at = excluded.updated_at,
+        identity_version = excluded.identity_version
+      WHERE users.identity_version <= excluded.identity_version
+    `).bind(userId, identity.subject, identity.email, identity.name, timestamp, timestamp, identity.identityVersion),
     env.ONFRAME_DB.prepare(`
       INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
@@ -373,23 +383,27 @@ function newExtensionSession(): { createdAt: number; expiresAt: number; sessionI
 
 async function createExtensionSession(
   env: Env,
-  actor: Pick<Actor, 'userId' | 'workspaceId'>,
+  actor: Pick<Actor, 'userId' | 'workspaceId' | 'identityVersion' | 'authSessionId'>,
   label: string | null = 'Extensão OnFrame'
 ): Promise<{ expiresAt: number; sessionId: string; token: string }> {
   const session = newExtensionSession();
 
-  await env.ONFRAME_DB.prepare(`
-    INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+  const inserted = await env.ONFRAME_DB.prepare(`
+    INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at, identity_version, auth_session_id)
+    SELECT ?, ?, id, ?, ?, ?, ?, ?, ? FROM users WHERE id = ? AND identity_version = ?
   `).bind(
     session.sessionId,
     await sha256(session.token),
-    actor.userId,
     actor.workspaceId,
     label,
     session.expiresAt,
-    session.createdAt
+    session.createdAt,
+    actor.identityVersion,
+    actor.authSessionId,
+    actor.userId,
+    actor.identityVersion
   ).run();
+  if (inserted.meta.changes !== 1) throw new RequestError('identity_session_invalid', 401);
 
   return session;
 }
@@ -442,11 +456,11 @@ async function completeExtensionAuthFlow(
   const timestamp = now();
   const result = await env.ONFRAME_DB.prepare(`
     UPDATE extension_auth_flows
-    SET user_id = ?, workspace_id = ?, completed_at = ?
+    SET user_id = ?, workspace_id = ?, completed_at = ?, identity_version = ?, auth_session_id = ?
     WHERE token_hash = ?
       AND user_id IS NULL
       AND expires_at > ?
-  `).bind(actor.userId, actor.workspaceId, timestamp, await sha256(flowToken), timestamp).run();
+  `).bind(actor.userId, actor.workspaceId, timestamp, actor.identityVersion, actor.authSessionId, await sha256(flowToken), timestamp).run();
   if (result.meta.changes !== 1) throw new RequestError('auth_flow_unavailable', 409);
 
   console.log(JSON.stringify({
@@ -458,18 +472,22 @@ async function completeExtensionAuthFlow(
   return json({ completed: true });
 }
 
-async function consumeExtensionAuthFlow(env: Env, flowToken: string, requestId: string): Promise<Response> {
+async function consumeExtensionAuthFlow(env: RuntimeEnv, flowToken: string, requestId: string): Promise<Response> {
   const timestamp = now();
   const flow = await env.ONFRAME_DB.prepare(`
-    SELECT id, user_id, workspace_id, expires_at, claimed_at
-    FROM extension_auth_flows
-    WHERE token_hash = ?
+    SELECT extension_auth_flows.id, user_id, workspace_id, expires_at, claimed_at,
+      extension_auth_flows.identity_version, auth_session_id, users.identity_subject
+    FROM extension_auth_flows LEFT JOIN users ON users.id = extension_auth_flows.user_id
+    WHERE extension_auth_flows.token_hash = ?
   `).bind(await sha256(flowToken)).first<{
     id: string;
     user_id: string | null;
     workspace_id: string | null;
     expires_at: number;
     claimed_at: number | null;
+    identity_version: number | null;
+    auth_session_id: string | null;
+    identity_subject: string | null;
   }>();
 
   if (!flow || flow.claimed_at || flow.expires_at <= timestamp) {
@@ -478,30 +496,18 @@ async function consumeExtensionAuthFlow(env: Env, flowToken: string, requestId: 
   if (!flow.user_id || !flow.workspace_id) {
     return json({ status: 'pending', expiresAt: new Date(flow.expires_at).toISOString() });
   }
+  if (!flow.identity_subject || !flow.auth_session_id || !flow.identity_version) throw new RequestError('auth_flow_unavailable', 401);
+  await requireIdentitySession(env, flow.identity_subject, flow.auth_session_id, flow.identity_version);
 
-  const session = newExtensionSession();
-  const results = await env.ONFRAME_DB.batch([
-    env.ONFRAME_DB.prepare(`
-      UPDATE extension_auth_flows
-      SET claimed_at = ?
-      WHERE id = ? AND claimed_at IS NULL AND expires_at > ?
-    `).bind(timestamp, flow.id, timestamp),
-    env.ONFRAME_DB.prepare(`
-      INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      session.sessionId,
-      await sha256(session.token),
-      flow.user_id,
-      flow.workspace_id,
-      'Extensão OnFrame',
-      session.expiresAt,
-      session.createdAt
-    )
-  ]);
-  if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) {
-    throw new RequestError('auth_flow_unavailable', 409);
-  }
+  const claimed = await env.ONFRAME_DB.prepare(`
+    UPDATE extension_auth_flows SET claimed_at = ?
+    WHERE id = ? AND claimed_at IS NULL AND expires_at > ?
+  `).bind(timestamp, flow.id, timestamp).run();
+  if (claimed.meta.changes !== 1) throw new RequestError('auth_flow_unavailable', 409);
+  const session = await createExtensionSession(env, {
+    userId: flow.user_id, workspaceId: flow.workspace_id,
+    identityVersion: flow.identity_version, authSessionId: flow.auth_session_id
+  });
   console.log(JSON.stringify({
     event: 'extension_auth_flow_consumed',
     requestId,
@@ -520,7 +526,7 @@ function sessionToken(request: Request): string {
   return match[1];
 }
 
-async function authenticateExtensionSession(request: Request, env: Env): Promise<ExtensionSessionActor> {
+async function authenticateExtensionSession(request: Request, env: RuntimeEnv): Promise<ExtensionSessionActor> {
   const timestamp = now();
   const record = await env.ONFRAME_DB.prepare(`
     SELECT
@@ -529,6 +535,9 @@ async function authenticateExtensionSession(request: Request, env: Env): Promise
       extension_sessions.workspace_id,
       extension_sessions.label,
       extension_sessions.expires_at,
+      extension_sessions.identity_version,
+      extension_sessions.auth_session_id,
+      users.identity_subject,
       users.email,
       users.display_name,
       users.avatar_url,
@@ -548,6 +557,9 @@ async function authenticateExtensionSession(request: Request, env: Env): Promise
     workspace_id: string;
     label: string | null;
     expires_at: number;
+    identity_version: number | null;
+    auth_session_id: string | null;
+    identity_subject: string | null;
     email: string;
     display_name: string | null;
     avatar_url: string | null;
@@ -556,24 +568,30 @@ async function authenticateExtensionSession(request: Request, env: Env): Promise
   }>();
 
   if (!record) throw new RequestError('extension_session_unauthorized', 401);
+  if (!record.identity_subject || !record.auth_session_id || !record.identity_version) throw new RequestError('identity_session_invalid', 401);
+  const identity = await requireIdentitySession(env, record.identity_subject, record.auth_session_id, record.identity_version);
 
-  await env.ONFRAME_DB.prepare(`
+  const seen = await env.ONFRAME_DB.prepare(`
     UPDATE extension_sessions
     SET last_seen_at = ?
     WHERE id = ? AND revoked_at IS NULL
   `).bind(timestamp, record.session_id).run();
+  if (seen.meta.changes !== 1) throw new RequestError('identity_session_invalid', 401);
 
   return {
     sessionId: record.session_id,
     userId: record.user_id,
     workspaceId: record.workspace_id,
-    email: record.email,
+    email: identity.email,
     displayName: record.display_name || record.email,
     avatarUrl: record.avatar_url,
     workspaceName: record.workspace_name,
     workspaceRole: record.workspace_role,
     label: record.label,
-    expiresAt: record.expires_at
+    expiresAt: record.expires_at,
+    subject: identity.subject,
+    authSessionId: record.auth_session_id,
+    identityVersion: record.identity_version
   };
 }
 
@@ -1019,7 +1037,7 @@ async function activateWorkspace(env: RuntimeEnv, actor: ExtensionSessionActor, 
   `).bind(workspaceId, actor.userId).first<{ role: 'admin' | 'collaborator' }>();
   if (!membership) throw new RequestError('workspace_access_forbidden', 403);
 
-  const session = await createExtensionSession(env, { userId: actor.userId, workspaceId }, actor.label || 'Extensão OnFrame');
+  const session = await createExtensionSession(env, { ...actor, workspaceId }, actor.label || 'Extensão OnFrame');
   await env.ONFRAME_DB.prepare(`
     UPDATE extension_sessions SET revoked_at = ?
     WHERE id = ? AND revoked_at IS NULL
@@ -1345,7 +1363,7 @@ async function acceptWorkspaceInvitation(env: RuntimeEnv, actor: ExtensionSessio
       VALUES (?, ?, ?, ?) ON CONFLICT(seller_account_id, user_id) DO NOTHING
     `).bind(assignment.seller_account_id, actor.userId, timestamp, timestamp))
   ]);
-  const nextSession = await createExtensionSession(env, { userId: actor.userId, workspaceId: invitation.workspace_id }, actor.label || 'Extensão OnFrame');
+  const nextSession = await createExtensionSession(env, { ...actor, workspaceId: invitation.workspace_id }, actor.label || 'Extensão OnFrame');
   await env.ONFRAME_DB.prepare(`UPDATE extension_sessions SET revoked_at = ? WHERE id = ?`).bind(timestamp, actor.sessionId).run();
   return json(createdExtensionSessionPayload(nextSession), 201);
 }
@@ -1539,7 +1557,17 @@ export default {
       }
 
       if (request.method === 'POST' && url.pathname === '/v1/extension-sessions/from-auth') {
-        return createSessionFromSupabaseAuth(request, env, requestId);
+        return await createSessionFromSupabaseAuth(request, env, requestId);
+      }
+
+      if (request.method === 'POST' && url.pathname === '/v1/identity/synchronize') {
+        const identity = await authenticateSupabaseRequest(request, env, { synchronizeOnly: true });
+        const flow = url.searchParams.get('flow');
+        if (flow) {
+          await env.ONFRAME_DB.prepare('UPDATE extension_auth_flows SET expires_at = 0 WHERE token_hash = ? AND claimed_at IS NULL')
+            .bind(await sha256(parseExtensionAuthFlowToken(flow))).run();
+        }
+        return json({ synchronized: true, email: identity.email });
       }
 
       if (request.method === 'POST' && url.pathname === '/v1/extension-auth-flows') {
@@ -1552,11 +1580,11 @@ export default {
 
       const authFlowPath = /^\/v1\/extension-auth-flows\/([A-Za-z0-9_-]{43})$/u.exec(url.pathname);
       if (authFlowPath && request.method === 'POST') {
-        return completeExtensionAuthFlow(request, env, parseExtensionAuthFlowToken(authFlowPath[1]), requestId);
+        return await completeExtensionAuthFlow(request, env, parseExtensionAuthFlowToken(authFlowPath[1]), requestId);
       }
 
       if (authFlowPath && request.method === 'GET') {
-        return consumeExtensionAuthFlow(env, parseExtensionAuthFlowToken(authFlowPath[1]), requestId);
+        return await consumeExtensionAuthFlow(env, parseExtensionAuthFlowToken(authFlowPath[1]), requestId);
       }
 
       if (request.method === 'GET' && url.pathname === '/v1/app/session') {
@@ -1604,7 +1632,7 @@ export default {
       const workspaceActivation = /^\/v1\/app\/workspaces\/([^/]+)\/activate$/u.exec(url.pathname);
       if (workspaceActivation && request.method === 'POST') {
         const actor = await authenticateExtensionSession(request, env);
-        return activateWorkspace(env, actor, workspaceActivation[1]);
+        return await activateWorkspace(env, actor, workspaceActivation[1]);
       }
 
       if (url.pathname === '/v1/app/overview' && request.method === 'GET') {
@@ -1666,7 +1694,7 @@ export default {
       const invitationAcceptance = /^\/v1\/invitations\/accept\/([A-Za-z0-9_-]{43})$/u.exec(url.pathname);
       if (invitationAcceptance && request.method === 'POST') {
         const actor = await authenticateExtensionSession(request, env);
-        return acceptWorkspaceInvitation(env, actor, invitationAcceptance[1]);
+        return await acceptWorkspaceInvitation(env, actor, invitationAcceptance[1]);
       }
 
       if (url.pathname.startsWith('/v1/api/')) {
@@ -1731,7 +1759,7 @@ export default {
 
       return json({ error: 'not_found', requestId }, 404);
     } catch (error) {
-      if (error instanceof RequestError || error instanceof SupabaseAuthError) {
+      if (error instanceof RequestError || error instanceof SupabaseAuthError || error instanceof IdentitySecurityError) {
         return json({ error: error.code, requestId }, error.status);
       }
 

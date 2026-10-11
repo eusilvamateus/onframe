@@ -36,6 +36,7 @@ async function handleRemoteMessage(message) {
   const action = String(message.action || '');
   if (action === 'status') return getRemoteConnection();
   if (action === 'authenticate') return authenticateRemoteConnection(message.accessToken);
+  if (action === 'identity-sync') return synchronizeRemoteIdentity(message.accessToken, message.disconnect === true);
   if (action === 'auth-flow-start') return startExtensionAuthFlow();
   if (action === 'disconnect') return disconnectRemoteConnection();
   if (action === 'accounts') return listRemoteAccounts();
@@ -81,6 +82,22 @@ async function authenticateRemoteConnection(value) {
   } catch (error) {
     await removeRemoteSession();
     throw error;
+  }
+}
+
+async function synchronizeRemoteIdentity(value, disconnect = false) {
+  const accessToken = String(value || '').trim();
+  if (!SUPABASE_ACCESS_TOKEN_PATTERN.test(accessToken)) throw new Error('A sessão de acesso recebida é inválida.');
+  try {
+    // O token do provedor e temporario e nao substitui a sessao operacional.
+    return await requestRemote('/v1/identity/synchronize', {
+      method: 'POST', headers: { authorization: `Bearer ${accessToken}` }, body: '{}'
+    });
+  } finally {
+    if (disconnect) {
+      await removeRemoteSession();
+      await removePendingAuthFlow();
+    }
   }
 }
 

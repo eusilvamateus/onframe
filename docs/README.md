@@ -30,6 +30,13 @@ tenha uma fonte canonica.
 
 - [Estrutura do projeto](architecture/estrutura-do-projeto.md) - fronteiras da
   extensao, do Worker, dos scripts e dos testes.
+- [Identidade e sessoes](architecture/identidade-e-sessoes.md) - fontes de
+  verdade, sincronizacao e revogacao entre Supabase Auth e D1.
+
+## Operacoes
+
+- [Publicacao da identidade](operations/publicacao-identidade.md) - ordem de
+  migracoes, ativacao e verificacao da autoridade de identidade.
 
 ## Desenvolvimento
 

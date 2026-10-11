@@ -639,6 +639,10 @@ function OptionsApp() {
       }
     } catch (error) {
       setNotice({ tone: 'danger', message: userError(error) });
+      if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
+        setConnection({ connected: false, reason: 'unauthorized' });
+        setSecurity(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -671,6 +675,10 @@ function OptionsApp() {
       return result;
     } catch (error) {
       setNotice({ tone: 'danger', message: userError(error) });
+      if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
+        setConnection({ connected: false, reason: 'unauthorized' });
+        setSecurity(null);
+      }
       return null;
     } finally {
       setLoading(false);
@@ -807,7 +815,23 @@ function OptionsApp() {
         requestOptions.redirectTo = flow.redirectTo;
       }
       await RemoteAuth.request(config, 'user', payload, requestOptions);
-    }, security === 'password' ? 'Senha atualizada.' : 'Confira seu novo e-mail para concluir a alteração.');
+      if (security === 'password') {
+        let synchronized = true;
+        try {
+          await sendRemoteMessage('identity-sync', { accessToken: session.access_token, disconnect: true });
+        } catch {
+          synchronized = false;
+        }
+        setConnection({ connected: false });
+        setProfile(null);
+        setNotice({
+          tone: synchronized ? 'success' : 'warning',
+          message: synchronized
+            ? 'Senha atualizada. Entre novamente para continuar.'
+            : 'Senha atualizada. A sincronização de acesso está indisponível. Entre novamente quando o serviço retornar.'
+        });
+      }
+    }, security === 'email' ? 'Confirme a alteração no e-mail atual e no novo e-mail. Depois, entre novamente.' : undefined);
     if (result !== null) setSecurity(null);
   }
 

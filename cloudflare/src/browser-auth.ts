@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { loadIdentityState, synchronizeIdentity, validIdentityId, type IdentityRuntimeEnv } from './identity-security';
 
 export type SupabaseAuthRuntimeEnv = {
   SUPABASE_PUBLISHABLE_KEY?: string;
@@ -9,6 +10,8 @@ export type SupabaseIdentity = {
   email: string;
   name: string;
   subject: string;
+  authSessionId: string;
+  identityVersion: number;
 };
 
 export class SupabaseAuthError extends Error {
@@ -42,7 +45,7 @@ function client(env: SupabaseAuthRuntimeEnv) {
   );
 }
 
-function identityFromUser(value: unknown): SupabaseIdentity {
+function identityFromUser(value: unknown): Pick<SupabaseIdentity, 'subject' | 'email' | 'name'> {
   if (!value || typeof value !== 'object') throw new SupabaseAuthError('supabase_identity_invalid', 401);
   const user = value as {
     email?: unknown;
@@ -70,8 +73,26 @@ function bearerToken(request: Request): string {
   return match[1];
 }
 
-export async function authenticateSupabaseRequest(request: Request, env: SupabaseAuthRuntimeEnv): Promise<SupabaseIdentity> {
-  const { data, error } = await client(env).auth.getUser(bearerToken(request));
-  if (error || !data.user) throw new SupabaseAuthError('supabase_unauthorized', 401);
-  return identityFromUser(data.user);
+export async function authenticateSupabaseRequest(request: Request, env: SupabaseAuthRuntimeEnv & IdentityRuntimeEnv, options: { synchronizeOnly?: boolean } = {}): Promise<SupabaseIdentity> {
+  const token = bearerToken(request);
+  const { data, error } = await client(env).auth.getUser(token);
+  if (error || !data.user) {
+    if (error && (!error.status || error.status >= 500)) throw new SupabaseAuthError('identity_security_unavailable', 503);
+    throw new SupabaseAuthError('supabase_unauthorized', 401);
+  }
+  const identity = identityFromUser(data.user);
+  let authSessionId: unknown;
+  try {
+    // getUser acima valida o bearer; nunca confie em um JWT apenas decodificado.
+    const claims = JSON.parse(atob(token.split('.')[1].replace(/-/gu, '+').replace(/_/gu, '/')));
+    if (claims.sub !== identity.subject) throw new Error('subject_mismatch');
+    authSessionId = claims.session_id;
+  } catch {
+    throw new SupabaseAuthError('supabase_identity_invalid', 401);
+  }
+  if (!validIdentityId(authSessionId)) throw new SupabaseAuthError('supabase_identity_invalid', 401);
+  const state = await loadIdentityState(env, identity.subject, authSessionId);
+  if (state) await synchronizeIdentity(env, state);
+  if (!state || (!options.synchronizeOnly && !state.sessionActive) || state.email !== identity.email) throw new SupabaseAuthError('identity_session_invalid', 401);
+  return { ...identity, email: state.email, authSessionId, identityVersion: state.version };
 }

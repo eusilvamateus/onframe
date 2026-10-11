@@ -14,13 +14,14 @@
     "auth:templates:check": "node scripts/auth/generate-email-templates.js --check",
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
-    "test": "node --test && tsx --test cloudflare/test/auth-email-hook.test.ts cloudflare/test/avatar-storage.test.ts cloudflare/test/connect-page.test.ts cloudflare/test/token-cipher.test.ts",
-    "test:all": "npm run build:extension-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/remote-architecture.test.js && tsx --test cloudflare/test/auth-email-hook.test.ts cloudflare/test/avatar-storage.test.ts cloudflare/test/connect-page.test.ts cloudflare/test/token-cipher.test.ts"
+    "test": "node --test && tsx --test cloudflare/test/*.test.ts",
+    "test:all": "npm run build:extension-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/remote-architecture.test.js && tsx --test cloudflare/test/*.test.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "esbuild": "0.28.2",
     "tsx": "4.23.15"
   },
