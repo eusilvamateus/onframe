@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel, PasswordField } from '../shared/AuthPanel';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
@@ -293,7 +293,7 @@ function SettingsDirectory({ options, onNavigate }) {
   </List>;
 }
 
-function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar }) {
+function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, onOpenSecuritySettings }) {
   const savedName = profile?.user?.name || '';
   const [name, setName] = useState(savedName);
   const [avatarControlKey, setAvatarControlKey] = useState(0);
@@ -314,7 +314,7 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar })
         <FileUpload
           key={`${profile.user.avatarUrl || 'empty'}-${avatarControlKey}`}
           variant="image"
-          shape="circle"
+          shape="square"
           size={160}
           multiple={false}
           label="Foto do perfil"
@@ -333,11 +333,12 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar })
         />
         <div className="onframe-profile-fields">
           <Input label="Nome" value={name} autoComplete="name" disabled={loading} onChange={(event) => setName(event.target.value)} />
-          <div className="onframe-profile-access">
-            <p className="onframe-field-label">E-mail de acesso</p>
-            <p className="onframe-profile-access-value">{profile.user.email || ''}</p>
-            <p className="onframe-muted">Para alterar este e-mail, acesse Segurança e login.</p>
-          </div>
+          <Input
+            label="E-mail"
+            value={profile.user.email || ''}
+            disabled
+            hint={<><span>Para alterar este e-mail, acesse </span><Link href="#settings-account-security" onClick={(event) => { event.preventDefault(); onOpenSecuritySettings(); }}>Segurança e login</Link>.</>}
+          />
         </div>
       </div>
       <footer className="onframe-settings-action-bar" aria-label="Ações do perfil">
@@ -477,7 +478,7 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
           : <p className="onframe-empty">Nenhuma configuração encontrada.</p>)}
         {!normalizedQuery && <SettingsDirectory options={availableOptions} onNavigate={selectOption} />}
       </>}
-      {!isIndex && activeSection === 'account' && settingsPage === 'profile' && <ProfileSettings profile={profile} loading={loading} onSave={onSaveProfile} onAvatar={onAvatar} onRemoveAvatar={onRemoveAvatar} />}
+      {!isIndex && activeSection === 'account' && settingsPage === 'profile' && <ProfileSettings profile={profile} loading={loading} onSave={onSaveProfile} onAvatar={onAvatar} onRemoveAvatar={onRemoveAvatar} onOpenSecuritySettings={() => onSettingsPageChange('security')} />}
       {!isIndex && activeSection === 'account' && settingsPage === 'security' && <SecuritySettings profile={profile} loading={loading} onOpenSecurity={onOpenSecurity} onOpenSessions={() => onSettingsPageChange('sessions')} />}
       {!isIndex && activeSection === 'account' && settingsPage === 'sessions' && <SessionsSettings profile={profile} loading={loading} onRemoveSession={onRemoveSession} onDisconnect={onDisconnect} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
