@@ -59,7 +59,7 @@ button, input { font: inherit; }
 .onframe-options-column { position: relative; min-width: 0; }
 .onframe-options-desktop-context { position: absolute; top: var(--ob-s-2); left: var(--ob-s-5); display: flex; align-items: center; min-height: 48px; }
 .onframe-options-mobile-nav { display: none; }
-.onframe-options-main { min-width: 0; padding: var(--ob-s-6); background: var(--ob-surface); }
+.onframe-options-main { min-width: 0; padding: var(--ob-s-7) var(--ob-s-6) var(--ob-s-6); background: var(--ob-surface); }
 .onframe-options-content { width: min(100%, var(--ob-max-w-xl)); margin: 0 auto; display: flex; flex-direction: column; gap: var(--ob-s-5); }
 .onframe-options-content--root { gap: var(--ob-s-3); }
 .onframe-options-drawer-content { height: calc(100% + 40px); margin: -20px -24px; }

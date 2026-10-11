@@ -76,6 +76,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-settings-action-bar\s*\{\s*position: fixed;/);
   assert.match(optionsCss, /\.onframe-options-sidebar\s*\{[^}]*z-index: var\(--ob-z-raised\);/);
   assert.match(optionsCss, /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-s-2\);[^}]*left: var\(--ob-s-5\);/);
+  assert.match(optionsCss, /\.onframe-options-main\s*\{[^}]*padding: var\(--ob-s-7\) var\(--ob-s-6\) var\(--ob-s-6\);/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
   assert.match(options, /\{isIndex && <>/);
   assert.match(options, /SETTINGS_OPTIONS/);
