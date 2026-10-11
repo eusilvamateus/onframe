@@ -72,6 +72,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /setSettingsPage\('security'\)/);
   assert.match(options, />Voltar<\/Button>/);
   assert.match(options, /className="onframe-options-context-crumbs"/);
+  assert.match(options, /<Breadcrumbs items=\{breadcrumbs\} size="sm" maxItems=\{3\} onNavigate=\{navigateBreadcrumb\} \/>/);
   assert.match(options, /<Button kind="primary" size="sm" icon=\{<Ph n="caret-left" size=\{16\} \/>\}/);
   assert.match(options, /onNavigate={navigateBreadcrumb}/);
   assert.match(options, /reserveContextSpace/);
