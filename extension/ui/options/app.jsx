@@ -278,14 +278,14 @@ function settingsOptionItems(options, onNavigate, showCategory = false) {
 }
 
 function SettingsOptionList({ options, ariaLabel, onNavigate, showCategory = false }) {
-  return <List as="nav" ariaLabel={ariaLabel}>{settingsOptionItems(options, onNavigate, showCategory)}</List>;
+  return <List as="nav" dividers ariaLabel={ariaLabel}>{settingsOptionItems(options, onNavigate, showCategory)}</List>;
 }
 
 function SettingsDirectory({ options, onNavigate }) {
   const sections = SETTINGS_SECTIONS
     .map((section) => ({ ...section, options: options.filter((option) => option.tab === section.id) }))
     .filter((section) => section.options.length > 0);
-  return <List as="nav" ariaLabel="Configurações">
+  return <List as="nav" dividers ariaLabel="Configurações">
     {sections.flatMap((section) => [
       <ListSubheader key={`header-${section.id}`}>{section.label}</ListSubheader>,
       ...settingsOptionItems(section.options, onNavigate)

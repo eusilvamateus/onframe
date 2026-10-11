@@ -97,7 +97,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /ListSubheader/);
   assert.doesNotMatch(options, /<Tabs tabs=\{tabs\} active=\{activeTab\}/);
   assert.doesNotMatch(options, /<Card padding=\{0\}>\s*<List/);
-  assert.doesNotMatch(options, /<List[^>]*dividers[^>]*ariaLabel="(?:Configurações|Resultados da busca|Formas de entrar|Navegadores autorizados)"/);
+  assert.match(options, /<List as="nav" dividers ariaLabel=\{ariaLabel\}>/);
+  assert.match(options, /<List as="nav" dividers ariaLabel="Configurações">/);
+  assert.doesNotMatch(options, /<List[^>]*dividers[^>]*ariaLabel="(?:Formas de entrar|Navegadores autorizados)"/);
   assert.doesNotMatch(options, /trailing=\{<Ph n="caret-right" size=\{18\} \/>\}/);
   assert.doesNotMatch(options, /function (?:ProfileSettings|WorkspacePeople|WorkspaceGeneralSettings|ApplicationUpdatesSettings)[\s\S]{0,500}<Card/);
   assert.match(options, /List/);
