@@ -24,7 +24,6 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const popupHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'index.html'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
-  const optionsCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'index.html'), 'utf8');
   const authPanel = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'AuthPanel.jsx'), 'utf8');
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
@@ -65,13 +64,6 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /<Button kind="secondary" size="sm" icon=\{<Ph n="caret-left" size=\{16\} \/>\}/);
   assert.match(options, /onBreadcrumbNavigate/);
   assert.match(options, /SearchInput/);
-  assert.match(options, /ButtonGroup/);
-  assert.match(options, /Divider/);
-  assert.match(options, /onframe-settings-footer/);
-  assert.doesNotMatch(options, /function ActionBar/);
-  assert.match(optionsCss, /\.onframe-settings-footer\s*\{\s*position: sticky;/);
-  assert.match(options, /Salvar alterações/);
-  assert.match(options, /Descartar/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
   assert.match(options, /\{isIndex && <>/);
   assert.match(options, /SETTINGS_OPTIONS/);

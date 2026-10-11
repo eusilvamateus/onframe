@@ -26,19 +26,6 @@ button, input { font: inherit; }
 .onframe-row-between { justify-content: space-between; }
 .onframe-grow { flex: 1; min-width: 0; }
 .onframe-actions { display: flex; flex-wrap: wrap; gap: var(--ob-s-2); }
-.onframe-settings-footer {
-  position: sticky;
-  bottom: 0;
-  z-index: var(--ob-z-raised);
-  display: flex;
-  flex-direction: column;
-  gap: var(--ob-s-4);
-  padding: var(--ob-s-4) 0;
-  background: var(--ob-surface);
-}
-.onframe-settings-footer-content { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-3); }
-.onframe-settings-footer-status { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
-.onframe-settings-footer-actions { margin-left: auto; }
 .onframe-card-title { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-md); font-weight: var(--ob-w-semibold); line-height: var(--ob-lh-snug); }
 .onframe-card-copy { margin: 4px 0 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); line-height: var(--ob-lh-normal); }
 
@@ -78,9 +65,5 @@ button, input { font: inherit; }
 @media (max-width: 560px) {
   .onframe-options-main { padding: var(--ob-s-3); }
   .onframe-page-header { flex-direction: column; }
-  .onframe-settings-footer-content { align-items: stretch; flex-direction: column; }
-  .onframe-settings-footer-actions,
-  .onframe-settings-footer-actions > div { width: 100%; }
-  .onframe-settings-footer-actions button { flex: 1; }
   .onframe-popup { width: 100vw; }
 }

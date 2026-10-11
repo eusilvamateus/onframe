@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs, Tooltip } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, Card, Checkbox, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel, PasswordField } from '../shared/AuthPanel';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
@@ -312,11 +312,9 @@ function SettingsDirectory({ options, onNavigate }) {
 }
 
 function ProfileSettings({ profile, loading, onSave, onAvatar }) {
-  const savedName = profile?.user?.name || '';
-  const [name, setName] = useState(savedName);
-  useEffect(() => setName(savedName), [savedName]);
+  const [name, setName] = useState(profile?.user?.name || '');
+  useEffect(() => setName(profile?.user?.name || ''), [profile?.user?.name]);
   if (!profile) return null;
-  const changed = name !== savedName;
   return (
     <section className="onframe-stack" aria-label="Dados pessoais">
       <SectionHeader title="Dados pessoais" copy="Defina como sua conta aparece no OnFrame." />
@@ -336,18 +334,7 @@ function ProfileSettings({ profile, loading, onSave, onAvatar }) {
       </div>
       <Input label="Nome" value={name} autoComplete="name" disabled={loading} onChange={(event) => setName(event.target.value)} />
       <Input label="E-mail" value={profile.user.email || ''} disabled />
-      <footer className="onframe-settings-footer" aria-label="Ações do perfil">
-        <Divider decorative />
-        <div className="onframe-settings-footer-content">
-          {changed && <p className="onframe-settings-footer-status" role="status">Alterações não salvas</p>}
-          <div className="onframe-settings-footer-actions">
-            <ButtonGroup attached={false} justify="end" ariaLabel="Ações do perfil">
-              {changed && <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>Descartar</Button>}
-              <Button disabled={loading || !changed} onClick={() => void onSave(name)}>Salvar alterações</Button>
-            </ButtonGroup>
-          </div>
-        </div>
-      </footer>
+      <div className="onframe-actions"><Button disabled={loading} onClick={() => void onSave(name)}>Salvar alterações</Button></div>
     </section>
   );
 }
@@ -407,26 +394,15 @@ function SessionsSettings({ profile, loading, onRemoveSession, onDisconnect }) {
 }
 
 function WorkspaceGeneralSettings({ workspace, loading, onSaveWorkspace }) {
-  const savedName = workspace?.name || '';
-  const [name, setName] = useState(savedName);
-  useEffect(() => setName(savedName), [savedName]);
-  const changed = name !== savedName;
+  const [name, setName] = useState(workspace?.name || '');
+  useEffect(() => setName(workspace?.name || ''), [workspace?.name]);
   return (
     <section className="onframe-stack" aria-label="Informações gerais">
       <SectionHeader title="Informações gerais" />
-      <Input label="Nome" value={name} disabled={loading} maxLength={120} onChange={(event) => setName(event.target.value)} />
-      <footer className="onframe-settings-footer" aria-label="Ações do workspace">
-        <Divider decorative />
-        <div className="onframe-settings-footer-content">
-          {changed && <p className="onframe-settings-footer-status" role="status">Alterações não salvas</p>}
-          <div className="onframe-settings-footer-actions">
-            <ButtonGroup attached={false} justify="end" ariaLabel="Ações do workspace">
-              {changed && <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>Descartar</Button>}
-              <Button disabled={loading || !changed} onClick={() => void onSaveWorkspace(name)}>Salvar alterações</Button>
-            </ButtonGroup>
-          </div>
-        </div>
-      </footer>
+      <div className="onframe-row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div className="onframe-grow"><Input label="Nome" value={name} disabled={loading} maxLength={120} onChange={(event) => setName(event.target.value)} /></div>
+        <Button disabled={loading} onClick={() => onSaveWorkspace(name)}>Salvar nome</Button>
+      </div>
     </section>
   );
 }
