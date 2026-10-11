@@ -75,12 +75,15 @@ function activityLabel(operation) {
   }[operation] || 'Atividade no workspace';
 }
 
-function PageHeader({ meta, actions }) {
+function PageHeader({ meta, actions, reserveContextSpace = false }) {
   return (
     <header className="onframe-page-header">
-      <div>
-        {meta.eyebrow && <p className="onframe-eyebrow">{meta.eyebrow}</p>}
-        <h1 className="onframe-page-title">{meta.title}</h1>
+      <div className="onframe-stack" style={{ gap: 'var(--ob-s-1)' }}>
+        {reserveContextSpace && <div className="onframe-page-context-spacer" aria-hidden="true" />}
+        <div>
+          {meta.eyebrow && <p className="onframe-eyebrow">{meta.eyebrow}</p>}
+          <h1 className="onframe-page-title">{meta.title}</h1>
+        </div>
       </div>
       {actions && <div className="onframe-actions">{actions}</div>}
     </header>
@@ -921,10 +924,10 @@ function OptionsApp() {
       <Breadcrumbs items={breadcrumbs} size="sm" onNavigate={navigateBreadcrumb} />
     </div>
   ) : undefined;
-  const pageHeaderActions = workspaceControl || !settingsDetail ? <>
+  const pageHeaderActions = <>
     {workspaceControl}
-    {!settingsDetail && <Tooltip label="Atualizar dados" placement="bottom"><Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={() => void refreshView()} icon={<Ph n="arrow-clockwise" size={17} />} /></Tooltip>}
-  </> : undefined;
+    <Tooltip label="Atualizar dados" placement="bottom"><Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={() => void refreshView()} icon={<Ph n="arrow-clockwise" size={17} />} /></Tooltip>
+  </>;
 
   return (
     <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>
@@ -945,14 +948,7 @@ function OptionsApp() {
         />
       </aside>
       <div className="onframe-options-column">
-        {settingsDetail && <div className="onframe-options-desktop-context">
-          <Navbar
-            layout="context"
-            size="sm"
-            crumbs={detailContext}
-            actions={<Tooltip label="Atualizar dados" placement="bottom"><Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={() => void refreshView()} icon={<Ph n="arrow-clockwise" size={17} />} /></Tooltip>}
-          />
-        </div>}
+        {settingsDetail && <div className="onframe-options-desktop-context">{detailContext}</div>}
         <div className="onframe-options-mobile-nav">
           <Navbar
             layout="context"
@@ -967,6 +963,7 @@ function OptionsApp() {
             <PageHeader
               meta={meta}
               actions={pageHeaderActions}
+              reserveContextSpace={Boolean(settingsDetail)}
             />
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}

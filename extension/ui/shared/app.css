@@ -56,14 +56,14 @@ button, input { font: inherit; }
 .onframe-options { display: grid; min-height: 100vh; grid-template-columns: 240px minmax(0, 1fr); background: var(--ob-surface); transition: grid-template-columns var(--ob-dur-base) var(--ob-ease); }
 .onframe-options--collapsed { grid-template-columns: 72px minmax(0, 1fr); }
 .onframe-options-sidebar { min-width: 0; height: 100vh; position: sticky; top: 0; overflow: visible; background: var(--ob-surface); }
-.onframe-options-column { min-width: 0; }
-.onframe-options-desktop-context { display: block; }
+.onframe-options-column { position: relative; min-width: 0; }
+.onframe-options-desktop-context { position: absolute; z-index: var(--ob-z-raised); top: 0; left: 0; display: flex; align-items: center; min-height: 48px; padding: 0 var(--ob-s-3); }
 .onframe-options-mobile-nav { display: none; }
 .onframe-options-main { min-width: 0; padding: var(--ob-s-6); background: var(--ob-surface); }
-.onframe-options-desktop-context ~ .onframe-options-main { padding-top: var(--ob-s-3); }
 .onframe-options-content { width: min(100%, var(--ob-max-w-xl)); margin: 0 auto; display: flex; flex-direction: column; gap: var(--ob-s-5); }
 .onframe-options-drawer-content { height: calc(100% + 40px); margin: -20px -24px; }
 .onframe-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ob-s-4); }
+.onframe-page-context-spacer { height: 30px; }
 .onframe-options-context-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ob-s-2); min-width: 0; }
 .onframe-page-title { margin: 2px 0 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-2xl); font-weight: var(--ob-w-bold); line-height: var(--ob-lh-snug); }
 .onframe-list { display: flex; flex-direction: column; }
@@ -87,13 +87,12 @@ button, input { font: inherit; }
   .onframe-options-desktop-context { display: none; }
   .onframe-options-mobile-nav { display: block; }
   .onframe-options-main { padding: var(--ob-s-4); }
-  .onframe-options-desktop-context ~ .onframe-options-main { padding-top: var(--ob-s-4); }
+  .onframe-page-context-spacer { display: none; }
   .onframe-settings-action-bar { left: 0; padding: 0 var(--ob-s-4); }
 }
 
 @media (max-width: 560px) {
   .onframe-options-main { padding: var(--ob-s-3); }
-  .onframe-options-desktop-context ~ .onframe-options-main { padding-top: var(--ob-s-3); }
   .onframe-page-header { flex-direction: column; }
   .onframe-settings-action-bar { padding: 0 var(--ob-s-3); }
   .onframe-settings-action-bar-controls { align-items: stretch; flex-direction: column; }
