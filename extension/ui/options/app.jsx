@@ -75,35 +75,14 @@ function activityLabel(operation) {
   }[operation] || 'Atividade no workspace';
 }
 
-function PageHeader({ meta, breadcrumbs, onBack, onBreadcrumbNavigate, workspaces, activeWorkspaceId, onWorkspaceChange, onRefresh, loading }) {
-  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
-  const options = workspaces.map((workspace) => ({ label: workspace.name, id: workspace.id }));
+function PageHeader({ meta, actions }) {
   return (
     <header className="onframe-page-header">
-      <div className="onframe-stack" style={{ gap: 'var(--ob-s-1)' }}>
-        {(breadcrumbs || onBack) && <div className="onframe-page-context">
-          {onBack && <Button kind="secondary" size="sm" icon={<Ph n="caret-left" size={16} />} onClick={onBack}>Voltar</Button>}
-          {breadcrumbs && <Breadcrumbs items={breadcrumbs} size="sm" onNavigate={onBreadcrumbNavigate} />}
-        </div>}
-        <div>
-          {meta.eyebrow && <p className="onframe-eyebrow">{meta.eyebrow}</p>}
-          <h1 className="onframe-page-title">{meta.title}</h1>
-        </div>
+      <div>
+        {meta.eyebrow && <p className="onframe-eyebrow">{meta.eyebrow}</p>}
+        <h1 className="onframe-page-title">{meta.title}</h1>
       </div>
-      <div className="onframe-actions">
-        {options.length > 1 && (
-          <Select
-            label="Workspace ativo"
-            options={options}
-            value={activeWorkspace?.name || null}
-            onChange={(name) => onWorkspaceChange(workspaces.find((workspace) => workspace.name === name)?.id)}
-            width={220}
-          />
-        )}
-        <Tooltip label="Atualizar dados" placement="bottom">
-          <Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={onRefresh} icon={<Ph n="arrow-clockwise" size={17} />} />
-        </Tooltip>
-      </div>
+      {actions && <div className="onframe-actions">{actions}</div>}
     </header>
   );
 }
@@ -925,6 +904,27 @@ function OptionsApp() {
     setView('settings');
     setMobileNavigationOpen(false);
   };
+  const activeWorkspace = workspaces.find((item) => item.id === workspace.id);
+  const workspaceOptions = workspaces.map((item) => ({ label: item.name, id: item.id }));
+  const workspaceControl = workspaceOptions.length > 1 ? (
+    <Select
+      label="Workspace ativo"
+      options={workspaceOptions}
+      value={activeWorkspace?.name || null}
+      onChange={(name) => activateWorkspace(workspaces.find((item) => item.name === name)?.id)}
+      width={220}
+    />
+  ) : null;
+  const detailContext = settingsDetail ? (
+    <div className="onframe-options-context-crumbs">
+      <Button kind="secondary" size="sm" icon={<Ph n="caret-left" size={16} />} onClick={goBackFromSettingsDetail}>Voltar</Button>
+      <Breadcrumbs items={breadcrumbs} size="sm" onNavigate={navigateBreadcrumb} />
+    </div>
+  ) : undefined;
+  const pageHeaderActions = workspaceControl || !settingsDetail ? <>
+    {workspaceControl}
+    {!settingsDetail && <Tooltip label="Atualizar dados" placement="bottom"><Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={() => void refreshView()} icon={<Ph n="arrow-clockwise" size={17} />} /></Tooltip>}
+  </> : undefined;
 
   return (
     <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>
@@ -945,18 +945,29 @@ function OptionsApp() {
         />
       </aside>
       <div className="onframe-options-column">
+        {settingsDetail && <div className="onframe-options-desktop-context">
+          <Navbar
+            layout="context"
+            size="sm"
+            crumbs={detailContext}
+            actions={<Tooltip label="Atualizar dados" placement="bottom"><Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={() => void refreshView()} icon={<Ph n="arrow-clockwise" size={17} />} /></Tooltip>}
+          />
+        </div>}
         <div className="onframe-options-mobile-nav">
           <Navbar
             layout="context"
             size="sm"
             sticky
             onMenuToggle={() => setMobileNavigationOpen(true)}
-            crumbs={<Breadcrumbs size="sm" items={[{ label: 'OnFrame', icon: 'squares-four' }, { label: meta.title }]} />}
+            crumbs={detailContext || <Breadcrumbs size="sm" items={[{ label: 'OnFrame', icon: 'squares-four' }, { label: meta.title }]} />}
           />
         </div>
         <section className="onframe-options-main">
           <div className="onframe-options-content">
-            <PageHeader meta={meta} breadcrumbs={breadcrumbs} onBack={goBackFromSettingsDetail} onBreadcrumbNavigate={navigateBreadcrumb} workspaces={workspaces} activeWorkspaceId={workspace.id} onWorkspaceChange={activateWorkspace} onRefresh={() => void refreshView()} loading={loading} />
+            <PageHeader
+              meta={meta}
+              actions={pageHeaderActions}
+            />
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
