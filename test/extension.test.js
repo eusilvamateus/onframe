@@ -59,12 +59,14 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /layout="context"/);
   assert.match(options, /crumbs={detailContext \|\|/);
   assert.match(options, /const detailContext = settingsDetail/);
+  assert.match(options, /showTitle={Boolean\(settingsDetail\)}/);
+  assert.match(options, /onframe-options-content--root/);
   assert.match(options, /settingsDetail && <div className="onframe-options-desktop-context">\{detailContext\}<\/div>/);
   assert.doesNotMatch(options, /onframe-options-desktop-context">\s*<Navbar/);
   assert.match(options, /setSettingsPage\('security'\)/);
   assert.match(options, />Voltar<\/Button>/);
   assert.match(options, /className="onframe-options-context-crumbs"/);
-  assert.match(options, /<Button kind="secondary" size="sm" icon=\{<Ph n="caret-left" size=\{16\} \/>\}/);
+  assert.match(options, /<Button kind="primary" size="sm" icon=\{<Ph n="caret-left" size=\{16\} \/>\}/);
   assert.match(options, /onNavigate={navigateBreadcrumb}/);
   assert.match(options, /SearchInput/);
   assert.match(options, /ButtonGroup/);
@@ -72,7 +74,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /onframe-settings-action-bar/);
   assert.doesNotMatch(options, /function ActionBar/);
   assert.match(optionsCss, /\.onframe-settings-action-bar\s*\{\s*position: fixed;/);
-  assert.match(optionsCss, /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: calc\(var\(--ob-s-6\) \+ var\(--ob-s-3\)\);/);
+  assert.match(optionsCss, /\.onframe-options-sidebar\s*\{[^}]*z-index: var\(--ob-z-raised\);/);
+  assert.match(optionsCss, /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-s-2\);[^}]*left: var\(--ob-s-5\);/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
   assert.match(options, /\{isIndex && <>/);
   assert.match(options, /SETTINGS_OPTIONS/);
