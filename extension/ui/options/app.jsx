@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs, Tooltip } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel, PasswordField } from '../shared/AuthPanel';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
@@ -795,11 +795,6 @@ function OptionsApp() {
     });
   }
 
-  async function refreshView() {
-    await reload();
-    await loadView();
-  }
-
   if (connection === null && loading) {
     return (
       <main className="onframe-auth-page" aria-busy="true">
@@ -927,10 +922,7 @@ function OptionsApp() {
       <Breadcrumbs items={breadcrumbs} size="sm" onNavigate={navigateBreadcrumb} />
     </div>
   ) : undefined;
-  const pageHeaderActions = <>
-    {workspaceControl}
-    <Tooltip label="Atualizar dados" placement="bottom"><Button kind="secondary" aria-label="Atualizar dados" disabled={loading} onClick={() => void refreshView()} icon={<Ph n="arrow-clockwise" size={17} />} /></Tooltip>
-  </>;
+  const pageHeaderActions = workspaceControl || undefined;
 
   return (
     <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>

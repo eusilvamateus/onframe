@@ -61,6 +61,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /const detailContext = settingsDetail/);
   assert.match(options, /showTitle={Boolean\(settingsDetail\)}/);
   assert.match(options, /onframe-options-content--root/);
+  assert.doesNotMatch(options, /Atualizar dados/);
+  assert.doesNotMatch(options, /function refreshView/);
   assert.match(options, /settingsDetail && <div className="onframe-options-desktop-context">\{detailContext\}<\/div>/);
   assert.doesNotMatch(options, /onframe-options-desktop-context">\s*<Navbar/);
   assert.match(options, /setSettingsPage\('security'\)/);
