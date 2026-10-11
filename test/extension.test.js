@@ -28,7 +28,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const optionsHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'index.html'), 'utf8');
   const authPanel = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'AuthPanel.jsx'), 'utf8');
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
+  const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SecuritySettings'));
 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);
@@ -108,12 +110,16 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(options, /eyebrow: 'CONFIGURAÇÕES'/);
   assert.match(options, /FileUpload/);
   assert.match(options, /className="onframe-profile-layout"/);
-  assert.match(options, /<Avatar name=\{profile\.user\.name \|\| profile\.user\.email\} src=\{profile\.user\.avatarUrl\} alt="" size=\{128\} \/>/);
-  assert.match(options, /buttonLabel="Atualizar foto"/);
-  assert.doesNotMatch(options, /buttonLabel="Trocar imagem"/);
-  assert.doesNotMatch(options, /hint="PNG, JPEG ou WebP de até 2 MB"/);
-  assert.match(optionsCss, /\.onframe-profile-layout\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(160px, 200px\) minmax\(0, 440px\);/);
-  assert.match(optionsCss, /\.onframe-profile-fields\s*\{[^}]*display: flex;[^}]*gap: var\(--ob-s-4\);/);
+  assert.match(profileSettings, /variant="image"/);
+  assert.match(profileSettings, /shape="circle"/);
+  assert.match(profileSettings, /size=\{160\}/);
+  assert.match(profileSettings, /defaultFiles=\{avatarFiles\}/);
+  assert.match(profileSettings, /onRemoveAvatar\(\)/);
+  assert.match(options, /profile-avatar-remove/);
+  assert.match(profileSettings, /E-mail de acesso/);
+  assert.doesNotMatch(profileSettings, /<Input label="E-mail"/);
+  assert.match(optionsCss, /\.onframe-profile-layout\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(220px, 260px\) minmax\(0, 480px\);/);
+  assert.match(optionsCss, /\.onframe-profile-access\s*\{[^}]*display: flex;[^}]*flex-direction: column;/);
   assert.match(popup, /Switch/);
   assert.match(authPanel, /FieldShell/);
   assert.match(authPanel, /eye-closed/);
@@ -134,6 +140,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /workspace-activate/);
   assert.match(options, /invitation-create/);
   assert.match(options, /profile-avatar/);
+  assert.match(background, /profile-avatar-remove/);
   assert.match(options, /account-update/);
   assert.match(options, /account-remove/);
   assert.match(runtime, /onframe-updater:\/\/update/);

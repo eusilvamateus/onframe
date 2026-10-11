@@ -5,7 +5,7 @@ import {
   type SupabaseIdentity
 } from './browser-auth';
 import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, invitationPage, resultPage } from './connect-page';
-import { storageObjectUrl, storageUploadFailureCode } from './avatar-storage';
+import { storageObjectUrl, storagePublicObjectPath, storageUploadFailureCode } from './avatar-storage';
 import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTokenValue, importAesGcmKeyBase64, type EncryptedValue } from './token-cipher';
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 
@@ -1404,6 +1404,42 @@ async function updateProfileAvatar(request: Request, env: RuntimeEnv, actor: Ext
   return profilePayload(env, { ...actor, avatarUrl });
 }
 
+async function removeProfileAvatar(env: RuntimeEnv, actor: ExtensionSessionActor, requestId: string): Promise<Record<string, unknown>> {
+  const avatarUrl = actor.avatarUrl;
+  try {
+    await env.ONFRAME_DB.prepare(`UPDATE users SET avatar_url = NULL, updated_at = ? WHERE id = ?`).bind(now(), actor.userId).run();
+  } catch {
+    console.error(JSON.stringify({
+      event: 'avatar_profile_remove_failed',
+      requestId
+    }));
+    throw new RequestError('avatar_profile_remove_failed', 503);
+  }
+
+  const origin = typeof env.SUPABASE_URL === 'string' ? env.SUPABASE_URL.trim() : '';
+  const serviceKey = typeof env.SUPABASE_SERVICE_ROLE_KEY === 'string' ? env.SUPABASE_SERVICE_ROLE_KEY.trim() : '';
+  const path = avatarUrl && origin ? storagePublicObjectPath(origin, 'onframe-avatars', avatarUrl) : null;
+  if (path?.startsWith(`${actor.userId}/`) && serviceKey) {
+    try {
+      const removal = await fetch(storageObjectUrl(origin, 'onframe-avatars', path), {
+        method: 'DELETE',
+        headers: {
+          apikey: serviceKey,
+          authorization: `Bearer ${serviceKey}`
+        }
+      });
+      if (!removal.ok && removal.status !== 404) {
+        console.error(JSON.stringify({ event: 'avatar_storage_remove_failed', requestId, status: removal.status }));
+      }
+    } catch {
+      console.error(JSON.stringify({ event: 'avatar_storage_remove_failed', requestId, status: 'network_error' }));
+    }
+  }
+
+  await auditPlatformEvent(env, actor, 'profile_avatar_removed', 'user', actor.userId, 200);
+  return profilePayload(env, { ...actor, avatarUrl: null });
+}
+
 async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: string): Promise<Response> {
   const url = new URL(request.url);
 
@@ -1585,6 +1621,11 @@ export default {
       if (url.pathname === '/v1/profile/avatar' && request.method === 'POST') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await updateProfileAvatar(request, env, actor, requestId));
+      }
+
+      if (url.pathname === '/v1/profile/avatar' && request.method === 'DELETE') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await removeProfileAvatar(env, actor, requestId));
       }
 
       const sessionRemoval = /^\/v1\/profile\/sessions\/([^/]+)$/u.exec(url.pathname);

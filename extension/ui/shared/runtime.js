@@ -28,6 +28,7 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     avatar_storage_unavailable: 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.',
     avatar_upload_failed: 'Não foi possível enviar a imagem agora. Tente novamente.',
     avatar_profile_update_failed: 'A imagem foi recebida, mas não foi possível atualizar seu perfil. Tente novamente.',
+    avatar_profile_remove_failed: 'Não foi possível remover a imagem agora. Tente novamente.',
     avatar_too_large: 'Escolha uma imagem de até 2 MB.',
     invalid_avatar: 'Escolha uma imagem PNG, JPEG ou WebP válida.',
     workspace_invitation_delivery_failed: 'Não foi possível enviar o convite agora. Tente novamente.',

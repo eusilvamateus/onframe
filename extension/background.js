@@ -48,6 +48,7 @@ async function handleRemoteMessage(message) {
   if (action === 'profile') return requestPlatform('/v1/profile');
   if (action === 'profile-update') return requestPlatform('/v1/profile', { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
   if (action === 'profile-avatar') return requestPlatform('/v1/profile/avatar', { method: 'POST', body: JSON.stringify({ dataUrl: message.dataUrl }) });
+  if (action === 'profile-avatar-remove') return requestPlatform('/v1/profile/avatar', { method: 'DELETE' });
   if (action === 'profile-session-remove') return requestPlatform(`/v1/profile/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, { method: 'DELETE' });
   if (action === 'members') return requestPlatform('/v1/members');
   if (action === 'member-update') return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, { method: 'PATCH', body: JSON.stringify(message.payload || {}) });

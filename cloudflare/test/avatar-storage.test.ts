@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { storageObjectUrl, storageUploadFailureCode } from '../src/avatar-storage.ts';
+import { storageObjectUrl, storagePublicObjectPath, storageUploadFailureCode } from '../src/avatar-storage.ts';
 
 test('preserva a estrutura do caminho de objeto do Storage', () => {
   const url = storageObjectUrl(
@@ -11,6 +11,21 @@ test('preserva a estrutura do caminho de objeto do Storage', () => {
   assert.equal(
     url,
     'https://project.supabase.co/storage/v1/object/onframe-avatars/usr_abc/avatar%20file.jpg'
+  );
+});
+
+test('recupera somente o caminho de uma URL pública do bucket esperado', () => {
+  assert.equal(
+    storagePublicObjectPath(
+      'https://project.supabase.co/',
+      'onframe-avatars',
+      'https://project.supabase.co/storage/v1/object/public/onframe-avatars/usr_abc/avatar%20file.jpg'
+    ),
+    'usr_abc/avatar file.jpg'
+  );
+  assert.equal(
+    storagePublicObjectPath('https://project.supabase.co', 'onframe-avatars', 'https://outside.example/avatar.jpg'),
+    null
   );
 });
 

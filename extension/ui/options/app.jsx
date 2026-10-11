@@ -293,33 +293,51 @@ function SettingsDirectory({ options, onNavigate }) {
   </List>;
 }
 
-function ProfileSettings({ profile, loading, onSave, onAvatar }) {
+function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar }) {
   const savedName = profile?.user?.name || '';
   const [name, setName] = useState(savedName);
+  const [avatarControlKey, setAvatarControlKey] = useState(0);
   useEffect(() => setName(savedName), [savedName]);
   if (!profile) return null;
   const changed = name !== savedName;
+  const avatarFiles = profile.user.avatarUrl ? [{
+    id: 'profile-avatar',
+    name: 'Foto do perfil',
+    size: 0,
+    type: 'image/*',
+    url: profile.user.avatarUrl
+  }] : [];
   return (
     <section className="onframe-stack onframe-settings-form" aria-label="Dados pessoais">
       <SectionHeader title="Dados pessoais" copy="Defina como sua conta aparece no OnFrame." />
       <div className="onframe-profile-layout">
-        <div className="onframe-profile-media">
-          <Avatar name={profile.user.name || profile.user.email} src={profile.user.avatarUrl} alt="" size={128} />
-          <FileUpload
-            variant="button"
-            multiple={false}
-            accept="image/png,image/jpeg,image/webp"
-            acceptLabel="PNG, JPEG ou WebP"
-            maxSize={2 * 1024 * 1024}
-            buttonLabel="Atualizar foto"
-            disabled={loading}
-            upload={onAvatar}
-          />
-          <p className="onframe-muted">PNG, JPEG ou WebP. Até 2 MB.</p>
-        </div>
+        <FileUpload
+          key={`${profile.user.avatarUrl || 'empty'}-${avatarControlKey}`}
+          variant="image"
+          shape="circle"
+          size={160}
+          multiple={false}
+          label="Foto do perfil"
+          hint="PNG, JPEG ou WebP. Até 2 MB."
+          accept="image/png,image/jpeg,image/webp"
+          acceptLabel="PNG, JPEG ou WebP"
+          maxSize={2 * 1024 * 1024}
+          defaultFiles={avatarFiles}
+          disabled={loading}
+          upload={onAvatar}
+          onChange={(files) => {
+            if (files.length === 0 && profile.user.avatarUrl) {
+              void onRemoveAvatar().finally(() => setAvatarControlKey((current) => current + 1));
+            }
+          }}
+        />
         <div className="onframe-profile-fields">
           <Input label="Nome" value={name} autoComplete="name" disabled={loading} onChange={(event) => setName(event.target.value)} />
-          <Input label="E-mail" value={profile.user.email || ''} disabled />
+          <div className="onframe-profile-access">
+            <p className="onframe-field-label">E-mail de acesso</p>
+            <p className="onframe-profile-access-value">{profile.user.email || ''}</p>
+            <p className="onframe-muted">Para alterar este e-mail, acesse Segurança e login.</p>
+          </div>
         </div>
       </div>
       <footer className="onframe-settings-action-bar" aria-label="Ações do perfil">
@@ -437,7 +455,7 @@ function ApplicationUpdatesSettings() {
   );
 }
 
-function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onOpenSecurity, onRemoveSession, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke }) {
+function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onOpenSecurity, onRemoveSession, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke }) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter((option) => option.tab !== 'workspace' || admin);
   const isIndex = settingsPage === 'index';
@@ -459,7 +477,7 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
           : <p className="onframe-empty">Nenhuma configuração encontrada.</p>)}
         {!normalizedQuery && <SettingsDirectory options={availableOptions} onNavigate={selectOption} />}
       </>}
-      {!isIndex && activeSection === 'account' && settingsPage === 'profile' && <ProfileSettings profile={profile} loading={loading} onSave={onSaveProfile} onAvatar={onAvatar} />}
+      {!isIndex && activeSection === 'account' && settingsPage === 'profile' && <ProfileSettings profile={profile} loading={loading} onSave={onSaveProfile} onAvatar={onAvatar} onRemoveAvatar={onRemoveAvatar} />}
       {!isIndex && activeSection === 'account' && settingsPage === 'security' && <SecuritySettings profile={profile} loading={loading} onOpenSecurity={onOpenSecurity} onOpenSessions={() => onSettingsPageChange('sessions')} />}
       {!isIndex && activeSection === 'account' && settingsPage === 'sessions' && <SessionsSettings profile={profile} loading={loading} onRemoveSession={onRemoveSession} onDisconnect={onDisconnect} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
@@ -744,6 +762,15 @@ function OptionsApp() {
     }
   }
 
+  async function removeAvatar() {
+    return run(async () => {
+      const result = await sendRemoteMessage('profile-avatar-remove');
+      setProfile(result);
+      setConnection((current) => ({ ...current, user: { ...current.user, avatarUrl: result.user.avatarUrl } }));
+      return result;
+    }, 'Foto removida.');
+  }
+
   async function saveWorkspace(name) {
     await run(async () => {
       const result = await sendRemoteMessage('profile-update', { payload: { displayName: profile.user.name, workspaceName: name } });
@@ -976,7 +1003,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onOpenSecurity={setSecurity} onRemoveSession={(sessionId) => void removeSession(sessionId)} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} />}
+            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onOpenSecurity={setSecurity} onRemoveSession={(sessionId) => void removeSession(sessionId)} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} />}
           </div>
         </section>
       </div>

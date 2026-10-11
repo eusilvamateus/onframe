@@ -16,6 +16,18 @@ export function storageObjectUrl(origin: string, bucketId: string, objectPath: s
   return `${origin.replace(/\/+$/u, '')}/storage/v1/object/${route}${encodeURIComponent(bucketId)}/${encodedPath}`;
 }
 
+export function storagePublicObjectPath(origin: string, bucketId: string, publicUrl: string): string | null {
+  try {
+    const base = new URL(origin);
+    const object = new URL(publicUrl);
+    const prefix = `/storage/v1/object/public/${encodeURIComponent(bucketId)}/`;
+    if (object.origin !== base.origin || !object.pathname.startsWith(prefix)) return null;
+    return object.pathname.slice(prefix.length).split('/').map(decodeURIComponent).join('/');
+  } catch {
+    return null;
+  }
+}
+
 export function storageUploadFailureCode(status: number, payload: unknown): string {
   const detail = storageErrorText(payload);
   if (/bucket\s+not\s+found|not\s+found\s+bucket/u.test(detail) || status === 404) {
