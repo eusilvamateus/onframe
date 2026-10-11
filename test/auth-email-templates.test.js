@@ -51,7 +51,8 @@ test('somente os fluxos que exigem confirmação manual preservam o OTP', () => 
   const magicLink = fs.readFileSync(path.join(root, 'supabase', 'templates', 'magic-link.html'), 'utf8');
   const reauthentication = fs.readFileSync(path.join(root, 'supabase', 'templates', 'reauthentication.html'), 'utf8');
 
-  assert.doesNotMatch(magicLink, /\{\{ \.Token \}\}/);
+  assert.match(magicLink, /if eq \.RedirectTo "https:\/\/onframe\.onblide\.com\/connect\?verification=email"/);
+  assert.match(magicLink, /\{\{ \.Token \}\}/);
   assert.match(magicLink, /\{\{ \.ConfirmationURL \}\}/);
   assert.match(reauthentication, /\{\{ \.Token \}\}/);
   assert.doesNotMatch(reauthentication, /index \.Token|code-cell|code-gap/);

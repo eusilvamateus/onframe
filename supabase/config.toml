@@ -1,11 +1,24 @@
 # Configuração declarada e publicada pelo repositório para o projeto hospedado.
-# SMTP, provedores externos, MFA, URLs de redirecionamento e limites continuam
-# administrados no Supabase até que as respectivas superfícies do OnFrame existam.
+# TOTP e passkeys pertencem ao Supabase Auth; o RP e a origem HTTPS sao fixos.
+# SMTP, provedores externos e limites nao sao substituidos por esta configuracao.
 project_id = "onframe"
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.passkey]
+enabled = true
+
+[auth.webauthn]
+rp_display_name = "OnFrame"
+rp_id = "onframe.onblide.com"
+rp_origins = ["https://onframe.onblide.com"]
 
 [auth.email]
 enable_confirmations = true
 double_confirm_changes = true
+secure_password_change = true
 
 # O segredo e configurado no ambiente de deploy; ele nunca e versionado.
 [auth.hook.send_email]

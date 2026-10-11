@@ -9,6 +9,7 @@ import { storageObjectUrl, storagePublicObjectPath, storageUploadFailureCode } f
 import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTokenValue, importAesGcmKeyBase64, type EncryptedValue } from './token-cipher';
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 import { IdentitySecurityError, requireIdentitySession } from './identity-security';
+import { accountSecurity, revokeProviderSessions } from './account-security';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -616,14 +617,8 @@ function extensionSessionPayload(actor: ExtensionSessionActor): Record<string, u
   };
 }
 
-async function revokeExtensionSession(actor: ExtensionSessionActor, env: Env): Promise<void> {
-  const result = await env.ONFRAME_DB.prepare(`
-    UPDATE extension_sessions
-    SET revoked_at = ?
-    WHERE id = ? AND revoked_at IS NULL
-  `).bind(now(), actor.sessionId).run();
-
-  if (result.meta.changes !== 1) throw new RequestError('extension_session_unauthorized', 401);
+async function revokeExtensionSession(actor: ExtensionSessionActor, env: RuntimeEnv): Promise<void> {
+  await revokeProviderSessions(env, actor.subject, actor.authSessionId);
 }
 
 async function assertWorkspaceCanManageAccounts(actor: ExtensionSessionActor, env: RuntimeEnv): Promise<void> {
@@ -1121,12 +1116,10 @@ async function updateProfile(request: Request, env: RuntimeEnv, actor: Extension
 
 async function revokeOtherExtensionSession(env: RuntimeEnv, actor: ExtensionSessionActor, sessionId: string): Promise<void> {
   if (!sessionId || sessionId === actor.sessionId) throw new RequestError('invalid_session_revoke', 400);
-  const result = await env.ONFRAME_DB.prepare(`
-    UPDATE extension_sessions
-    SET revoked_at = ?
-    WHERE id = ? AND user_id = ? AND revoked_at IS NULL
-  `).bind(now(), sessionId, actor.userId).run();
-  if (result.meta.changes !== 1) throw new RequestError('extension_session_not_found', 404);
+  const session = await env.ONFRAME_DB.prepare(`SELECT auth_session_id FROM extension_sessions
+    WHERE id = ? AND user_id = ? AND revoked_at IS NULL`).bind(sessionId, actor.userId).first<{ auth_session_id: string }>();
+  if (!session || session.auth_session_id === actor.authSessionId) throw new RequestError('extension_session_not_found', 404);
+  await revokeProviderSessions(env, actor.subject, session.auth_session_id);
   await auditPlatformEvent(env, actor, 'extension_session_revoked', 'extension_session', sessionId, 200);
 }
 
@@ -1542,6 +1535,19 @@ export default {
         });
       }
 
+      if (request.method === 'GET' && (url.pathname === '/auth/passkeys' || url.pathname.startsWith('/security/'))) {
+        const target = new URL(request.url);
+        if (url.pathname === '/auth/passkeys') target.pathname = '/security/index.html';
+        const response = await env.ASSETS.fetch(new Request(target, request));
+        const headers = new Headers(response.headers);
+        headers.set('cache-control', 'no-store');
+        headers.set('referrer-policy', 'no-referrer');
+        headers.set('x-content-type-options', 'nosniff');
+        headers.set('permissions-policy', 'publickey-credentials-get=(self), publickey-credentials-create=(self)');
+        headers.set('content-security-policy', `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; frame-src 'self'; connect-src 'self' ${configuredRuntimeText(env.SUPABASE_URL, 'supabase_auth_unconfigured')}; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`);
+        return new Response(response.body, { status: response.status, headers });
+      }
+
       if (request.method === 'GET' && url.pathname === '/auth/challenge') {
         const siteKey = configuredRuntimeText(env.TURNSTILE_SITEKEY, 'turnstile_unconfigured');
         return html(captchaPage(siteKey), 200, {
@@ -1552,7 +1558,8 @@ export default {
       if (request.method === 'GET' && url.pathname === '/v1/auth/config') {
         return json({
           supabaseUrl: configuredRuntimeText(env.SUPABASE_URL, 'supabase_auth_unconfigured'),
-          supabasePublishableKey: configuredRuntimeText(env.SUPABASE_PUBLISHABLE_KEY, 'supabase_auth_unconfigured')
+          supabasePublishableKey: configuredRuntimeText(env.SUPABASE_PUBLISHABLE_KEY, 'supabase_auth_unconfigured'),
+          capabilities: { accountSecurity: 1 }
         });
       }
 
@@ -1638,6 +1645,26 @@ export default {
       if (url.pathname === '/v1/app/overview' && request.method === 'GET') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await workspaceOverview(env, actor));
+      }
+
+      if (url.pathname === '/v1/security' && request.method === 'GET') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await accountSecurity(env, actor.subject, actor.authSessionId));
+      }
+
+      if (url.pathname === '/v1/security/sessions' && request.method === 'DELETE') {
+        const actor = await authenticateExtensionSession(request, env);
+        await revokeProviderSessions(env, actor.subject, null);
+        await auditPlatformEvent(env, actor, 'all_sessions_revoked', 'user', actor.userId, 200);
+        return json({ revoked: true });
+      }
+
+      const securitySession = /^\/v1\/security\/sessions\/([^/]+)$/u.exec(url.pathname);
+      if (securitySession && request.method === 'DELETE') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (await revokeProviderSessions(env, actor.subject, securitySession[1]) === 0) throw new RequestError('extension_session_not_found', 404);
+        await auditPlatformEvent(env, actor, 'identity_session_revoked', 'session', securitySession[1], 200);
+        return json({ revoked: true });
       }
 
       if (url.pathname === '/v1/profile') {

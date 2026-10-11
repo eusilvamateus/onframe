@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, invitationPage, resultPage } from '../src/connect-page.ts';
+import worker from '../src/index.ts';
+
+test('configuracao publica informa o contrato de seguranca sem expor segredo', async () => {
+  const response = await worker.fetch(new Request('https://onframe.onblide.com/v1/auth/config'), {
+    SUPABASE_URL: 'https://project.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'public-test-key', SUPABASE_SERVICE_ROLE_KEY: 'server-only-secret'
+  } as Env);
+  const payload = await response.json() as { capabilities: { accountSecurity: number } };
+  assert.equal(response.status, 200);
+  assert.equal(payload.capabilities.accountSecurity, 1);
+  assert.doesNotMatch(JSON.stringify(payload), /server-only-secret/);
+});
 
 test('página pública conclui o fluxo iniciado pela extensão sem exibir código de pareamento', () => {
   const page = connectionPage({

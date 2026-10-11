@@ -118,6 +118,17 @@ test('renderiza magic link sem transformar o acesso em OTP', () => {
   assert.match(delivery.html, /auth\/v1\/verify\?token=token-hash-principal&amp;type=magiclink/);
 });
 
+test('verificacao de identidade recebe codigo sem alterar o login por magic link', () => {
+  const payload = event('magiclink');
+  payload.email_data.redirect_to = 'https://onframe.onblide.com/connect?verification=email';
+  const [delivery] = deliveriesForEvent(runtime(new FakeD1()), payload);
+  assert.equal(delivery.subject, 'Confirme seu e-mail no OnFrame');
+  assert.match(delivery.html, /class="code-cell"/);
+  assert.doesNotMatch(delivery.html, /auth\/v1\/verify/);
+  payload.email_data.redirect_to = 'https://example.com/connect?verification=email';
+  assert.equal(deliveriesForEvent(runtime(new FakeD1()), payload)[0].subject, 'Seu link de acesso');
+});
+
 test('aplica a superfície bordered do design system aos e-mails', () => {
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), event('magiclink'));
 

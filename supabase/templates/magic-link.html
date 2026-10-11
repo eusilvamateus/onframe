@@ -1,5 +1,11 @@
+{{ if eq .RedirectTo "https://onframe.onblide.com/connect?verification=email" }}
+<h2>Confirme seu e-mail no OnFrame</h2>
+<p>Informe este código na tela em que você iniciou a verificação: {{ .Token }}</p>
+<p>Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.</p>
+{{ else }}
 <h2>Seu link de acesso ao OnFrame</h2>
 <p>Use o link abaixo para entrar:</p>
 <p><a href="{{ .ConfirmationURL }}">Entrar no OnFrame</a></p>
 <p>O link expira em 15 minutos.</p>
-<p>Se você não pediu este código, ignore este e-mail.</p>
+<p>Se você não pediu este acesso, ignore este e-mail.</p>
+{{ end }}

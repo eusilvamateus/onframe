@@ -148,7 +148,7 @@ function Popup() {
                   ? 'Confira o link enviado para seu e-mail. Ao abrir esta janela novamente, o acesso será concluído.'
                   : 'Entre para conectar esta extensão ao seu workspace.'}
               </p>
-              <AuthPanel onConnected={load} onPending={() => setFeedback('Confira seu e-mail para concluir o acesso.')} />
+              <AuthPanel onConnected={load} onPending={(flow) => setFeedback(flow.kind === 'passkey' ? 'Continue na aba aberta para usar sua chave de acesso.' : 'Confira seu e-mail para concluir o acesso.')} />
             </>
           )}
 

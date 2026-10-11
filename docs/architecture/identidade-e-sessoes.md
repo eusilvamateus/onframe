@@ -41,7 +41,7 @@ Triggers transacionais no Supabase incrementam a versão quando ocorre:
 
 - troca efetiva de e-mail ou senha, inclusive recuperação e alteração administrativa;
 - alteração de bloqueio, exclusão lógica ou confirmação do e-mail;
-- remoção ou desativação de um fator MFA confirmado.
+- ativação, remoção ou desativação de um fator MFA confirmado.
 
 Uma solicitação de troca de e-mail ainda pendente não muda a identidade nem
 revoga as sessões. `double_confirm_changes` exige confirmação no endereço
@@ -76,11 +76,49 @@ Uma falha de rede, RPC ausente ou resposta inválida retorna `503`; não apaga
 uma sessão saudável nem permite executar a operação sem verificação.
 Uma identidade excluída, bloqueada ou com sessão inválida retorna `401`.
 
-Essas garantias não substituem a exigência de um segundo fator para mudar
-credenciais. A tela de alteração de senha ainda revalida a senha atual no
-Supabase. A exigência de MFA/OTP para toda alteração de senha precisa de um
-fluxo próprio e de enforcement no provedor; esta divisão de responsabilidades
-não deve ser anunciada como proteção contra alguém que já conhece a senha.
+## Segurança e login
+
+Senha e e-mail têm páginas próprias. A interface exige um OTP do e-mail atual
+antes de liberar os campos; se houver TOTP confirmado, também exige seu código.
+O OTP cria uma sessão temporária somente em memória. O hook diferencia esse
+e-mail do magic link pela URL exata `connect?verification=email`, apresentando
+o código sem um link que possa consumi-lo acidentalmente. Essa URL precisa
+estar permitida nos redirecionamentos do Supabase.
+
+**Limitação de segurança ainda aberta:** a etapa de e-mail obrigatória é
+aplicada pela interface, não por um bloqueio universal da API pública do Auth.
+`secure_password_change` dispensa o nonce quando a sessão tem menos de 24 horas.
+Quem conhece a senha ainda pode tentar a alteração diretamente no Supabase.
+Não anunciar esse fluxo como proteção completa contra essa ameaça nem publicar
+como concluída a exigência de e-mail em toda alteração de senha. Falta um
+mecanismo validado no provedor que bloqueie também essa chamada direta, sem
+implementar um segundo armazenamento/verificador de senhas no Worker.
+
+O 2FA usa TOTP nativo. A ativação só acontece após validar um código do novo
+autenticador; cancelamento remove o fator não confirmado. A remoção solicita
+o código do fator a remover. Ativação e remoção invalidam os acessos existentes.
+O login por senha, link e chave de acesso passa pelo desafio TOTP quando existe
+um fator confirmado. O Worker verifica o `aal` do JWT validado antes de criar
+acesso, e a RPC exige `aal2` na sessão canônica; esconder a tela não remove
+essa exigência.
+
+Chaves de acesso usam a API experimental do Supabase e o WebAuthn do navegador,
+no RP `onframe.onblide.com`. Cadastro, nomes e remoção são oferecidos em uma
+aba HTTPS do Worker, construída com o mesmo pacote do design system. A sessão
+temporária verificada é transferida no fragmento, nunca na query ou nos logs,
+e retirada do histórico assim que o script inicia. Tokens não ficam em
+localStorage. Esse fragmento é sensível e não deve ser copiado ou compartilhado.
+O login por chave reutiliza o fluxo de uso único da extensão.
+
+`GET /v1/security` lista sessões canônicas, fatores e nomes de chaves, sem
+segredos, IPs ou materiais criptográficos. Browser e sistema são derivados do
+user-agent com Bowser; não há inferência de modelo de computador ou localização.
+A última atividade combina os horários do provedor com o último acesso da
+extensão no D1. `DELETE /v1/security/sessions/:id` e a operação sem ID encerram,
+respectivamente, uma sessão do titular e todas as sessões, inclusive a atual.
+O provedor é revogado primeiro; depois são marcadas suas cópias no D1. A RPC
+de revogação é exclusiva de `service_role` e restringe a operação ao UUID
+obtido da sessão autenticada, nunca a um usuário informado pelo cliente.
 
 ## Schema legado e armazenamento
 

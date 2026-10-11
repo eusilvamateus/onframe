@@ -86,8 +86,12 @@ export async function authenticateSupabaseRequest(request: Request, env: Supabas
     // getUser acima valida o bearer; nunca confie em um JWT apenas decodificado.
     const claims = JSON.parse(atob(token.split('.')[1].replace(/-/gu, '+').replace(/_/gu, '/')));
     if (claims.sub !== identity.subject) throw new Error('subject_mismatch');
+    if (!options.synchronizeOnly && data.user.factors?.some((factor) => factor.status === 'verified') && claims.aal !== 'aal2') {
+      throw new SupabaseAuthError('mfa_required', 403);
+    }
     authSessionId = claims.session_id;
-  } catch {
+  } catch (error) {
+    if (error instanceof SupabaseAuthError) throw error;
     throw new SupabaseAuthError('supabase_identity_invalid', 401);
   }
   if (!validIdentityId(authSessionId)) throw new SupabaseAuthError('supabase_identity_invalid', 401);

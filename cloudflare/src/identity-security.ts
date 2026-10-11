@@ -19,7 +19,7 @@ export class IdentitySecurityError extends Error {
 }
 
 const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/iu;
-const REASONS = new Set(['email_changed', 'password_changed', 'identity_access_changed', 'mfa_factor_removed']);
+const REASONS = new Set(['email_changed', 'password_changed', 'identity_access_changed', 'mfa_factor_removed', 'mfa_factor_added']);
 
 export function validIdentityId(value: unknown): value is string {
   return typeof value === 'string' && UUID_PATTERN.test(value);

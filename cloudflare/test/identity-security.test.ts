@@ -6,6 +6,7 @@ import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
 import worker from '../src/index.ts';
 import { loadIdentityState, requireIdentitySession, synchronizeIdentity } from '../src/identity-security.ts';
+import { accountSecurity, deviceDescription, revokeProviderSessions } from '../src/account-security.ts';
 
 const subject = '11111111-1111-4111-8111-111111111111';
 const sessionId = '22222222-2222-4222-8222-222222222222';
@@ -23,8 +24,12 @@ const schema = `
     raw_user_meta_data jsonb default '{}', email_confirmed_at timestamptz,
     banned_until timestamptz, deleted_at timestamptz, new_email text
   );
-  create table auth.sessions (id uuid primary key, user_id uuid references auth.users(id) on delete cascade, created_at timestamptz default now(), not_after timestamptz);
-  create table auth.mfa_factors (id uuid primary key, user_id uuid references auth.users(id) on delete cascade, status text);
+  create table auth.sessions (id uuid primary key, user_id uuid references auth.users(id) on delete cascade, created_at timestamptz default now(), not_after timestamptz,
+    aal text default 'aal1', updated_at timestamptz, refreshed_at timestamp, user_agent text);
+  create table auth.mfa_factors (id uuid primary key, user_id uuid references auth.users(id) on delete cascade, status text,
+    friendly_name text, factor_type text default 'totp', created_at timestamptz default now());
+  create table auth.refresh_tokens (id bigint generated always as identity primary key, session_id uuid, revoked boolean default false, updated_at timestamptz);
+  create table auth.webauthn_credentials (id uuid primary key, user_id uuid references auth.users(id), friendly_name text, created_at timestamptz default now(), last_used_at timestamptz);
 `;
 
 async function postgres() {
@@ -43,6 +48,80 @@ async function identity(pg: PGlite, userId = subject, authSessionId = sessionId)
   const result = await pg.query<{ state: object | null }>('select public.onframe_identity_state($1, $2) as state', [userId, authSessionId]);
   return result.rows[0].state;
 }
+
+async function securitySchema(pg: PGlite) {
+  await pg.exec(await readFile(new URL('../../supabase/migrations/20261011191126_account_security.sql', import.meta.url), 'utf8'));
+}
+
+test('ativar 2FA invalida sessoes existentes e exige AAL2 no estado canonico', async () => {
+  const pg = await postgres();
+  try {
+    await securitySchema(pg);
+    await pg.query("insert into auth.mfa_factors (id, user_id, status) values ($1, $2, 'unverified')", [otherSessionId, subject]);
+    assert.equal((await identity(pg) as { sessionActive: boolean }).sessionActive, true);
+    await pg.query("update auth.mfa_factors set status = 'verified' where id = $1", [otherSessionId]);
+    assert.equal((await identity(pg) as { sessionActive: boolean }).sessionActive, false);
+    await pg.query('insert into auth.sessions (id, user_id, created_at) values ($1, $2, clock_timestamp())', [otherSessionId, subject]);
+    assert.equal((await identity(pg, subject, otherSessionId) as { sessionActive: boolean }).sessionActive, false);
+    await pg.query("update auth.sessions set aal = 'aal2' where id = $1", [otherSessionId]);
+    assert.equal((await identity(pg, subject, otherSessionId) as { sessionActive: boolean }).sessionActive, true);
+  } finally { await pg.close(); }
+});
+
+test('encerrar sessoes no provedor limita o escopo ao titular e revoga refresh tokens', async () => {
+  const pg = await postgres();
+  try {
+    await securitySchema(pg);
+    await pg.query("insert into auth.users (id, email, email_confirmed_at) values ($1, 'outra@example.com', now())", [otherSubject]);
+    await pg.query('insert into auth.sessions (id, user_id) values ($1, $2)', [otherSessionId, otherSubject]);
+    await pg.query('insert into auth.refresh_tokens (session_id) values ($1), ($2)', [sessionId, otherSessionId]);
+    await pg.exec('set role authenticated');
+    await assert.rejects(pg.query('select public.onframe_revoke_sessions($1, null)', [subject]), /permission denied/iu);
+    await assert.rejects(pg.query('select public.onframe_security_overview($1)', [subject]), /permission denied/iu);
+    await pg.exec('reset role; set role service_role');
+    const forbidden = await pg.query<{ count: number }>('select public.onframe_revoke_sessions($1, $2) as count', [subject, otherSessionId]);
+    assert.equal(forbidden.rows[0].count, 0);
+    const revoked = await pg.query<{ count: number }>('select public.onframe_revoke_sessions($1, null) as count', [subject]);
+    assert.equal(revoked.rows[0].count, 1);
+    assert.equal((await identity(pg) as { sessionActive: boolean }).sessionActive, false);
+    assert.equal((await identity(pg, otherSubject, otherSessionId) as { sessionActive: boolean }).sessionActive, true);
+    await pg.exec('reset role');
+    const tokens = await pg.query<{ session_id: string; revoked: boolean }>('select session_id, revoked from auth.refresh_tokens order by id');
+    assert.deepEqual(tokens.rows, [{ session_id: sessionId, revoked: true }, { session_id: otherSessionId, revoked: false }]);
+  } finally { await pg.close(); }
+});
+
+test('visao de seguranca nao expoe segredos nem dados de outra identidade', async () => {
+  const pg = await postgres();
+  try {
+    await securitySchema(pg);
+    await pg.query("update auth.sessions set user_agent = 'Browser UA' where id = $1", [sessionId]);
+    await pg.query("insert into auth.webauthn_credentials (id, user_id, friendly_name) values ($1, $2, 'Meu dispositivo')", [otherSessionId, subject]);
+    const result = await pg.query<{ data: { sessions: object[]; passkeys: object[]; factors: object[] } }>('select public.onframe_security_overview($1) as data', [subject]);
+    assert.equal(result.rows[0].data.sessions.length, 1);
+    assert.equal(result.rows[0].data.passkeys.length, 1);
+    assert.deepEqual(result.rows[0].data.factors, []);
+    assert.doesNotMatch(JSON.stringify(result.rows[0].data), /encrypted_password|secret|public_key|credential_id|ip|token/iu);
+  } finally { await pg.close(); }
+});
+
+test('dispositivos sao interpretados sem inventar modelo ou localizacao', () => {
+  assert.deepEqual(deviceDescription('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'), { browser: 'Chrome', operatingSystem: 'Windows', deviceType: 'computer' });
+  assert.equal(deviceDescription('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1').deviceType, 'mobile');
+  assert.equal(deviceDescription(null).browser, 'Navegador não identificado');
+});
+
+test('falha do provedor nunca retorna sucesso nem revoga apenas a copia D1', async () => {
+  const { simulator, db } = await d1();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(null, { status: 503 });
+  const env = { ONFRAME_DB: db, SUPABASE_URL: 'https://project.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'test-key' };
+  try {
+    await assert.rejects(revokeProviderSessions(env, subject, sessionId), { code: 'identity_security_unavailable' });
+    await assert.rejects(accountSecurity(env, subject, sessionId), { code: 'identity_security_unavailable' });
+    await assert.rejects(revokeProviderSessions(env, subject, 'invalid'), { code: 'invalid_session_revoke' });
+  } finally { globalThis.fetch = originalFetch; await simulator.dispose(); }
+});
 
 test('Supabase preserva o legado, retira seu acesso e limita a RPC ao servidor', async () => {
   const pg = await postgres();
@@ -138,10 +217,68 @@ test('migracao D1 encerra o acesso legado sem apagar perfil, workspace ou histor
   } finally { await simulator.dispose(); }
 });
 
-function bearer(userId = subject, authSessionId = sessionId) {
+function bearer(userId = subject, authSessionId = sessionId, aal = 'aal1') {
   const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
-  return `${encode({ alg: 'HS256' })}.${encode({ sub: userId, session_id: authSessionId, exp: 4102444800 })}.signature`;
+  return `${encode({ alg: 'HS256' })}.${encode({ sub: userId, session_id: authSessionId, aal, exp: 4102444800 })}.signature`;
 }
+
+test('Worker recusa JWT AAL1 com fator verificado mesmo quando a sessao canonica esta AAL2', async () => {
+  const { simulator, db } = await d1();
+  const originalFetch = globalThis.fetch;
+  const env = { ONFRAME_DB: db, SUPABASE_URL: 'https://project.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'test-key', SUPABASE_PUBLISHABLE_KEY: 'public-test-key' };
+  globalThis.fetch = async (input) => {
+    if (String(input) === rpc) return Response.json({ subject, email: 'pessoa@example.com', version: 1, reason: null, sessionActive: true });
+    if (String(input).endsWith('/auth/v1/user')) return Response.json({ id: subject, email: 'pessoa@example.com', factors: [{ id: otherSessionId, status: 'verified', factor_type: 'totp' }] });
+    throw new Error('unexpected-request');
+  };
+  try {
+    const request = (aal: string) => new Request('https://onframe.onblide.com/v1/extension-sessions/from-auth', { method: 'POST', headers: { authorization: `Bearer ${bearer(subject, sessionId, aal)}` } });
+    const rejected = await worker.fetch(request('aal1'), env as Env);
+    assert.equal(rejected.status, 403);
+    assert.equal((await rejected.json() as { error: string }).error, 'mfa_required');
+    assert.equal((await worker.fetch(request('aal2'), env as Env)).status, 201);
+  } finally { globalThis.fetch = originalFetch; await simulator.dispose(); }
+});
+
+test('rotas de seguranca preservam titularidade, identificam atividade e encerram sessoes no provedor', async () => {
+  const { simulator, db } = await d1();
+  const originalFetch = globalThis.fetch;
+  const env = { ONFRAME_DB: db, SUPABASE_URL: 'https://project.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'test-key', SUPABASE_PUBLISHABLE_KEY: 'public-test-key' };
+  const revocations: Array<{ p_user_id: string; p_session_id: string | null }> = [];
+  let active = true;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url === rpc) return Response.json({ subject, email: 'pessoa@example.com', version: 1, reason: null, sessionActive: active });
+    if (url.endsWith('/auth/v1/user')) return Response.json({ id: subject, email: 'pessoa@example.com' });
+    if (url.endsWith('/onframe_security_overview')) return Response.json({ factors: [], passkeys: [], sessions: [{ id: sessionId, createdAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-01-01T00:00:00Z', userAgent: null }] });
+    if (url.endsWith('/onframe_revoke_sessions')) {
+      const body = JSON.parse(String(init?.body));
+      revocations.push(body);
+      if (body.p_session_id === otherSessionId) return Response.json(0);
+      active = false;
+      return Response.json(1);
+    }
+    throw new Error('unexpected-request');
+  };
+  try {
+    const created = await worker.fetch(new Request('https://onframe.onblide.com/v1/extension-sessions/from-auth', { method: 'POST', headers: { authorization: `Bearer ${bearer()}` } }), env as Env);
+    assert.equal(created.status, 201);
+    const { token } = await created.json() as { token: string };
+    const request = (path: string, method = 'GET') => new Request(`https://onframe.onblide.com${path}`, { method, headers: { authorization: `Bearer ${token}` } });
+    const overview = await worker.fetch(request('/v1/security'), env as Env);
+    const data = await overview.json() as { sessions: Array<{ current: boolean; lastSeenAt: string; browser: string }> };
+    assert.equal(overview.status, 200);
+    assert.equal(data.sessions[0].current, true);
+    assert.ok(Date.parse(data.sessions[0].lastSeenAt) > Date.parse('2026-01-01T00:00:00Z'));
+    assert.equal(data.sessions[0].browser, 'Navegador não identificado');
+    assert.equal((await worker.fetch(request(`/v1/security/sessions/${otherSessionId}`, 'DELETE'), env as Env)).status, 404);
+    assert.equal((await worker.fetch(request('/v1/profile'), env as Env)).status, 200);
+    assert.equal((await worker.fetch(request('/v1/security/sessions', 'DELETE'), env as Env)).status, 200);
+    assert.deepEqual(revocations, [{ p_user_id: subject, p_session_id: otherSessionId }, { p_user_id: subject, p_session_id: null }]);
+    assert.equal((await worker.fetch(request('/v1/profile'), env as Env)).status, 401);
+    assert.ok((await db.prepare('select revoked_at from extension_sessions').first<{ revoked_at: number }>())?.revoked_at);
+  } finally { globalThis.fetch = originalFetch; await simulator.dispose(); }
+});
 
 test('Worker valida identidade canonica, revoga todas as sessoes antigas e preserva o nome do perfil', async () => {
   const { simulator, db } = await d1();

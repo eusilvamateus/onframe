@@ -8,7 +8,7 @@ export function sendRemoteMessage(action, payload = {}) {
       }
       if (!response || response.ok !== true) {
         const error = new Error(response?.error || 'Não foi possível acessar o OnFrame.');
-        error.code = response?.code || '';
+        error.code = response?.code || (response?.error === 'Ação remota inválida.' ? 'remote_action_unsupported' : '');
         reject(error);
         return;
       }
@@ -20,7 +20,11 @@ export function sendRemoteMessage(action, payload = {}) {
 export function userError(error, fallback = 'Não foi possível concluir a ação.') {
   const code = String(error?.code || '');
   const messages = {
+    remote_action_unsupported: 'A extensão ainda está usando um background antigo. Recarregue a extensão e reabra esta tela.',
+    security_backend_unavailable: 'Os novos recursos de segurança ainda não estão disponíveis no servidor conectado. Recarregar a extensão não atualiza o servidor.',
+    security_data_unavailable: 'Não foi possível carregar os dados de segurança. Tente novamente.',
     identity_conflict: 'Esta identidade não pôde ser vinculada. Entre em contato com a administração para revisar a conta.',
+    mfa_required: 'Confirme o código do aplicativo autenticador para entrar.',
     identity_session_invalid: 'Sua sessão foi encerrada após uma alteração de segurança. Entre novamente.',
     identity_security_unconfigured: 'A verificação de segurança do acesso ainda não foi configurada.',
     identity_security_unavailable: 'Não foi possível verificar seu acesso agora. Tente novamente em instantes.',

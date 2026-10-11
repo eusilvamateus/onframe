@@ -173,6 +173,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const storage = {};
   const requests = [];
   let identityUnavailable = false;
+  let securityMode = 'legacy';
   let listener = null;
   const chrome = {
     runtime: {
@@ -193,6 +194,12 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
     fetch: async (url, options = {}) => {
       const request = { url, method: options.method || 'GET', headers: new Headers(options.headers || {}), body: options.body || '' };
       requests.push(request);
+      if (url.endsWith('/v1/auth/config')) return Response.json(securityMode === 'legacy' ? {} : { capabilities: { accountSecurity: 1 } });
+      if (url.endsWith('/v1/security')) {
+        if (securityMode === 'missing-route') return Response.json({ error: 'not_found' }, { status: 404 });
+        if (securityMode === 'unavailable') return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
+        return Response.json(securityMode === 'malformed' ? {} : { sessions: [{ id: 'provider-session' }], factors: [], passkeys: [] });
+      }
       if (identityUnavailable && url.endsWith('/v1/identity/synchronize')) return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
       if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST') return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/extension-sessions/from-auth')) return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
@@ -220,6 +227,24 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(storage.onframeRemoteSession.token, token);
   assert.equal(storage.onframeRemoteAuthFlow, undefined);
   assert.equal(requests.find((request) => request.url.endsWith('/v1/extension-sessions/from-auth')).headers.get('authorization'), 'Bearer ' + 'a'.repeat(20));
+
+  const legacySecurity = await send({ type: 'onframe:remote', action: 'security' });
+  assert.equal(legacySecurity.code, 'security_backend_unavailable');
+  assert.equal(requests.some((request) => request.url.endsWith('/v1/security')), false);
+  assert.equal(storage.onframeRemoteSession.token, token);
+  securityMode = 'ready';
+  const security = await send({ type: 'onframe:remote', action: 'security' });
+  assert.equal(security.ok, true);
+  assert.equal(security.body.sessions[0].id, 'provider-session');
+  assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
+  for (const [mode, code] of [['missing-route', 'security_backend_unavailable'], ['unavailable', 'identity_security_unavailable'], ['malformed', 'security_data_unavailable']]) {
+    securityMode = mode;
+    const failedSecurity = await send({ type: 'onframe:remote', action: 'security' });
+    assert.equal(failedSecurity.ok, false);
+    assert.equal(failedSecurity.code, code);
+    assert.equal(failedSecurity.body, undefined);
+    assert.equal(storage.onframeRemoteSession.token, token);
+  }
 
   const beforeSync = JSON.stringify(storage);
   const synchronized = await send({ type: 'onframe:remote', action: 'identity-sync', accessToken: 'c'.repeat(20) });

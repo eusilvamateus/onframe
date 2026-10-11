@@ -1,4 +1,5 @@
 node_modules/
+cloudflare/public/security/
 dist/
 .tmp-worker-build-*/
 .esbuild/

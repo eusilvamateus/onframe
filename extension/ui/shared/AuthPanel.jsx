@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, FieldShell, Input, Ph, Tabs, Tooltip } from '@onblide/ui';
-import { sendRemoteMessage } from './runtime';
+import { openExternal, sendRemoteMessage } from './runtime';
+import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 
 const AUTH_MODES = {
   signin: { label: 'Entrar' },
@@ -56,6 +57,8 @@ export function AuthPanel({ onConnected, onPending }) {
   const [feedback, setFeedback] = useState(null);
   const [captcha, setCaptcha] = useState('');
   const [fields, setFields] = useState({ name: '', email: '', password: '', confirmation: '' });
+  const [secondFactor, setSecondFactor] = useState(null);
+  const [code, setCode] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -77,7 +80,7 @@ export function AuthPanel({ onConnected, onPending }) {
       () => setFeedback({ tone: 'danger', message: 'A confirmação de segurança está indisponível. Atualize a página e tente novamente.' })
     );
     return () => challengeInstance.current?.destroy();
-  }, [RemoteAuth, config, mode]);
+  }, [RemoteAuth, config, mode, Boolean(secondFactor)]);
 
   function update(name, value) {
     setFields((current) => ({ ...current, [name]: value }));
@@ -115,6 +118,19 @@ export function AuthPanel({ onConnected, onPending }) {
   async function submit(event) {
     event.preventDefault();
     if (busy || !config) return;
+    if (secondFactor) {
+      setBusy(true);
+      setFeedback(null);
+      try {
+        const session = await verifySecondFactor(secondFactor.client, secondFactor.id, code);
+        await authenticate(session.access_token);
+        setSecondFactor(null);
+        setCode('');
+      } catch {
+        setFeedback({ tone: 'danger', message: 'Código inválido ou expirado. Confira o aplicativo autenticador.' });
+      } finally { setBusy(false); }
+      return;
+    }
     const email = RemoteAuth.normalizeEmail(fields.email);
     if (mode === 'signup' && !fields.name.trim()) {
       setFeedback({ tone: 'warning', message: 'Informe seu nome para criar a conta.' });
@@ -143,6 +159,15 @@ export function AuthPanel({ onConnected, onPending }) {
           password: fields.password,
           gotrue_meta_security: { captcha_token: captcha }
         });
+        const client = await restoreProviderSession(config, session);
+        const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
+        if (factorError) throw factorError;
+        if (factors.totp.length > 0) {
+          setFields((current) => ({ ...current, password: '' }));
+          setSecondFactor({ client, id: factors.totp[0].id, factors: factors.totp });
+          setCode('');
+          return;
+        }
         await authenticate(session.access_token);
         return;
       }
@@ -203,6 +228,15 @@ export function AuthPanel({ onConnected, onPending }) {
 
   return (
     <div className="onframe-auth-panel">
+      {secondFactor ? <form className="onframe-auth-fields" onSubmit={submit}>
+        <h2 className="onframe-card-title">Verificação em duas etapas</h2>
+        {feedback && <Alert tone={feedback.tone}>{feedback.message}</Alert>}
+        <p className="onframe-help">Informe o código do seu aplicativo autenticador.</p>
+        {secondFactor.factors.length > 1 && <Tabs tabs={secondFactor.factors.map((factor, index) => ({ id: factor.id, label: factor.friendly_name || `Autenticador ${index + 1}` }))} active={secondFactor.id} onChange={(id) => setSecondFactor((current) => ({ ...current, id }))} size="sm" />}
+        <Input label="Código de verificação" value={code} inputMode="numeric" autoComplete="one-time-code" maxLength={6} disabled={busy} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))} />
+        <Button type="submit" disabled={busy || code.length !== 6}>Verificar e entrar</Button>
+        <Button kind="secondary" disabled={busy} onClick={() => { setSecondFactor(null); setCode(''); setFeedback(null); }}>Cancelar</Button>
+      </form> : <>
       {isPasswordFlow ? (
         <Tabs tabs={authenticationTabs} active={mode} onChange={changeMode} variant="pill" size="sm" />
       ) : (
@@ -232,11 +266,19 @@ export function AuthPanel({ onConnected, onPending }) {
 
         {mode === 'signin' && (
           <div className="onframe-auth-links">
+            {config?.capabilities?.accountSecurity && <Button kind="secondary" size="sm" disabled={busy} icon={<Ph n="key" size={16} />} onClick={() => {
+              setBusy(true); setFeedback(null);
+              void sendRemoteMessage('auth-flow-start').then((flow) => {
+                const url = new URL(flow.redirectTo); url.pathname = '/auth/passkeys';
+                openExternal(url.toString()); onPending?.({ ...flow, kind: 'passkey' });
+              }).catch(() => setFeedback({ tone: 'danger', message: 'Não foi possível iniciar o acesso com chave de acesso.' })).finally(() => setBusy(false));
+            }}>Entrar com chave de acesso</Button>}
             <Button kind="ghost" size="sm" disabled={busy} onClick={() => changeMode('magic')}>Entrar com link mágico</Button>
             <Button kind="ghost" size="sm" disabled={busy} onClick={() => changeMode('recovery')}>Esqueci minha senha</Button>
           </div>
         )}
       </form>
+      </>}
     </div>
   );
 }

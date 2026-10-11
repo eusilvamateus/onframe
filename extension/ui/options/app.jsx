@@ -3,7 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
 import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
 import '../shared/app.css';
-import { AuthPanel, PasswordField } from '../shared/AuthPanel';
+import { AuthPanel } from '../shared/AuthPanel';
+import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
+import { CredentialSettings } from './CredentialSettings';
+import { SecuritySettings } from './SecuritySettings';
+import { SectionHeader } from '../shared/SectionHeader';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
@@ -32,7 +36,11 @@ const SETTINGS_PAGE_META = {
   account: {
     profile: { title: 'Perfil', icon: 'user-circle' },
     security: { title: 'Segurança e login', icon: 'shield-check' },
-    sessions: { title: 'Sessões ativas', icon: 'browser' }
+    sessions: { title: 'Sessões ativas', icon: 'browser' },
+    mfa: { title: 'Verificação em duas etapas', icon: 'shield-check' },
+    passkeys: { title: 'Chaves de acesso', icon: 'key' },
+    password: { title: 'Alterar senha', icon: 'password' },
+    email: { title: 'Alterar e-mail', icon: 'envelope-simple' }
   },
   workspace: {
     general: { title: 'Geral', icon: 'buildings' },
@@ -87,19 +95,6 @@ function PageHeader({ meta, actions, reserveContextSpace = false }) {
       </div>
       {actions && <div className="onframe-actions">{actions}</div>}
     </header>
-  );
-}
-
-function SectionHeader({ eyebrow, title, copy, actions }) {
-  return (
-    <div className="onframe-row onframe-row-between" style={{ alignItems: 'flex-start' }}>
-      <div className="onframe-grow">
-        {eyebrow && <p className="onframe-eyebrow">{eyebrow}</p>}
-        <h2 className="onframe-card-title">{title}</h2>
-        {copy && <p className="onframe-card-copy">{copy}</p>}
-      </div>
-      {actions && <div className="onframe-actions">{actions}</div>}
-    </div>
   );
 }
 
@@ -359,56 +354,39 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
   );
 }
 
-function SecuritySettings({ profile, loading, onOpenSecurity, onOpenSessions }) {
-  if (!profile) return null;
-  const sessions = profile.sessions || [];
-  return (
-    <div className="onframe-stack">
-      <section className="onframe-stack" aria-label="Formas de entrar">
-        <SectionHeader title="Formas de entrar" copy="Controle as credenciais usadas para acessar sua conta." />
-        <List ariaLabel="Formas de entrar">
-          <ListItem leading={<Ph n="password" size={18} />} title="Senha" description="Altere a senha usada para entrar no OnFrame." trailing={<Button kind="secondary" size="sm" disabled={loading} onClick={() => onOpenSecurity('password')}>Alterar</Button>} />
-          <ListItem leading={<Ph n="envelope-simple" size={18} />} title="E-mail de acesso" description={profile.user.email} trailing={<Button kind="secondary" size="sm" disabled={loading} onClick={() => onOpenSecurity('email')}>Alterar</Button>} />
-        </List>
-      </section>
-      <section className="onframe-stack" aria-label="Sessões">
-        <SectionHeader title="Sessões ativas" copy="Revogue navegadores que não precisam mais acessar sua conta." />
-        <List as="nav" ariaLabel="Sessões ativas">
-          <ListItem
-            leading={<Ph n="browser" size={18} />}
-            title="Navegadores autorizados"
-            description={sessions.length === 1 ? '1 sessão ativa na sua conta.' : `${sessions.length} sessões ativas na sua conta.`}
-            meta={sessions.length}
-            href="#sessoes-ativas"
-            onClick={(event) => { event.preventDefault(); onOpenSessions(); }}
-          />
-        </List>
-      </section>
-    </div>
-  );
-}
-
-function SessionsSettings({ profile, loading, onRemoveSession, onDisconnect }) {
-  if (!profile) return null;
+function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemoveAllSessions }) {
+  const [confirmation, setConfirmation] = useState(null);
+  if (!securityOverview) return <p className="onframe-muted" role="status">{loading ? 'Carregando sessões...' : 'Os dados de sessões estão indisponíveis.'}</p>;
+  const sessions = securityOverview.sessions;
   return (
     <div className="onframe-stack">
       <section className="onframe-stack" aria-label="Navegadores autorizados">
-        <SectionHeader title="Navegadores autorizados" copy="Revogue os outros navegadores quando eles não forem mais necessários." />
-        <List ariaLabel="Navegadores autorizados">
-          {(profile.sessions || []).map((session) => (
+        <SectionHeader title="Dispositivos conectados" copy="Confira onde sua conta está conectada e encerre acessos que não reconhece." />
+        <List ariaLabel="Dispositivos conectados" dividers>
+          {sessions.map((session) => (
             <ListItem
               key={session.id}
-              leading={<Ph n="browser" size={18} />}
-              title={session.label}
-              description={session.lastSeenAt ? `Visto ${formatDate(session.lastSeenAt)}` : `Criado ${formatDate(session.createdAt)}`}
-              meta={session.current ? <Badge tone="blue">Atual</Badge> : undefined}
-              trailing={session.current
-                ? <Button kind="danger" size="sm" disabled={loading} onClick={onDisconnect}>Sair</Button>
-                : <Button kind="secondary" size="sm" disabled={loading} onClick={() => onRemoveSession(session.id)}>Revogar</Button>}
+              leading={<Ph n={session.deviceType === 'mobile' ? 'device-mobile' : session.deviceType === 'tablet' ? 'device-tablet' : 'desktop'} size={20} />}
+              title={session.browser}
+              strong
+              wrap
+              description={<>{session.operatingSystem}<br />Última atividade: {formatDate(session.lastSeenAt || session.createdAt)}<br />Conectado desde: {formatDate(session.createdAt)}</>}
+              meta={session.current ? <Badge tone="blue">Sessão atual</Badge> : undefined}
+              trailing={<Button kind="secondary" size="sm" disabled={loading} icon={<Ph n="sign-out" size={16} />} onClick={() => setConfirmation(session)}>Sair</Button>}
             />
           ))}
         </List>
+        {sessions.length === 0 && <p className="onframe-empty">Não há sessões ativas.</p>}
       </section>
+      <Divider decorative />
+      <SectionHeader title="Sair de todas as sessões" copy="Encerra os acessos em todos os dispositivos, incluindo este." actions={<Button kind="danger" disabled={loading} icon={<Ph n="sign-out" size={18} />} onClick={() => setConfirmation('all')}>Sair de todas as sessões</Button>} />
+      {confirmation && <div className="onframe-stack" role="region" aria-label="Confirmar encerramento">
+        <Alert tone="warning">{confirmation === 'all' ? 'Você precisará entrar novamente em todos os dispositivos.' : `Encerrar a sessão de ${confirmation.browser}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}</Alert>
+        <div className="onframe-actions"><Button kind="secondary" disabled={loading} onClick={() => setConfirmation(null)}>Cancelar</Button><Button kind="danger" disabled={loading} onClick={async () => {
+          const result = confirmation === 'all' ? await onRemoveAllSessions() : await onRemoveSession(confirmation);
+          if (result !== null) setConfirmation(null);
+        }}>Confirmar encerramento</Button></div>
+      </div>}
     </div>
   );
 }
@@ -456,7 +434,7 @@ function ApplicationUpdatesSettings() {
   );
 }
 
-function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onOpenSecurity, onRemoveSession, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke }) {
+function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, securityOverview, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onCredentialChanged, onRemoveSession, onRemoveAllSessions, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke }) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter((option) => option.tab !== 'workspace' || admin);
   const isIndex = settingsPage === 'index';
@@ -479,8 +457,12 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
         {!normalizedQuery && <SettingsDirectory options={availableOptions} onNavigate={selectOption} />}
       </>}
       {!isIndex && activeSection === 'account' && settingsPage === 'profile' && <ProfileSettings profile={profile} loading={loading} onSave={onSaveProfile} onAvatar={onAvatar} onRemoveAvatar={onRemoveAvatar} onOpenSecuritySettings={() => onSettingsPageChange('security')} />}
-      {!isIndex && activeSection === 'account' && settingsPage === 'security' && <SecuritySettings profile={profile} loading={loading} onOpenSecurity={onOpenSecurity} onOpenSessions={() => onSettingsPageChange('sessions')} />}
-      {!isIndex && activeSection === 'account' && settingsPage === 'sessions' && <SessionsSettings profile={profile} loading={loading} onRemoveSession={onRemoveSession} onDisconnect={onDisconnect} />}
+      {!isIndex && activeSection === 'account' && settingsPage === 'security' && <SecuritySettings profile={profile} securityOverview={securityOverview} loading={loading} onOpenSecurity={onSettingsPageChange} onOpenSessions={() => onSettingsPageChange('sessions')} onOpenMfa={() => onSettingsPageChange('mfa')} onOpenPasskeys={() => onSettingsPageChange('passkeys')} />}
+      {!isIndex && activeSection === 'account' && ['password', 'email', 'mfa', 'passkeys'].includes(settingsPage) && !securityOverview && <p className="onframe-muted" role="status">{loading ? 'Carregando segurança da conta...' : 'Os dados de segurança estão indisponíveis.'}</p>}
+      {!isIndex && activeSection === 'account' && ['password', 'email'].includes(settingsPage) && profile && securityOverview && <CredentialSettings key={settingsPage} kind={settingsPage} profile={profile} onChanged={onCredentialChanged} />}
+      {!isIndex && activeSection === 'account' && settingsPage === 'sessions' && <SessionsSettings securityOverview={securityOverview} loading={loading} onRemoveSession={onRemoveSession} onRemoveAllSessions={onRemoveAllSessions} />}
+      {!isIndex && activeSection === 'account' && settingsPage === 'mfa' && profile && securityOverview && <TwoFactorSettings profile={profile} securityOverview={securityOverview} onDisconnect={onDisconnect} />}
+      {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && <PasskeySettings profile={profile} securityOverview={securityOverview} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && <WorkspacePeopleSettings members={members} invitations={invitations} accounts={accounts} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
@@ -534,39 +516,11 @@ function MemberModal({ dialog, accounts, busy, onClose, onConfirm }) {
   );
 }
 
-function SecurityModal({ open, kind, email, busy, onClose, onConfirm }) {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [nextPassword, setNextPassword] = useState('');
-  const [confirmation, setConfirmation] = useState('');
-  const [nextEmail, setNextEmail] = useState('');
-  useEffect(() => {
-    setCurrentPassword('');
-    setNextPassword('');
-    setConfirmation('');
-    setNextEmail('');
-  }, [kind, open]);
-  if (!open) return null;
-  const changingPassword = kind === 'password';
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={changingPassword ? 'Alterar senha' : 'Alterar e-mail'}
-      footer={<><Button kind="secondary" disabled={busy} onClick={onClose}>Cancelar</Button><Button disabled={busy} onClick={() => onConfirm({ currentPassword, nextPassword, confirmation, nextEmail })}>Confirmar</Button></>}
-    >
-      <div className="onframe-stack">
-        <p className="onframe-muted">Confirme sua senha atual para continuar.</p>
-        <PasswordField label="Senha atual" value={currentPassword} onChange={setCurrentPassword} autoComplete="current-password" placeholder="Sua senha atual" disabled={busy} />
-        {changingPassword ? <><PasswordField label="Nova senha" value={nextPassword} onChange={setNextPassword} autoComplete="new-password" placeholder="Nova senha" disabled={busy} /><PasswordField label="Confirme a nova senha" value={confirmation} onChange={setConfirmation} autoComplete="new-password" placeholder="Repita a nova senha" disabled={busy} /></> : <Input label="Novo e-mail" type="email" value={nextEmail} autoComplete="email" placeholder={email} disabled={busy} onChange={(event) => setNextEmail(event.target.value)} />}
-      </div>
-    </Modal>
-  );
-}
-
 function OptionsApp() {
   const [connection, setConnection] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [securityOverview, setSecurityOverview] = useState(null);
   const [overview, setOverview] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
@@ -579,7 +533,6 @@ function OptionsApp() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
   const [dialog, setDialog] = useState(null);
-  const [security, setSecurity] = useState(null);
   const acceptingInvitation = useRef(false);
 
   const reload = useCallback(async () => {
@@ -590,6 +543,7 @@ function OptionsApp() {
       if (!nextConnection?.connected) {
         setWorkspaces([]);
         setProfile(null);
+        setSecurityOverview(null);
         setOverview(null);
         setAccounts([]);
         setMembers([]);
@@ -621,6 +575,7 @@ function OptionsApp() {
     const admin = connection.workspace?.role === 'admin';
     const needsData = view === 'home' || view === 'integrations' || (view === 'settings' && (settingsTab === 'account' || (settingsTab === 'workspace' && admin)));
     if (!needsData) return;
+    const needsSecurity = view === 'settings' && settingsTab === 'account' && ['security', 'sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage);
     setLoading(true);
     try {
       if (view === 'home') {
@@ -631,24 +586,35 @@ function OptionsApp() {
         setInvitations(invitationResult?.invitations || []);
       }
       if (view === 'integrations') await loadAccounts();
-      if (view === 'settings' && settingsTab === 'account') setProfile(await sendRemoteMessage('profile'));
+      if (view === 'settings' && settingsTab === 'account') {
+        const [nextProfile, nextSecurity] = await Promise.all([
+          sendRemoteMessage('profile'), needsSecurity ? sendRemoteMessage('security') : Promise.resolve(null)
+        ]);
+        setProfile(nextProfile);
+        if (needsSecurity) setSecurityOverview(nextSecurity);
+      }
       if (view === 'settings' && settingsTab === 'workspace' && admin) {
         const [memberResult, invitationResult] = await Promise.all([sendRemoteMessage('members'), sendRemoteMessage('invitations'), loadAccounts()]);
         setMembers(memberResult.members || []);
         setInvitations(invitationResult.invitations || []);
       }
     } catch (error) {
-      setNotice({ tone: 'danger', message: userError(error) });
+      if (needsSecurity) setSecurityOverview(null);
+      setNotice({ tone: error?.code === 'security_backend_unavailable' ? 'info' : 'danger', message: userError(error) });
       if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
         setConnection({ connected: false, reason: 'unauthorized' });
-        setSecurity(null);
       }
     } finally {
       setLoading(false);
     }
-  }, [connection?.connected, connection?.workspace?.id, connection?.workspace?.role, loadAccounts, settingsTab, view]);
+  }, [connection?.connected, connection?.workspace?.id, connection?.workspace?.role, loadAccounts, settingsTab, settingsPage, view]);
 
   useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    const refreshOnFocus = () => { void reload().then(loadView); };
+    window.addEventListener('focus', refreshOnFocus);
+    return () => window.removeEventListener('focus', refreshOnFocus);
+  }, [reload, loadView]);
   useEffect(() => { void loadView(); }, [loadView]);
   useEffect(() => {
     if (!connection?.connected || acceptingInvitation.current) return;
@@ -677,7 +643,6 @@ function OptionsApp() {
       setNotice({ tone: 'danger', message: userError(error) });
       if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
         setConnection({ connected: false, reason: 'unauthorized' });
-        setSecurity(null);
       }
       return null;
     } finally {
@@ -788,57 +753,22 @@ function OptionsApp() {
     }, 'Nome do workspace salvo.');
   }
 
-  async function submitSecurity(values) {
-    if (!values.currentPassword) {
-      setNotice({ tone: 'warning', message: 'Informe sua senha atual.' });
-      return;
-    }
-    if (security === 'password' && (!values.nextPassword || values.nextPassword !== values.confirmation)) {
-      setNotice({ tone: 'warning', message: 'As novas senhas não coincidem.' });
-      return;
-    }
-    if (security === 'email' && !values.nextEmail) {
-      setNotice({ tone: 'warning', message: 'Informe o novo e-mail.' });
-      return;
-    }
-    const result = await run(async () => {
-      const RemoteAuth = window.OnFrameRemoteAuth;
-      const config = await RemoteAuth.loadConfig();
-      const session = await RemoteAuth.request(config, 'token?grant_type=password', {
-        email: profile.user.email,
-        password: values.currentPassword
-      });
-      const requestOptions = { method: 'PUT', accessToken: session.access_token };
-      const payload = security === 'password' ? { password: values.nextPassword } : { email: values.nextEmail };
-      if (security === 'email') {
-        const flow = await sendRemoteMessage('auth-flow-start');
-        requestOptions.redirectTo = flow.redirectTo;
-      }
-      await RemoteAuth.request(config, 'user', payload, requestOptions);
-      if (security === 'password') {
-        let synchronized = true;
-        try {
-          await sendRemoteMessage('identity-sync', { accessToken: session.access_token, disconnect: true });
-        } catch {
-          synchronized = false;
-        }
-        setConnection({ connected: false });
-        setProfile(null);
-        setNotice({
-          tone: synchronized ? 'success' : 'warning',
-          message: synchronized
-            ? 'Senha atualizada. Entre novamente para continuar.'
-            : 'Senha atualizada. A sincronização de acesso está indisponível. Entre novamente quando o serviço retornar.'
-        });
-      }
-    }, security === 'email' ? 'Confirme a alteração no e-mail atual e no novo e-mail. Depois, entre novamente.' : undefined);
-    if (result !== null) setSecurity(null);
+  async function removeSession(session) {
+    return run(async () => {
+      await sendRemoteMessage('security-session-remove', { sessionId: session.id });
+      if (session.current) await disconnect();
+      else setSecurityOverview(await sendRemoteMessage('security'));
+      return true;
+    }, 'Sessão encerrada.');
   }
 
-  async function removeSession(sessionId) {
-    await run(async () => {
-      setProfile(await sendRemoteMessage('profile-session-remove', { sessionId }));
-    }, 'Sessão revogada.');
+  async function removeAllSessions() {
+    return run(async () => {
+      await sendRemoteMessage('security-sessions-remove-all');
+      await reload();
+      setSecurityOverview(null);
+      return true;
+    }, 'Todas as sessões foram encerradas.');
   }
 
   async function disconnect() {
@@ -887,7 +817,7 @@ function OptionsApp() {
               </div>
               {connection?.reason === 'auth_pending' && <Alert tone="info">Confira o link enviado para seu e-mail. Ao voltar à extensão, o acesso será concluído.</Alert>}
               {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
-              <AuthPanel onConnected={reload} onPending={() => setNotice({ tone: 'info', message: 'Confira seu e-mail para concluir o acesso.' })} />
+              <AuthPanel onConnected={reload} onPending={(flow) => setNotice({ tone: 'info', message: flow.kind === 'passkey' ? 'Continue na aba aberta para usar sua chave de acesso.' : 'Confira seu e-mail para concluir o acesso.' })} />
             </div>
           </Card>
         </div>
@@ -908,7 +838,7 @@ function OptionsApp() {
       { label: 'Início', icon: 'house', href: '#inicio' },
       { label: 'Configurações', icon: 'gear-six', href: '#configuracoes' },
       { label: settingsTabLabels[settingsTab] },
-      ...(settingsTab === 'account' && settingsPage === 'sessions' ? [{ label: 'Segurança e login', href: '#configuracoes-account-security' }] : []),
+      ...(settingsTab === 'account' && ['sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage) ? [{ label: 'Segurança e login', href: '#configuracoes-account-security' }] : []),
       { label: meta.title }
     ]
     : view === 'home'
@@ -919,7 +849,7 @@ function OptionsApp() {
       ];
   const goBackFromSettingsDetail = settingsDetail
     ? () => {
-      if (settingsTab === 'account' && settingsPage === 'sessions') {
+      if (settingsTab === 'account' && ['sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage)) {
         setSettingsPage('security');
         return;
       }
@@ -1028,7 +958,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onOpenSecurity={setSecurity} onRemoveSession={(sessionId) => void removeSession(sessionId)} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} />}
+            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} />}
           </div>
         </section>
       </div>
@@ -1051,7 +981,6 @@ function OptionsApp() {
       </Drawer>
 
       <MemberModal dialog={dialog} accounts={accounts} busy={loading} onClose={() => setDialog(null)} onConfirm={(values) => void submitMember(values)} />
-      <SecurityModal open={Boolean(security)} kind={security} email={profile?.user?.email} busy={loading} onClose={() => setSecurity(null)} onConfirm={(values) => void submitSecurity(values)} />
       <Modal
         open={dialog?.type === 'account-delete' || dialog?.type === 'member-delete'}
         onClose={() => setDialog(null)}

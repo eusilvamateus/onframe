@@ -1,0 +1,176 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Button, Input, List, ListItem, Ph, Stepper, Tabs } from '@onblide/ui';
+import { restoreProviderSession, verifySecondFactor } from '../shared/provider-auth';
+import { formatDate, openExternal } from '../shared/runtime';
+
+export function EmailVerification({ email, onVerified }) {
+  const auth = window.OnFrameRemoteAuth;
+  const challengeRef = useRef(null);
+  const challenge = useRef(null);
+  const [config, setConfig] = useState(null);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
+  const [feedback, setFeedback] = useState(null);
+  const [factor, setFactor] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    auth.loadConfig().then((value) => { if (active) setConfig(value); })
+      .catch(() => { if (active) setFeedback('Não foi possível preparar a verificação.'); });
+    return () => { active = false; };
+  }, [auth]);
+  useEffect(() => {
+    if (!config || sent || !challengeRef.current) return undefined;
+    challenge.current = auth.createChallenge(challengeRef.current, () => {}, () => setFeedback('A confirmação de segurança está indisponível.'));
+    return () => { challenge.current?.destroy(); challenge.current = null; };
+  }, [auth, config, sent]);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (busy || !config) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      if (factor) {
+        await verifySecondFactor(factor.client, factor.id, code);
+        await onVerified(factor.client);
+        return;
+      }
+      if (!sent) {
+        const token = challenge.current?.getToken();
+        if (!token) throw new Error('Conclua a confirmação de segurança.');
+        await auth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } }, { redirectTo: 'https://onframe.onblide.com/connect?verification=email' });
+        setSent(true);
+        setCode('');
+        return;
+      }
+      if (!/^\d{6,10}$/u.test(code)) throw new Error('Informe o código recebido por e-mail.');
+      const session = await auth.request(config, 'verify', { email, token: code, type: 'email' });
+      const client = await restoreProviderSession(config, session);
+      const { data: identity, error: identityError } = await client.auth.getUser();
+      if (identityError || identity.user.email?.toLowerCase() !== email.toLowerCase()) throw new Error('A conta verificada não corresponde a este perfil.');
+      const { data: factors, error } = await client.auth.mfa.listFactors();
+      if (error) throw error;
+      if (factors.totp.length) {
+        setFactor({ client, id: factors.totp[0].id, factors: factors.totp });
+        setCode('');
+      } else await onVerified(client);
+    } catch (error) {
+      setFeedback(sent ? 'Código inválido ou expirado. Confira o código e tente novamente.' : auth.authErrorMessage(error, error.message || 'Não foi possível enviar o código.'));
+      if (!sent) challenge.current?.reset();
+    } finally { setBusy(false); }
+  }
+
+  return <form className="onframe-stack" onSubmit={submit}>
+    <p className="onframe-muted">{factor ? 'Confirme também seu aplicativo autenticador.' : `Confirme seu acesso ao e-mail ${email}.`}</p>
+    {feedback && <Alert tone="danger">{feedback}</Alert>}
+    {!sent && <div className="onframe-captcha" ref={challengeRef} />}
+    {factor?.factors.length > 1 && <Tabs size="sm" tabs={factor.factors.map((value, index) => ({ id: value.id, label: value.friendly_name || `Autenticador ${index + 1}` }))} active={factor.id} onChange={(id) => setFactor((current) => ({ ...current, id }))} />}
+    {sent && <Input label={factor ? 'Código do aplicativo autenticador' : 'Código recebido por e-mail'} inputMode="numeric" autoComplete="one-time-code" maxLength={factor ? 6 : 10} value={code} disabled={busy} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))} />}
+    <div className="onframe-actions"><Button type="submit" disabled={busy || !config} icon={<Ph n={sent ? 'shield-check' : 'envelope-simple'} size={18} />}>{busy ? 'Aguarde...' : sent ? 'Verificar identidade' : 'Enviar código'}</Button>
+      {sent && !factor && <Button kind="secondary" disabled={busy} onClick={() => { setSent(false); setCode(''); setFeedback(null); }}>Enviar outro código</Button>}
+    </div>
+  </form>;
+}
+
+export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
+  const clientRef = useRef(null);
+  const pendingRef = useRef(null);
+  const [verified, setVerified] = useState(false);
+  const [enrollment, setEnrollment] = useState(null);
+  const [name, setName] = useState('Aplicativo autenticador');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(null);
+  const [removal, setRemoval] = useState(null);
+  const factors = (securityOverview?.factors || []).filter((factor) => factor.type === 'totp');
+
+  useEffect(() => () => {
+    const client = clientRef.current;
+    const pending = pendingRef.current;
+    if (client && pending) void client.auth.mfa.unenroll({ factorId: pending }).catch(() => undefined);
+    clientRef.current = null;
+    pendingRef.current = null;
+  }, []);
+
+  async function action(callback) {
+    if (busy) return;
+    setBusy(true);
+    setNotice(null);
+    try { await callback(); } catch { setNotice({ tone: 'danger', message: 'Não foi possível concluir a operação. Confira o código ou verifique novamente sua identidade.' }); }
+    finally { setBusy(false); }
+  }
+
+  async function enroll() {
+    await action(async () => {
+      const { data, error } = await clientRef.current.auth.mfa.enroll({ factorType: 'totp', friendlyName: name.trim(), issuer: 'OnFrame' });
+      if (error) throw error;
+      pendingRef.current = data.id;
+      setEnrollment(data);
+      setCode('');
+    });
+  }
+
+  async function confirmEnrollment(event) {
+    event.preventDefault();
+    await action(async () => {
+      await verifySecondFactor(clientRef.current, enrollment.id, code);
+      pendingRef.current = null;
+      setEnrollment(null);
+      setCode('');
+      setNotice({ tone: 'success', message: 'Verificação em duas etapas ativada. Entre novamente para continuar.' });
+      await onDisconnect();
+    });
+  }
+
+  return <section className="onframe-stack onframe-security-form" aria-label="Verificação em duas etapas">
+    <p className="onframe-muted">Adicione um aplicativo autenticador para proteger o acesso à sua conta.</p>
+    {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+    <Stepper variant="compact" size="sm" steps={[{ label: 'Verificar identidade' }, { label: 'Configurar autenticador' }, { label: 'Confirmar código' }]} current={!verified ? 0 : enrollment ? 2 : 1} />
+    {!verified ? <EmailVerification email={profile.user.email} onVerified={(client) => { clientRef.current = client; setVerified(true); }} /> : enrollment ? <form className="onframe-stack" onSubmit={confirmEnrollment}>
+      <p className="onframe-muted">Leia o QR code no aplicativo autenticador ou use a chave de configuração.</p>
+      <img className="onframe-authenticator-qr" src={enrollment.totp.qr_code.startsWith('data:') ? enrollment.totp.qr_code : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(enrollment.totp.qr_code)}`} alt="QR code de configuração do autenticador" />
+      <Input label="Chave de configuração" value={enrollment.totp.secret} readOnly autoComplete="off" />
+      <Input label="Código do aplicativo" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} disabled={busy} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))} />
+      <div className="onframe-actions"><Button type="submit" disabled={busy || code.length !== 6} icon={<Ph n="shield-check" size={18} />}>Ativar verificação em duas etapas</Button><Button kind="secondary" disabled={busy} onClick={() => void action(async () => {
+        const { error } = await clientRef.current.auth.mfa.unenroll({ factorId: enrollment.id });
+        if (error) throw error;
+        pendingRef.current = null; setEnrollment(null); setCode('');
+      })}>Cancelar configuração</Button></div>
+    </form> : <>
+      <List dividers ariaLabel="Aplicativos autenticadores">{factors.map((factor) => <ListItem key={factor.id} leading={<Ph n="device-mobile" size={20} />} title={factor.name || 'Aplicativo autenticador'} description={`Adicionado em ${formatDate(factor.createdAt)}`} trailing={<Button kind="secondary" size="sm" disabled={busy} onClick={() => { setRemoval(factor); setCode(''); }}>Remover</Button>} />)}</List>
+      {removal ? <form className="onframe-stack" onSubmit={(event) => {
+        event.preventDefault(); void action(async () => {
+          await verifySecondFactor(clientRef.current, removal.id, code);
+          const { error } = await clientRef.current.auth.mfa.unenroll({ factorId: removal.id });
+          if (error) throw error;
+          setRemoval(null); setCode('');
+          await onDisconnect();
+        });
+      }}>
+        <Alert tone="warning">Remover este autenticador encerra suas sessões. Se for o último, sua conta deixará de exigir o código do aplicativo.</Alert>
+        <Input label="Código do autenticador a remover" inputMode="numeric" autoComplete="one-time-code" value={code} maxLength={6} disabled={busy} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))} />
+        <div className="onframe-actions"><Button kind="secondary" disabled={busy} onClick={() => setRemoval(null)}>Cancelar</Button><Button type="submit" kind="danger" disabled={busy || code.length !== 6}>Remover autenticador</Button></div>
+      </form> : <>
+        <Input label="Nome do autenticador" value={name} maxLength={64} disabled={busy} onChange={(event) => setName(event.target.value)} />
+        <div className="onframe-actions"><Button disabled={busy || !name.trim()} icon={<Ph n="plus" size={18} />} onClick={() => void enroll()}>Adicionar autenticador</Button></div>
+      </>}
+    </>}
+  </section>;
+}
+
+export function PasskeySettings({ profile, securityOverview }) {
+  const [opened, setOpened] = useState(false);
+  return <section className="onframe-stack onframe-security-form" aria-label="Chaves de acesso">
+    <p className="onframe-muted">Use uma chave de acesso para entrar com a biometria ou o desbloqueio do seu dispositivo.</p>
+    <List dividers ariaLabel="Chaves cadastradas">{(securityOverview?.passkeys || []).map((key) => <ListItem key={key.id} leading={<Ph n="key" size={20} />} title={key.name || 'Chave de acesso'} wrap description={`Adicionada em ${formatDate(key.createdAt)} · ${key.lastUsedAt ? `Último uso: ${formatDate(key.lastUsedAt)}` : 'Ainda não utilizada'}`} />)}</List>
+    {opened ? <Alert tone="info">Continue na aba segura aberta para criar, renomear ou remover suas chaves de acesso.</Alert> : <EmailVerification email={profile.user.email} onVerified={async (client) => {
+      const { data, error } = await client.auth.getSession();
+      if (error || !data.session) throw error || new Error('session');
+      const url = new URL('https://onframe.onblide.com/auth/passkeys?action=manage');
+      url.hash = new URLSearchParams({ access_token: data.session.access_token, refresh_token: data.session.refresh_token }).toString();
+      openExternal(url.toString()); setOpened(true);
+    }} />}
+  </section>;
+}

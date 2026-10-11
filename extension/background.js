@@ -47,6 +47,14 @@ async function handleRemoteMessage(message) {
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'profile') return requestPlatform('/v1/profile');
+  if (action === 'security') return loadAccountSecurity();
+  if (action === 'security-session-remove') return requestPlatform(`/v1/security/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, { method: 'DELETE' });
+  if (action === 'security-sessions-remove-all') {
+    const result = await requestPlatform('/v1/security/sessions', { method: 'DELETE' });
+    await removeRemoteSession();
+    await removePendingAuthFlow();
+    return result;
+  }
   if (action === 'profile-update') return requestPlatform('/v1/profile', { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
   if (action === 'profile-avatar') return requestPlatform('/v1/profile/avatar', { method: 'POST', body: JSON.stringify({ dataUrl: message.dataUrl }) });
   if (action === 'profile-avatar-remove') return requestPlatform('/v1/profile/avatar', { method: 'DELETE' });
@@ -58,7 +66,30 @@ async function handleRemoteMessage(message) {
   if (action === 'invitation-create') return requestPlatform('/v1/invitations', { method: 'POST', body: JSON.stringify(message.payload || {}) });
   if (action === 'invitation-revoke') return requestPlatform(`/v1/invitations/${encodeURIComponent(String(message.invitationId || ''))}`, { method: 'DELETE' });
   if (action === 'invitation-accept') return acceptWorkspaceInvitation(message.token);
-  throw new Error('Ação remota inválida.');
+  const failure = new Error('Ação remota inválida.');
+  failure.code = 'remote_action_unsupported';
+  throw failure;
+}
+
+async function loadAccountSecurity() {
+  const config = await requestRemote('/v1/auth/config');
+  if (config.capabilities?.accountSecurity !== 1) {
+    const failure = new Error('Os novos recursos de segurança ainda não estão disponíveis no servidor conectado.');
+    failure.code = 'security_backend_unavailable';
+    throw failure;
+  }
+  try {
+    const overview = await requestPlatform('/v1/security');
+    if (!Array.isArray(overview.sessions) || !Array.isArray(overview.factors) || !Array.isArray(overview.passkeys)) {
+      const failure = new Error('Não foi possível carregar os dados de segurança.');
+      failure.code = 'security_data_unavailable';
+      throw failure;
+    }
+    return overview;
+  } catch (error) {
+    if (error.status === 404 && error.code === 'not_found') error.code = 'security_backend_unavailable';
+    throw error;
+  }
 }
 
 async function authenticateRemoteConnection(value) {
