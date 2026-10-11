@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, List, ListItem, ListSubheader, LogoMark, Menu, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel, PasswordField } from '../shared/AuthPanel';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
@@ -118,68 +118,81 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
         copy={admin ? 'Você administra as integrações e os acessos deste workspace.' : 'Você acessa as integrações atribuídas a este workspace.'}
       />
       {emptyAccounts && (
-        <Card padding={24}>
+        <section className="onframe-page-section" aria-label="Próxima ação">
           <SectionHeader
             eyebrow="PRÓXIMA AÇÃO"
             title={admin ? 'Conecte uma conta do Mercado Livre' : 'Aguarde uma conta ser atribuída'}
             copy={admin ? 'Conecte a primeira conta para começar a usar o OnFrame neste workspace.' : 'Um administrador precisa atribuir uma conta do Mercado Livre ao seu acesso.'}
             actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button> : undefined}
           />
-        </Card>
+        </section>
       )}
       {pendingInvitations > 0 && (
-        <Card padding={24}>
+        <section className="onframe-page-section" aria-label="Convites pendentes">
           <SectionHeader
             eyebrow="PRÓXIMA AÇÃO"
             title={`${pendingInvitations} ${pendingInvitations === 1 ? 'convite pendente' : 'convites pendentes'}`}
             copy="Há pessoas aguardando acesso a este workspace."
             actions={<Button kind="secondary" disabled={loading} onClick={onOpenWorkspace}>Gerenciar pessoas</Button>}
           />
-        </Card>
+        </section>
       )}
       {!emptyAccounts && (
-        <Card padding={24}>
-          <div className="onframe-stack">
-            <SectionHeader
-              eyebrow="INTEGRAÇÃO"
-              title="Mercado Livre"
-              copy={accounts.length === 1 ? '1 conta disponível neste workspace.' : `${accounts.length} contas disponíveis neste workspace.`}
-              actions={<Button kind="secondary" disabled={loading} onClick={onOpenIntegrations}>Gerenciar integrações</Button>}
-            />
-            <div className="onframe-list">
-              {accounts.map((account) => (
-                <div className="onframe-list-row" key={account.id || account.user_id}>
-                  <Avatar name={accountName(account)} src={trustedLogo(account.logo)} alt="" size={32} />
-                  <div className="onframe-grow">
-                    <p className="onframe-list-title">{accountName(account)}</p>
-                    <p className="onframe-list-meta">Mercado Livre</p>
-                  </div>
-                  <Badge tone={account.enabled === false ? 'grey' : 'green'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
+        <section className="onframe-page-section" aria-label="Integrações do workspace">
+          <SectionHeader
+            eyebrow="INTEGRAÇÃO"
+            title="Mercado Livre"
+            copy={accounts.length === 1 ? '1 conta disponível neste workspace.' : `${accounts.length} contas disponíveis neste workspace.`}
+            actions={<Button kind="secondary" disabled={loading} onClick={onOpenIntegrations}>Gerenciar integrações</Button>}
+          />
+          <List ariaLabel="Contas disponíveis">
+            {accounts.map((account) => (
+              <ListItem
+                key={account.id || account.user_id}
+                leading={<Avatar name={accountName(account)} src={trustedLogo(account.logo)} alt="" size={32} />}
+                title={accountName(account)}
+                description="Mercado Livre"
+                meta={<Badge tone={account.enabled === false ? 'grey' : 'green'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>}
+                strong
+              />
+            ))}
+          </List>
+        </section>
       )}
-      <Card padding={24}>
-        <div className="onframe-stack">
-          <SectionHeader eyebrow="ATIVIDADE" title="Atividade recente" />
-          {activity.length === 0 ? <p className="onframe-empty">Ainda não há atividade neste workspace.</p> : (
-            <div className="onframe-list">
-              {activity.map((event) => (
-                <div className="onframe-list-row" key={event.id || `${event.operation}-${event.occurredAt}`}>
-                  <Avatar name={initials(event.actorName)} size={32} />
-                  <div className="onframe-grow">
-                    <p className="onframe-list-title">{activityLabel(event.operation)}</p>
-                    <p className="onframe-list-meta">{event.actorName} · {formatDate(event.occurredAt)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </Card>
+      <section className="onframe-page-section" aria-label="Atividade recente">
+        <SectionHeader eyebrow="ATIVIDADE" title="Atividade recente" />
+        {activity.length === 0 ? <p className="onframe-empty">Ainda não há atividade neste workspace.</p> : (
+          <List ariaLabel="Eventos recentes">
+            {activity.map((event) => (
+              <ListItem
+                key={event.id || `${event.operation}-${event.occurredAt}`}
+                leading={<Avatar name={initials(event.actorName)} size={32} />}
+                title={activityLabel(event.operation)}
+                description={`${event.actorName} · ${formatDate(event.occurredAt)}`}
+                strong
+              />
+            ))}
+          </List>
+        )}
+      </section>
     </div>
+  );
+}
+
+function IntegrationActionsMenu({ account, loading, onUpdate, onRemove }) {
+  const enabled = account.enabled !== false;
+  return (
+    <Menu
+      align="right"
+      size="sm"
+      ariaLabel={`Ações de ${accountName(account)}`}
+      trigger={<Button kind="secondary" iconOnly size="sm" disabled={loading} aria-label={`Ações de ${accountName(account)}`} icon={<Ph n="dots-three" size={18} />} />}
+      items={[
+        { label: enabled ? 'Desativar' : 'Habilitar', icon: 'power', onSelect: () => onUpdate(account, !enabled) },
+        { type: 'separator' },
+        { label: 'Remover', icon: 'trash', tone: 'danger', onSelect: () => onRemove(account) }
+      ]}
+    />
   );
 }
 
@@ -193,34 +206,29 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRemove, loading 
         actions={admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button>}
       />
       {accounts.length === 0 ? (
-        <Card padding={24}>
+        <section className="onframe-page-section" aria-label="Estado das integrações">
           <SectionHeader
             eyebrow="ESTADO"
             title={admin ? 'Nenhuma conta conectada' : 'Nenhuma conta atribuída'}
             copy={admin ? 'Conecte uma conta do Mercado Livre para disponibilizá-la neste workspace.' : 'Um administrador precisa atribuir uma conta para que você possa usá-la.'}
             actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button> : undefined}
           />
-        </Card>
-      ) : accounts.map((account) => (
-        <Card key={account.id || account.user_id} padding={20}>
-          <div className="onframe-row onframe-row-between" style={{ alignItems: 'flex-start' }}>
-            <div className="onframe-row onframe-grow">
-              <Avatar name={accountName(account)} src={trustedLogo(account.logo)} alt="" size={44} />
-              <div className="onframe-grow">
-                <p className="onframe-card-title">{accountName(account)}</p>
-                <p className="onframe-card-copy">Mercado Livre · {account.enabled === false ? 'Conta desativada' : 'Conta habilitada'}</p>
-              </div>
-            </div>
-            <Badge tone={account.enabled === false ? 'grey' : 'green'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
-          </div>
-          {admin && (
-            <div className="onframe-actions" style={{ marginTop: 16 }}>
-              <Button kind="secondary" disabled={loading} onClick={() => onUpdate(account, !account.enabled)}>{account.enabled === false ? 'Habilitar' : 'Desativar'}</Button>
-              <Button kind="danger" disabled={loading} onClick={() => onRemove(account)}>Remover</Button>
-            </div>
-          )}
-        </Card>
-      ))}
+        </section>
+      ) : (
+        <List ariaLabel="Contas conectadas">
+          {accounts.map((account) => (
+            <ListItem
+              key={account.id || account.user_id}
+              leading={<Avatar name={accountName(account)} src={trustedLogo(account.logo)} alt="" size={44} />}
+              title={accountName(account)}
+              description="Mercado Livre"
+              meta={<Badge tone={account.enabled === false ? 'grey' : 'green'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>}
+              trailing={admin ? <IntegrationActionsMenu account={account} loading={loading} onUpdate={onUpdate} onRemove={onRemove} /> : undefined}
+              strong
+            />
+          ))}
+        </List>
+      )}
     </div>
   );
 }

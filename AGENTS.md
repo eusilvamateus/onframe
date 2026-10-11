@@ -53,6 +53,16 @@ variações visuais fora das especificações documentadas. Quando a necessidade
 tiver componente, variante ou regra documentada, interrompa a implementação e
 informe a lacuna ao usuário; não improvise uma solução visual.
 
+### Composição de superfícies
+
+Não use `Card` como envoltório padrão de seções de página, formulários, listas,
+estados vazios ou conjuntos de dados. Use `Card` somente quando o conteúdo for
+uma superfície autônoma que realmente exija enquadramento. Para conteúdo de uma
+tela administrativa, prefira seções sem moldura, `SectionHeader`, `List`/
+`ListItem`, `Table`, `Divider` e espaçamento por tokens. Ao corrigir um padrão
+visual, revise todas as superfícies equivalentes do fluxo afetado; não aplique a
+correção apenas na tela apontada.
+
 ## Diretrizes de Teste
 
 Inclua ou atualize testes comportamentais junto ao domínio afetado. Cubra erros

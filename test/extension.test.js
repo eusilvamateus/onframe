@@ -29,6 +29,10 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const authPanel = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'AuthPanel.jsx'), 'utf8');
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const agents = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  const home = options.slice(options.indexOf('function Home'), options.indexOf('function IntegrationActionsMenu'));
+  const integrationActions = options.slice(options.indexOf('function IntegrationActionsMenu'), options.indexOf('function Integrations'));
+  const integrations = options.slice(options.indexOf('function Integrations'), options.indexOf('function WorkspacePeople'));
 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);
@@ -46,6 +50,15 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /id: 'settings', label: 'Configurações'/);
   assert.match(options, /function Home/);
   assert.match(options, /function Integrations/);
+  assert.match(options, /function IntegrationActionsMenu/);
+  assert.doesNotMatch(home, /<Card\b/);
+  assert.doesNotMatch(integrations, /<Card\b/);
+  assert.match(home, /<List ariaLabel="Contas disponíveis">/);
+  assert.match(home, /<List ariaLabel="Eventos recentes">/);
+  assert.match(integrations, /<List ariaLabel="Contas conectadas">/);
+  assert.match(integrationActions, /<Menu/);
+  assert.match(agents, /Não use `Card` como envoltório padrão/);
+  assert.match(agents, /revise todas as superfícies equivalentes/);
   assert.match(options, /function WorkspacePeople/);
   assert.match(options, /activeSection=\{settingsTab\}/);
   assert.doesNotMatch(options, /label: 'Visão geral'/);
