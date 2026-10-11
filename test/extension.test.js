@@ -59,7 +59,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /layout="context"/);
   assert.match(options, /crumbs={detailContext \|\|/);
   assert.match(options, /const detailContext = settingsDetail/);
-  assert.match(options, /showTitle={Boolean\(settingsDetail\)}/);
+  assert.match(options, /function PageHeader\(\{ meta, actions, reserveContextSpace = false \}\)/);
+  assert.match(options, /<h1 className="onframe-page-title">\{meta\.title\}<\/h1>/);
+  assert.doesNotMatch(options, /showTitle=/);
   assert.match(options, /onframe-options-content--root/);
   assert.doesNotMatch(options, /Atualizar dados/);
   assert.doesNotMatch(options, /function refreshView/);
@@ -79,6 +81,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-options-sidebar\s*\{[^}]*z-index: var\(--ob-z-raised\);/);
   assert.match(optionsCss, /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-s-2\);[^}]*left: var\(--ob-s-5\);/);
   assert.match(optionsCss, /\.onframe-options-main\s*\{[^}]*padding: var\(--ob-s-7\) var\(--ob-s-6\) var\(--ob-s-6\);/);
+  assert.match(optionsCss, /\.onframe-page-title\s*\{[^}]*font-size: var\(--ob-fs-xl\);/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
   assert.match(options, /\{isIndex && <>/);
   assert.match(options, /SETTINGS_OPTIONS/);

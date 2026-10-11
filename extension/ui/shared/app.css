@@ -64,10 +64,9 @@ button, input { font: inherit; }
 .onframe-options-content--root { gap: var(--ob-s-3); }
 .onframe-options-drawer-content { height: calc(100% + 40px); margin: -20px -24px; }
 .onframe-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ob-s-4); }
-.onframe-page-header--utility { min-height: 32px; }
 .onframe-page-context-spacer { height: 30px; }
 .onframe-options-context-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ob-s-2); min-width: 0; }
-.onframe-page-title { margin: 2px 0 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-2xl); font-weight: var(--ob-w-bold); line-height: var(--ob-lh-snug); }
+.onframe-page-title { margin: 2px 0 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-xl); font-weight: var(--ob-w-bold); line-height: var(--ob-lh-snug); }
 .onframe-list { display: flex; flex-direction: column; }
 .onframe-list-row { display: flex; align-items: center; gap: var(--ob-s-3); padding: var(--ob-s-3) 0; }
 .onframe-list-row + .onframe-list-row { border-top: 1px solid var(--ob-line-soft); }
@@ -96,7 +95,6 @@ button, input { font: inherit; }
 @media (max-width: 560px) {
   .onframe-options-main { padding: var(--ob-s-3); }
   .onframe-page-header { flex-direction: column; }
-  .onframe-page-header--utility { align-items: flex-end; }
   .onframe-settings-action-bar { padding: 0 var(--ob-s-3); }
   .onframe-settings-action-bar-controls { align-items: stretch; flex-direction: column; }
   .onframe-settings-action-buttons,

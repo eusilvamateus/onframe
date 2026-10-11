@@ -75,10 +75,7 @@ function activityLabel(operation) {
   }[operation] || 'Atividade no workspace';
 }
 
-function PageHeader({ meta, actions, reserveContextSpace = false, showTitle = true }) {
-  if (!showTitle) {
-    return actions ? <header className="onframe-page-header onframe-page-header--utility"><div className="onframe-actions">{actions}</div></header> : null;
-  }
+function PageHeader({ meta, actions, reserveContextSpace = false }) {
   return (
     <header className="onframe-page-header">
       <div className="onframe-stack" style={{ gap: 'var(--ob-s-1)' }}>
@@ -959,7 +956,6 @@ function OptionsApp() {
               meta={meta}
               actions={pageHeaderActions}
               reserveContextSpace={Boolean(settingsDetail)}
-              showTitle={Boolean(settingsDetail)}
             />
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
