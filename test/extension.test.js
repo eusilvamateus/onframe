@@ -79,6 +79,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /onNavigate={navigateBreadcrumb}/);
   assert.match(options, /reserveContextSpace/);
   assert.match(options, /SearchInput/);
+  assert.match(options, /width="min\(100%, 520px\)"/);
   assert.match(options, /ButtonGroup/);
   assert.match(options, /Divider/);
   assert.match(options, /onframe-settings-action-bar/);

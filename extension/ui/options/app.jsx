@@ -472,7 +472,7 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
   return (
     <div className="onframe-stack">
       {isIndex && <>
-        <SearchInput value={query} onChange={setQuery} placeholder="Buscar configurações..." width="100%" />
+        <SearchInput value={query} onChange={setQuery} placeholder="Buscar configurações..." width="min(100%, 520px)" />
         {normalizedQuery && (matches.length > 0
           ? <SettingsOptionList options={matches} ariaLabel="Resultados da busca" onNavigate={selectOption} showCategory />
           : <p className="onframe-empty">Nenhuma configuração encontrada.</p>)}
