@@ -57,7 +57,7 @@ button, input { font: inherit; }
 .onframe-options--collapsed { grid-template-columns: 72px minmax(0, 1fr); }
 .onframe-options-sidebar { min-width: 0; height: 100vh; position: sticky; top: 0; overflow: visible; background: var(--ob-surface); }
 .onframe-options-column { position: relative; min-width: 0; }
-.onframe-options-desktop-context { position: absolute; z-index: var(--ob-z-raised); top: 0; left: 0; display: flex; align-items: center; min-height: 48px; padding: 0 var(--ob-s-3); }
+.onframe-options-desktop-context { position: absolute; z-index: var(--ob-z-raised); top: calc(var(--ob-s-6) + var(--ob-s-3)); left: 0; display: flex; align-items: center; min-height: 48px; padding: 0 var(--ob-s-3); }
 .onframe-options-mobile-nav { display: none; }
 .onframe-options-main { min-width: 0; padding: var(--ob-s-6); background: var(--ob-surface); }
 .onframe-options-content { width: min(100%, var(--ob-max-w-xl)); margin: 0 auto; display: flex; flex-direction: column; gap: var(--ob-s-5); }
