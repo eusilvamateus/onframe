@@ -68,7 +68,6 @@ button, input { font: inherit; }
 .onframe-page-context-spacer { height: 30px; }
 .onframe-options-context-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ob-s-2); min-width: 0; }
 .onframe-page-title { margin: 2px 0 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-2xl); font-weight: var(--ob-w-bold); line-height: var(--ob-lh-snug); }
-.onframe-page-section { display: flex; flex-direction: column; gap: var(--ob-s-3); }
 .onframe-list { display: flex; flex-direction: column; }
 .onframe-list-row { display: flex; align-items: center; gap: var(--ob-s-3); padding: var(--ob-s-3) 0; }
 .onframe-list-row + .onframe-list-row { border-top: 1px solid var(--ob-line-soft); }
