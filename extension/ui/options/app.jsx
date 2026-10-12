@@ -296,10 +296,10 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
   useEffect(() => setName(savedName), [savedName]);
   if (!profile) return null;
   const changed = name !== savedName;
-  async function uploadProfileAvatar(file, onProgress) {
+  async function uploadProfileAvatar(file) {
     setAvatarBusy(true);
     try {
-      await onAvatar(file, onProgress);
+      await onAvatar(file);
     } finally {
       setAvatarBusy(false);
     }
@@ -337,6 +337,7 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
           maxSize={2 * 1024 * 1024}
           defaultFiles={avatarFiles}
           disabled={avatarBusy}
+          indeterminate
           upload={uploadProfileAvatar}
           onChange={(files) => {
             if (files.length === 0 && profile.user.avatarUrl) {
@@ -739,14 +740,13 @@ function OptionsApp() {
     }, 'Perfil salvo.');
   }
 
-  async function uploadAvatar(file, onProgress) {
+  async function uploadAvatar(file) {
     if (!(file instanceof File)) throw new Error('Não foi possível ler a imagem.');
     try {
       const dataUrl = await readDataUrl(file);
       const result = await sendRemoteMessage('profile-avatar', { dataUrl });
       setProfile(result);
       setConnection((current) => ({ ...current, user: { ...current.user, avatarUrl: result.user.avatarUrl } }));
-      onProgress(100);
     } catch (error) {
       const failure = new Error(userError(error, 'Não foi possível enviar a imagem agora. Tente novamente.'));
       failure.code = error?.code || '';

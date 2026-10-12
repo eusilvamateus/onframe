@@ -192,6 +192,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /className="onframe-profile-layout"/);
   assert.match(profileSettings, /variant="image"/);
   assert.match(profileSettings, /shape="square"/);
+  assert.match(profileSettings, /indeterminate/);
   assert.match(profileSettings, /size=\{160\}/);
   assert.match(profileSettings, /defaultFiles=\{avatarFiles\}/);
   assert.match(profileSettings, /onRemoveAvatar\(\)/);
@@ -223,6 +224,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /workspace-activate/);
   assert.match(options, /invitation-create/);
   assert.match(options, /profile-avatar/);
+  assert.doesNotMatch(options, /onProgress\(100\)/);
   assert.match(background, /profile-avatar-remove/);
   assert.match(options, /account-update/);
   assert.match(options, /account-remove/);
