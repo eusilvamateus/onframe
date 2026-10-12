@@ -63,6 +63,10 @@ test('desafio do Turnstile fica em uma origem do OnFrame e responde somente ao p
   assert.match(page, /window\.parent\.postMessage/);
   assert.match(page, /nonce/);
   assert.match(page, /status,nonce,token/);
+  assert.match(page, /appearance:'interaction-only',execution:'execute'/);
+  assert.match(page, /event\.origin!==parentOrigin\|\|event\.source!==window\.parent/);
+  assert.match(page, /window\.turnstile\.execute\(widgetId\)/);
+  assert.match(page, /publish\('interaction'\)/);
 
   const [inlineScript] = Array.from(page.matchAll(/<script>([\s\S]*?)<\/script>/g), (match) => match[1]);
   assert.ok(inlineScript);

@@ -97,8 +97,11 @@ export function AuthPanel({ onConnected, onPending }) {
   const [codeError, setCodeError] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  const [captchaMounted, setCaptchaMounted] = useState(false);
   const codeLength = secondFactor ? 6 : config?.emailOtpLength || 6;
   const needsCaptcha = !secondFactor && (phase === 'password' || phase === 'details' || (phase === 'email' && ['magic', 'recovery'].includes(mode)) || resending);
+
+  useEffect(() => { if (needsCaptcha) setCaptchaMounted(true); }, [needsCaptcha]);
 
   useEffect(() => {
     let active = true;
@@ -107,11 +110,11 @@ export function AuthPanel({ onConnected, onPending }) {
     return () => { active = false; };
   }, [RemoteAuth]);
   useEffect(() => {
-    if (!needsCaptcha || !config || !challengeRef.current) return undefined;
+    if (!captchaMounted || !config || !challengeRef.current) return undefined;
     challengeInstance.current = RemoteAuth.createChallenge(challengeRef.current, () => {},
       () => setFeedback({ tone: 'danger', message: 'A confirmação de segurança está indisponível. Tente novamente.' }));
     return () => { challengeInstance.current?.destroy(); challengeInstance.current = null; };
-  }, [RemoteAuth, config, needsCaptcha, mode]);
+  }, [RemoteAuth, config, captchaMounted]);
   useEffect(() => {
     if (!cooldown) return undefined;
     const timer = setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
@@ -126,15 +129,6 @@ export function AuthPanel({ onConnected, onPending }) {
     setFields((current) => ({ ...current, password: '', confirmation: '' }));
   }
   function editEmail() { changeMode(mode); }
-  function captchaToken() {
-    const instance = challengeInstance.current;
-    const token = instance?.getToken();
-    if (!instance?.isAvailable() || !token) {
-      setFeedback({ tone: 'warning', message: instance?.isLoading() ? 'Aguarde a confirmação de segurança.' : 'Conclua a confirmação de segurança para continuar.' });
-      return '';
-    }
-    return token;
-  }
   async function authenticate(accessToken) {
     const connection = await sendRemoteMessage('authenticate', { accessToken });
     await onConnected?.(connection);
@@ -160,15 +154,17 @@ export function AuthPanel({ onConnected, onPending }) {
   async function sendCode() {
     if (cooldown || pending.current) return;
     const email = RemoteAuth.normalizeEmail(fields.email);
-    const token = captchaToken();
-    if (!email || !token) return;
+    if (!email) return;
     await run(async () => {
+      const token = await challengeInstance.current?.execute();
+      if (!token) throw Object.assign(new Error('A confirmação de segurança está indisponível.'), { code: 'captcha_unavailable' });
       try {
         await RemoteAuth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } },
           { redirectTo: 'https://onframe.onblide.com/connect?verification=login' });
         update('email', email);
         setPhase('code'); setCode(''); setCodeError(false); setResending(false); setCooldown(60);
-      } finally { challengeInstance.current?.reset(); }
+        setCaptchaMounted(false);
+      } catch (error) { challengeInstance.current?.reset(); throw error; }
     }, 'Não foi possível enviar o código. Aguarde e tente novamente.');
   }
   async function verifyCode(value) {
@@ -200,26 +196,28 @@ export function AuthPanel({ onConnected, onPending }) {
     if (mode === 'signup' && !fields.name.trim()) { setFeedback({ tone: 'warning', message: 'Informe seu nome.' }); return; }
     if (['signin', 'signup'].includes(mode) && !fields.password) { setFeedback({ tone: 'warning', message: 'Informe sua senha.' }); return; }
     if (mode === 'signup' && fields.password !== fields.confirmation) { setFeedback({ tone: 'warning', message: 'As senhas não coincidem.' }); return; }
-    const token = captchaToken();
-    if (!token) return;
     await run(async () => {
+      const token = await challengeInstance.current?.execute();
+      if (!token) throw Object.assign(new Error('A confirmação de segurança está indisponível.'), { code: 'captcha_unavailable' });
       try {
         if (mode === 'signin') {
           await acceptSession(await RemoteAuth.request(config, 'token?grant_type=password', { email, password: fields.password, gotrue_meta_security: { captcha_token: token } }));
+          setCaptchaMounted(false);
           return;
         }
         const flow = await sendRemoteMessage('auth-flow-start');
         if (mode === 'signup') {
           const result = await RemoteAuth.request(config, 'signup', { email, password: fields.password, data: { display_name: fields.name.trim() }, gotrue_meta_security: { captcha_token: token } }, { redirectTo: flow.redirectTo });
           setFields((current) => ({ ...current, password: '', confirmation: '' }));
-          if (result.access_token) { await acceptSession(result); return; }
+          if (result.access_token) { await acceptSession(result); setCaptchaMounted(false); return; }
           setFeedback({ tone: 'info', message: 'Confira seu e-mail para confirmar o cadastro.' });
         } else {
           await RemoteAuth.request(config, 'recover', { email, gotrue_meta_security: { captcha_token: token } }, { redirectTo: flow.redirectTo });
           setFeedback({ tone: 'info', message: 'Se houver uma conta para este e-mail, você receberá um link para redefinir a senha.' });
         }
         setPhase('sent'); onPending?.(flow);
-      } finally { challengeInstance.current?.reset(); }
+        setCaptchaMounted(false);
+      } catch (error) { challengeInstance.current?.reset(); throw error; }
     }, mode === 'signin' ? 'E-mail ou senha incorretos. Tente novamente.' : mode === 'signup' ? 'Não foi possível criar a conta agora.' : 'Não foi possível enviar o e-mail agora.');
   }
   function linkTo(nextMode) { return (event) => { event.preventDefault(); changeMode(nextMode); }; }
@@ -252,7 +250,7 @@ export function AuthPanel({ onConnected, onPending }) {
             {!secondFactor && <p className="onframe-help">Se houver uma conta para este e-mail, você receberá um código de {codeLength} dígitos.</p>}
           </>}
           {feedback && <Alert tone={feedback.tone}>{feedback.message}</Alert>}
-          {needsCaptcha && <div className="onframe-captcha" ref={challengeRef} />}
+          {captchaMounted && <div className="onframe-captcha" ref={challengeRef} />}
           {mode === 'magic' && phase === 'email' && cooldown > 0 && <p className="onframe-help" role="status">Enviar outro código em {cooldown} s</p>}
           {phase !== 'sent' && <Button type="submit" disabled={busy || !config || (verifying && code.length !== codeLength) || (mode === 'magic' && phase === 'email' && cooldown > 0)} style={{ width: '100%' }}>{busy ? 'Aguarde...' : buttonLabel}</Button>}
         </form>

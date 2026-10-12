@@ -46,8 +46,8 @@ export function EmailVerification({ email, onVerified, purpose = 'confirmar sua 
         return;
       }
       if (!sent) {
-        const token = challenge.current?.getToken();
-        if (!token) { setFeedback('Conclua a confirmação de segurança.'); return; }
+        const token = await challenge.current?.execute();
+        if (!token) throw Object.assign(new Error('A confirmação de segurança está indisponível.'), { code: 'captcha_unavailable' });
         await auth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } }, { redirectTo: 'https://onframe.onblide.com/connect?verification=email' });
         setSent(true);
         setCooldown(60);

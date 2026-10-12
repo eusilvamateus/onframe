@@ -107,6 +107,66 @@ test('erros de autenticação sem mensagem útil preservam o status HTTP e tradu
   assert.equal(message({ code: 'auth_request_failed', status: 502 }, fallback), 'O serviço de autenticação está indisponível. Tente novamente em instantes.');
 });
 
+test('Turnstile so executa sob demanda e exibe area apenas durante interacao', async () => {
+  const code = fs.readFileSync(path.join(extensionRoot, 'core', 'remote-auth.js'), 'utf8');
+  const css = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
+  assert.match(css, /\.onframe-captcha \{ position: absolute;/);
+  assert.match(css, /\.onframe-captcha\[data-interactive="true"\]:not\(\[hidden\]\) \{ position: static;/);
+  const sent = [];
+  let onMessage;
+  const container = {
+    dataset: {}, hidden: false, frame: null,
+    replaceChildren(frame) { this.frame = frame || null; }
+  };
+  const window = {
+    location: { origin: 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+    addEventListener: (_name, listener) => { onMessage = listener; },
+    removeEventListener: () => {}
+  };
+  const document = { createElement: () => ({
+    contentWindow: { postMessage: (message, origin) => sent.push({ message, origin }) },
+    setAttribute: () => {}, remove: () => {}
+  }) };
+  vm.runInNewContext(code, {
+    window, document, crypto: require('node:crypto').webcrypto, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, headers: { get: () => 'text/html' } })
+  });
+  const challenge = window.OnFrameRemoteAuth.createChallenge(container, () => {});
+  await new Promise(setImmediate);
+  assert.ok(container.frame);
+  assert.equal(sent.length, 0);
+  const nonce = new URL(container.frame.src).searchParams.get('nonce');
+  const source = container.frame.contentWindow;
+  const request = challenge.execute();
+  await new Promise(setImmediate);
+  assert.equal(sent.length, 0);
+  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'ready' } });
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].message.type, 'onframe:turnstile:execute');
+  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'interaction' } });
+  assert.equal(container.dataset.interactive, 'true');
+  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'success', token: 'captcha-test' } });
+  assert.equal(await request, 'captcha-test');
+  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'idle' } });
+  assert.equal(container.dataset.interactive, undefined);
+  challenge.reset();
+  await new Promise(setImmediate);
+  const nextSource = container.frame.contentWindow;
+  const nextNonce = new URL(container.frame.src).searchParams.get('nonce');
+  const failed = challenge.execute();
+  await new Promise(setImmediate);
+  onMessage({ origin: 'https://onframe.onblide.com', source: nextSource, data: { type: 'onframe:turnstile', nonce: nextNonce, status: 'error' } });
+  await assert.rejects(failed, { code: 'captcha_unavailable' });
+  const retried = challenge.execute();
+  await new Promise(setImmediate);
+  assert.ok(container.frame);
+  const retryNonce = new URL(container.frame.src).searchParams.get('nonce');
+  onMessage({ origin: 'https://onframe.onblide.com', source: container.frame.contentWindow, data: { type: 'onframe:turnstile', nonce: retryNonce, status: 'ready' } });
+  onMessage({ origin: 'https://onframe.onblide.com', source: container.frame.contentWindow, data: { type: 'onframe:turnstile', nonce: retryNonce, status: 'success', token: 'captcha-retry' } });
+  assert.equal(await retried, 'captcha-retry');
+  challenge.destroy();
+});
+
 test('popup e opções usam o pacote oficial da Onblide sem expor um código de pareamento', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');

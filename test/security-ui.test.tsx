@@ -21,12 +21,12 @@ async function harness(render: () => React.ReactElement, failOtp = false, hasTot
   const originalChrome = globalThis.chrome;
   const requests: Array<{ path: string; body?: object; method?: string; authorization?: string | null; redirectTo?: string }> = [];
   const messages: object[] = [];
-  const challenges = { created: 0, destroyed: 0 };
+  const challenges = { created: 0, destroyed: 0, executed: 0 };
   globalThis.window = { OnFrameRemoteAuth: {
     loadConfig: async () => ({ supabaseUrl: 'https://project.supabase.co', supabasePublishableKey: 'test-publishable-key', emailOtpLength: 6, capabilities: { accountSecurity: availableSecurity } }),
-    createChallenge: () => { challenges.created += 1; return { getToken: () => captcha, isLoading: () => false, isAvailable: () => true, destroy() { challenges.destroyed += 1; }, reset() {} }; },
+    createChallenge: () => { challenges.created += 1; return { execute: async () => { challenges.executed += 1; return captcha; }, destroy() { challenges.destroyed += 1; }, reset() {} }; },
     normalizeEmail: (value: string) => value.includes('@') ? value.trim().toLowerCase() : '',
-    authErrorMessage: (_: unknown, fallback: string) => fallback,
+    authErrorMessage: (error: { code?: string }, fallback: string) => error.code === 'captcha_unavailable' ? 'A confirmação de segurança está indisponível. Tente novamente.' : fallback,
     request: async (_: unknown, path: string, body: object, options: { redirectTo?: string } = {}) => {
       requests.push({ path, body, ...options });
       if (path === 'otp') { if (otpError) throw otpError; return {}; }
@@ -143,7 +143,7 @@ test('verificacao por email aguarda antes de reenviar e nao exibe codigos intern
   const noCaptcha = await harness(() => <EmailVerification email={user.email} onVerified={() => {}} />, false, false, false, '');
   try {
     await act(async () => noCaptcha.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
-    assert.match(JSON.stringify(noCaptcha.renderer.toJSON()), /Conclua a confirmação de segurança/);
+    assert.match(JSON.stringify(noCaptcha.renderer.toJSON()), /confirmação de segurança está indisponível/);
     assert.equal(noCaptcha.requests.length, 0);
   } finally { await noCaptcha.close(); }
 });
@@ -298,6 +298,25 @@ test('login usa Tabs pill para Email e senha e Magic Link sem aba de cadastro ne
       assert.equal(h.renderer.root.findAllByType('input').some((node) => node.props.type === 'password'), false);
     } finally { await h.close(); }
   }
+});
+
+test('alternar metodos nao recria o desafio nem executa captcha antes do envio', async () => {
+  const h = await harness(() => <AuthPanel />);
+  try {
+    const tabs = () => h.renderer.root.findByType(Tabs);
+    await act(async () => tabs().props.onChange('magic'));
+    assert.equal(h.challenges.created, 1);
+    await act(async () => tabs().props.onChange('signin'));
+    await act(async () => tabs().props.onChange('magic'));
+    assert.equal(h.challenges.created, 1);
+    assert.equal(h.challenges.destroyed, 0);
+    assert.equal(h.challenges.executed, 0);
+    const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
+    await act(async () => email.props.onChange({ target: { value: user.email } }));
+    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.equal(h.challenges.executed, 1);
+    assert.equal(h.requests.filter((request) => request.path === 'otp').length, 1);
+  } finally { await h.close(); }
 });
 
 async function continueEmail(renderer: ReturnType<typeof create>, value = ' Pessoa@Example.com ') {
@@ -540,7 +559,7 @@ test('senha e envio de OTP nao aceitam ausencia da verificacao de seguranca', as
       }
       assert.equal(h.requests.length, 0);
       assert.equal(h.messages.length, 0);
-      assert.match(JSON.stringify(h.renderer.toJSON()), /Conclua a confirmação de segurança/);
+      assert.match(JSON.stringify(h.renderer.toJSON()), /confirmação de segurança está indisponível/);
     } finally { await h.close(); }
   }
 });

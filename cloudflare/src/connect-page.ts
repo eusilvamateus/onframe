@@ -108,7 +108,9 @@ const nonce=params.get('nonce')||'';
 const parentOrigin=params.get('parentOrigin')||'';
 const validParent=/^chrome-extension:\\\/\\\/[a-p]{32}$/.test(parentOrigin)||parentOrigin===location.origin;
 function publish(status,token){if(validParent&&nonce)window.parent.postMessage({type:'onframe:turnstile',status,nonce,token:token||''},parentOrigin);}
-window.onTurnstileLoad=()=>{if(!validParent||!nonce||!window.turnstile)return;window.turnstile.render('#turnstile',{sitekey:config.siteKey,theme:'light',callback:(token)=>publish('success',token),'expired-callback':()=>publish('expired'),'error-callback':()=>publish('error')});};
+let widgetId=null;
+window.addEventListener('message',(event)=>{if(!validParent||event.origin!==parentOrigin||event.source!==window.parent||event.data?.type!=='onframe:turnstile:execute'||event.data.nonce!==nonce||widgetId===null)return;window.turnstile.execute(widgetId);});
+window.onTurnstileLoad=()=>{if(!validParent||!nonce||!window.turnstile)return;widgetId=window.turnstile.render('#turnstile',{sitekey:config.siteKey,theme:'light',appearance:'interaction-only',execution:'execute',callback:(token)=>publish('success',token),'expired-callback':()=>publish('expired'),'error-callback':()=>publish('error'),'before-interactive-callback':()=>publish('interaction'),'after-interactive-callback':()=>publish('idle')});publish('ready');};
 </script><script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad&render=explicit" async defer></script></body></html>`;
 }
 

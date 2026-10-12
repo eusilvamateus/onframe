@@ -31,11 +31,10 @@ function PasskeyPage() {
   const [complete, setComplete] = useState(false);
   const challengeRef = useRef(null);
   const challenge = useRef(null);
-  const [captcha, setCaptcha] = useState('');
 
   useEffect(() => {
     if (!ready || managing || verifying || factor || complete || !challengeRef.current) return undefined;
-    challenge.current = window.OnFrameRemoteAuth.createChallenge(challengeRef.current, setCaptcha, () => setNotice({ tone: 'danger', message: 'A confirmação de segurança está indisponível.' }));
+    challenge.current = window.OnFrameRemoteAuth.createChallenge(challengeRef.current, () => {}, () => setNotice({ tone: 'danger', message: 'A confirmação de segurança está indisponível.' }));
     return () => { challenge.current?.destroy(); challenge.current = null; };
   }, [ready, Boolean(factor), complete]);
 
@@ -80,7 +79,7 @@ function PasskeyPage() {
     if (busy || !client) return;
     setBusy(true); setNotice(null);
     try { await callback(); }
-    catch (error) { setNotice({ tone: 'danger', message: error?.name === 'NotAllowedError' ? 'A solicitação foi cancelada ou expirou. Tente novamente.' : 'Não foi possível concluir a operação. Verifique a disponibilidade do recurso e tente novamente.' }); }
+    catch (error) { setNotice({ tone: 'danger', message: error?.code === 'captcha_unavailable' ? 'A confirmação de segurança está indisponível. Tente novamente.' : error?.name === 'NotAllowedError' ? 'A solicitação foi cancelada ou expirou. Tente novamente.' : 'Não foi possível concluir a operação. Verifique a disponibilidade do recurso e tente novamente.' }); }
     finally { setBusy(false); }
   }
 
@@ -116,9 +115,13 @@ function PasskeyPage() {
     <h1 className="onframe-page-title">{verifying ? 'Verificação em duas etapas' : managing ? 'Chaves de acesso' : 'Entrar com chave de acesso'}</h1>
     {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
     {ready && !managing && !verifying && !complete && !factor && <div className="onframe-captcha" ref={challengeRef} />}
-    {ready && !managing && !complete && <Button disabled={busy || !captcha} icon={<Ph n="key" size={18} />} onClick={() => void run(async () => {
-      const { data, error } = await client.auth.signInWithPasskey({ options: { captchaToken: captcha } });
-      challenge.current?.reset(); setCaptcha('');
+    {ready && !managing && !complete && <Button disabled={busy} icon={<Ph n="key" size={18} />} onClick={() => void run(async () => {
+      const captchaToken = await challenge.current?.execute();
+      if (!captchaToken) throw Object.assign(new Error('A confirmação de segurança está indisponível.'), { code: 'captcha_unavailable' });
+      let result;
+      try { result = await client.auth.signInWithPasskey({ options: { captchaToken } }); }
+      finally { challenge.current?.reset(); }
+      const { data, error } = result;
       if (error || !data.session) throw error || new Error('session');
       const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
       if (factorError) throw factorError;

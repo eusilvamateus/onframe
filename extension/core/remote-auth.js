@@ -72,6 +72,29 @@
     let loading = false;
     let destroyed = false;
     let mountId = 0;
+    let widgetReady = false;
+    let pending = null;
+
+    function challengeError() {
+      const error = new Error('A confirmação de segurança está indisponível. Tente novamente.');
+      error.code = 'captcha_unavailable';
+      return error;
+    }
+
+    function settle(error, value) {
+      if (!pending) return;
+      const request = pending;
+      pending = null;
+      clearTimeout(request.timer);
+      if (error) request.reject(error);
+      else request.resolve(value);
+    }
+
+    function requestToken() {
+      if (widgetReady && frame && pending) {
+        frame.contentWindow.postMessage({ type: 'onframe:turnstile:execute', nonce }, REMOTE_SERVICE);
+      }
+    }
 
     function clear(nextToken = '') {
       token = nextToken;
@@ -79,8 +102,10 @@
     }
 
     function unmountUnavailable() {
+      settle(challengeError());
       available = false;
       loading = false;
+      widgetReady = false;
       clear();
       if (frame) frame.remove();
       frame = null;
@@ -93,8 +118,22 @@
       if (event.origin !== REMOTE_SERVICE || !frame || event.source !== frame.contentWindow) return;
       const data = event.data;
       if (!data || data.type !== 'onframe:turnstile' || data.nonce !== nonce) return;
+      if (data.status === 'ready') {
+        widgetReady = true;
+        requestToken();
+        return;
+      }
+      if (data.status === 'interaction') {
+        container.dataset.interactive = 'true';
+        return;
+      }
+      if (data.status === 'idle') {
+        delete container.dataset.interactive;
+        return;
+      }
       if (data.token) {
         clear(String(data.token));
+        settle(null, token);
         return;
       }
       if (data.status === 'error') {
@@ -105,9 +144,12 @@
     }
 
     async function mount() {
+      settle(challengeError());
       clear();
       available = false;
       loading = true;
+      widgetReady = false;
+      delete container.dataset.interactive;
       if (frame) frame.remove();
       frame = null;
       container.replaceChildren();
@@ -137,20 +179,36 @@
     }
 
     window.addEventListener('message', onMessage);
-    mount();
+    let mountPromise = mount();
     return {
       getToken: () => token,
       isAvailable: () => available,
       isLoading: () => loading,
-      reset: mount,
+      execute: async () => {
+        if (!destroyed && !available && !loading) mountPromise = mount();
+        await mountPromise;
+        if (destroyed || !available || !frame) throw challengeError();
+        if (token) return token;
+        if (pending) return pending.promise;
+        let resolve;
+        let reject;
+        const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
+        const timer = setTimeout(() => unmountUnavailable(), 60000);
+        pending = { promise, resolve, reject, timer };
+        requestToken();
+        return promise;
+      },
+      reset: () => { mountPromise = mount(); },
       destroy: () => {
         destroyed = true;
         loading = false;
         mountId += 1;
+        settle(challengeError());
         window.removeEventListener('message', onMessage);
         if (frame) frame.remove();
         container.replaceChildren();
         container.hidden = true;
+        delete container.dataset.interactive;
       }
     };
   }
@@ -160,6 +218,7 @@
     const status = Number(error && error.status || 0);
     if (code === 'weak_password') return 'Escolha uma senha mais forte.';
     if (code === 'captcha_failed') return 'A confirmação de segurança expirou. Tente novamente.';
+    if (code === 'captcha_unavailable') return 'A confirmação de segurança está indisponível. Tente novamente.';
     if (code === 'email_not_confirmed') return 'Confirme seu e-mail para continuar.';
     if (code === 'over_email_send_rate_limit' || status === 429) return 'Aguarde um minuto antes de solicitar outro código.';
     if (status >= 500) return 'O serviço de autenticação está indisponível. Tente novamente em instantes.';
