@@ -296,11 +296,20 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
   useEffect(() => setName(savedName), [savedName]);
   if (!profile) return null;
   const changed = name !== savedName;
-  async function uploadProfileAvatar(file) {
+  async function uploadProfileAvatar(file, onProgress) {
     setAvatarBusy(true);
+    let progress = 5;
+    onProgress(progress);
+    const timer = setInterval(() => {
+      progress = Math.min(95, progress + Math.max(1, Math.ceil((95 - progress) / 6)));
+      onProgress(progress);
+      if (progress === 95) clearInterval(timer);
+    }, 150);
     try {
       await onAvatar(file);
+      onProgress(100);
     } finally {
+      clearInterval(timer);
       setAvatarBusy(false);
     }
   }
@@ -337,7 +346,6 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
           maxSize={2 * 1024 * 1024}
           defaultFiles={avatarFiles}
           disabled={avatarBusy}
-          indeterminate
           upload={uploadProfileAvatar}
           onChange={(files) => {
             if (files.length === 0 && profile.user.avatarUrl) {

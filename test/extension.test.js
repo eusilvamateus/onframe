@@ -10,23 +10,28 @@ const { transformSync } = require('esbuild');
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
 
-test('upload de foto continua disponivel apos o seletor devolver foco a pagina', async () => {
+test('upload de foto estima progresso sem concluir antes da resposta e libera o controle apos falha', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const profileSettings = source.slice(source.indexOf('function ProfileSettings'), source.indexOf('function SessionsSettings'));
   const compiled = transformSync(`${profileSettings}\nProfileSettings`, {
     loader: 'jsx', jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment'
   }).code;
+  const intervals = new Map();
+  let nextIntervalId = 0;
   const ProfileSettings = vm.runInNewContext(compiled, {
     React, useState: React.useState, useEffect: React.useEffect,
+    setInterval: (callback) => { const id = ++nextIntervalId; intervals.set(id, callback); return id; },
+    clearInterval: (id) => intervals.delete(id),
     SectionHeader: 'section-header', FileUpload: 'file-upload', Input: 'input-control',
     Link: 'link-control', Divider: 'divider-control', Button: 'button-control', ButtonGroup: 'button-group'
   });
   const profileWithAvatar = { user: { name: 'Mateus', email: 'mateus@example.com', avatarUrl: 'https://example.com/avatar.png' } };
   const profileWithoutAvatar = { user: { ...profileWithAvatar.user, avatarUrl: null } };
   let finishUpload;
+  let failUpload;
   let finishRemoval;
   let renderer;
-  const onAvatar = () => new Promise((resolve) => { finishUpload = resolve; });
+  const onAvatar = () => new Promise((resolve, reject) => { finishUpload = resolve; failUpload = reject; });
   const onRemoveAvatar = () => new Promise((resolve) => { finishRemoval = resolve; });
   const renderProfile = (profile, loading) => React.createElement(ProfileSettings, {
     profile, loading, onSave: async () => {}, onAvatar, onRemoveAvatar, onOpenSecuritySettings: () => {}
@@ -43,9 +48,28 @@ test('upload de foto continua disponivel apos o seletor devolver foco a pagina',
   assert.equal(upload().props.disabled, false);
 
   let uploadResult;
-  await act(async () => { uploadResult = upload().props.upload({ name: 'foto.png' }, () => {}); });
+  const progress = [];
+  await act(async () => { uploadResult = upload().props.upload({ name: 'foto.png' }, (value) => progress.push(value)); });
   assert.equal(upload().props.disabled, true);
+  assert.deepEqual(progress, [5]);
+  for (let index = 0; index < 50; index += 1) {
+    for (const callback of intervals.values()) callback();
+  }
+  assert.ok(progress.some((value) => value > 5));
+  assert.equal(progress.at(-1), 95);
   await act(async () => { finishUpload(); await uploadResult; });
+  assert.equal(progress.at(-1), 100);
+  assert.equal(intervals.size, 0);
+  assert.equal(upload().props.disabled, false);
+
+  const failedProgress = [];
+  let failedUpload;
+  await act(async () => { failedUpload = upload().props.upload({ name: 'falha.png' }, (value) => failedProgress.push(value)); });
+  for (const callback of intervals.values()) callback();
+  await act(async () => { failUpload(new Error('Falha no envio')); await assert.rejects(failedUpload, /Falha no envio/); });
+  assert.ok(failedProgress.at(-1) > 5);
+  assert.ok(failedProgress.every((value) => value < 100));
+  assert.equal(intervals.size, 0);
   assert.equal(upload().props.disabled, false);
   await act(async () => renderer.unmount());
 });
@@ -192,7 +216,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /className="onframe-profile-layout"/);
   assert.match(profileSettings, /variant="image"/);
   assert.match(profileSettings, /shape="square"/);
-  assert.match(profileSettings, /indeterminate/);
+  assert.match(profileSettings, /onProgress\(100\)/);
   assert.match(profileSettings, /size=\{160\}/);
   assert.match(profileSettings, /defaultFiles=\{avatarFiles\}/);
   assert.match(profileSettings, /onRemoveAvatar\(\)/);
@@ -224,7 +248,6 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /workspace-activate/);
   assert.match(options, /invitation-create/);
   assert.match(options, /profile-avatar/);
-  assert.doesNotMatch(options, /onProgress\(100\)/);
   assert.match(background, /profile-avatar-remove/);
   assert.match(options, /account-update/);
   assert.match(options, /account-remove/);
