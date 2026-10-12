@@ -13,6 +13,7 @@ export function EmailVerification({ email, onVerified }) {
   const [code, setCode] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [factor, setFactor] = useState(null);
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -25,10 +26,15 @@ export function EmailVerification({ email, onVerified }) {
     challenge.current = auth.createChallenge(challengeRef.current, () => {}, () => setFeedback('A confirmação de segurança está indisponível.'));
     return () => { challenge.current?.destroy(); challenge.current = null; };
   }, [auth, config, sent]);
+  useEffect(() => {
+    if (!cooldown) return undefined;
+    const timer = setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   async function submit(event) {
     event.preventDefault();
-    if (busy || !config) return;
+    if (busy || !config || (!sent && cooldown)) return;
     setBusy(true);
     setFeedback(null);
     try {
@@ -39,9 +45,10 @@ export function EmailVerification({ email, onVerified }) {
       }
       if (!sent) {
         const token = challenge.current?.getToken();
-        if (!token) throw new Error('Conclua a confirmação de segurança.');
+        if (!token) { setFeedback('Conclua a confirmação de segurança.'); return; }
         await auth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } }, { redirectTo: 'https://onframe.onblide.com/connect?verification=email' });
         setSent(true);
+        setCooldown(60);
         setCode('');
         return;
       }
@@ -57,7 +64,8 @@ export function EmailVerification({ email, onVerified }) {
         setCode('');
       } else await onVerified(client);
     } catch (error) {
-      setFeedback(sent ? 'Código inválido ou expirado. Confira o código e tente novamente.' : auth.authErrorMessage(error, error.message || 'Não foi possível enviar o código.'));
+      if (!sent && (error?.code === 'over_email_send_rate_limit' || error?.status === 429)) setCooldown(60);
+      setFeedback(sent ? 'Código inválido ou expirado. Confira o código e tente novamente.' : auth.authErrorMessage(error, 'Não foi possível enviar o código. Tente novamente.'));
       if (!sent) challenge.current?.reset();
     } finally { setBusy(false); }
   }
@@ -68,8 +76,8 @@ export function EmailVerification({ email, onVerified }) {
     {!sent && <div className="onframe-captcha" ref={challengeRef} />}
     {factor?.factors.length > 1 && <Tabs size="sm" tabs={factor.factors.map((value, index) => ({ id: value.id, label: value.friendly_name || `Autenticador ${index + 1}` }))} active={factor.id} onChange={(id) => setFactor((current) => ({ ...current, id }))} />}
     {sent && <Input label={factor ? 'Código do aplicativo autenticador' : 'Código recebido por e-mail'} inputMode="numeric" autoComplete="one-time-code" maxLength={factor ? 6 : 10} value={code} disabled={busy} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))} />}
-    <div className="onframe-actions"><Button type="submit" disabled={busy || !config} icon={<Ph n={sent ? 'shield-check' : 'envelope-simple'} size={18} />}>{busy ? 'Aguarde...' : sent ? 'Verificar identidade' : 'Enviar código'}</Button>
-      {sent && !factor && <Button kind="secondary" disabled={busy} onClick={() => { setSent(false); setCode(''); setFeedback(null); }}>Enviar outro código</Button>}
+    <div className="onframe-actions"><Button type="submit" disabled={busy || !config || (!sent && cooldown > 0)} icon={<Ph n={sent ? 'shield-check' : 'envelope-simple'} size={18} />}>{busy ? 'Aguarde...' : sent ? 'Verificar identidade' : cooldown > 0 ? `Enviar código em ${cooldown} s` : 'Enviar código'}</Button>
+      {sent && !factor && <Button kind="secondary" disabled={busy || cooldown > 0} onClick={() => { setSent(false); setCode(''); setFeedback(null); }}>Enviar outro código{cooldown > 0 ? ` em ${cooldown} s` : ''}</Button>}
     </div>
   </form>;
 }

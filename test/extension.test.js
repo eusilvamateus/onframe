@@ -19,6 +19,17 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'launcher')), false);
 });
 
+test('erros de autenticação sem mensagem útil preservam o status HTTP e traduzem limites de envio', () => {
+  const code = fs.readFileSync(path.join(extensionRoot, 'core', 'remote-auth.js'), 'utf8');
+  const window = {};
+  vm.runInNewContext(code, { window });
+  const message = window.OnFrameRemoteAuth.authErrorMessage;
+  const fallback = 'Não foi possível enviar o código. Tente novamente.';
+  assert.equal(message({ code: 'auth_request_failed', status: 403 }, fallback), `${fallback} (HTTP 403)`);
+  assert.equal(message({ code: 'over_email_send_rate_limit', status: 429 }, fallback), 'Aguarde um minuto antes de solicitar outro código.');
+  assert.equal(message({ code: 'auth_request_failed', status: 502 }, fallback), 'O serviço de autenticação está indisponível. Tente novamente em instantes.');
+});
+
 test('popup e opções usam o pacote oficial da Onblide sem expor um código de pareamento', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');

@@ -4,7 +4,7 @@ import React from 'react';
 import { CodeInput, Link, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
-import { TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
+import { EmailVerification, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
 import { SecuritySettings } from '../extension/ui/options/SecuritySettings.jsx';
 import { AuthPanel, PasswordField } from '../extension/ui/shared/AuthPanel.jsx';
 
@@ -15,7 +15,7 @@ const token = (aal = 'aal1') => `${Buffer.from('{"alg":"HS256"}').toString('base
 const session = (aal = 'aal1') => ({ access_token: token(aal), refresh_token: 'temporary-test-refresh-token', expires_in: 3600, token_type: 'bearer', user });
 const profile = { user };
 
-async function harness(render: () => React.ReactElement, failOtp = false, hasTotp = false, availableSecurity = false, captcha = 'captcha-test') {
+async function harness(render: () => React.ReactElement, failOtp = false, hasTotp = false, availableSecurity = false, captcha = 'captcha-test', otpError: Error | null = null) {
   const originalFetch = globalThis.fetch;
   const originalWindow = globalThis.window;
   const originalChrome = globalThis.chrome;
@@ -29,7 +29,7 @@ async function harness(render: () => React.ReactElement, failOtp = false, hasTot
     authErrorMessage: (_: unknown, fallback: string) => fallback,
     request: async (_: unknown, path: string, body: object, options: { redirectTo?: string } = {}) => {
       requests.push({ path, body, ...options });
-      if (path === 'otp') return {};
+      if (path === 'otp') { if (otpError) throw otpError; return {}; }
       if (path === 'verify') { if (failOtp) throw new Error('invalid-otp'); return session(); }
       if (path === 'token?grant_type=password') return session();
       if (path === 'signup' || path === 'recover') return {};
@@ -105,6 +105,39 @@ test('senha e email nao exibem formulario de alteracao antes de verificar email'
       assert.equal(h.requests.length, 0);
     } finally { await h.close(); }
   }
+});
+
+test('verificacao por email aguarda antes de reenviar e nao exibe codigos internos em erros', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = await harness(() => <EmailVerification email={user.email} onVerified={() => {}} />);
+  try {
+    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    const resend = h.renderer.root.findAllByType('button').find((button) => String(button.props.children).includes('Enviar outro código'));
+    assert.ok(resend);
+    assert.equal(resend.props.disabled, true);
+    assert.equal(h.requests.filter((request) => request.path === 'otp').length, 1);
+    for (let second = 0; second < 60; second += 1) await act(async () => t.mock.timers.tick(1000));
+    const available = h.renderer.root.findAllByType('button').find((button) => String(button.props.children).includes('Enviar outro código'));
+    assert.equal(available.props.disabled, false);
+    await act(async () => available.props.onClick());
+    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.equal(h.requests.filter((request) => request.path === 'otp').length, 2);
+  } finally { await h.close(); }
+
+  const error = Object.assign(new Error('auth_request_failed'), { code: 'auth_request_failed', status: 502 });
+  const failed = await harness(() => <EmailVerification email={user.email} onVerified={() => {} } />, false, false, false, 'captcha-test', error);
+  try {
+    await act(async () => failed.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.match(JSON.stringify(failed.renderer.toJSON()), /Não foi possível enviar o código/);
+    assert.doesNotMatch(JSON.stringify(failed.renderer.toJSON()), /auth_request_failed/);
+  } finally { await failed.close(); }
+
+  const noCaptcha = await harness(() => <EmailVerification email={user.email} onVerified={() => {}} />, false, false, false, '');
+  try {
+    await act(async () => noCaptcha.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.match(JSON.stringify(noCaptcha.renderer.toJSON()), /Conclua a confirmação de segurança/);
+    assert.equal(noCaptcha.requests.length, 0);
+  } finally { await noCaptcha.close(); }
 });
 
 test('OTP invalido nao libera formulario nem envia alteracao ao provedor', async () => {

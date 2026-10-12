@@ -157,9 +157,13 @@
 
   function authErrorMessage(error, fallback) {
     const code = String(error && error.code || '');
+    const status = Number(error && error.status || 0);
     if (code === 'weak_password') return 'Escolha uma senha mais forte.';
     if (code === 'captcha_failed') return 'A confirmação de segurança expirou. Tente novamente.';
     if (code === 'email_not_confirmed') return 'Confirme seu e-mail para continuar.';
+    if (code === 'over_email_send_rate_limit' || status === 429) return 'Aguarde um minuto antes de solicitar outro código.';
+    if (status >= 500) return 'O serviço de autenticação está indisponível. Tente novamente em instantes.';
+    if (code === 'auth_request_failed' && status) return `${fallback} (HTTP ${status})`;
     return fallback;
   }
 
