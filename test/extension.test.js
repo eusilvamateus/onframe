@@ -3,9 +3,52 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const React = require('react');
+const { act, create } = require('react-test-renderer');
+const { transformSync } = require('esbuild');
 
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
+
+test('upload de foto continua disponivel apos o seletor devolver foco a pagina', async () => {
+  const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const profileSettings = source.slice(source.indexOf('function ProfileSettings'), source.indexOf('function SessionsSettings'));
+  const compiled = transformSync(`${profileSettings}\nProfileSettings`, {
+    loader: 'jsx', jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment'
+  }).code;
+  const ProfileSettings = vm.runInNewContext(compiled, {
+    React, useState: React.useState, useEffect: React.useEffect,
+    SectionHeader: 'section-header', FileUpload: 'file-upload', Input: 'input-control',
+    Link: 'link-control', Divider: 'divider-control', Button: 'button-control', ButtonGroup: 'button-group'
+  });
+  const profileWithAvatar = { user: { name: 'Mateus', email: 'mateus@example.com', avatarUrl: 'https://example.com/avatar.png' } };
+  const profileWithoutAvatar = { user: { ...profileWithAvatar.user, avatarUrl: null } };
+  let finishUpload;
+  let finishRemoval;
+  let renderer;
+  const onAvatar = () => new Promise((resolve) => { finishUpload = resolve; });
+  const onRemoveAvatar = () => new Promise((resolve) => { finishRemoval = resolve; });
+  const renderProfile = (profile, loading) => React.createElement(ProfileSettings, {
+    profile, loading, onSave: async () => {}, onAvatar, onRemoveAvatar, onOpenSecuritySettings: () => {}
+  });
+  await act(async () => {
+    renderer = create(renderProfile(profileWithAvatar, false));
+  });
+  const upload = () => renderer.root.findByType('file-upload');
+  assert.equal(upload().props.disabled, false);
+  await act(async () => { upload().props.onChange([]); });
+  assert.equal(upload().props.disabled, true);
+  await act(async () => { finishRemoval(); });
+  await act(async () => { renderer.update(renderProfile(profileWithoutAvatar, true)); });
+  assert.equal(upload().props.disabled, false);
+
+  let uploadResult;
+  await act(async () => { uploadResult = upload().props.upload({ name: 'foto.png' }, () => {}); });
+  assert.equal(upload().props.disabled, true);
+  await act(async () => { finishUpload(); await uploadResult; });
+  assert.equal(upload().props.disabled, false);
+  await act(async () => renderer.unmount());
+});
 
 test('manifest declara somente os hosts públicos indispensáveis', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
@@ -41,7 +84,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
   const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
-  const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SecuritySettings'));
+  const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SessionsSettings'));
 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);

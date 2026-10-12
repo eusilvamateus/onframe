@@ -292,9 +292,27 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
   const savedName = profile?.user?.name || '';
   const [name, setName] = useState(savedName);
   const [avatarControlKey, setAvatarControlKey] = useState(0);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   useEffect(() => setName(savedName), [savedName]);
   if (!profile) return null;
   const changed = name !== savedName;
+  async function uploadProfileAvatar(file, onProgress) {
+    setAvatarBusy(true);
+    try {
+      await onAvatar(file, onProgress);
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+  async function removeProfileAvatar() {
+    setAvatarBusy(true);
+    try {
+      await onRemoveAvatar();
+    } finally {
+      setAvatarControlKey((current) => current + 1);
+      setAvatarBusy(false);
+    }
+  }
   const avatarFiles = profile.user.avatarUrl ? [{
     id: 'profile-avatar',
     name: 'Foto do perfil',
@@ -318,11 +336,11 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
           acceptLabel="PNG, JPEG ou WebP"
           maxSize={2 * 1024 * 1024}
           defaultFiles={avatarFiles}
-          disabled={loading}
-          upload={onAvatar}
+          disabled={avatarBusy}
+          upload={uploadProfileAvatar}
           onChange={(files) => {
             if (files.length === 0 && profile.user.avatarUrl) {
-              void onRemoveAvatar().finally(() => setAvatarControlKey((current) => current + 1));
+              void removeProfileAvatar();
             }
           }}
         />
