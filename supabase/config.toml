@@ -19,6 +19,7 @@ rp_origins = ["https://onframe.onblide.com"]
 enable_confirmations = true
 double_confirm_changes = true
 secure_password_change = true
+otp_length = 6
 
 # O segredo e configurado no ambiente de deploy; ele nunca e versionado.
 [auth.hook.send_email]

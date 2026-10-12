@@ -1559,6 +1559,7 @@ export default {
         return json({
           supabaseUrl: configuredRuntimeText(env.SUPABASE_URL, 'supabase_auth_unconfigured'),
           supabasePublishableKey: configuredRuntimeText(env.SUPABASE_PUBLISHABLE_KEY, 'supabase_auth_unconfigured'),
+          emailOtpLength: 6,
           capabilities: { accountSecurity: 1 }
         });
       }

@@ -9,15 +9,15 @@ diretamente e não guarda credenciais de conta no computador.
 ## Autenticação
 
 1. A pessoa usa `ui/options/` ou `ui/popup/` para entrar com e-mail e senha ou
-   criar a conta no Supabase Auth. O link mágico continua opcional e a
-   recuperação de senha é iniciada nas mesmas interfaces.
+   código por e-mail. Cadastro e recuperação são links nas mesmas interfaces.
+   O fluxo está definido em [Segurança e login](../architecture/identidade-e-sessoes.md#segurança-e-login).
 2. O Turnstile é hospedado por `/auth/challenge` dentro de um `iframe` com
    origem `onframe.onblide.com`. A extensão entrega o token ao Supabase, sem
    carregar o script do provedor no contexto Manifest V3.
-3. Após login por senha, a extensão envia o bearer do Supabase apenas ao
+3. Após login por senha ou código, incluindo TOTP quando ativado, a extensão envia o bearer do Supabase apenas ao
    `background`; `POST /v1/extension-sessions/from-auth` o valida e devolve o
    bearer revogável da sessão da extensão. O bearer do Supabase não é guardado.
-4. Cadastro confirmado, link mágico e recuperação usam um fluxo opaco de vida
+4. Cadastro confirmado e recuperação usam um fluxo opaco de vida
    curta. O callback `/connect` conclui o fluxo e o `background` consome a
    sessão sem apresentar um código para a pessoa.
 5. Uma pessoa administradora inicia `POST /v1/mercadolivre/oauth/start`.

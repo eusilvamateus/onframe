@@ -18,17 +18,18 @@ const templates = {
 <p><a href="{{ .ConfirmationURL }}">Aceitar convite</a></p>
 <p>Se você não esperava este convite, ignore este e-mail.</p>`,
   'magic-link.html': `
-{{ if eq .RedirectTo "https://onframe.onblide.com/connect?verification=email" }}
+{{ if eq .RedirectTo "https://onframe.onblide.com/connect?verification=login" }}
+<h2>Seu código de acesso ao OnFrame</h2>
+<p>Código para entrar: {{ .Token }}</p>
+{{ else if eq .RedirectTo "https://onframe.onblide.com/connect?verification=email" }}
 <h2>Confirme seu e-mail no OnFrame</h2>
-<p>Informe este código na tela em que você iniciou a verificação: {{ .Token }}</p>
-<p>Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.</p>
+<p>Código de verificação: {{ .Token }}</p>
 {{ else }}
 <h2>Seu link de acesso ao OnFrame</h2>
-<p>Use o link abaixo para entrar:</p>
 <p><a href="{{ .ConfirmationURL }}">Entrar no OnFrame</a></p>
 <p>O link expira em 15 minutos.</p>
-<p>Se você não pediu este acesso, ignore este e-mail.</p>
-{{ end }}`,
+{{ end }}
+<p>Não compartilhe este e-mail. Se não foi você, ignore-o.</p>`,
   'recovery.html': `
 <h2>Redefina sua senha do OnFrame</h2>
 <p>Use o link abaixo para criar uma nova senha.</p>

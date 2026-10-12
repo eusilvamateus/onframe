@@ -35,6 +35,19 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /@onblide\/ui\/styles\.css/);
+  assert.match(options, /<AuthBrand \/>/);
+  assert.match(authPanel, /alt="OnFrame"/);
+  assert.match(authPanel, /by onblide/);
+  assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*min\(100%, 192px\);[^}]*align-self:\s*center;[^}]*flex-direction:\s*column;[^}]*align-items:\s*flex-end;[^}]*gap:\s*var\(--ob-s-2\)/);
+  assert.match(optionsCss, /\.onframe-auth-brand \.onframe-help\s*\{[^}]*white-space:\s*nowrap/);
+  assert.match(optionsCss, /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/);
+  assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-s-5\);[^}]*min-width:\s*0/);
+  assert.match(optionsCss, /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-s-2\)/);
+  assert.doesNotMatch(optionsCss, /\.onframe-auth-intro/);
+  assert.match(optionsCss, /\.onframe-auth-code-scroll\s*\{[^}]*display:\s*flex/);
+  assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
+  const loginLogo = fs.readFileSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png'));
+  assert.equal(loginLogo.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.match(options, /SideNav/);
   assert.match(options, /\bflush\b/);
   assert.match(options, /accountName=\{personName\}/);
@@ -128,6 +141,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popup, /Switch/);
   assert.match(authPanel, /FieldShell/);
   assert.match(authPanel, /eye-closed/);
+  assert.match(optionsCss, /\.onframe-field-input\[type="password"\]::-ms-reveal\s*\{\s*display:\s*none;\s*\}/);
   assert.doesNotMatch(authPanel, /eye-slash/);
   assert.match(optionsHtml, /app\.css/);
   assert.match(optionsHtml, /app\.js/);

@@ -33,6 +33,7 @@ test('configura todos os templates de autenticação e notificações do Supabas
 });
 
 test('protege os fluxos de Auth com Turnstile sem versionar seu segredo', () => {
+  assert.match(config, /otp_length = 6/);
   assert.match(config, /\[auth\.captcha\]\s+enabled = true\s+provider = "turnstile"\s+secret = "env\(SUPABASE_TURNSTILE_SECRET\)"/);
   assert.doesNotMatch(config, /secret = "0x[^"]+"/i);
 });
@@ -52,6 +53,7 @@ test('somente os fluxos que exigem confirmação manual preservam o OTP', () => 
   const reauthentication = fs.readFileSync(path.join(root, 'supabase', 'templates', 'reauthentication.html'), 'utf8');
 
   assert.match(magicLink, /if eq \.RedirectTo "https:\/\/onframe\.onblide\.com\/connect\?verification=email"/);
+  assert.match(magicLink, /if eq \.RedirectTo "https:\/\/onframe\.onblide\.com\/connect\?verification=login"/);
   assert.match(magicLink, /\{\{ \.Token \}\}/);
   assert.match(magicLink, /\{\{ \.ConfirmationURL \}\}/);
   assert.match(reauthentication, /\{\{ \.Token \}\}/);

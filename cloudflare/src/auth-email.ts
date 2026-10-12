@@ -467,6 +467,17 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         warning: 'O convite só será aceito depois da sua confirmação.'
       })];
     case 'magiclink':
+      if (event.email_data?.redirect_to === 'https://onframe.onblide.com/connect?verification=login') {
+        return [{
+          actionType, recipient, subject: 'Seu código de acesso ao OnFrame',
+          html: emailShell({
+            title: 'Seu código de acesso', eyebrow: 'ACESSO À CONTA',
+            preview: 'Use este código para entrar no OnFrame.',
+            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela de login.</p>${codeInput(tokenFor(event.email_data))}${alert('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não solicitou o acesso.', 'warning')}`,
+            note: 'Este código é de uso único.'
+          })
+        }];
+      }
       if (event.email_data?.redirect_to === 'https://onframe.onblide.com/connect?verification=email') {
         return [{
           actionType, recipient, subject: 'Confirme seu e-mail no OnFrame',

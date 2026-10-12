@@ -1,9 +1,9 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, LogoMark, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
 import '../shared/app.css';
-import { AuthPanel } from '../shared/AuthPanel';
+import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
 import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
@@ -782,10 +782,7 @@ function OptionsApp() {
     return (
       <main className="onframe-auth-page" aria-busy="true">
         <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
-          <div className="onframe-brand">
-            <LogoMark size={28} />
-            <div><p className="onframe-eyebrow">ONFRAME</p><Skeleton width={152} height={18} radius={6} /></div>
-          </div>
+          <AuthBrand />
           <Card padding={24}>
             <div className="onframe-stack">
               <Skeleton width="32%" height={10} radius={5} />
@@ -804,22 +801,8 @@ function OptionsApp() {
     return (
       <main className="onframe-auth-page">
         <div className="onframe-auth-surface onframe-stack">
-          <div className="onframe-brand">
-            <LogoMark size={28} />
-            <div><p className="onframe-eyebrow">ONFRAME</p><p className="onframe-brand-name">Acesso da <em>extensão</em></p></div>
-          </div>
-          <Card padding={24}>
-            <div className="onframe-stack">
-              <div>
-                <p className="onframe-eyebrow">WORKSPACE</p>
-                <h1 className="onframe-card-title">Entre no OnFrame</h1>
-                <p className="onframe-card-copy">Use sua conta para conectar este navegador ao workspace.</p>
-              </div>
-              {connection?.reason === 'auth_pending' && <Alert tone="info">Confira o link enviado para seu e-mail. Ao voltar à extensão, o acesso será concluído.</Alert>}
-              {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
-              <AuthPanel onConnected={reload} onPending={(flow) => setNotice({ tone: 'info', message: flow.kind === 'passkey' ? 'Continue na aba aberta para usar sua chave de acesso.' : 'Confira seu e-mail para concluir o acesso.' })} />
-            </div>
-          </Card>
+          {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
+          <AuthPanel onConnected={reload} />
         </div>
       </main>
     );

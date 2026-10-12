@@ -129,6 +129,17 @@ test('verificacao de identidade recebe codigo sem alterar o login por magic link
   assert.equal(deliveriesForEvent(runtime(new FakeD1()), payload)[0].subject, 'Seu link de acesso');
 });
 
+test('login faseado recebe OTP sem link que consuma o codigo', () => {
+  const payload = event('magiclink');
+  payload.email_data.redirect_to = 'https://onframe.onblide.com/connect?verification=login';
+  const [delivery] = deliveriesForEvent(runtime(new FakeD1()), payload);
+  assert.equal(delivery.subject, 'Seu código de acesso ao OnFrame');
+  assert.match(delivery.html, /class="code-cell"/);
+  assert.doesNotMatch(delivery.html, /auth\/v1\/verify/);
+  payload.email_data.redirect_to = 'https://example.com/connect?verification=login';
+  assert.equal(deliveriesForEvent(runtime(new FakeD1()), payload)[0].subject, 'Seu link de acesso');
+});
+
 test('aplica a superfície bordered do design system aos e-mails', () => {
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), event('magiclink'));
 

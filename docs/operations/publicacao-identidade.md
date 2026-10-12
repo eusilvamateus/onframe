@@ -45,8 +45,8 @@ migrações e a configuração do provedor: falhas dessas dependências continua
 sendo reportadas, sem inventar uma lista vazia ou um estado de MFA desativado.
 
 Quando os dados de segurança não estão disponíveis, as ações da tela ficam
-desabilitadas e os contadores mostram indisponibilidade. O login não oferece
-chaves de acesso se o servidor não anunciar suporte. Após atualizar o código
+desabilitadas e os contadores mostram indisponibilidade. A entrada por chave
+de acesso está oculta enquanto aguarda revisão. Após atualizar o código
 local, recarregue a extensão e reabra opções/popup para não misturar o bundle
 novo com um service worker antigo.
 
@@ -61,7 +61,13 @@ novo com um service worker antigo.
    preservando os secrets injetados no ambiente. Confirmação de cadastro e
    dupla confirmação de e-mail devem estar ativas.
    Aplicar também a migração de segurança, habilitar TOTP e passkeys, definir
-   o RP/origin HTTPS e permitir `https://onframe.onblide.com/connect?verification=email`.
+   o RP/origin HTTPS e permitir `https://onframe.onblide.com/connect?verification=email`
+   e `https://onframe.onblide.com/connect?verification=login`.
+   Atualizar a contingência `magic-link.html` e publicar o hook do Worker
+   juntos: o marcador `login` precisa entregar o código, não um link.
+   Manter `mailer_otp_length` em 6, conforme `auth.email.otp_length` e
+   `emailOtpLength` da configuração pública. TOTP também usa 6 dígitos,
+   mas é uma verificação distinta do código enviado por e-mail.
    Verificar que a versão do CLI suporta os campos experimentais de passkeys
    antes do push da configuração; não ignorar campos desconhecidos.
    Não sobrescrever SMTP, o segredo do hook ou o segredo do Turnstile durante
@@ -94,9 +100,9 @@ de publicar. Depois da ativação, valide com uma conta de teste:
 - sessões anteriores recusadas após senha alterada ou fator MFA removido;
 - recuperação de senha concluída seguida de novo login;
 - RPC e tabelas legadas inacessíveis às chaves públicas e usuários comuns.
-- OTP recebido com código, sem alterar o e-mail de login por magic link;
+- OTP de login e de verificação recebidos com código, sem link que o consuma;
 - ativação TOTP, login exigindo código e remoção com novo login;
-- login por magic link e passkey com TOTP quando ativado;
+- login por senha e código de e-mail com TOTP quando ativado;
 - criação, renomeação e remoção de chave no domínio HTTPS com dispositivo real;
 - sessão individual/global encerrada sem permitir recriar acesso pelo JWT anterior;
 - tentativa direta de mudar senha com sessão recente, explicitamente tratada

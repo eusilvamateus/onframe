@@ -78,6 +78,22 @@ Uma identidade excluída, bloqueada ou com sessão inválida retorna `401`.
 
 ## Segurança e login
 
+Opções e popup compartilham o mesmo login faseado. Primeiro recebem o e-mail;
+no acesso por senha, essa etapa apenas valida o formato localmente, sem
+consultar a existência da conta. Depois apresentam a senha e o Turnstile.
+Cadastro e recuperação são acessados por links, não por tabs de cadastro.
+Dividir o formulário em etapas organiza a interação; não constitui, por si
+só, uma proteção adicional de autenticação.
+
+O acesso sem senha usa OTP nativo de seis dígitos: `otp` com `create_user: false`
+e posterior `verify` de tipo `email`. O hook reconhece a URL exata
+`connect?verification=login` e entrega o código, sem link que o consuma.
+A configuração pública anuncia `emailOtpLength: 6`, alinhada a `otp_length`
+do Supabase; TOTP continua com seis dígitos. A interface usa `CodeInput`,
+aguarda 60 segundos para reenvio e exige um novo
+Turnstile para cada envio. Senhas e códigos nunca passam pelo background.
+A sessão nativa fica em memória até a troca pelo acesso opaco do Worker.
+
 Senha e e-mail têm páginas próprias. A interface exige um OTP do e-mail atual
 antes de liberar os campos; se houver TOTP confirmado, também exige seu código.
 O OTP cria uma sessão temporária somente em memória. O hook diferencia esse
@@ -97,7 +113,7 @@ implementar um segundo armazenamento/verificador de senhas no Worker.
 O 2FA usa TOTP nativo. A ativação só acontece após validar um código do novo
 autenticador; cancelamento remove o fator não confirmado. A remoção solicita
 o código do fator a remover. Ativação e remoção invalidam os acessos existentes.
-O login por senha, link e chave de acesso passa pelo desafio TOTP quando existe
+O login por senha, código, link e chave de acesso passa pelo desafio TOTP quando existe
 um fator confirmado. O Worker verifica o `aal` do JWT validado antes de criar
 acesso, e a RPC exige `aal2` na sessão canônica; esconder a tela não remove
 essa exigência.
@@ -108,7 +124,9 @@ aba HTTPS do Worker, construída com o mesmo pacote do design system. A sessão
 temporária verificada é transferida no fragmento, nunca na query ou nos logs,
 e retirada do histórico assim que o script inicia. Tokens não ficam em
 localStorage. Esse fragmento é sensível e não deve ser copiado ou compartilhado.
-O login por chave reutiliza o fluxo de uso único da extensão.
+O login por chave reutiliza o fluxo de uso único da extensão. Sua entrada está
+oculta no formulário de login enquanto esse fluxo aguarda revisão; o
+gerenciamento das chaves existentes continua disponível.
 
 `GET /v1/security` lista sessões canônicas, fatores e nomes de chaves, sem
 segredos, IPs ou materiais criptográficos. Browser e sistema são derivados do

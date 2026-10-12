@@ -20,7 +20,7 @@
     if (!response.ok || !SUPABASE_ORIGIN_PATTERN.test(supabaseUrl) || !supabasePublishableKey) {
       throw new Error('Não foi possível preparar o acesso ao OnFrame.');
     }
-    return { supabaseUrl, supabasePublishableKey, capabilities: { accountSecurity: payload.capabilities?.accountSecurity === 1 } };
+    return { supabaseUrl, supabasePublishableKey, emailOtpLength: payload.emailOtpLength === 8 ? 8 : 6, capabilities: { accountSecurity: payload.capabilities?.accountSecurity === 1 } };
   }
 
   async function request(config, path, body, options = {}) {
