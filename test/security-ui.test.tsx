@@ -101,6 +101,7 @@ test('senha e email nao exibem formulario de alteracao antes de verificar email'
   for (const kind of ['password', 'email']) {
     const h = await harness(() => <CredentialSettings kind={kind} profile={profile} onChanged={() => {}} />);
     try {
+      assert.ok(h.renderer.root.findByType('section').props.className.includes('onframe-credential-form'));
       const fields = h.renderer.root.findAllByType('input');
       assert.equal(fields.length, 1);
       assert.equal(fields[0].props.value, user.email);

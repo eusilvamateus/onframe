@@ -39,7 +39,7 @@ export function CredentialSettings({ kind, profile, onChanged }) {
     } finally { setBusy(false); }
   }
 
-  return <section className="onframe-stack onframe-security-form" aria-label={password ? 'Alterar senha' : 'Alterar e-mail'}>
+  return <section className="onframe-stack onframe-security-form onframe-credential-form" aria-label={password ? 'Alterar senha' : 'Alterar e-mail'}>
     {verified && <Stepper variant="compact" size="sm" current={complete ? 2 : 1} steps={[{ label: 'Verificar e-mail atual' }, { label: password ? 'Definir nova senha' : 'Definir novo e-mail' }, { label: 'Concluir alteração' }]} />}
     {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
     {!verified ? <EmailVerification email={profile.user.email} purpose={password ? 'alterar sua senha' : 'alterar seu e-mail'} onVerified={(provider) => { client.current = provider; setVerified(true); }} /> : !complete && <form className="onframe-stack" onSubmit={submit}>

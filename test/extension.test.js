@@ -226,6 +226,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(profileSettings, /onOpenSecuritySettings\(\)/);
   assert.match(profileSettings, /Segurança e login/);
   assert.match(optionsCss, /\.onframe-profile-layout\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(220px, 260px\) minmax\(0, 480px\);/);
+  assert.match(fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8'), /\.onframe-credential-form\s*\{[^}]*max-width: 448px;[^}]*margin-inline: auto;/);
   assert.doesNotMatch(optionsCss, /\.onframe-profile-access\s*\{/);
   assert.match(popup, /Switch/);
   assert.match(authPanel, /FieldShell/);
