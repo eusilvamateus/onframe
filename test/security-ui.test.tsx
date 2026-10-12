@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { CodeInput, Link, Tabs } from '@onblide/ui';
+import { Button, CodeInput, Link, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
 import { EmailVerification, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
@@ -59,9 +59,9 @@ async function harness(render: () => React.ReactElement, failOtp = false, hasTot
 
 async function emailVerified(renderer: ReturnType<typeof create>) {
   await act(async () => renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
-  const input = renderer.root.findAllByType('input').find((field) => field.props.autoComplete === 'one-time-code');
-  assert.ok(input);
-  await act(async () => input.props.onChange({ target: { value: '123456' } }));
+  const input = renderer.root.findByType(CodeInput);
+  assert.equal(input.props.length, 6);
+  await act(async () => input.props.onChange('123456'));
   await act(async () => renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
 }
 
@@ -101,7 +101,12 @@ test('senha e email nao exibem formulario de alteracao antes de verificar email'
   for (const kind of ['password', 'email']) {
     const h = await harness(() => <CredentialSettings kind={kind} profile={profile} onChanged={() => {}} />);
     try {
-      assert.equal(h.renderer.root.findAllByType('input').length, 0);
+      const fields = h.renderer.root.findAllByType('input');
+      assert.equal(fields.length, 1);
+      assert.equal(fields[0].props.value, user.email);
+      assert.equal(fields[0].props.disabled, true);
+      assert.equal(h.renderer.root.findAllByType(CodeInput).length, 0);
+      assert.equal(h.renderer.root.findAll((node) => String(node.props.className || '').includes('onframe-security-verification')).length, 1);
       assert.equal(h.requests.length, 0);
     } finally { await h.close(); }
   }
@@ -112,14 +117,16 @@ test('verificacao por email aguarda antes de reenviar e nao exibe codigos intern
   const h = await harness(() => <EmailVerification email={user.email} onVerified={() => {}} />);
   try {
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
-    const resend = h.renderer.root.findAllByType('button').find((button) => String(button.props.children).includes('Enviar outro código'));
-    assert.ok(resend);
-    assert.equal(resend.props.disabled, true);
+    assert.equal(h.renderer.root.findByType(CodeInput).props.length, 6);
+    const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
+    assert.equal(email?.props.value, user.email);
+    assert.equal(email?.props.disabled, true);
+    assert.equal(h.renderer.root.findByProps({ role: 'status' }).props.children.join(''), 'Reenviar código em 60 s');
     assert.equal(h.requests.filter((request) => request.path === 'otp').length, 1);
     for (let second = 0; second < 60; second += 1) await act(async () => t.mock.timers.tick(1000));
-    const available = h.renderer.root.findAllByType('button').find((button) => String(button.props.children).includes('Enviar outro código'));
-    assert.equal(available.props.disabled, false);
-    await act(async () => available.props.onClick());
+    const available = h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Reenviar código');
+    assert.ok(available);
+    await act(async () => available.props.onClick({ preventDefault() {} }));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.equal(h.requests.filter((request) => request.path === 'otp').length, 2);
   } finally { await h.close(); }
@@ -144,6 +151,7 @@ test('OTP invalido nao libera formulario nem envia alteracao ao provedor', async
   const h = await harness(() => <CredentialSettings kind="password" profile={profile} onChanged={() => {}} />, true);
   try {
     await emailVerified(h.renderer);
+    assert.equal(h.renderer.root.findByType(CodeInput).props.status, 'error');
     assert.equal(h.renderer.root.findAllByType('input').some((input) => input.props.autoComplete === 'new-password'), false);
     assert.equal(h.requests.some((request) => request.method === 'PUT'), false);
     assert.deepEqual(h.requests.find((request) => request.path === 'otp')?.body, { email: user.email, create_user: false, gotrue_meta_security: { captcha_token: 'captcha-test' } });
@@ -181,9 +189,10 @@ test('ativacao TOTP so conclui depois de verificar o codigo do autenticador', as
     await act(async () => button.props.onClick());
     assert.equal(disconnected, 0);
     assert.equal(h.requests.some((request) => request.path.endsWith('/verify')), false);
-    const code = h.renderer.root.findAllByType('input').find((input) => input.props.autoComplete === 'one-time-code');
-    assert.ok(code);
-    await act(async () => code.props.onChange({ target: { value: '123456' } }));
+    const code = h.renderer.root.findByType(CodeInput);
+    assert.equal(code.props.length, 6);
+    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.disabled, true);
+    await act(async () => code.props.onChange('123456'));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.equal(h.requests.some((request) => request.path.endsWith('/challenge')), true);
     assert.equal(disconnected, 1);
@@ -196,11 +205,29 @@ test('OTP de email nao substitui o segundo fator de uma conta protegida', async 
     await emailVerified(h.renderer);
     assert.equal(h.renderer.root.findAllByType('input').some((field) => field.props.autoComplete === 'new-password'), false);
     assert.equal(h.requests.some((request) => request.method === 'PUT'), false);
-    const code = h.renderer.root.findAllByType('input').find((field) => field.props.autoComplete === 'one-time-code');
-    await act(async () => code.props.onChange({ target: { value: '123456' } }));
+    const code = h.renderer.root.findByType(CodeInput);
+    assert.equal(code.props.length, 6);
+    assert.match(JSON.stringify(h.renderer.toJSON()), /Confirme no aplicativo/);
+    await act(async () => code.props.onChange('123456'));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.equal(h.renderer.root.findAllByType('input').filter((field) => field.props.autoComplete === 'new-password').length, 2);
     assert.equal(h.requests.some((request) => request.path.endsWith('/challenge')), true);
+  } finally { await h.close(); }
+});
+
+test('remocao do autenticador usa a mesma verificacao com email e CodeInput', async () => {
+  const h = await harness(() => <TwoFactorSettings profile={profile} securityOverview={{ factors: [{ id: factorId, type: 'totp', name: 'Meu autenticador' }] }} onDisconnect={async () => {}} />, false, true);
+  try {
+    await emailVerified(h.renderer);
+    await act(async () => h.renderer.root.findByType(CodeInput).props.onChange('123456'));
+    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    const remove = h.renderer.root.findAllByType(Button).find((button) => button.props.children === 'Remover');
+    assert.ok(remove);
+    await act(async () => remove.props.onClick());
+    assert.equal(h.renderer.root.findByType(CodeInput).props.length, 6);
+    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.value, user.email);
+    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.disabled, true);
+    assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-code-field' }).length, 1);
   } finally { await h.close(); }
 });
 
@@ -382,6 +409,9 @@ test('codigo por email usa OTP nativo sem criar conta ou fluxo externo e autenti
   try {
     await selectCode(h.renderer); await continueEmail(h.renderer);
     assert.equal(h.renderer.root.findAllByType(CodeInput).length, 1);
+    const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
+    assert.equal(email?.props.value, user.email);
+    assert.equal(email?.props.disabled, true);
     assert.equal(h.renderer.root.findAllByType('input').some((field) => field.props.type === 'password'), false);
     const sent = h.requests.find((request) => request.path === 'otp');
     assert.equal((sent?.body as { create_user?: boolean })?.create_user, false);

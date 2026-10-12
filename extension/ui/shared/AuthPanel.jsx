@@ -52,11 +52,33 @@ export function PasswordField({ label, labelAction, value, onChange, autoComplet
   );
 }
 
-export function AuthBrand() {
+export function AuthBrand({ src = '../../assets/onframe-stacked-primary.png' }) {
   return <header className="onframe-auth-brand">
-    <img className="onframe-auth-logo" src="../../assets/onframe-stacked-primary.png" alt="OnFrame" width={192} height={96} />
+    <img className="onframe-auth-logo" src={src} alt="OnFrame" width={192} height={96} />
     <p className="onframe-help">by onblide</p>
   </header>;
+}
+
+export function VerificationEmailField({ email, onEdit }) {
+  return <Input label="E-mail" type="email" value={email} disabled hint={onEdit ? <Link href="#alterar-email" onClick={(event) => { event.preventDefault(); onEdit(); }}>Alterar e-mail</Link> : undefined} />;
+}
+
+export function VerificationCodeField({ label, length, value, onChange, error, disabled }) {
+  return <fieldset className="onframe-auth-code-field" disabled={disabled} aria-label={label}>
+    <legend className="onframe-field-label">{label}</legend>
+    <div className="onframe-auth-code-scroll"><CodeInput length={length} value={value} onChange={onChange} status={error ? 'error' : 'default'} /></div>
+  </fieldset>;
+}
+
+export function VerificationFrame({ title, children, brandSrc, headingLevel = 2 }) {
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
+  return <div className="onframe-auth-panel onframe-security-verification">
+    <AuthBrand src={brandSrc} />
+    <Card padding={24}><div className="onframe-auth-content">
+      <Heading className="onframe-auth-title">{title}</Heading>
+      {children}
+    </div></Card>
+  </div>;
 }
 
 export function AuthPanel({ onConnected, onPending }) {
@@ -144,6 +166,7 @@ export function AuthPanel({ onConnected, onPending }) {
       try {
         await RemoteAuth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } },
           { redirectTo: 'https://onframe.onblide.com/connect?verification=login' });
+        update('email', email);
         setPhase('code'); setCode(''); setCodeError(false); setResending(false); setCooldown(60);
       } finally { challengeInstance.current?.reset(); }
     }, 'Não foi possível enviar o código. Aguarde e tente novamente.');
@@ -217,17 +240,15 @@ export function AuthPanel({ onConnected, onPending }) {
           ]} />
         </nav>}
         <form className="onframe-auth-fields" onSubmit={submit} noValidate aria-busy={busy}>
-          {phase !== 'email' && !showPasswordEmail && <div className="onframe-auth-identity"><p className="onframe-muted">{fields.email}</p><Link href="#alterar-email" onClick={(event) => { event.preventDefault(); if (!pending.current) editEmail(); }}>Alterar e-mail</Link></div>}
+          {verifying && <VerificationEmailField email={fields.email} onEdit={() => { if (!pending.current) editEmail(); }} />}
+          {phase !== 'email' && !showPasswordEmail && !verifying && <div className="onframe-auth-identity"><p className="onframe-muted">{fields.email}</p><Link href="#alterar-email" onClick={(event) => { event.preventDefault(); if (!pending.current) editEmail(); }}>Alterar e-mail</Link></div>}
           {!verifying && (phase === 'email' || showPasswordEmail) && <Input label="E-mail" type="email" inputMode="email" autoComplete="username" value={fields.email} disabled={busy || showPasswordEmail} onChange={(event) => update('email', event.target.value)} hint={showPasswordEmail ? <Link href="#alterar-email" onClick={linkTo(mode)}>Alterar e-mail</Link> : undefined} />}
           {!verifying && phase === 'details' && <Input label="Nome" autoComplete="name" value={fields.name} disabled={busy} onChange={(event) => update('name', event.target.value)} />}
           {!verifying && ['password', 'details'].includes(phase) && <PasswordField label="Senha" labelAction={mode === 'signin' ? <Link href="#recuperar-senha" onClick={linkTo('recovery')}>Esqueci minha senha</Link> : undefined} value={fields.password} onChange={(value) => update('password', value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} disabled={busy} />}
           {!verifying && phase === 'details' && <PasswordField label="Confirme a senha" value={fields.confirmation} onChange={(value) => update('confirmation', value)} autoComplete="new-password" disabled={busy} />}
           {verifying && <>
             {secondFactor?.factors.length > 1 && <Tabs tabs={secondFactor.factors.map((factor, index) => ({ id: factor.id, label: factor.friendly_name || `Autenticador ${index + 1}` }))} active={secondFactor.id} onChange={(id) => { setSecondFactor((current) => ({ ...current, id })); setCode(''); setCodeError(false); }} size="sm" />}
-            <fieldset className="onframe-auth-code-field" disabled={busy} aria-label={secondFactor ? 'Código do aplicativo autenticador' : 'Código enviado por e-mail'}>
-              <legend className="onframe-field-label">{secondFactor ? 'Código do aplicativo autenticador' : 'Insira o código de verificação'}</legend>
-              <div className="onframe-auth-code-scroll"><CodeInput length={codeLength} value={code} onChange={changeCode} status={codeError ? 'error' : 'default'} /></div>
-            </fieldset>
+            <VerificationCodeField label={secondFactor ? 'Código do aplicativo autenticador' : 'Insira o código de verificação'} length={codeLength} value={code} onChange={changeCode} error={codeError} disabled={busy} />
             {!secondFactor && <p className="onframe-help">Se houver uma conta para este e-mail, você receberá um código de {codeLength} dígitos.</p>}
           </>}
           {feedback && <Alert tone={feedback.tone}>{feedback.message}</Alert>}

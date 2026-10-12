@@ -9,6 +9,7 @@ fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
 fs.copyFileSync(path.join(root, 'extension', 'ui', 'passkeys', 'index.html'), path.join(output, 'index.html'));
 fs.copyFileSync(path.join(root, 'extension', 'core', 'remote-auth.js'), path.join(output, 'remote-auth.js'));
+fs.copyFileSync(path.join(root, 'extension', 'assets', 'onframe-stacked-primary.png'), path.join(output, 'onframe-stacked-primary.png'));
 esbuild.build({
   entryPoints: [path.join(root, 'extension', 'ui', 'passkeys', 'app.jsx')],
   outdir: output, bundle: true, format: 'iife', platform: 'browser',

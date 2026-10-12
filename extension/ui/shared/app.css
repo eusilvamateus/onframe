@@ -12,6 +12,7 @@ button, input { font: inherit; }
 .onframe-field-input { flex: 1; min-width: 0; padding: 10px 0; border: 0; outline: 0; color: var(--ob-fg-strong); background: transparent; font: inherit; font-size: 14px; }
 .onframe-field-input[type="password"]::-ms-reveal { display: none; }
 .onframe-auth-panel, .onframe-auth-fields { display: flex; flex-direction: column; gap: var(--ob-s-4); }
+.onframe-security-verification { width: min(100%, 448px); margin-inline: auto; }
 .onframe-auth-content { display: flex; flex-direction: column; gap: var(--ob-s-5); min-width: 0; }
 .onframe-help { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-auth-brand, .onframe-auth-methods { display: flex; justify-content: center; }

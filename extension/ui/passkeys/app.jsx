@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
 import { Alert, Button, Input, List, ListItem, LogoMark, Ph, Tabs } from '@onblide/ui';
 import '../shared/app.css';
+import { VerificationCodeField, VerificationEmailField, VerificationFrame } from '../shared/AuthPanel';
 import { providerClient, verifySecondFactor } from '../shared/provider-auth';
 import { formatDate } from '../shared/runtime';
 
@@ -24,6 +25,7 @@ function PasskeyPage() {
   const [name, setName] = useState('');
   const [factor, setFactor] = useState(null);
   const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
   const [removal, setRemoval] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [complete, setComplete] = useState(false);
@@ -58,9 +60,11 @@ function PasskeyPage() {
             if (active) setKeys(data);
           } else {
             if (!/^[A-Za-z0-9_-]{43}$/u.test(flow)) throw new Error('flow');
+            const { data: identity, error: identityError } = await provider.auth.getUser();
+            if (identityError || !identity.user?.email) throw identityError || new Error('identity');
             const { data, error: factorError } = await provider.auth.mfa.listFactors();
             if (factorError || !data.totp.length) throw factorError || new Error('factor');
-            if (active) setFactor({ id: data.totp[0].id, factors: data.totp });
+            if (active) { setEmail(identity.user.email); setFactor({ id: data.totp[0].id, factors: data.totp }); }
           }
         } else if (!/^[A-Za-z0-9_-]{43}$/u.test(flow)) throw new Error('flow');
         if (active) { setClient(provider); setReady(true); }
@@ -95,24 +99,37 @@ function PasskeyPage() {
     setNotice({ tone: 'success', message: 'Acesso confirmado. Volte à extensão para continuar.' });
   }
 
+  if (ready && factor && !complete) return <main className="onframe-auth-page">
+    <VerificationFrame title="Confirme no aplicativo" brandSrc="/security/onframe-stacked-primary.png" headingLevel={1}>
+      <form className="onframe-auth-fields" onSubmit={(event) => { event.preventDefault(); void run(async () => finishLogin(await verifySecondFactor(client, factor.id, code))); }} aria-busy={busy}>
+        <VerificationEmailField email={email} />
+        {factor.factors.length > 1 && <Tabs tabs={factor.factors.map((value, index) => ({ id: value.id, label: value.friendly_name || `Autenticador ${index + 1}` }))} active={factor.id} onChange={(id) => { setFactor((current) => ({ ...current, id })); setCode(''); setNotice(null); }} size="sm" />}
+        <VerificationCodeField label="Código do aplicativo autenticador" length={6} value={code} onChange={(value) => { setCode(value); setNotice(null); }} error={notice?.tone === 'danger'} disabled={busy} />
+        {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+        <Button type="submit" disabled={busy || code.length !== 6} style={{ width: '100%' }}>Verificar e entrar</Button>
+      </form>
+    </VerificationFrame>
+  </main>;
+
   return <main className="onframe-auth-page"><section className="onframe-auth-surface onframe-stack" aria-label="Chaves de acesso">
     <div className="onframe-brand"><LogoMark size={28} /><p className="onframe-eyebrow">ONFRAME</p></div>
     <h1 className="onframe-page-title">{verifying ? 'Verificação em duas etapas' : managing ? 'Chaves de acesso' : 'Entrar com chave de acesso'}</h1>
     {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
     {ready && !managing && !verifying && !complete && !factor && <div className="onframe-captcha" ref={challengeRef} />}
-    {ready && !managing && !complete && (factor ? <form className="onframe-stack" onSubmit={(event) => { event.preventDefault(); void run(async () => finishLogin(await verifySecondFactor(client, factor.id, code))); }}>
-      {factor.factors.length > 1 && <Tabs tabs={factor.factors.map((value, index) => ({ id: value.id, label: value.friendly_name || `Autenticador ${index + 1}` }))} active={factor.id} onChange={(id) => setFactor((current) => ({ ...current, id }))} size="sm" />}
-      <Input label="Código do aplicativo autenticador" value={code} maxLength={6} autoComplete="one-time-code" inputMode="numeric" disabled={busy} onChange={(event) => setCode(event.target.value.replace(/\D/gu, ''))} />
-      <Button type="submit" disabled={busy || code.length !== 6}>Verificar e entrar</Button>
-    </form> : <Button disabled={busy || !captcha} icon={<Ph n="key" size={18} />} onClick={() => void run(async () => {
+    {ready && !managing && !complete && <Button disabled={busy || !captcha} icon={<Ph n="key" size={18} />} onClick={() => void run(async () => {
       const { data, error } = await client.auth.signInWithPasskey({ options: { captchaToken: captcha } });
       challenge.current?.reset(); setCaptcha('');
       if (error || !data.session) throw error || new Error('session');
       const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
       if (factorError) throw factorError;
-      if (factors.totp.length) setFactor({ id: factors.totp[0].id, factors: factors.totp });
+      if (factors.totp.length) {
+        const identityEmail = data.session.user?.email || (await client.auth.getUser()).data.user?.email;
+        if (!identityEmail) throw new Error('identity');
+        setEmail(identityEmail);
+        setFactor({ id: factors.totp[0].id, factors: factors.totp });
+      }
       else await finishLogin(data.session);
-    })}>Usar chave de acesso</Button>)}
+    })}>Usar chave de acesso</Button>}
     {ready && managing && <>
       <Input label="Nome da chave" value={name} maxLength={64} disabled={busy} onChange={(event) => setName(event.target.value)} />
       <div className="onframe-actions"><Button disabled={busy || Boolean(renaming) || !name.trim()} icon={<Ph n="plus" size={18} />} onClick={() => void run(async () => {

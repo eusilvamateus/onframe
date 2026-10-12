@@ -62,6 +62,16 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'launcher')), false);
 });
 
+test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
+  const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build-security-ui.js'), 'utf8');
+  assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
+  assert.match(passkeys, /<VerificationEmailField email=\{email\}/);
+  assert.match(passkeys, /<VerificationCodeField label="Código do aplicativo autenticador" length=\{6\}/);
+  assert.doesNotMatch(passkeys, /<Input label="Código do aplicativo autenticador"/);
+  assert.match(build, /onframe-stacked-primary\.png/);
+});
+
 test('erros de autenticação sem mensagem útil preservam o status HTTP e traduzem limites de envio', () => {
   const code = fs.readFileSync(path.join(extensionRoot, 'core', 'remote-auth.js'), 'utf8');
   const window = {};

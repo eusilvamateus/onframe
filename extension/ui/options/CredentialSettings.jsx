@@ -40,9 +40,9 @@ export function CredentialSettings({ kind, profile, onChanged }) {
   }
 
   return <section className="onframe-stack onframe-security-form" aria-label={password ? 'Alterar senha' : 'Alterar e-mail'}>
-    <Stepper variant="compact" size="sm" current={complete ? 2 : verified ? 1 : 0} steps={[{ label: 'Verificar e-mail atual' }, { label: password ? 'Definir nova senha' : 'Definir novo e-mail' }, { label: 'Concluir alteração' }]} />
+    {verified && <Stepper variant="compact" size="sm" current={complete ? 2 : 1} steps={[{ label: 'Verificar e-mail atual' }, { label: password ? 'Definir nova senha' : 'Definir novo e-mail' }, { label: 'Concluir alteração' }]} />}
     {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
-    {!verified ? <EmailVerification email={profile.user.email} onVerified={(provider) => { client.current = provider; setVerified(true); }} /> : !complete && <form className="onframe-stack" onSubmit={submit}>
+    {!verified ? <EmailVerification email={profile.user.email} purpose={password ? 'alterar sua senha' : 'alterar seu e-mail'} onVerified={(provider) => { client.current = provider; setVerified(true); }} /> : !complete && <form className="onframe-stack" onSubmit={submit}>
       {password ? <>
         <PasswordField label="Nova senha" value={value} onChange={setValue} autoComplete="new-password" disabled={busy} />
         <PasswordField label="Confirme a nova senha" value={confirmation} onChange={setConfirmation} autoComplete="new-password" disabled={busy} />
