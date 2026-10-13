@@ -158,9 +158,9 @@ function Popup() {
                 <div className="onframe-list" aria-label="Contas Mercado Livre">
                   {accounts.slice(0, 3).map((account) => (
                     <div className="onframe-popup-account" key={account.id || account.user_id}>
-                      <Avatar name={account.nickname || account.user_id} src={trustedLogo(account.logo)} alt="" size={32} />
+                      <Avatar name={account.display_name || account.nickname || account.user_id} src={trustedLogo(account.logo)} alt="" size={32} />
                       <div className="onframe-grow">
-                        <p className="onframe-list-title">{account.nickname || `Conta ${account.user_id}`}</p>
+                        <p className="onframe-list-title">{account.display_name || account.nickname || `Conta ${account.user_id}`}</p>
                         <p className="onframe-list-meta">Mercado Livre</p>
                       </div>
                       <Badge tone={account.enabled === false ? 'grey' : 'green'} size="sm">{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>

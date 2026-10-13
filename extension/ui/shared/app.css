@@ -71,6 +71,20 @@ button, input { font: inherit; }
 .onframe-settings-action-buttons { margin-left: auto; }
 .onframe-card-title { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-md); font-weight: var(--ob-w-semibold); line-height: var(--ob-lh-snug); }
 .onframe-card-copy { margin: 4px 0 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); line-height: var(--ob-lh-normal); }
+.onframe-integration-header > .onframe-row { flex-wrap: wrap; }
+.onframe-integration-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ob-s-3); }
+.onframe-integration-list { border-top: 1px solid var(--ob-line-soft); }
+.onframe-integration-list-item { padding: var(--ob-s-3) 0; border-bottom: 1px solid var(--ob-line-soft); }
+.onframe-integration-card, .onframe-integration-list-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ob-s-3); min-width: 0; }
+.onframe-integration-identity { display: flex; align-items: center; gap: var(--ob-s-3); flex: 1 1 200px; min-width: 0; }
+.onframe-integration-name, .onframe-integration-edit, .onframe-integration-controls { display: flex; align-items: center; gap: var(--ob-s-1); min-width: 0; }
+.onframe-integration-name .onframe-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.onframe-integration-name > span { opacity: 0; transition: opacity var(--ob-dur-fast) var(--ob-ease); }
+.onframe-integration-name:hover > span, .onframe-integration-name:focus-within > span { opacity: 1; }
+.onframe-integration-edit { width: 100%; }
+.onframe-integration-edit > label { flex: 1; min-width: 0; }
+.onframe-integration-controls { flex: none; margin-left: auto; gap: var(--ob-s-2); }
+@media (hover: none) { .onframe-integration-name > span { opacity: 1; } }
 
 .onframe-options { display: grid; min-height: 100vh; grid-template-columns: 240px minmax(0, 1fr); background: var(--ob-surface); transition: grid-template-columns var(--ob-dur-base) var(--ob-ease); }
 .onframe-options--collapsed { grid-template-columns: 72px minmax(0, 1fr); }
@@ -103,6 +117,7 @@ button, input { font: inherit; }
 .onframe-popup-account + .onframe-popup-account { border-top: 1px solid var(--ob-line-soft); }
 
 @media (max-width: 767px) {
+  .onframe-integration-grid { grid-template-columns: 1fr; }
   .onframe-options { display: block; }
   .onframe-options-sidebar { display: none; }
   .onframe-options-desktop-context { display: none; }

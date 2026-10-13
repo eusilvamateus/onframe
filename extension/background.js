@@ -41,7 +41,7 @@ async function handleRemoteMessage(message) {
   if (action === 'disconnect') return disconnectRemoteConnection();
   if (action === 'accounts') return listRemoteAccounts();
   if (action === 'oauth-start') return startRemoteAuth();
-  if (action === 'account-update') return updateRemoteAccount(message.userId, message.enabled);
+  if (action === 'account-update') return updateRemoteAccount(message.userId, message.payload);
   if (action === 'account-remove') return removeRemoteAccount(message.userId);
   if (action === 'app-overview') return requestPlatform('/v1/app/overview');
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
@@ -210,12 +210,12 @@ async function listRemoteAccounts() {
   }
 }
 
-async function updateRemoteAccount(userId, enabled) {
+async function updateRemoteAccount(userId, payload) {
   const session = await requireRemoteSession();
   const result = await requestRemote(`/v1/accounts/${encodeURIComponent(normalizeRemoteAccountUserId(userId))}`, {
     method: 'PATCH',
     headers: { authorization: `Bearer ${session.token}` },
-    body: JSON.stringify({ enabled: Boolean(enabled) })
+    body: JSON.stringify(payload)
   });
   return { accounts: normalizeRemoteAccounts(result && result.accounts) };
 }
@@ -292,6 +292,7 @@ function normalizeRemoteAccounts(value) {
     id: account && account.id ? String(account.id) : '',
     user_id: account && account.userId ? String(account.userId) : '',
     nickname: account && account.nickname ? String(account.nickname) : '',
+    display_name: account && account.displayName ? String(account.displayName) : '',
     permalink: account && account.profileUrl ? String(account.profileUrl) : '',
     logo: account && account.logoUrl ? String(account.logoUrl) : '',
     enabled: !(account && account.enabled === false)

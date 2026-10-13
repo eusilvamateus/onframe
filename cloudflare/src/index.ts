@@ -798,9 +798,9 @@ async function persistMeliAccount(
   return { accountId, nickname };
 }
 
-async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Array<Record<string, unknown>>> {
+export async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Array<Record<string, unknown>>> {
   const result = await env.ONFRAME_DB.prepare(`
-    SELECT id, meli_user_id, nickname, site_id, profile_url, logo_url, enabled
+    SELECT id, meli_user_id, nickname, display_name, site_id, profile_url, logo_url, enabled
     FROM seller_accounts
     WHERE workspace_id = ?
       AND (
@@ -817,6 +817,7 @@ async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionAct
     id: string;
     meli_user_id: string;
     nickname: string | null;
+    display_name: string | null;
     site_id: string | null;
     profile_url: string | null;
     logo_url: string | null;
@@ -827,6 +828,7 @@ async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionAct
     id: account.id,
     userId: account.meli_user_id,
     nickname: account.nickname,
+    displayName: account.display_name,
     siteId: account.site_id,
     profileUrl: account.profile_url,
     logoUrl: account.logo_url,
@@ -834,7 +836,7 @@ async function listWorkspaceAccounts(env: RuntimeEnv, actor: ExtensionSessionAct
   }));
 }
 
-async function updateWorkspaceAccount(
+export async function updateWorkspaceAccount(
   request: Request,
   env: RuntimeEnv,
   actor: ExtensionSessionActor,
@@ -850,14 +852,27 @@ async function updateWorkspaceAccount(
   } catch {
     throw new RequestError('invalid_json', 400);
   }
-  const enabled = body && typeof body === 'object' ? (body as Record<string, unknown>).enabled : undefined;
-  if (typeof enabled !== 'boolean') throw new RequestError('invalid_account_update', 400);
+  const values = body && typeof body === 'object' && !Array.isArray(body) ? body as Record<string, unknown> : {};
+  const enabled = values.enabled;
+  const displayName = values.displayName;
+  const keys = Object.keys(values);
+  if (keys.length !== 1 || (typeof enabled !== 'boolean' && typeof displayName !== 'string')) {
+    throw new RequestError('invalid_account_update', 400);
+  }
+  const trimmedName = typeof displayName === 'string' ? displayName.trim() : '';
+  if (typeof displayName === 'string' && (!trimmedName || trimmedName.length > 80)) {
+    throw new RequestError('invalid_account_name', 400);
+  }
 
-  const result = await env.ONFRAME_DB.prepare(`
-    UPDATE seller_accounts
-    SET enabled = ?, updated_at = ?
-    WHERE workspace_id = ? AND meli_user_id = ?
-  `).bind(enabled ? 1 : 0, now(), actor.workspaceId, meliUserId).run();
+  const result = typeof enabled === 'boolean'
+    ? await env.ONFRAME_DB.prepare(`
+      UPDATE seller_accounts SET enabled = ?, updated_at = ?
+      WHERE workspace_id = ? AND meli_user_id = ?
+    `).bind(enabled ? 1 : 0, now(), actor.workspaceId, meliUserId).run()
+    : await env.ONFRAME_DB.prepare(`
+      UPDATE seller_accounts SET display_name = ?, updated_at = ?
+      WHERE workspace_id = ? AND meli_user_id = ?
+    `).bind(trimmedName, now(), actor.workspaceId, meliUserId).run();
   if (result.meta.changes !== 1) throw new RequestError('workspace_account_not_found', 404);
 
   await auditWorkspaceAccountChange(env, actor, requestId, 'seller_account_updated', meliUserId);
@@ -1143,7 +1158,8 @@ async function listWorkspaceMembers(env: RuntimeEnv, actor: ExtensionSessionActo
     created_at: number;
   }>();
   const assignments = await env.ONFRAME_DB.prepare(`
-    SELECT account_members.user_id, seller_accounts.id AS account_id, seller_accounts.nickname, seller_accounts.meli_user_id
+    SELECT account_members.user_id, seller_accounts.id AS account_id,
+      COALESCE(seller_accounts.display_name, seller_accounts.nickname) AS nickname, seller_accounts.meli_user_id
     FROM account_members
     INNER JOIN seller_accounts ON seller_accounts.id = account_members.seller_account_id
     WHERE seller_accounts.workspace_id = ?

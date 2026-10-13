@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Tabs } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Switch, Tabs, ToggleButton, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
@@ -53,7 +53,16 @@ const SETTINGS_PAGE_META = {
 };
 
 function accountName(account) {
-  return account.nickname || `Conta ${account.user_id || ''}`.trim();
+  return account.display_name || account.nickname || `Conta ${account.user_id || ''}`.trim();
+}
+
+function accountStoreUrl(account) {
+  try {
+    const url = new URL(account.permalink);
+    return url.protocol === 'https:' ? url.href : '';
+  } catch {
+    return '';
+  }
 }
 
 function trustedLogo(value) {
@@ -171,15 +180,93 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
   );
 }
 
-function Integrations({ accounts, admin, onConnect, onUpdate, onRemove, loading }) {
+function IntegrationAccount({ account, admin, mode, loading, onUpdate, onRename, onRemove }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(accountName(account));
+  const [removingHover, setRemovingHover] = useState(false);
+  const savingName = useRef(false);
+  const storeUrl = accountStoreUrl(account);
+  const label = accountName(account);
+  const id = `ID ${account.user_id}`;
+
+  function cancelEdit() {
+    setName(label);
+    setEditing(false);
+  }
+
+  async function saveName() {
+    const value = name.trim();
+    if (!value || value === label) {
+      cancelEdit();
+      return;
+    }
+    savingName.current = true;
+    try {
+      if (await onRename(account, value)) setEditing(false);
+    } finally {
+      savingName.current = false;
+    }
+  }
+
+  const controls = (
+    <div className="onframe-integration-controls">
+      {storeUrl && <Tooltip label="Abrir página da loja">
+        <Button kind="neutral" size="sm" iconOnly aria-label={`Abrir página da loja de ${label}`} icon={<Ph n="arrow-square-out" size={18} />} onClick={() => openExternal(storeUrl)} />
+      </Tooltip>}
+      {admin && <>
+        <Tooltip label={account.enabled === false ? 'Ativar conta' : 'Desativar conta'}>
+          <span role="group" aria-label={`Status de ${label}`}><Switch size="sm" checked={account.enabled !== false} disabled={loading} label={account.enabled === false ? 'Inativa' : 'Ativa'} onChange={(enabled) => onUpdate(account, enabled)} /></span>
+        </Tooltip>
+        <Tooltip label="Remover conta">
+          <Button kind={removingHover ? 'danger' : 'neutral'} size="sm" iconOnly aria-label={`Remover ${label}`} disabled={loading} icon={<Ph n="trash" size={18} />} onMouseEnter={() => setRemovingHover(true)} onMouseLeave={() => setRemovingHover(false)} onFocus={() => setRemovingHover(true)} onBlur={() => setRemovingHover(false)} onClick={() => onRemove(account)} />
+        </Tooltip>
+      </>}
+    </div>
+  );
+
+  const identity = (
+    <div className="onframe-integration-identity">
+      <Avatar name={label} src={trustedLogo(account.logo)} alt="" size={mode === 'cards' ? 44 : 36} />
+      <div className="onframe-grow">
+        {editing ? <div className="onframe-integration-edit" onBlur={(event) => {
+          if (!savingName.current && !event.currentTarget.contains(event.relatedTarget)) cancelEdit();
+        }}>
+          <Input aria-label="Nome da conta" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} onFocus={(event) => event.target.select()} onKeyDown={(event) => {
+            if (event.key === 'Enter') { event.preventDefault(); void saveName(); }
+            if (event.key === 'Escape') cancelEdit();
+          }} autoFocus disabled={loading} />
+          <Tooltip label="Salvar nome"><Button kind="neutral" size="sm" iconOnly aria-label="Salvar nome" disabled={loading || !name.trim()} icon={<Ph n="check" size={16} />} onClick={() => void saveName()} /></Tooltip>
+          <Tooltip label="Cancelar edição"><Button kind="neutral" size="sm" iconOnly aria-label="Cancelar edição" disabled={loading} icon={<Ph n="x" size={16} />} onClick={cancelEdit} /></Tooltip>
+        </div> : <div className="onframe-integration-name">
+          <p className="onframe-card-title">{label}</p>
+          {admin && <Tooltip label="Renomear conta"><Button kind="neutral" size="sm" iconOnly aria-label={`Renomear ${label}`} disabled={loading} icon={<Ph n="pencil-simple" size={16} />} onClick={() => { setName(label); setEditing(true); }} /></Tooltip>}
+        </div>}
+        <p className="onframe-list-meta">{id}</p>
+      </div>
+    </div>
+  );
+
+  return mode === 'cards' ? <Card padding={20}><div className="onframe-integration-card">{identity}{controls}</div></Card> : <div className="onframe-integration-list-item">{identity}{controls}</div>;
+}
+
+function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove, loading }) {
+  const [mode, setMode] = useState('list');
   return (
     <div className="onframe-stack">
-      <SectionHeader
-        eyebrow="MERCADO LIVRE"
-        title={admin ? 'Contas conectadas' : 'Contas atribuídas'}
-        copy={admin ? 'Conecte e controle as contas disponíveis neste workspace.' : 'Contas atribuídas ao seu acesso neste workspace.'}
-        actions={admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button>}
-      />
+      <div className="onframe-integration-header">
+        <SectionHeader
+          eyebrow="MERCADO LIVRE"
+          title={admin ? 'Contas conectadas' : 'Contas atribuídas'}
+          copy={admin ? 'Conecte e controle as contas disponíveis neste workspace.' : 'Contas atribuídas ao seu acesso neste workspace.'}
+          actions={<div className="onframe-actions">
+            {accounts.length > 0 && <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="sm">
+              <Tooltip label="Visualizar como lista"><ToggleButton value="list" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
+              <Tooltip label="Visualizar como cards"><ToggleButton value="cards" icon="squares-four" ariaLabel="Cards" /></Tooltip>
+            </ButtonGroup>}
+            {admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button>}
+          </div>}
+        />
+      </div>
       {accounts.length === 0 ? (
         <Card padding={24}>
           <SectionHeader
@@ -189,26 +276,9 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRemove, loading 
             actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button> : undefined}
           />
         </Card>
-      ) : accounts.map((account) => (
-        <Card key={account.id || account.user_id} padding={20}>
-          <div className="onframe-row onframe-row-between" style={{ alignItems: 'flex-start' }}>
-            <div className="onframe-row onframe-grow">
-              <Avatar name={accountName(account)} src={trustedLogo(account.logo)} alt="" size={44} />
-              <div className="onframe-grow">
-                <p className="onframe-card-title">{accountName(account)}</p>
-                <p className="onframe-card-copy">Mercado Livre · {account.enabled === false ? 'Conta desativada' : 'Conta habilitada'}</p>
-              </div>
-            </div>
-            <Badge tone={account.enabled === false ? 'grey' : 'green'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
-          </div>
-          {admin && (
-            <div className="onframe-actions" style={{ marginTop: 16 }}>
-              <Button kind="secondary" disabled={loading} onClick={() => onUpdate(account, !account.enabled)}>{account.enabled === false ? 'Habilitar' : 'Desativar'}</Button>
-              <Button kind="danger" disabled={loading} onClick={() => onRemove(account)}>Remover</Button>
-            </div>
-          )}
-        </Card>
-      ))}
+      ) : <div className={mode === 'cards' ? 'onframe-integration-grid' : 'onframe-integration-list'}>
+        {accounts.map((account) => <IntegrationAccount key={account.id || account.user_id} account={account} admin={admin} mode={mode} loading={loading} onUpdate={onUpdate} onRename={onRename} onRemove={onRemove} />)}
+      </div>}
     </div>
   );
 }
@@ -647,9 +717,18 @@ function OptionsApp() {
 
   async function updateAccount(account, enabled) {
     await run(async () => {
-      await sendRemoteMessage('account-update', { userId: account.user_id, enabled });
+      await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
       await loadAccounts();
     }, enabled ? 'Conta habilitada.' : 'Conta desativada.');
+  }
+
+  async function renameAccount(account, displayName) {
+    const result = await run(async () => {
+      await sendRemoteMessage('account-update', { userId: account.user_id, payload: { displayName } });
+      await loadAccounts();
+      return true;
+    }, 'Nome da conta atualizado.');
+    return result === true;
   }
 
   async function confirmDialog() {
@@ -930,7 +1009,7 @@ function OptionsApp() {
             />
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
-            {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
+            {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
             {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
           </div>
         </section>

@@ -10,6 +10,56 @@ const { transformSync } = require('esbuild');
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
 
+test('integracoes alternam visualizacao e permitem renomear sem perder controles da conta', async () => {
+  const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const helpers = source.slice(source.indexOf('function accountName'), source.indexOf('function searchValue'));
+  const component = source.slice(source.indexOf('function IntegrationAccount'), source.indexOf('function settingsOptionItems'));
+  const compiled = transformSync(`${helpers}\n${component}\nIntegrations`, {
+    loader: 'jsx', jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment'
+  }).code;
+  const opened = [];
+  const updated = [];
+  const removed = [];
+  const Integrations = vm.runInNewContext(compiled, {
+    React, URL, useState: React.useState, useRef: React.useRef, openExternal: (url) => opened.push(url),
+    SectionHeader: ({ actions }) => React.createElement('section-header', null, actions), Button: 'button-control', ButtonGroup: 'button-group',
+    ToggleButton: 'toggle-control', Card: 'card-control', Avatar: 'avatar-control',
+    Tooltip: 'tooltip-control', Switch: 'switch-control', Input: 'input-control', Ph: 'icon-control'
+  });
+  const account = { id: 'acc-1', user_id: '123', nickname: 'Nome original', display_name: 'Loja', enabled: true, permalink: 'https://www.mercadolivre.com.br/perfil/loja' };
+  const renamed = [];
+  let renderer;
+  await act(async () => {
+    renderer = create(React.createElement(Integrations, {
+      accounts: [account], admin: true, loading: false, onConnect: () => {}, onUpdate: (_account, enabled) => updated.push(enabled),
+      onRename: async (_account, value) => { renamed.push(value); return true; }, onRemove: (_account) => removed.push(_account.user_id)
+    }));
+  });
+  assert.equal(renderer.root.findAllByProps({ className: 'onframe-integration-list-item' }).length, 1);
+  assert.equal(renderer.root.findAllByType('switch-control')[0].props.checked, true);
+  await act(async () => renderer.root.findByType('switch-control').props.onChange(false));
+  assert.deepEqual(updated, [false]);
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' }).length, 1);
+  await act(async () => renderer.root.findByType('button-group').props.onChange('cards'));
+  assert.equal(renderer.root.findAllByProps({ className: 'onframe-integration-card' }).length, 1);
+  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Remover Loja' })[0].props.onClick());
+  assert.deepEqual(removed, ['123']);
+  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.onClick());
+  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Cancelar edição' })[0].props.onClick());
+  assert.equal(renderer.root.findAllByType('input-control').length, 0);
+  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.onClick());
+  const input = renderer.root.findByType('input-control');
+  let selected = false;
+  input.props.onFocus({ target: { select: () => { selected = true; } } });
+  assert.equal(selected, true);
+  await act(async () => input.props.onChange({ target: { value: '  Loja principal  ' } }));
+  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Salvar nome' })[0].props.onClick());
+  assert.deepEqual(renamed, ['Loja principal']);
+  assert.equal(renderer.root.findAllByType('input-control').length, 0);
+  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.onClick());
+  assert.deepEqual(opened, [account.permalink]);
+});
+
 test('upload de foto estima progresso sem concluir antes da resposta e libera o controle apos falha', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const profileSettings = source.slice(source.indexOf('function ProfileSettings'), source.indexOf('function SessionsSettings'));
@@ -378,7 +428,10 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
       if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST') return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/extension-sessions/from-auth')) return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts')) return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
-      if (url.endsWith('/v1/accounts/123')) return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: options.method !== 'PATCH' || JSON.parse(options.body).enabled }] });
+      if (url.endsWith('/v1/accounts/123')) {
+        const payload = options.method === 'PATCH' ? JSON.parse(options.body) : {};
+        return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', displayName: payload.displayName || null, enabled: payload.enabled ?? true }] });
+      }
       if (url.endsWith('/v1/mercadolivre/oauth/start')) return Response.json({ authorizationUrl: 'https://auth.mercadolivre.com.br/authorization?response_type=code' }, { status: 201 });
       if (url.endsWith('/v1/api/resolve/quick')) return Response.json({ item: { id: 'MLB1234567890' }, quick: true });
       if (options.method === 'DELETE') return Response.json({ revokedAt: '2026-09-28T00:00:00.000Z' });
@@ -431,11 +484,17 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(accounts.ok, true);
   assert.equal(accounts.body.accounts[0].user_id, '123');
 
-  const updated = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', enabled: false });
+  const updated = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', payload: { enabled: false } });
   assert.equal(updated.ok, true);
   assert.equal(updated.body.accounts[0].enabled, false);
   assert.equal(requests.at(-1).method, 'PATCH');
   assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
+  assert.equal(requests.at(-1).body, JSON.stringify({ enabled: false }));
+
+  const renamed = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', payload: { displayName: 'Loja principal' } });
+  assert.equal(renamed.ok, true);
+  assert.equal(renamed.body.accounts[0].display_name, 'Loja principal');
+  assert.equal(requests.at(-1).body, JSON.stringify({ displayName: 'Loja principal' }));
 
   const remoteApi = await send({ type: 'onframe:api', path: '/api/resolve/quick', options: { method: 'POST', body: '{}' } });
   assert.equal(remoteApi.ok, true);
