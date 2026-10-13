@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, CodeInput, Link, Tabs } from '@onblide/ui';
+import { Button, CodeInput, FieldShell, Link, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
 import { EmailVerification, PasskeySettings, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
@@ -435,7 +435,10 @@ test('login faseado nao consulta conta na etapa do email nem envia senha antes d
     assert.ok(email);
     assert.equal(email.props.value, user.email);
     assert.equal(email.props.disabled, true);
-    assert.equal(h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Alterar e-mail'), true);
+    const lockedEmail = h.renderer.root.findAllByType(FieldShell).find((shell) => shell.findAllByType('input').some((field) => field.props.type === 'email'));
+    assert.ok(lockedEmail);
+    assert.equal(lockedEmail.props.disabled, true);
+    assert.equal(lockedEmail.findByType(Link).props.children, 'Alterar e-mail');
     assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-identity' }).length, 0);
     const password = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'password');
     assert.ok(password);

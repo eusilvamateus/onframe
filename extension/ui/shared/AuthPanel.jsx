@@ -60,7 +60,14 @@ export function AuthBrand({ src = '../../assets/onframe-stacked-primary.png' }) 
 }
 
 export function VerificationEmailField({ email, onEdit }) {
-  return <Input label="E-mail" type="email" value={email} disabled hint={onEdit ? <Link href="#alterar-email" onClick={(event) => { event.preventDefault(); onEdit(); }}>Alterar e-mail</Link> : undefined} />;
+  const inputId = useId();
+  return <div className="onframe-field">
+    <label className="onframe-field-label" htmlFor={inputId}>E-mail</label>
+    <FieldShell disabled>
+      <input id={inputId} className="onframe-field-input" type="email" value={email} disabled />
+      {onEdit && <span className="onframe-field-action"><Link href="#alterar-email" onClick={(event) => { event.preventDefault(); onEdit(); }}>Alterar e-mail</Link></span>}
+    </FieldShell>
+  </div>;
 }
 
 export function VerificationCodeField({ label, length, value, onChange, error, disabled }) {
@@ -221,7 +228,6 @@ export function AuthPanel({ onConnected, onPending }) {
   }
   function linkTo(nextMode) { return (event) => { event.preventDefault(); changeMode(nextMode); }; }
   const verifying = Boolean(secondFactor) || phase === 'code';
-  const showPasswordEmail = mode === 'signin' && phase === 'password' && !verifying;
   const title = secondFactor ? 'Verificação em duas etapas' : phase === 'code' ? 'Verifique seu e-mail' : phase === 'sent' ? 'Confira seu e-mail' : AUTH_MODES[mode].title;
   const buttonLabel = phase === 'email' ? mode === 'magic' ? 'Enviar código' : mode === 'recovery' ? 'Enviar link de recuperação' : 'Continuar' : mode === 'signup' ? 'Criar conta' : verifying ? 'Verificar e entrar' : 'Entrar';
 
@@ -237,9 +243,8 @@ export function AuthPanel({ onConnected, onPending }) {
           ]} />
         </nav>}
         <form className="onframe-auth-fields" onSubmit={submit} noValidate aria-busy={busy}>
-          {verifying && <VerificationEmailField email={fields.email} onEdit={() => { if (!pending.current) editEmail(); }} />}
-          {phase !== 'email' && !showPasswordEmail && !verifying && <div className="onframe-auth-identity"><p className="onframe-muted">{fields.email}</p><Link href="#alterar-email" onClick={(event) => { event.preventDefault(); if (!pending.current) editEmail(); }}>Alterar e-mail</Link></div>}
-          {!verifying && (phase === 'email' || showPasswordEmail) && <Input label="E-mail" type="email" inputMode="email" autoComplete="username" value={fields.email} disabled={busy || showPasswordEmail} onChange={(event) => update('email', event.target.value)} hint={showPasswordEmail ? <Link href="#alterar-email" onClick={linkTo(mode)}>Alterar e-mail</Link> : undefined} />}
+          {phase !== 'email' && <VerificationEmailField email={fields.email} onEdit={() => { if (!pending.current) editEmail(); }} />}
+          {!verifying && phase === 'email' && <Input label="E-mail" type="email" inputMode="email" autoComplete="username" value={fields.email} disabled={busy} onChange={(event) => update('email', event.target.value)} />}
           {!verifying && phase === 'details' && <Input label="Nome" autoComplete="name" value={fields.name} disabled={busy} onChange={(event) => update('name', event.target.value)} />}
           {!verifying && ['password', 'details'].includes(phase) && <PasswordField label="Senha" labelAction={mode === 'signin' ? <Link href="#recuperar-senha" onClick={linkTo('recovery')}>Esqueci minha senha</Link> : undefined} value={fields.password} onChange={(value) => update('password', value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} disabled={busy} />}
           {!verifying && phase === 'details' && <PasswordField label="Confirme a senha" value={fields.confirmation} onChange={(value) => update('confirmation', value)} autoComplete="new-password" disabled={busy} />}

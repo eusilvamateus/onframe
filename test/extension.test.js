@@ -266,6 +266,10 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /@onblide\/ui\/styles\.css/);
+  assert.match(popupHtml, /<body class="onframe-popup-document">/);
+  assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*388px;[^}]*min-width:\s*388px/);
+  assert.match(optionsCss, /\.onframe-popup\s*\{[^}]*width:\s*100%;/);
+  assert.doesNotMatch(optionsCss, /\.onframe-popup\s*\{\s*width:\s*100vw;/);
   assert.match(options, /<AuthBrand \/>/);
   assert.match(authPanel, /alt="OnFrame"/);
   assert.match(authPanel, /by onblide/);
