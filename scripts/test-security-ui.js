@@ -4,15 +4,16 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const output = path.resolve(root, '.onframe', 'tests', 'security-ui.test.cjs');
-if (!output.startsWith(root + path.sep)) throw new Error('Diretorio de testes invalido.');
+const outdir = path.resolve(root, '.onframe', 'tests');
+if (!outdir.startsWith(root + path.sep)) throw new Error('Diretorio de testes invalido.');
+const outputs = ['security-ui.test.cjs', 'workspace-people-ui.test.cjs'].map((file) => path.join(outdir, file));
 // O pacote local do DS tem seu proprio React de desenvolvimento; o teste usa o mesmo alias do build.
 esbuild.build({
-  entryPoints: [path.join(root, 'test', 'security-ui.test.tsx')],
-  outfile: output, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic',
+  entryPoints: ['security-ui.test.tsx', 'workspace-people-ui.test.tsx'].map((file) => path.join(root, 'test', file)),
+  outdir, outExtension: { '.js': '.cjs' }, bundle: true, platform: 'node', format: 'cjs', jsx: 'automatic',
   external: ['react', 'react/jsx-runtime', 'react-test-renderer', '@supabase/supabase-js']
 }).then(() => {
-  const result = spawnSync(process.execPath, ['--test', output], { cwd: root, stdio: 'inherit' });
-  fs.rmSync(output, { force: true });
+  const result = spawnSync(process.execPath, ['--test', ...outputs], { cwd: root, stdio: 'inherit' });
+  for (const output of outputs) fs.rmSync(output, { force: true });
   process.exitCode = result.status ?? 1;
 }).catch(() => { process.exitCode = 1; });

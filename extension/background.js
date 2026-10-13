@@ -46,6 +46,7 @@ async function handleRemoteMessage(message) {
   if (action === 'app-overview') return requestPlatform('/v1/app/overview');
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
+  if (action === 'workspace-leave') return leaveWorkspace();
   if (action === 'profile') return requestPlatform('/v1/profile');
   if (action === 'security') return loadAccountSecurity();
   if (action === 'security-session-remove') return requestPlatform(`/v1/security/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, { method: 'DELETE' });
@@ -254,6 +255,13 @@ async function activateWorkspace(workspaceId) {
   return getRemoteConnection();
 }
 
+async function leaveWorkspace() {
+  const result = await requestPlatform('/v1/app/workspaces/current/membership', { method: 'DELETE' });
+  if (result.token) await writeRemoteSession(normalizeRemoteSession(result));
+  else await removeRemoteSession();
+  return getRemoteConnection();
+}
+
 async function acceptWorkspaceInvitation(token) {
   const session = await requireRemoteSession();
   const value = String(token || '').trim();
@@ -456,6 +464,8 @@ function remoteErrorMessage(code, status, fallbackMessage) {
   if (code === 'workspace_account_access_forbidden') return 'Seu acesso não pode conectar contas ao workspace.';
   if (code === 'workspace_admin_required') return 'Esta ação exige uma pessoa administradora do workspace.';
   if (code === 'workspace_last_admin_required') return 'O workspace precisa manter pelo menos uma pessoa administradora.';
+  if (code === 'workspace_self_management_forbidden') return 'Use a ação Sair do workspace para encerrar sua participação.';
+  if (code === 'workspace_already_member') return 'Esta pessoa já participa do workspace.';
   if (code === 'workspace_access_forbidden') return 'Você não tem acesso a este workspace.';
   if (code === 'workspace_invitation_delivery_failed') return 'Não foi possível enviar o convite agora. Tente novamente.';
   if (code === 'avatar_storage_unconfigured') return 'O envio de avatar ainda não foi configurado.';

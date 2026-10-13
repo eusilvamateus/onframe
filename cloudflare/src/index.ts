@@ -313,7 +313,7 @@ function logFailure(requestId: string, request: Request, error: unknown): void {
   }));
 }
 
-async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Actor> {
+export async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Actor> {
   const existingUsers = await env.ONFRAME_DB.prepare(`
     SELECT id
     FROM users
@@ -329,14 +329,17 @@ async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Act
   if (emailConflict) throw new RequestError('identity_conflict', 409);
 
   const userId = knownIds[0] || await stableId('usr', identity.subject);
-  const existingWorkspace = await env.ONFRAME_DB.prepare(`
+  const membership = knownIds[0] ? await env.ONFRAME_DB.prepare(`
+    SELECT workspace_id FROM workspace_members WHERE user_id = ? ORDER BY created_at LIMIT 1
+  `).bind(userId).first<{ workspace_id: string }>() : null;
+  const existingWorkspace = !membership && knownIds[0] ? await env.ONFRAME_DB.prepare(`
     SELECT id
     FROM workspaces
     WHERE created_by_user_id = ?
     ORDER BY created_at
     LIMIT 1
-  `).bind(userId).first<{ id: string }>();
-  const workspaceId = existingWorkspace?.id || await stableId('wsp', identity.subject);
+  `).bind(userId).first<{ id: string }>() : null;
+  const workspaceId = membership?.workspace_id || (existingWorkspace ? crypto.randomUUID() : await stableId('wsp', identity.subject));
   const timestamp = now();
 
   await env.ONFRAME_DB.batch([
@@ -351,7 +354,7 @@ async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Act
         identity_version = excluded.identity_version
       WHERE users.identity_version <= excluded.identity_version
     `).bind(userId, identity.subject, identity.email, identity.name, timestamp, timestamp, identity.identityVersion),
-    env.ONFRAME_DB.prepare(`
+    ...(!membership ? [env.ONFRAME_DB.prepare(`
       INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(id) DO NOTHING
@@ -360,7 +363,7 @@ async function provisionActor(env: Env, identity: SupabaseIdentity): Promise<Act
       INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at)
       VALUES (?, ?, 'admin', ?, ?)
       ON CONFLICT(workspace_id, user_id) DO NOTHING
-    `).bind(workspaceId, userId, timestamp, timestamp)
+    `).bind(workspaceId, userId, timestamp, timestamp)] : [])
   ]);
 
   return { ...identity, userId, workspaceId };
@@ -1162,8 +1165,9 @@ async function listWorkspaceMembers(env: RuntimeEnv, actor: ExtensionSessionActo
   }));
 }
 
-async function updateWorkspaceMember(request: Request, env: RuntimeEnv, actor: ExtensionSessionActor, userId: string): Promise<Array<Record<string, unknown>>> {
+export async function updateWorkspaceMember(request: Request, env: RuntimeEnv, actor: ExtensionSessionActor, userId: string): Promise<Array<Record<string, unknown>>> {
   await assertWorkspaceAdministrator(actor);
+  if (userId === actor.userId) throw new RequestError('workspace_self_management_forbidden', 403);
   const body = await readRequestObject(request);
   const role = workspaceRole(body.role);
   const assignments = role === 'collaborator' ? accountIds(body.accountIds) : [];
@@ -1172,13 +1176,13 @@ async function updateWorkspaceMember(request: Request, env: RuntimeEnv, actor: E
     SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?
   `).bind(actor.workspaceId, userId).first<{ role: 'admin' | 'collaborator' }>();
   if (!member) throw new RequestError('workspace_member_not_found', 404);
-  if (member.role === 'admin' && role !== 'admin') {
-    const count = await env.ONFRAME_DB.prepare(`SELECT COUNT(*) AS count FROM workspace_members WHERE workspace_id = ? AND role = 'admin'`).bind(actor.workspaceId).first<{ count: number }>();
-    if (Number(count?.count || 0) <= 1) throw new RequestError('workspace_last_admin_required', 409);
-  }
   const timestamp = now();
+  const updated = await env.ONFRAME_DB.prepare(`
+    UPDATE workspace_members SET role = ?, updated_at = ? WHERE workspace_id = ? AND user_id = ?
+      AND (role <> 'admin' OR ? = 'admin' OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role = 'admin') > 1)
+  `).bind(role, timestamp, actor.workspaceId, userId, role, actor.workspaceId).run();
+  if (updated.meta.changes !== 1) throw new RequestError('workspace_last_admin_required', 409);
   await env.ONFRAME_DB.batch([
-    env.ONFRAME_DB.prepare(`UPDATE workspace_members SET role = ?, updated_at = ? WHERE workspace_id = ? AND user_id = ?`).bind(role, timestamp, actor.workspaceId, userId),
     env.ONFRAME_DB.prepare(`DELETE FROM account_members WHERE user_id = ? AND seller_account_id IN (SELECT id FROM seller_accounts WHERE workspace_id = ?)`).bind(userId, actor.workspaceId),
     ...assignments.map((accountId) => env.ONFRAME_DB.prepare(`INSERT INTO account_members (seller_account_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?)`).bind(accountId, userId, timestamp, timestamp))
   ]);
@@ -1186,16 +1190,45 @@ async function updateWorkspaceMember(request: Request, env: RuntimeEnv, actor: E
   return listWorkspaceMembers(env, actor);
 }
 
-async function removeWorkspaceMember(env: RuntimeEnv, actor: ExtensionSessionActor, userId: string): Promise<void> {
+export async function removeWorkspaceMember(env: RuntimeEnv, actor: ExtensionSessionActor, userId: string): Promise<void> {
   await assertWorkspaceAdministrator(actor);
+  if (userId === actor.userId) throw new RequestError('workspace_self_management_forbidden', 403);
   const member = await env.ONFRAME_DB.prepare(`SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?`).bind(actor.workspaceId, userId).first<{ role: 'admin' | 'collaborator' }>();
   if (!member) throw new RequestError('workspace_member_not_found', 404);
   if (member.role === 'admin') {
     const count = await env.ONFRAME_DB.prepare(`SELECT COUNT(*) AS count FROM workspace_members WHERE workspace_id = ? AND role = 'admin'`).bind(actor.workspaceId).first<{ count: number }>();
     if (Number(count?.count || 0) <= 1) throw new RequestError('workspace_last_admin_required', 409);
   }
-  await env.ONFRAME_DB.prepare(`DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?`).bind(actor.workspaceId, userId).run();
+  const removed = await env.ONFRAME_DB.prepare(`
+    DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+      AND (role <> 'admin' OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role = 'admin') > 1)
+  `).bind(actor.workspaceId, userId, actor.workspaceId).run();
+  if (removed.meta.changes !== 1) throw new RequestError('workspace_last_admin_required', 409);
+  await env.ONFRAME_DB.batch([
+    env.ONFRAME_DB.prepare(`DELETE FROM account_members WHERE user_id = ? AND seller_account_id IN (SELECT id FROM seller_accounts WHERE workspace_id = ?)`).bind(userId, actor.workspaceId),
+    env.ONFRAME_DB.prepare(`UPDATE extension_sessions SET revoked_at = ? WHERE user_id = ? AND workspace_id = ? AND revoked_at IS NULL`).bind(now(), userId, actor.workspaceId)
+  ]);
   await auditPlatformEvent(env, actor, 'workspace_member_removed', 'workspace_member', userId, 200);
+}
+
+export async function leaveWorkspace(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Response> {
+  await assertWorkspaceAdministrator(actor);
+  const nextMembership = await env.ONFRAME_DB.prepare(`
+    SELECT workspace_id FROM workspace_members WHERE user_id = ? AND workspace_id <> ? ORDER BY created_at LIMIT 1
+  `).bind(actor.userId, actor.workspaceId).first<{ workspace_id: string }>();
+  const removed = await env.ONFRAME_DB.prepare(`
+    DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ? AND role = 'admin'
+      AND (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role = 'admin') > 1
+  `).bind(actor.workspaceId, actor.userId, actor.workspaceId).run();
+  if (removed.meta.changes !== 1) throw new RequestError('workspace_last_admin_required', 409);
+  await env.ONFRAME_DB.batch([
+    env.ONFRAME_DB.prepare(`DELETE FROM account_members WHERE user_id = ? AND seller_account_id IN (SELECT id FROM seller_accounts WHERE workspace_id = ?)`).bind(actor.userId, actor.workspaceId),
+    env.ONFRAME_DB.prepare(`UPDATE extension_sessions SET revoked_at = ? WHERE user_id = ? AND workspace_id = ? AND revoked_at IS NULL`).bind(now(), actor.userId, actor.workspaceId)
+  ]);
+  await auditPlatformEvent(env, actor, 'workspace_member_left', 'workspace', actor.workspaceId, 200);
+  if (!nextMembership) return json({ left: true });
+  const session = await createExtensionSession(env, { ...actor, workspaceId: nextMembership.workspace_id }, actor.label || 'Extensão OnFrame');
+  return json({ left: true, ...createdExtensionSessionPayload(session) });
 }
 
 async function auditPlatformEvent(env: RuntimeEnv, actor: ExtensionSessionActor, operation: string, targetType: string, targetId: string, statusCode: number): Promise<void> {
@@ -1246,6 +1279,13 @@ async function createWorkspaceInvitation(request: Request, env: RuntimeEnv, acto
   const role = workspaceRole(body.role);
   const email = kind === 'email' ? optionalEmail(body.email) : null;
   if (kind === 'email' && !email) throw new RequestError('invalid_invitation_email', 400);
+  if (email) {
+    const member = await env.ONFRAME_DB.prepare(`
+      SELECT 1 FROM workspace_members INNER JOIN users ON users.id = workspace_members.user_id
+      WHERE workspace_members.workspace_id = ? AND users.email = ? COLLATE NOCASE
+    `).bind(actor.workspaceId, email).first();
+    if (member) throw new RequestError('workspace_already_member', 409);
+  }
   const assignments = role === 'collaborator' ? accountIds(body.accountIds) : [];
   await assertAccountsBelongToWorkspace(env, actor.workspaceId, assignments);
   const token = randomSecret(32);
@@ -1319,7 +1359,7 @@ async function revokeWorkspaceInvitation(env: RuntimeEnv, actor: ExtensionSessio
   await auditPlatformEvent(env, actor, 'workspace_invitation_revoked', 'workspace_invitation', invitationId, 200);
 }
 
-async function acceptWorkspaceInvitation(env: RuntimeEnv, actor: ExtensionSessionActor, token: string): Promise<Response> {
+export async function acceptWorkspaceInvitation(env: RuntimeEnv, actor: ExtensionSessionActor, token: string): Promise<Response> {
   const invitationToken = parseExtensionAuthFlowToken(token);
   const timestamp = now();
   const invitation = await env.ONFRAME_DB.prepare(`
@@ -1337,19 +1377,24 @@ async function acceptWorkspaceInvitation(env: RuntimeEnv, actor: ExtensionSessio
   if (invitation.kind === 'email' && invitation.email !== actor.email.toLowerCase()) {
     throw new RequestError('workspace_invitation_email_mismatch', 403);
   }
+  const membership = await env.ONFRAME_DB.prepare(`
+    SELECT 1 FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+  `).bind(invitation.workspace_id, actor.userId).first();
+  if (membership) throw new RequestError('workspace_already_member', 409);
   const assignments = await env.ONFRAME_DB.prepare(`
     SELECT seller_account_id FROM workspace_invitation_accounts WHERE invitation_id = ?
   `).bind(invitation.id).all<{ seller_account_id: string }>();
   const claimed = await env.ONFRAME_DB.prepare(`
     UPDATE workspace_invitations SET accepted_at = ?, accepted_by_user_id = ?, updated_at = ?
     WHERE id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?
-  `).bind(timestamp, actor.userId, timestamp, invitation.id, timestamp).run();
+      AND NOT EXISTS (SELECT 1 FROM workspace_members WHERE workspace_id = ? AND user_id = ?)
+  `).bind(timestamp, actor.userId, timestamp, invitation.id, timestamp, invitation.workspace_id, actor.userId).run();
   if (claimed.meta.changes !== 1) throw new RequestError('workspace_invitation_unavailable', 409);
   await env.ONFRAME_DB.batch([
     env.ONFRAME_DB.prepare(`
       INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT(workspace_id, user_id) DO UPDATE SET role = excluded.role, updated_at = excluded.updated_at
+      ON CONFLICT(workspace_id, user_id) DO NOTHING
     `).bind(invitation.workspace_id, actor.userId, invitation.role, timestamp, timestamp),
     ...assignments.results.map((assignment) => env.ONFRAME_DB.prepare(`
       INSERT INTO account_members (seller_account_id, user_id, created_at, updated_at)
@@ -1635,6 +1680,11 @@ export default {
       if (url.pathname === '/v1/app/workspaces' && request.method === 'GET') {
         const actor = await authenticateExtensionSession(request, env);
         return json({ workspaces: await listWorkspaces(env, actor), activeWorkspaceId: actor.workspaceId });
+      }
+
+      if (url.pathname === '/v1/app/workspaces/current/membership' && request.method === 'DELETE') {
+        const actor = await authenticateExtensionSession(request, env);
+        return await leaveWorkspace(env, actor);
       }
 
       const workspaceActivation = /^\/v1\/app\/workspaces\/([^/]+)\/activate$/u.exec(url.pathname);

@@ -1,12 +1,13 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Table, Tabs } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Tabs } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
 import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
+import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
@@ -60,12 +61,6 @@ function trustedLogo(value) {
   return /^https:\/\/(?:[a-z0-9-]+\.)*mlstatic\.com\//iu.test(logo) ? logo : '';
 }
 
-function accountAssignments(member) {
-  if (member.role === 'admin') return 'Todas as contas';
-  const accounts = member.accounts || [];
-  return accounts.map((account) => account.nickname || account.meliUserId || account.id).join(', ') || 'Nenhuma';
-}
-
 function searchValue(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
@@ -77,6 +72,7 @@ function activityLabel(operation) {
     seller_account_deleted: 'Conta do Mercado Livre removida',
     workspace_member_updated: 'Acesso de uma pessoa atualizado',
     workspace_member_removed: 'Pessoa removida do workspace',
+    workspace_member_left: 'Pessoa saiu do workspace',
     workspace_invitation_created: 'Convite criado',
     workspace_invitation_revoked: 'Convite revogado',
     profile_updated: 'Perfil atualizado'
@@ -213,47 +209,6 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRemove, loading 
           )}
         </Card>
       ))}
-    </div>
-  );
-}
-
-function WorkspacePeople({ members, invitations, accounts, loading, onInvite, onEdit, onRemove, onRevoke }) {
-  const columns = [
-    {
-      key: 'name', label: 'Pessoa', bold: true,
-      render: (_, member) => <div className="onframe-row"><Avatar name={member.name || member.email} src={member.avatarUrl} alt="" size={32} /><div><p className="onframe-list-title">{member.name || member.email}</p><p className="onframe-list-meta">{member.email}</p></div></div>
-    },
-    { key: 'role', label: 'Permissão', render: (_, member) => <Badge tone={member.role === 'admin' ? 'blue' : 'grey'}>{member.role === 'admin' ? 'Administrador' : 'Colaborador'}</Badge> },
-    { key: 'accounts', label: 'Contas', render: (_, member) => accountAssignments(member) },
-    { key: 'actions', label: '', width: 210, render: (_, member) => <div className="onframe-actions"><Button kind="secondary" size="sm" disabled={loading} onClick={() => onEdit(member)}>Gerenciar</Button><Button kind="ghost" size="sm" disabled={loading} onClick={() => onRemove(member)}>Remover</Button></div> }
-  ];
-  return (
-    <div className="onframe-stack">
-      <section className="onframe-stack" aria-label="Acesso ao workspace">
-        <SectionHeader
-          title="Acesso ao workspace"
-          copy="Gerencie quem participa do workspace e quais contas cada pessoa pode acessar."
-          actions={<Button disabled={loading} onClick={onInvite} icon={<Ph n="user-plus" size={17} />}>Convidar pessoa</Button>}
-        />
-        <Table columns={columns} rows={members} loading={loading} emptyState="Ainda não há pessoas neste workspace." />
-      </section>
-      <section className="onframe-stack" aria-label="Convites pendentes">
-        <SectionHeader title="Convites pendentes" />
-        {invitations.length === 0 ? <p className="onframe-empty">Não há convites pendentes.</p> : (
-          <div className="onframe-list">
-            {invitations.map((invitation) => (
-              <div className="onframe-list-row" key={invitation.id}>
-                <Avatar name={invitation.kind === 'email' ? invitation.email : 'Link'} size={32} />
-                <div className="onframe-grow">
-                  <p className="onframe-list-title">{invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}</p>
-                  <p className="onframe-list-meta">{invitation.role === 'admin' ? 'Administrador' : 'Colaborador'} · expira {formatDate(invitation.expiresAt)}</p>
-                </div>
-                <Button kind="ghost" size="sm" disabled={loading} onClick={() => onRevoke(invitation)}>Revogar</Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }
@@ -445,10 +400,6 @@ function WorkspaceGeneralSettings({ workspace, loading, onSaveWorkspace }) {
   );
 }
 
-function WorkspacePeopleSettings({ members, invitations, accounts, loading, onInvite, onEdit, onRemove, onRevoke }) {
-  return <WorkspacePeople members={members} invitations={invitations} accounts={accounts} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} />;
-}
-
 function ApplicationUpdatesSettings() {
   return (
     <section className="onframe-stack" aria-label="Atualizador">
@@ -461,7 +412,7 @@ function ApplicationUpdatesSettings() {
   );
 }
 
-function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, securityOverview, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onCredentialChanged, onRemoveSession, onRemoveAllSessions, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke }) {
+function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, securityOverview, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onCredentialChanged, onRemoveSession, onRemoveAllSessions, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke, onLeave }) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter((option) => option.tab !== 'workspace' || admin);
   const isIndex = settingsPage === 'index';
@@ -491,7 +442,7 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
       {!isIndex && activeSection === 'account' && settingsPage === 'mfa' && profile && securityOverview && <TwoFactorSettings profile={profile} securityOverview={securityOverview} onDisconnect={onDisconnect} />}
       {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && <PasskeySettings profile={profile} securityOverview={securityOverview} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && <WorkspacePeopleSettings members={members} invitations={invitations} accounts={accounts} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} />}
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && <WorkspacePeople members={members} invitations={invitations} currentUserId={profile?.user?.id} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} onLeave={onLeave} />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
     </div>
   );
@@ -514,17 +465,20 @@ function MemberModal({ dialog, accounts, busy, onClose, onConfirm }) {
   if (!dialog || !['invite', 'member'].includes(dialog.type)) return null;
   const isInvite = dialog.type === 'invite';
   const administrator = role === 'admin';
+  const demotingAdmin = !isInvite && member.role === 'admin' && !administrator;
   return (
     <Modal
       open
       onClose={onClose}
       title={isInvite ? 'Convidar pessoa' : `Acesso de ${member.name || member.email}`}
-      footer={<><Button kind="secondary" disabled={busy} onClick={onClose}>Cancelar</Button><Button disabled={busy} onClick={() => onConfirm({ kind, email, role, accountIds })}>{isInvite ? 'Enviar convite' : 'Salvar acesso'}</Button></>}
+      footer={<><Button kind="secondary" disabled={busy} onClick={onClose}>Cancelar</Button><Button kind={demotingAdmin ? 'danger' : 'primary'} disabled={busy} onClick={() => onConfirm({ kind, email, role, accountIds })}>{isInvite ? 'Enviar convite' : demotingAdmin ? 'Rebaixar administrador' : 'Salvar acesso'}</Button></>}
     >
       <div className="onframe-stack">
         {isInvite && <Tabs tabs={[{ id: 'email', label: 'E-mail' }, { id: 'link', label: 'Link' }]} active={kind} onChange={setKind} variant="pill" size="sm" />}
         {isInvite && kind === 'email' && <Input label="E-mail" type="email" value={email} placeholder="pessoa@empresa.com" onChange={(event) => setEmail(event.target.value)} />}
         <Select label="Permissão" options={['Colaborador', 'Administrador']} value={administrator ? 'Administrador' : 'Colaborador'} onChange={(value) => setRole(value === 'Administrador' ? 'admin' : 'collaborator')} />
+        {administrator && <p className="onframe-muted">Administradores acessam todas as contas e podem gerenciar pessoas e convites.</p>}
+        {demotingAdmin && <Alert tone="warning">Esta pessoa perderá a administração e terá acesso somente às contas atribuídas abaixo.</Alert>}
         {!administrator && (
           <div className="onframe-stack">
             <p className="onframe-field-label">Contas atribuídas</p>
@@ -700,6 +654,16 @@ function OptionsApp() {
 
   async function confirmDialog() {
     if (!dialog) return;
+    if (dialog.type === 'workspace-leave') {
+      const result = await run(async () => {
+        await sendRemoteMessage('workspace-leave');
+        setView('home');
+        setSettingsPage('index');
+        await reload();
+      }, 'Você saiu do workspace.');
+      if (result !== null) setDialog(null);
+      return;
+    }
     if (dialog.type === 'account-delete') {
       const result = await run(async () => {
         await sendRemoteMessage('account-remove', { userId: dialog.account.user_id });
@@ -967,7 +931,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} />}
+            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
           </div>
         </section>
       </div>
@@ -991,12 +955,14 @@ function OptionsApp() {
 
       <MemberModal dialog={dialog} accounts={accounts} busy={loading} onClose={() => setDialog(null)} onConfirm={(values) => void submitMember(values)} />
       <Modal
-        open={dialog?.type === 'account-delete' || dialog?.type === 'member-delete'}
+        open={dialog?.type === 'account-delete' || dialog?.type === 'member-delete' || dialog?.type === 'workspace-leave'}
         onClose={() => setDialog(null)}
-        title={dialog?.type === 'account-delete' ? 'Remover conta' : 'Remover pessoa'}
-        footer={<><Button kind="secondary" disabled={loading} onClick={() => setDialog(null)}>Cancelar</Button><Button kind="danger" disabled={loading} onClick={() => void confirmDialog()}>Remover</Button></>}
+        title={dialog?.type === 'workspace-leave' ? 'Sair do workspace' : dialog?.type === 'account-delete' ? 'Remover conta' : 'Remover pessoa'}
+        footer={<><Button kind="secondary" disabled={loading} onClick={() => setDialog(null)}>Cancelar</Button><Button kind="danger" disabled={loading} onClick={() => void confirmDialog()}>{dialog?.type === 'workspace-leave' ? 'Sair do workspace' : 'Remover'}</Button></>}
       >
-        {dialog?.type === 'account-delete'
+        {dialog?.type === 'workspace-leave'
+          ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
+          : dialog?.type === 'account-delete'
           ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
           : dialog?.member ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.` : ''}
       </Modal>

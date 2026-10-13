@@ -174,6 +174,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const popupHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'index.html'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const people = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'WorkspacePeople.jsx'), 'utf8');
   const optionsCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'index.html'), 'utf8');
   const authPanel = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'AuthPanel.jsx'), 'utf8');
@@ -212,7 +213,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /id: 'settings', label: 'Configurações'/);
   assert.match(options, /function Home/);
   assert.match(options, /function Integrations/);
-  assert.match(options, /function WorkspacePeople/);
+  assert.match(people, /function WorkspacePeople/);
   assert.match(options, /activeSection=\{settingsTab\}/);
   assert.doesNotMatch(options, /label: 'Visão geral'/);
   assert.doesNotMatch(options, /label: 'Contas Mercado Livre'/);
@@ -220,7 +221,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /connection === null && loading/);
   assert.match(options, /Skeleton/);
   assert.doesNotMatch(options, /hideAccount/);
-  assert.match(options, /Table/);
+  assert.match(people, /Table/);
   assert.match(options, /Modal/);
   assert.match(options, /layout="context"/);
   assert.match(options, /const breadcrumbs = settingsDetail/);
@@ -272,7 +273,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /SecuritySettings/);
   assert.match(options, /SessionsSettings/);
   assert.match(options, /WorkspaceGeneralSettings/);
-  assert.match(options, /WorkspacePeopleSettings/);
+  assert.match(options, /<WorkspacePeople /);
   assert.match(options, /ApplicationUpdatesSettings/);
   assert.doesNotMatch(options, /eyebrow: 'CONFIGURAÇÕES'/);
   assert.match(options, /FileUpload/);
@@ -310,6 +311,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(authPanel, /auth-flow-start/);
   assert.match(authPanel, /gotrue_meta_security/);
   assert.match(options, /workspace-activate/);
+  assert.match(options, /workspace-leave/);
+  assert.match(background, /\/v1\/app\/workspaces\/current\/membership/);
   assert.match(options, /invitation-create/);
   assert.match(options, /profile-avatar/);
   assert.match(background, /profile-avatar-remove/);

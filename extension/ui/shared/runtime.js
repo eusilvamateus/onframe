@@ -30,6 +30,8 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     identity_security_unavailable: 'Não foi possível verificar seu acesso agora. Tente novamente em instantes.',
     workspace_admin_required: 'Esta ação exige uma pessoa administradora.',
     workspace_last_admin_required: 'O workspace precisa manter uma pessoa administradora.',
+    workspace_self_management_forbidden: 'Use a ação Sair do workspace para encerrar sua participação.',
+    workspace_already_member: 'Esta pessoa já participa do workspace.',
     avatar_storage_unconfigured: 'O envio de avatar ainda não foi configurado.',
     avatar_storage_authorization_failed: 'O serviço de imagens não aceitou a configuração atual. Tente novamente mais tarde.',
     avatar_storage_bucket_unavailable: 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.',
