@@ -56,7 +56,7 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   assert.equal(integration.props.compact, true);
   assert.equal(integration.props.admin, true);
   assert.equal(renderer.root.findByType(Switch).props.size, 'md');
-  assert.equal(renderer.root.findByType(ButtonGroup).props.size, 'sm');
+  assert.equal(renderer.root.findByType(ButtonGroup).props.size, 'md');
 
   await act(async () => {
     renderer.root.findByProps({ 'aria-label': 'Conectar conta' }).props.onClick();
