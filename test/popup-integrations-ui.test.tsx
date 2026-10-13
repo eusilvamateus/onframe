@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { ButtonGroup, Modal, Switch } from '@onblide/ui';
+import { ButtonGroup, Card, Modal, Switch } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { IntegrationsSession } from '../extension/ui/popup/IntegrationsSession.jsx';
 import { IntegrationAccount } from '../extension/ui/shared/IntegrationAccount.jsx';
@@ -55,6 +55,7 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   const integration = renderer.root.findByType(IntegrationAccount);
   assert.equal(integration.props.compact, true);
   assert.equal(integration.props.admin, true);
+  assert.equal(renderer.root.findAllByType(Card).length, 1);
   assert.equal(renderer.root.findByType(Switch).props.size, 'md');
   assert.equal(renderer.root.findByType(ButtonGroup).props.size, 'md');
 

@@ -73,8 +73,7 @@ button, input { font: inherit; }
 .onframe-integration-header > .onframe-row { flex-wrap: wrap; }
 .onframe-integration-view-bar { display: flex; justify-content: flex-end; }
 .onframe-integration-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ob-s-3); }
-.onframe-integration-list { border-top: 1px solid var(--ob-line-soft); }
-.onframe-integration-list-item { padding: var(--ob-s-3) 0; border-bottom: 1px solid var(--ob-line-soft); }
+.onframe-integration-list { display: flex; flex-direction: column; gap: var(--ob-s-3); }
 .onframe-integration-card, .onframe-integration-list-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ob-s-3); min-width: 0; }
 .onframe-integration-identity { display: flex; align-items: center; gap: var(--ob-s-3); flex: 1 1 200px; min-width: 0; }
 .onframe-integration-name, .onframe-integration-edit, .onframe-integration-controls { display: flex; align-items: center; gap: var(--ob-s-1); min-width: 0; }
@@ -147,8 +146,8 @@ button, input { font: inherit; }
 .onframe-popup-loading-row > div:last-child { display: flex; flex-direction: column; gap: var(--ob-s-2); }
 .onframe-popup-integration-view-bar { display: flex; justify-content: flex-end; padding: var(--ob-s-1) 0; }
 .onframe-popup-integration-grid { display: grid; gap: var(--ob-s-2); }
-.onframe-popup-integration-list { border-top: 1px solid var(--ob-line-soft); }
-.onframe-popup-integration-list-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ob-s-3); min-width: 0; padding: var(--ob-s-3) var(--ob-s-1); border-bottom: 1px solid var(--ob-line-soft); }
+.onframe-popup-integration-list { display: flex; flex-direction: column; gap: var(--ob-s-2); }
+.onframe-popup-integration-list-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--ob-s-3); min-width: 0; }
 .onframe-popup-integration-account { min-width: 0; }
 .onframe-integration-controls--compact { gap: var(--ob-s-2); }
 .onframe-popup-empty-state { display: flex; align-items: center; gap: var(--ob-s-3); }

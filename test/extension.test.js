@@ -52,6 +52,7 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
     }));
   });
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-integration-list-item' }).length, 1);
+  assert.equal(renderer.root.findAllByType('card-control').length, 1);
   const connectButton = renderer.root.findAllByType('button-control').find((node) => node.props.children === 'Conectar conta');
   assert.equal(connectButton.props.icon.props.n, 'plus-circle');
   assert.equal(renderer.root.findAllByType('switch-control')[0].props.checked, true);
@@ -282,6 +283,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(optionsCss, /\.onframe-popup-session\s*\{[^}]*100vh/);
   assert.match(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--ob-border\);/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*border:\s*1px/);
+  assert.match(optionsCss, /\.onframe-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-s-3\);/);
+  assert.match(optionsCss, /\.onframe-popup-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-s-2\);/);
+  assert.doesNotMatch(optionsCss, /\.onframe-(?:popup-)?integration-list\s*\{[^}]*border-top/);
   assert.match(options, /<AuthBrand \/>/);
   assert.match(authPanel, /alt="OnFrame"/);
   assert.match(authPanel, /by onblide/);

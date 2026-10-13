@@ -88,6 +88,9 @@ export function IntegrationAccount({ account, admin, mode, loading, onUpdate, on
     </div>
   );
 
-  if (mode === 'cards') return <Card padding={compact ? 12 : 20}><div className={`onframe-integration-card${compact ? ' onframe-popup-integration-account' : ''}`}>{identity}{controls}</div></Card>;
-  return <div className={`${compact ? 'onframe-popup-integration-list-item' : 'onframe-integration-list-item'}`}>{identity}{controls}</div>;
+  const accountClass = mode === 'cards'
+    ? `onframe-integration-card${compact ? ' onframe-popup-integration-account' : ''}`
+    : compact ? 'onframe-popup-integration-list-item' : 'onframe-integration-list-item';
+  const padding = compact ? 12 : mode === 'cards' ? 20 : 16;
+  return <Card padding={padding}><div className={accountClass}>{identity}{controls}</div></Card>;
 }
