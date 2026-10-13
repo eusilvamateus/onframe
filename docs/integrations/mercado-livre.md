@@ -89,6 +89,12 @@ Com uma sessão válida, o `background` encaminha todo contrato iniciado em
 normalizados de itens, fotos, descrição, características, preços, promoções e
 ações em massa.
 
+Depois que uma mutação é confirmada, o Worker registra um evento estruturado
+do anúncio. O histórico paginado fica disponível em
+`GET /v1/app/item-edit-history`; descrições e configurações completas de
+promoções não são copiadas para esse registro. As regras de conteúdo e acesso
+estão em [Histórico de edições](../product/historico-de-edicoes.md).
+
 Para promoções, `GET /seller-promotions/items/{itemId}` informa a
 participação, enquanto
 `GET /items/{itemId}/sale_price?context=channel_marketplace` identifica a

@@ -1,4 +1,5 @@
 import { decryptValue, encryptValue, importAesGcmKeyBase64 } from './token-cipher';
+import { recordConfirmedItemEdits } from './item-edit-history';
 import {
   handleResolve,
   handleResolveQuick,
@@ -50,6 +51,8 @@ export type RemoteApiActor = {
   sessionId: string;
   userId: string;
   workspaceId: string;
+  displayName?: string;
+  email?: string;
 };
 
 type MeliToken = {
@@ -115,12 +118,17 @@ export async function handleRemoteApiRequest(input: {
   actor: RemoteApiActor;
   env: RemoteRuntimeEnv;
   request: Request;
+  requestId: string;
   url: URL;
 }): Promise<unknown> {
   const context = await createRemoteApiContext(input.env, input.actor);
   const apiPath = input.url.pathname.slice('/v1/api'.length) || '/';
   const route = `${input.request.method} ${apiPath}`;
-  const readJson = (_request: Request, options: { maxBytes?: number } = {}) => readRequestJson(input.request, options);
+  let requestPayload: Record<string, unknown> | null = null;
+  const readJson = async (_request: Request, options: { maxBytes?: number } = {}) => {
+    requestPayload = await readRequestJson(input.request, options);
+    return requestPayload;
+  };
   const resolveItemClient = (itemId: string) => resolveLegacyItemClient({
     context,
     itemId,
@@ -131,6 +139,34 @@ export async function handleRemoteApiRequest(input: {
     subjectId,
     ownerUserId: input.url.searchParams.get('owner_user_id')
   });
+  const runItemMutation = async (
+    operation: string,
+    itemId: string,
+    client: RemoteMeliClient,
+    execute: () => Promise<unknown>
+  ): Promise<unknown> => {
+    const result = await execute();
+    await recordConfirmedItemEdits({
+      account: client.historyAccount(),
+      actor: input.actor,
+      env: input.env,
+      itemId,
+      operation,
+      payload: requestPayload,
+      requestId: input.requestId,
+      result,
+      snapshots: (targetItemId) => client.historySnapshots(targetItemId)
+    }).catch((error) => {
+      console.error(JSON.stringify({
+        event: 'item_edit_history_write_failed',
+        itemId,
+        operation,
+        requestId: input.requestId,
+        error: sanitizeError(error)
+      }));
+    });
+    return result;
+  };
 
   try {
     if (route === 'POST /resolve') {
@@ -161,12 +197,13 @@ export async function handleRemoteApiRequest(input: {
 
     const standardPrice = apiPath.match(/^\/items\/(MLB\d+)\/pricing\/standard$/u);
     if (input.request.method === 'PUT' && standardPrice) {
-      return handleStandardPriceUpdate({
+      const client = await resolveItemClient(standardPrice[1]);
+      return runItemMutation('pricing.standard.update', standardPrice[1], client, () => handleStandardPriceUpdate({
         req: input.request,
-        client: await resolveItemClient(standardPrice[1]),
+        client,
         itemId: standardPrice[1],
         readJson
-      });
+      }));
     }
 
     const bulkPreview = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/preview$/u);
@@ -181,22 +218,24 @@ export async function handleRemoteApiRequest(input: {
 
     const bulkCommit = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/commit$/u);
     if (input.request.method === 'POST' && bulkCommit) {
-      return handleBulkCommit({
+      const client = await resolveBulkClient(bulkCommit[1]);
+      return runItemMutation('bulk.commit', bulkCommit[1], client, () => handleBulkCommit({
         req: input.request,
-        client: await resolveBulkClient(bulkCommit[1]),
+        client,
         itemId: bulkCommit[1],
         readJson
-      });
+      }));
     }
 
     const descriptionBulk = apiPath.match(/^\/items\/(MLB\d+)\/description\/bulk$/u);
     if (input.request.method === 'POST' && descriptionBulk) {
-      return handleDescriptionBulkUpdate({
+      const client = await resolveBulkClient(descriptionBulk[1]);
+      return runItemMutation('description.update', descriptionBulk[1], client, () => handleDescriptionBulkUpdate({
         req: input.request,
-        client: await resolveBulkClient(descriptionBulk[1]),
+        client,
         itemId: descriptionBulk[1],
         readJson
-      });
+      }));
     }
 
     const description = apiPath.match(/^\/items\/(MLB\d+)\/description$/u);
@@ -204,22 +243,24 @@ export async function handleRemoteApiRequest(input: {
       return handleDescriptionGet({ client: await resolveItemClient(description[1]), itemId: description[1] });
     }
     if (input.request.method === 'PUT' && description) {
-      return handleDescriptionUpdate({
+      const client = await resolveItemClient(description[1]);
+      return runItemMutation('description.update', description[1], client, () => handleDescriptionUpdate({
         req: input.request,
-        client: await resolveItemClient(description[1]),
+        client,
         itemId: description[1],
         readJson
-      });
+      }));
     }
 
     const characteristicsBulk = apiPath.match(/^\/items\/(MLB\d+)\/characteristics\/bulk$/u);
     if (input.request.method === 'POST' && characteristicsBulk) {
-      return handleCharacteristicsBulkUpdate({
+      const client = await resolveBulkClient(characteristicsBulk[1]);
+      return runItemMutation('characteristics.update', characteristicsBulk[1], client, () => handleCharacteristicsBulkUpdate({
         req: input.request,
-        client: await resolveBulkClient(characteristicsBulk[1]),
+        client,
         itemId: characteristicsBulk[1],
         readJson
-      });
+      }));
     }
 
     const characteristics = apiPath.match(/^\/items\/(MLB\d+)\/characteristics$/u);
@@ -227,12 +268,13 @@ export async function handleRemoteApiRequest(input: {
       return handleCharacteristicsGet({ client: await resolveItemClient(characteristics[1]), itemId: characteristics[1] });
     }
     if (input.request.method === 'PUT' && characteristics) {
-      return handleCharacteristicsUpdate({
+      const client = await resolveItemClient(characteristics[1]);
+      return runItemMutation('characteristics.update', characteristics[1], client, () => handleCharacteristicsUpdate({
         req: input.request,
-        client: await resolveItemClient(characteristics[1]),
+        client,
         itemId: characteristics[1],
         readJson
-      });
+      }));
     }
 
     const promotionSummary = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/summary$/u);
@@ -262,13 +304,16 @@ export async function handleRemoteApiRequest(input: {
 
     const offer = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/offers$/u);
     if (input.request.method === 'POST' && offer) {
-      return handleCreateOffer({ req: input.request, client: await resolveItemClient(offer[1]), itemId: offer[1], readJson });
+      const client = await resolveItemClient(offer[1]);
+      return runItemMutation('promotion.offer.create', offer[1], client, () => handleCreateOffer({ req: input.request, client, itemId: offer[1], readJson }));
     }
     if (input.request.method === 'PUT' && offer) {
-      return handleUpdateOffer({ req: input.request, client: await resolveItemClient(offer[1]), itemId: offer[1], readJson });
+      const client = await resolveItemClient(offer[1]);
+      return runItemMutation('promotion.offer.update', offer[1], client, () => handleUpdateOffer({ req: input.request, client, itemId: offer[1], readJson }));
     }
     if (input.request.method === 'DELETE' && offer) {
-      return handleDeleteOffer({ req: input.request, client: await resolveItemClient(offer[1]), itemId: offer[1], readJson });
+      const client = await resolveItemClient(offer[1]);
+      return runItemMutation('promotion.offer.delete', offer[1], client, () => handleDeleteOffer({ req: input.request, client, itemId: offer[1], readJson }));
     }
 
     if (route === 'GET /promotions/campaigns') return handleCampaignList({ client: context.client });
@@ -309,7 +354,8 @@ export async function handleRemoteApiRequest(input: {
 
     const pictureCommit = apiPath.match(/^\/items\/(MLB\d+)\/pictures\/commit$/u);
     if (input.request.method === 'POST' && pictureCommit) {
-      return handlePictureCommit({ req: input.request, client: await resolveItemClient(pictureCommit[1]), itemId: pictureCommit[1], readJson });
+      const client = await resolveItemClient(pictureCommit[1]);
+      return runItemMutation('pictures.update', pictureCommit[1], client, () => handlePictureCommit({ req: input.request, client, itemId: pictureCommit[1], readJson }));
     }
 
     throw new RemoteApiError('endpoint_not_found', 404, 'Endpoint nao encontrado.');
@@ -489,6 +535,9 @@ async function readRequestJson(request: Request, options: { maxBytes?: number } 
 }
 
 class RemoteMeliClient {
+  private readonly firstItemSnapshots = new Map<string, Record<string, unknown>>();
+  private readonly latestItemSnapshots = new Map<string, Record<string, unknown>>();
+
   constructor(
     private readonly env: RemoteRuntimeEnv,
     private readonly account: SellerAccount
@@ -498,7 +547,29 @@ class RemoteMeliClient {
     return { id: this.account.meliUserId };
   }
 
-  async getItem(itemId: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}`); }
+  async getItem(itemId: string): Promise<unknown> {
+    const item = await this.request(`/items/${encodeURIComponent(itemId)}`);
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const snapshot = item as Record<string, unknown>;
+      const normalizedId = String(snapshot.id || itemId);
+      if (!this.firstItemSnapshots.has(normalizedId)) this.firstItemSnapshots.set(normalizedId, snapshot);
+      this.latestItemSnapshots.set(normalizedId, snapshot);
+      if (!this.firstItemSnapshots.has(itemId)) this.firstItemSnapshots.set(itemId, snapshot);
+      this.latestItemSnapshots.set(itemId, snapshot);
+    }
+    return item;
+  }
+
+  historyAccount(): { id: string; meliUserId: string; nickname: string | null } {
+    return { id: this.account.id, meliUserId: this.account.meliUserId, nickname: this.account.nickname };
+  }
+
+  historySnapshots(itemId: string): { first: Record<string, unknown> | null; latest: Record<string, unknown> | null } {
+    return {
+      first: this.firstItemSnapshots.get(itemId) || null,
+      latest: this.latestItemSnapshots.get(itemId) || null
+    };
+  }
   async getItemPrices(itemId: string, options: { displayVersion?: boolean; showAllPrices?: boolean } = {}): Promise<unknown> {
     return this.request(withQuery(`/items/${encodeURIComponent(itemId)}/prices`, { display_version: options.displayVersion ? 'true' : undefined }), {
       headers: options.showAllPrices ? { 'show-all-prices': 'true' } : undefined

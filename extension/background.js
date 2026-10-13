@@ -44,6 +44,7 @@ async function handleRemoteMessage(message) {
   if (action === 'account-update') return updateRemoteAccount(message.userId, message.payload);
   if (action === 'account-remove') return removeRemoteAccount(message.userId);
   if (action === 'app-overview') return requestPlatform('/v1/app/overview');
+  if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'workspace-leave') return leaveWorkspace();
@@ -70,6 +71,17 @@ async function handleRemoteMessage(message) {
   const failure = new Error('Ação remota inválida.');
   failure.code = 'remote_action_unsupported';
   throw failure;
+}
+
+function itemEditHistoryPath(query) {
+  const source = query && typeof query === 'object' ? query : {};
+  const params = new URLSearchParams();
+  for (const key of ['cursor', 'limit', 'itemId', 'accountId', 'userId', 'changeType']) {
+    const value = String(source[key] === undefined || source[key] === null ? '' : source[key]).trim();
+    if (value) params.set(key, value);
+  }
+  const search = params.toString();
+  return `/v1/app/item-edit-history${search ? `?${search}` : ''}`;
 }
 
 async function loadAccountSecurity() {

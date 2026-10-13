@@ -828,9 +828,12 @@ function collectTags() {
 }
 
 function summarizeItem(item) {
+  const firstPicture = Array.isArray(item.pictures) && item.pictures[0] || null;
   return {
     id: item.id || null,
     title: item.title || null,
+    thumbnailUrl: item.secure_thumbnail || item.thumbnail || firstPicture && (firstPicture.secure_url || firstPicture.url) || null,
+    permalink: item.permalink || null,
     sellerId: item.seller_id || null,
     categoryId: item.category_id || null,
     domainId: item.domain_id || null,

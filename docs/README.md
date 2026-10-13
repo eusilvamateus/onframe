@@ -25,6 +25,8 @@ tenha uma fonte canonica.
   oportunidade, uma participacao programada e a promocao de preco vigente.
 - [Workspaces e acessos](product/workspaces-e-acessos.md) - papeis,
   atribuicoes de contas e convites do painel.
+- [Historico de edicoes](product/historico-de-edicoes.md) - eventos confirmados,
+  nivel de detalhe e regras de acesso ao relatorio de anuncios.
 
 ## Arquitetura
 

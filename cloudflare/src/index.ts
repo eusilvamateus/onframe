@@ -10,6 +10,7 @@ import { base64Url, decryptValue as decryptTokenValue, encryptValue as encryptTo
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 import { IdentitySecurityError, requireIdentitySession } from './identity-security';
 import { accountSecurity, revokeProviderSessions } from './account-security';
+import { listItemEditHistory } from './item-edit-history';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -1714,6 +1715,11 @@ export default {
         return json(await workspaceOverview(env, actor));
       }
 
+      if (url.pathname === '/v1/app/item-edit-history' && request.method === 'GET') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await listItemEditHistory(env, actor, url));
+      }
+
       if (url.pathname === '/v1/security' && request.method === 'GET') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await accountSecurity(env, actor.subject, actor.authSessionId));
@@ -1794,7 +1800,7 @@ export default {
       if (url.pathname.startsWith('/v1/api/')) {
         const actor = await authenticateExtensionSession(request, env);
         try {
-          const payload = await handleRemoteApiRequest({ actor, env, request, url });
+          const payload = await handleRemoteApiRequest({ actor, env, request, requestId, url });
           await auditRemoteApiRequest({
             actor,
             env,
