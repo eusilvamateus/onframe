@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Button, ButtonGroup, Card, Modal, Ph, Skeleton, ToggleButton, Tooltip, toast } from '@onblide/ui';
 import { IntegrationAccount, accountName } from '../shared/IntegrationAccount';
 import { sendRemoteMessage, userError } from '../shared/runtime';
+import { PopupSessionHeader } from './PopupSessionHeader';
 
 function LoadingAccounts() {
   return <div className="onframe-popup-loading-list" aria-label="Carregando integrações">
@@ -84,16 +85,7 @@ export function IntegrationsSession({ connection, onBack, onOpenOptions }) {
 
   return (
     <main className="onframe-popup onframe-popup-session">
-      <header className="onframe-popup-session-header">
-        <Button kind="quiet" size="sm" iconOnly aria-label="Voltar" onClick={onBack} icon={<Ph n="arrow-circle-left" size={20} />} />
-        <div className="onframe-popup-session-heading">
-          <h1>Integrações</h1>
-          <p>{connection.workspace.name}</p>
-        </div>
-        <Tooltip label="Abrir opções da extensão" placement="left">
-          <Button kind="quiet" size="sm" iconOnly aria-label="Abrir opções da extensão" onClick={onOpenOptions} icon={<Ph n="gear" size={18} />} />
-        </Tooltip>
-      </header>
+      <PopupSessionHeader title="Integrações" subtitle={connection.workspace.name} onBack={onBack} onOpenOptions={onOpenOptions} />
 
       <div className="onframe-popup-session-body">
         {feedback && <Alert tone={feedback.tone} dismissible onClose={() => setFeedback(null)}>{feedback.message}</Alert>}

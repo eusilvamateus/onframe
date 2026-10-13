@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, Avatar, Badge, Button, List, ListItem, Modal, Ph, Skeleton, Tooltip, toast } from '@onblide/ui';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { formatDate, sendRemoteMessage, userError } from '../shared/runtime';
+import { PopupSessionHeader } from './PopupSessionHeader';
 
 function memberAccess(member) {
   if (member.role === 'admin') return 'Administrador · Todas as contas';
@@ -140,16 +141,7 @@ export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnecti
 
   return (
     <main className="onframe-popup onframe-popup-session">
-      <header className="onframe-popup-session-header">
-        <Button kind="quiet" size="sm" iconOnly aria-label="Voltar" onClick={onBack} icon={<Ph n="arrow-circle-left" size={20} />} />
-        <div className="onframe-popup-session-heading">
-          <h1>Workspace</h1>
-          <p>{connection.workspace.name}</p>
-        </div>
-        <Tooltip label="Abrir opções da extensão" placement="left">
-          <Button kind="quiet" size="sm" iconOnly aria-label="Abrir opções da extensão" onClick={onOpenOptions} icon={<Ph n="gear" size={18} />} />
-        </Tooltip>
-      </header>
+      <PopupSessionHeader title="Workspace" subtitle={connection.workspace.name} onBack={onBack} onOpenOptions={onOpenOptions} />
 
       <div className="onframe-popup-session-body">
         {feedback && <Alert tone={feedback.tone} action={feedback.action} onAction={feedback.onAction} dismissible onClose={() => setFeedback(null)}>{feedback.message}</Alert>}
