@@ -72,6 +72,7 @@ button, input { font: inherit; }
 .onframe-card-title { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-md); font-weight: var(--ob-w-semibold); line-height: var(--ob-lh-snug); }
 .onframe-card-copy { margin: 4px 0 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); line-height: var(--ob-lh-normal); }
 .onframe-integration-header > .onframe-row { flex-wrap: wrap; }
+.onframe-integration-view-bar { display: flex; justify-content: flex-end; }
 .onframe-integration-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ob-s-3); }
 .onframe-integration-list { border-top: 1px solid var(--ob-line-soft); }
 .onframe-integration-list-item { padding: var(--ob-s-3) 0; border-bottom: 1px solid var(--ob-line-soft); }
@@ -81,9 +82,9 @@ button, input { font: inherit; }
 .onframe-integration-name .onframe-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .onframe-integration-name > span { opacity: 0; transition: opacity var(--ob-dur-fast) var(--ob-ease); }
 .onframe-integration-name:hover > span, .onframe-integration-name:focus-within > span { opacity: 1; }
-.onframe-integration-edit { width: 100%; }
+.onframe-integration-edit { width: min(100%, 320px); gap: var(--ob-s-2); }
 .onframe-integration-edit > label { flex: 1; min-width: 0; }
-.onframe-integration-controls { flex: none; margin-left: auto; gap: var(--ob-s-2); }
+.onframe-integration-controls { flex: none; margin-left: auto; gap: var(--ob-s-5); }
 @media (hover: none) { .onframe-integration-name > span { opacity: 1; } }
 
 .onframe-options { display: grid; min-height: 100vh; grid-template-columns: 240px minmax(0, 1fr); background: var(--ob-surface); transition: grid-template-columns var(--ob-dur-base) var(--ob-ease); }

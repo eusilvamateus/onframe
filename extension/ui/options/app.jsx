@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Switch, Tabs, ToggleButton, Tooltip } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Switch, Tabs, ToastStack, ToggleButton, Tooltip, toast } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
@@ -59,7 +59,10 @@ function accountName(account) {
 function accountStoreUrl(account) {
   try {
     const url = new URL(account.permalink);
-    return url.protocol === 'https:' ? url.href : '';
+    const trustedHost = url.hostname === 'mercadolivre.com.br' || url.hostname.endsWith('.mercadolivre.com.br');
+    if (!trustedHost || (url.protocol !== 'http:' && url.protocol !== 'https:')) return '';
+    url.protocol = 'https:';
+    return url.href;
   } catch {
     return '';
   }
@@ -72,6 +75,11 @@ function trustedLogo(value) {
 
 function searchValue(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function feedbackSurface({ tone, visible = false, needsAttention = false }) {
+  if (needsAttention || tone === 'danger' || tone === 'warning') return 'alert';
+  return visible ? 'none' : 'toast';
 }
 
 function activityLabel(operation) {
@@ -103,6 +111,10 @@ function PageHeader({ meta, actions, reserveContextSpace = false }) {
   );
 }
 
+function FeedbackRoot({ children }) {
+  return <><ToastStack position="bottom-right" />{children}</>;
+}
+
 function Home({ workspace, overview, accounts, invitations, admin, loading, onConnect, onOpenIntegrations, onOpenWorkspace }) {
   const activity = overview?.recentActivity || [];
   const pendingInvitations = invitations.length;
@@ -120,7 +132,7 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
             eyebrow="PRÓXIMA AÇÃO"
             title={admin ? 'Conecte uma conta do Mercado Livre' : 'Aguarde uma conta ser atribuída'}
             copy={admin ? 'Conecte a primeira conta para começar a usar o OnFrame neste workspace.' : 'Um administrador precisa atribuir uma conta do Mercado Livre ao seu acesso.'}
-            actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button> : undefined}
+            actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>Conectar conta</Button> : undefined}
           />
         </Card>
       )}
@@ -183,7 +195,6 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
 function IntegrationAccount({ account, admin, mode, loading, onUpdate, onRename, onRemove }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(accountName(account));
-  const [removingHover, setRemovingHover] = useState(false);
   const savingName = useRef(false);
   const storeUrl = accountStoreUrl(account);
   const label = accountName(account);
@@ -211,14 +222,14 @@ function IntegrationAccount({ account, admin, mode, loading, onUpdate, onRename,
   const controls = (
     <div className="onframe-integration-controls">
       {storeUrl && <Tooltip label="Abrir página da loja">
-        <Button kind="neutral" size="sm" iconOnly aria-label={`Abrir página da loja de ${label}`} icon={<Ph n="arrow-square-out" size={18} />} onClick={() => openExternal(storeUrl)} />
+        <Button kind="quiet" tone="primary" size="sm" iconOnly aria-label={`Abrir página da loja de ${label}`} icon={<Ph n="arrow-square-out" size={18} />} onClick={() => openExternal(storeUrl)} />
       </Tooltip>}
       {admin && <>
         <Tooltip label={account.enabled === false ? 'Ativar conta' : 'Desativar conta'}>
-          <span role="group" aria-label={`Status de ${label}`}><Switch size="sm" checked={account.enabled !== false} disabled={loading} label={account.enabled === false ? 'Inativa' : 'Ativa'} onChange={(enabled) => onUpdate(account, enabled)} /></span>
+          <span role="group" aria-label={`Status de ${label}`}><Switch size="md" checked={account.enabled !== false} disabled={loading} onChange={(enabled) => onUpdate(account, enabled)} /></span>
         </Tooltip>
         <Tooltip label="Remover conta">
-          <Button kind={removingHover ? 'danger' : 'neutral'} size="sm" iconOnly aria-label={`Remover ${label}`} disabled={loading} icon={<Ph n="trash" size={18} />} onMouseEnter={() => setRemovingHover(true)} onMouseLeave={() => setRemovingHover(false)} onFocus={() => setRemovingHover(true)} onBlur={() => setRemovingHover(false)} onClick={() => onRemove(account)} />
+          <Button kind="quiet" tone="danger" size="sm" iconOnly aria-label={`Remover ${label}`} disabled={loading} icon={<Ph n="trash" size={18} />} onClick={() => onRemove(account)} />
         </Tooltip>
       </>}
     </div>
@@ -235,11 +246,11 @@ function IntegrationAccount({ account, admin, mode, loading, onUpdate, onRename,
             if (event.key === 'Enter') { event.preventDefault(); void saveName(); }
             if (event.key === 'Escape') cancelEdit();
           }} autoFocus disabled={loading} />
-          <Tooltip label="Salvar nome"><Button kind="neutral" size="sm" iconOnly aria-label="Salvar nome" disabled={loading || !name.trim()} icon={<Ph n="check" size={16} />} onClick={() => void saveName()} /></Tooltip>
-          <Tooltip label="Cancelar edição"><Button kind="neutral" size="sm" iconOnly aria-label="Cancelar edição" disabled={loading} icon={<Ph n="x" size={16} />} onClick={cancelEdit} /></Tooltip>
+          <Tooltip label="Salvar nome"><Button kind="quiet" tone="success" size="sm" iconOnly aria-label="Salvar nome" disabled={loading || !name.trim()} icon={<Ph n="check" size={16} />} onClick={() => void saveName()} /></Tooltip>
+          <Tooltip label="Cancelar edição"><Button kind="quiet" tone="neutral" size="sm" iconOnly aria-label="Cancelar edição" disabled={loading} icon={<Ph n="x" size={16} />} onClick={cancelEdit} /></Tooltip>
         </div> : <div className="onframe-integration-name">
           <p className="onframe-card-title">{label}</p>
-          {admin && <Tooltip label="Renomear conta"><Button kind="neutral" size="sm" iconOnly aria-label={`Renomear ${label}`} disabled={loading} icon={<Ph n="pencil-simple" size={16} />} onClick={() => { setName(label); setEditing(true); }} /></Tooltip>}
+          {admin && <Tooltip label="Renomear conta"><Button kind="quiet" tone="primary" size="sm" iconOnly aria-label={`Renomear ${label}`} disabled={loading} icon={<Ph n="pencil-simple" size={16} />} onClick={() => { setName(label); setEditing(true); }} /></Tooltip>}
         </div>}
         <p className="onframe-list-meta">{id}</p>
       </div>
@@ -258,22 +269,22 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove
           eyebrow="MERCADO LIVRE"
           title={admin ? 'Contas conectadas' : 'Contas atribuídas'}
           copy={admin ? 'Conecte e controle as contas disponíveis neste workspace.' : 'Contas atribuídas ao seu acesso neste workspace.'}
-          actions={<div className="onframe-actions">
-            {accounts.length > 0 && <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="sm">
-              <Tooltip label="Visualizar como lista"><ToggleButton value="list" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
-              <Tooltip label="Visualizar como cards"><ToggleButton value="cards" icon="squares-four" ariaLabel="Cards" /></Tooltip>
-            </ButtonGroup>}
-            {admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button>}
-          </div>}
+          actions={admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>Conectar conta</Button>}
         />
       </div>
+      {accounts.length > 0 && <div className="onframe-integration-view-bar">
+        <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="lg">
+          <Tooltip label="Visualizar como lista"><ToggleButton value="list" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
+          <Tooltip label="Visualizar como cards"><ToggleButton value="cards" icon="squares-four" ariaLabel="Cards" /></Tooltip>
+        </ButtonGroup>
+      </div>}
       {accounts.length === 0 ? (
         <Card padding={24}>
           <SectionHeader
             eyebrow="ESTADO"
             title={admin ? 'Nenhuma conta conectada' : 'Nenhuma conta atribuída'}
             copy={admin ? 'Conecte uma conta do Mercado Livre para disponibilizá-la neste workspace.' : 'Um administrador precisa atribuir uma conta para que você possa usá-la.'}
-            actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button> : undefined}
+            actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>Conectar conta</Button> : undefined}
           />
         </Card>
       ) : <div className={mode === 'cards' ? 'onframe-integration-grid' : 'onframe-integration-list'}>
@@ -586,6 +597,15 @@ function OptionsApp() {
   const [dialog, setDialog] = useState(null);
   const acceptingInvitation = useRef(false);
 
+  function showFeedback({ tone, message, visible = false, needsAttention = false, action, onAction }) {
+    const surface = feedbackSurface({ tone, visible, needsAttention });
+    if (surface === 'alert') setNotice({ tone, message, action, onAction });
+    else {
+      setNotice(null);
+      if (surface === 'toast') toast({ tone, title: message });
+    }
+  }
+
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -675,7 +695,7 @@ function OptionsApp() {
     void sendRemoteMessage('invitation-accept', { token })
       .then(() => {
         window.history.replaceState(null, document.title, window.location.pathname);
-        setNotice({ tone: 'success', message: 'Convite aceito. O workspace foi ativado.' });
+        showFeedback({ tone: 'success', message: 'Convite aceito. O workspace foi ativado.' });
         return reload();
       })
       .catch((error) => {
@@ -686,9 +706,10 @@ function OptionsApp() {
 
   async function run(action, successMessage) {
     setLoading(true);
+    setNotice(null);
     try {
       const result = await action();
-      if (successMessage) setNotice({ tone: 'success', message: successMessage });
+      if (successMessage) showFeedback({ tone: 'success', message: successMessage });
       return result;
     } catch (error) {
       setNotice({ tone: 'danger', message: userError(error) });
@@ -712,14 +733,14 @@ function OptionsApp() {
   async function connectAccount() {
     await run(async () => {
       await sendRemoteMessage('oauth-start');
-    }, 'Autorize a conta do Mercado Livre na aba aberta.');
+    });
   }
 
   async function updateAccount(account, enabled) {
     await run(async () => {
       await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
       await loadAccounts();
-    }, enabled ? 'Conta habilitada.' : 'Conta desativada.');
+    }, enabled ? 'Conta ativada.' : 'Conta desativada.');
   }
 
   async function renameAccount(account, displayName) {
@@ -727,7 +748,7 @@ function OptionsApp() {
       await sendRemoteMessage('account-update', { userId: account.user_id, payload: { displayName } });
       await loadAccounts();
       return true;
-    }, 'Nome da conta atualizado.');
+    });
     return result === true;
   }
 
@@ -747,7 +768,7 @@ function OptionsApp() {
       const result = await run(async () => {
         await sendRemoteMessage('account-remove', { userId: dialog.account.user_id });
         await loadAccounts();
-      }, 'Conta removida do workspace.');
+      });
       if (result !== null) setDialog(null);
       return;
     }
@@ -767,8 +788,18 @@ function OptionsApp() {
       } else {
         const response = await sendRemoteMessage('invitation-create', { payload: values });
         if (response.invitation?.url) {
-          await navigator.clipboard.writeText(response.invitation.url).catch(() => undefined);
-          setNotice({ tone: 'success', message: 'Link de convite criado e copiado.' });
+          try {
+            await navigator.clipboard.writeText(response.invitation.url);
+            showFeedback({ tone: 'success', message: 'Link de convite criado e copiado.' });
+          } catch {
+            const retryCopy = () => void navigator.clipboard.writeText(response.invitation.url)
+              .then(() => showFeedback({ tone: 'success', message: 'Link copiado.' }))
+              .catch(() => setNotice((current) => current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }));
+            showFeedback({
+              tone: 'warning', message: 'Convite criado, mas o link não foi copiado.', needsAttention: true,
+              action: 'Copiar link', onAction: retryCopy
+            });
+          }
         }
       }
       await loadView();
@@ -849,6 +880,7 @@ function OptionsApp() {
 
   if (connection === null && loading) {
     return (
+      <FeedbackRoot>
       <main className="onframe-auth-page" aria-busy="true">
         <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
           <AuthBrand />
@@ -862,18 +894,21 @@ function OptionsApp() {
           </Card>
         </div>
       </main>
+      </FeedbackRoot>
     );
   }
 
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
   if (!connected) {
     return (
+      <FeedbackRoot>
       <main className="onframe-auth-page">
         <div className="onframe-auth-surface onframe-stack">
-          {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
+          {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
           <AuthPanel onConnected={reload} />
         </div>
       </main>
+      </FeedbackRoot>
     );
   }
 
@@ -972,6 +1007,7 @@ function OptionsApp() {
   const pageHeaderActions = workspaceControl || undefined;
 
   return (
+    <FeedbackRoot>
     <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>
       <aside className="onframe-options-sidebar" aria-label="Navegação do workspace">
         <SideNav
@@ -1007,7 +1043,7 @@ function OptionsApp() {
               actions={pageHeaderActions}
               reserveContextSpace
             />
-            {notice && <Alert tone={notice.tone} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
+            {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
             {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
@@ -1046,6 +1082,7 @@ function OptionsApp() {
           : dialog?.member ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.` : ''}
       </Modal>
     </main>
+    </FeedbackRoot>
   );
 }
 

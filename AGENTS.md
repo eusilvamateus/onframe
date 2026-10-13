@@ -53,6 +53,15 @@ variações visuais fora das especificações documentadas. Quando a necessidade
 tiver componente, variante ou regra documentada, interrompa a implementação e
 informe a lacuna ao usuário; não improvise uma solução visual.
 
+## Feedback na Interface
+
+Escolha o canal de feedback pelo contexto, não apenas pelo tom: mudanças já
+visíveis no próprio controle não precisam de mensagem adicional; confirmações
+breves sem próximo passo usam `Toast`; erros, avisos e instruções que precisam
+permanecer legíveis usam `Alert` junto ao contexto afetado; erros de campo
+ficam no próprio campo. Não use toast temporário para uma falha que exige
+correção, nem alert de página para confirmar um switch que já mudou de estado.
+
 ## Diretrizes de Teste
 
 Inclua ou atualize testes comportamentais junto ao domínio afetado. Cubra erros

@@ -10,6 +10,20 @@ const { transformSync } = require('esbuild');
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
 
+test('feedback transitorio usa toast e problemas que exigem atencao permanecem em alert', () => {
+  const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const helper = source.slice(source.indexOf('function feedbackSurface'), source.indexOf('function activityLabel'));
+  const feedbackSurface = vm.runInNewContext(`${helper}\nfeedbackSurface`);
+  assert.equal(feedbackSurface({ tone: 'success', visible: true }), 'none');
+  assert.equal(feedbackSurface({ tone: 'success' }), 'toast');
+  assert.equal(feedbackSurface({ tone: 'info', needsAttention: true }), 'alert');
+  assert.equal(feedbackSurface({ tone: 'danger' }), 'alert');
+  assert.equal(feedbackSurface({ tone: 'danger', visible: true }), 'alert');
+  assert.equal(feedbackSurface({ tone: 'warning' }), 'alert');
+  assert.match(source, /<ToastStack position="bottom-right"/);
+  assert.match(source.slice(source.indexOf('async function updateAccount'), source.indexOf('async function renameAccount')), /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/);
+});
+
 test('integracoes alternam visualizacao e permitem renomear sem perder controles da conta', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const helpers = source.slice(source.indexOf('function accountName'), source.indexOf('function searchValue'));
@@ -26,7 +40,7 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
     ToggleButton: 'toggle-control', Card: 'card-control', Avatar: 'avatar-control',
     Tooltip: 'tooltip-control', Switch: 'switch-control', Input: 'input-control', Ph: 'icon-control'
   });
-  const account = { id: 'acc-1', user_id: '123', nickname: 'Nome original', display_name: 'Loja', enabled: true, permalink: 'https://www.mercadolivre.com.br/perfil/loja' };
+  const account = { id: 'acc-1', user_id: '123', nickname: 'Nome original', display_name: 'Loja', enabled: true, permalink: 'http://perfil.mercadolivre.com.br/loja' };
   const renamed = [];
   let renderer;
   await act(async () => {
@@ -36,15 +50,30 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
     }));
   });
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-integration-list-item' }).length, 1);
+  const connectButton = renderer.root.findAllByType('button-control').find((node) => node.props.children === 'Conectar conta');
+  assert.equal(connectButton.props.icon.props.n, 'plus-circle');
   assert.equal(renderer.root.findAllByType('switch-control')[0].props.checked, true);
+  assert.equal(renderer.root.findByType('switch-control').props.size, 'md');
+  assert.equal(renderer.root.findByType('switch-control').props.label, undefined);
+  assert.equal(renderer.root.findByType('button-group').props.size, 'lg');
   await act(async () => renderer.root.findByType('switch-control').props.onChange(false));
   assert.deepEqual(updated, [false]);
   assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' }).length, 1);
   await act(async () => renderer.root.findByType('button-group').props.onChange('cards'));
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-integration-card' }).length, 1);
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.kind, 'quiet');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.tone, 'primary');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Remover Loja' })[0].props.kind, 'quiet');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Remover Loja' })[0].props.tone, 'danger');
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Remover Loja' })[0].props.onClick());
   assert.deepEqual(removed, ['123']);
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.kind, 'quiet');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.tone, 'primary');
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.onClick());
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Salvar nome' })[0].props.kind, 'quiet');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Salvar nome' })[0].props.tone, 'success');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Cancelar edição' })[0].props.kind, 'quiet');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Cancelar edição' })[0].props.tone, 'neutral');
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Cancelar edição' })[0].props.onClick());
   assert.equal(renderer.root.findAllByType('input-control').length, 0);
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.onClick());
@@ -57,7 +86,7 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
   assert.deepEqual(renamed, ['Loja principal']);
   assert.equal(renderer.root.findAllByType('input-control').length, 0);
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.onClick());
-  assert.deepEqual(opened, [account.permalink]);
+  assert.deepEqual(opened, ['https://perfil.mercadolivre.com.br/loja']);
 });
 
 test('upload de foto estima progresso sem concluir antes da resposta e libera o controle apos falha', async () => {
