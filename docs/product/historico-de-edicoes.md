@@ -6,8 +6,8 @@ O historico registra alteracoes de anuncios realizadas pelo OnFrame e
 confirmadas pelo Mercado Livre. Tentativas recusadas, alvos bloqueados e itens
 ignorados em operacoes em lote nao aparecem na linha do tempo.
 
-O popup deve usar esse contrato para um resumo recente e direto. As opcoes da
-extensao podem usar a mesma consulta paginada, com filtros, para apresentar o
+O popup usa esse contrato para um resumo recente e direto. As opcoes da
+extensao usam a mesma consulta paginada, com filtros, para apresentar o
 relatorio completo.
 
 ## Conteudo registrado

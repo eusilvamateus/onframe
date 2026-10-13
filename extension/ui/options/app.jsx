@@ -11,6 +11,7 @@ import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName, trustedLogo } from '../shared/IntegrationAccount';
+import { ItemEditHistory } from './ItemEditHistory';
 import { formatDate, initials, manifestVersion, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
@@ -18,6 +19,7 @@ const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
 const VIEW_META = {
   home: { title: 'Início', icon: 'house' },
   integrations: { title: 'Integrações', icon: 'storefront' },
+  history: { title: 'Histórico', icon: 'clock-counter-clockwise' },
   settings: { title: 'Configurações', icon: 'gear-six' }
 };
 
@@ -451,7 +453,7 @@ function OptionsApp() {
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
-  const [view, setView] = useState('home');
+  const [view, setView] = useState(() => window.location.hash === '#history' ? 'history' : 'home');
   const [settingsTab, setSettingsTab] = useState('account');
   const [settingsPage, setSettingsPage] = useState('index');
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
@@ -508,7 +510,7 @@ function OptionsApp() {
   const loadView = useCallback(async () => {
     if (!connection?.connected) return;
     const admin = connection.workspace?.role === 'admin';
-    const needsData = view === 'home' || view === 'integrations' || (view === 'settings' && (settingsTab === 'account' || (settingsTab === 'workspace' && admin)));
+    const needsData = view === 'home' || view === 'integrations' || view === 'history' || (view === 'settings' && (settingsTab === 'account' || (settingsTab === 'workspace' && admin)));
     if (!needsData) return;
     const needsSecurity = view === 'settings' && settingsTab === 'account' && ['security', 'sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage);
     setLoading(true);
@@ -521,6 +523,13 @@ function OptionsApp() {
         setInvitations(invitationResult?.invitations || []);
       }
       if (view === 'integrations') await loadAccounts();
+      if (view === 'history') {
+        const [, memberResult] = await Promise.all([
+          loadAccounts(),
+          admin ? sendRemoteMessage('members') : Promise.resolve(null)
+        ]);
+        if (admin) setMembers(memberResult?.members || []);
+      }
       if (view === 'settings' && settingsTab === 'account') {
         const [nextProfile, nextSecurity] = await Promise.all([
           sendRemoteMessage('profile'), needsSecurity ? sendRemoteMessage('security') : Promise.resolve(null)
@@ -545,6 +554,12 @@ function OptionsApp() {
   }, [connection?.connected, connection?.workspace?.id, connection?.workspace?.role, loadAccounts, settingsTab, settingsPage, view]);
 
   useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    const target = view === 'history' ? '#history' : `${window.location.pathname}${window.location.search}`;
+    if (window.location.hash !== (view === 'history' ? '#history' : '')) {
+      window.history.replaceState(null, document.title, target);
+    }
+  }, [view]);
   useEffect(() => {
     const refreshOnFocus = () => { void reload().then(loadView); };
     window.addEventListener('focus', refreshOnFocus);
@@ -828,6 +843,7 @@ function OptionsApp() {
   const navigation = [
     { id: 'home', label: 'Início', icon: 'house' },
     { id: 'integrations', label: 'Integrações', icon: 'storefront' },
+    { id: 'history', label: 'Histórico', icon: 'clock-counter-clockwise' },
     { id: 'settings', label: 'Configurações', icon: 'gear-six' }
   ];
   const personName = connection.user.name || connection.user.email;
@@ -910,6 +926,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
+            {view === 'history' && <ItemEditHistory accounts={accounts} members={members} currentUser={connection.user} admin={admin} onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined} />}
             {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
           </div>
         </section>

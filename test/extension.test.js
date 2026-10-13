@@ -270,11 +270,14 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /<IntegrationsSession/);
+  assert.match(popup, /<HistorySession/);
   assert.match(popup, /title="Integrações"/);
   assert.match(popup, /setView\('integrations'\)/);
+  assert.match(popup, /setView\('history'\)/);
   assert.match(popupHtml, /<html lang="pt-BR" class="onframe-popup-window">/);
   assert.match(popupHtml, /<body class="onframe-popup-document">/);
   assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*480px;[^}]*min-width:\s*480px/);
+  assert.match(optionsCss, /\.onframe-history-product-media \.onframe-history-type-icon\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/);
   assert.match(optionsCss, /\.onframe-popup-window, \.onframe-popup-document\s*\{[^}]*background:\s*transparent;[^}]*border-radius:\s*var\(--ob-r-surface\);[^}]*overflow:\s*hidden;/);
   assert.match(optionsCss, /\.onframe-popup-document #root\s*\{[^}]*background:\s*var\(--ob-surface\);[^}]*border-radius:\s*inherit;[^}]*overflow:\s*hidden;/);
   assert.match(optionsCss, /\.onframe-popup\s*\{[^}]*width:\s*100%;/);

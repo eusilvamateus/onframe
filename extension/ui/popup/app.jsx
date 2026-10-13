@@ -7,6 +7,7 @@ import { AuthPanel } from '../shared/AuthPanel';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
 import { IntegrationsSession } from './IntegrationsSession';
+import { HistorySession } from './HistorySession';
 
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
@@ -24,7 +25,11 @@ function writeResourcesPreference(value) {
   }));
 }
 
-function openOptions() {
+function openOptions(target) {
+  if (target === 'history' && chrome.tabs?.create) {
+    chrome.tabs.create({ url: `${chrome.runtime.getURL('ui/options/index.html')}#history` });
+    return;
+  }
   if (chrome.runtime.openOptionsPage) {
     chrome.runtime.openOptionsPage();
     return;
@@ -100,6 +105,7 @@ function Popup() {
 
   if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} onConnectionChanged={load} />;
   if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} />;
+  if (view === 'history') return <HistorySession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} onOpenFullHistory={() => openOptions('history')} />;
 
   return (
     <main className="onframe-popup onframe-popup-home">
@@ -140,6 +146,15 @@ function Popup() {
           description="Contas conectadas e acesso ao Mercado Livre"
           strong
           onClick={() => setView('integrations')}
+          trailing={<Ph n="caret-right" size={16} />}
+        />
+        <ListItem
+          className="onframe-popup-card-row onframe-popup-home-row"
+          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--green"><Ph n="clock-counter-clockwise" size={18} /></span>}
+          title="Histórico"
+          description="Alterações confirmadas nos anúncios"
+          strong
+          onClick={() => setView('history')}
           trailing={<Ph n="caret-right" size={16} />}
         />
       </List>
