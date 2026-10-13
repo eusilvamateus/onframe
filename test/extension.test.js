@@ -273,6 +273,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-popup-document #root\s*\{[^}]*background:\s*var\(--ob-surface\);[^}]*border-radius:\s*inherit;[^}]*overflow:\s*hidden;/);
   assert.match(optionsCss, /\.onframe-popup\s*\{[^}]*width:\s*100%;/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup\s*\{\s*width:\s*100vw;/);
+  assert.match(optionsCss, /\.onframe-popup-session\s*\{[^}]*height:\s*600px;/);
+  assert.doesNotMatch(optionsCss, /\.onframe-popup-session\s*\{[^}]*100vh/);
   assert.match(options, /<AuthBrand \/>/);
   assert.match(authPanel, /alt="OnFrame"/);
   assert.match(authPanel, /by onblide/);
