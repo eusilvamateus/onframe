@@ -1,48 +1,24 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Button, Card, LogoMark, Ph, Switch, Tooltip } from '@onblide/ui';
+import { Alert, Avatar, Button, Ph, Skeleton, Switch, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
-import { initials, manifestVersion, openExternal, openUpdater, sendRemoteMessage, userError } from '../shared/runtime';
+import { sendRemoteMessage, userError } from '../shared/runtime';
 
-const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
-const EDITOR_VISIBLE_KEY = 'onframeEditorVisible';
+const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
-function trustedLogo(value) {
-  const logo = String(value || '').trim();
-  return /^https:\/\/(?:[a-z0-9-]+\.)*mlstatic\.com\//iu.test(logo) ? logo : '';
-}
-
-function readEditorPreference() {
-  return new Promise((resolve) => chrome.storage.local.get({ [EDITOR_VISIBLE_KEY]: true }, (result) => {
-    resolve(result?.[EDITOR_VISIBLE_KEY] !== false);
+function readResourcesPreference() {
+  return new Promise((resolve) => chrome.storage.local.get({ [RESOURCES_ENABLED_KEY]: true }, (result) => {
+    resolve(result?.[RESOURCES_ENABLED_KEY] !== false);
   }));
 }
 
-function writeEditorPreference(value) {
-  return new Promise((resolve) => chrome.storage.local.set({ [EDITOR_VISIBLE_KEY]: Boolean(value) }, resolve));
-}
-
-function activeProductTab() {
-  return new Promise((resolve, reject) => chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    const tab = tabs?.[0];
-    if (!tab?.id || !/^https:\/\/(?:[\w-]+\.)*mercadolivre\.com\.br\//iu.test(String(tab.url || ''))) {
-      reject(new Error('Abra um anúncio do Mercado Livre.'));
-      return;
-    }
-    resolve(tab);
-  }));
-}
-
-function sendToTab(tabId, message) {
-  return new Promise((resolve, reject) => chrome.tabs.sendMessage(tabId, message, (response) => {
+function writeResourcesPreference(value) {
+  return new Promise((resolve, reject) => chrome.storage.local.set({ [RESOURCES_ENABLED_KEY]: Boolean(value) }, () => {
     const error = chrome.runtime.lastError;
-    if (error) {
-      reject(new Error(error.message));
-      return;
-    }
-    resolve(response);
+    if (error) reject(new Error(error.message));
+    else resolve();
   }));
 }
 
@@ -56,30 +32,22 @@ function openOptions() {
 
 function Popup() {
   const [connection, setConnection] = useState(null);
-  const [accounts, setAccounts] = useState([]);
-  const [editorVisible, setEditorVisible] = useState(true);
+  const [resourcesEnabled, setResourcesEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
   const load = useCallback(async () => {
     setBusy(true);
     try {
-      const [nextConnection, nextEditorVisible] = await Promise.all([
+      const [nextConnection, nextResourcesEnabled] = await Promise.all([
         sendRemoteMessage('status'),
-        readEditorPreference()
+        readResourcesPreference()
       ]);
       setConnection(nextConnection);
-      setEditorVisible(nextEditorVisible);
-      if (nextConnection?.connected) {
-        const result = await sendRemoteMessage('accounts');
-        setAccounts(result.accounts || []);
-      } else {
-        setAccounts([]);
-      }
+      setResourcesEnabled(nextResourcesEnabled);
       setFeedback('');
     } catch (error) {
       setConnection({ connected: false, reason: 'unavailable' });
-      setAccounts([]);
       setFeedback(userError(error));
     } finally {
       setBusy(false);
@@ -88,116 +56,66 @@ function Popup() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function toggleEditor(nextVisible) {
+  async function toggleResources(nextEnabled) {
+    const previous = resourcesEnabled;
+    setResourcesEnabled(nextEnabled);
     setBusy(true);
+    setFeedback('');
     try {
-      await writeEditorPreference(nextVisible);
-      setEditorVisible(nextVisible);
-      const tab = await activeProductTab();
-      const result = await sendToTab(tab.id, { type: 'onframe:setEditorVisibility', visible: nextVisible });
-      if (!result?.isProductPage) throw new Error('Abra um anúncio do Mercado Livre.');
-      setFeedback(nextVisible ? 'Editor visível.' : 'Editor oculto.');
+      await writeResourcesPreference(nextEnabled);
     } catch (error) {
+      setResourcesEnabled(previous);
       setFeedback(userError(error));
     } finally {
       setBusy(false);
     }
   }
 
+  if (connection === null) return <main className="onframe-popup onframe-popup-home" aria-busy="true" aria-label="Carregando conta">
+    <header className="onframe-popup-userbar">
+      <div className="onframe-popup-user">
+        <Skeleton circle height={40} />
+        <div className="onframe-popup-skeleton-copy">
+          <Skeleton width={112} height={14} />
+          <Skeleton width={164} height={10} />
+        </div>
+      </div>
+      <div className="onframe-popup-actions">
+        <Skeleton width={40} height={22} radius={999} />
+        <Skeleton width={32} height={32} />
+      </div>
+    </header>
+  </main>;
+
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
   if (!connected) return <main className="onframe-popup onframe-popup-auth">
     {feedback && <Alert tone="danger">{feedback}</Alert>}
     <AuthPanel onConnected={load} />
   </main>;
-  const status = connected
-    ? { label: 'Conectada', tone: 'green' }
-    : connection?.reason === 'auth_pending'
-      ? { label: 'Confirmação pendente', tone: 'orange' }
-      : { label: 'Não conectada', tone: 'orange' };
+  const personName = connection.user.name || 'Conta OnFrame';
 
   return (
-    <main className="onframe-popup">
-      <header className="onframe-popup-header">
-        <div className="onframe-brand">
-          <LogoMark size={24} />
-          <div>
-            <p className="onframe-eyebrow">ONFRAME</p>
-            <p className="onframe-brand-name">Controle <em>rápido</em></p>
+    <main className="onframe-popup onframe-popup-home">
+      <header className="onframe-popup-userbar">
+        <div className="onframe-popup-user">
+          <Avatar name={personName} src={connection.user.avatarUrl} alt="" size={40} />
+          <div className="onframe-popup-user-copy">
+            <h1 className="onframe-popup-user-name">{personName}</h1>
+            <p className="onframe-popup-user-email">{connection.user.email}</p>
           </div>
         </div>
         <div className="onframe-popup-actions">
-          <Tooltip label={`OnFrame v${manifestVersion()}`} placement="bottom">
-            <Button kind="ghost" size="sm" onClick={() => openExternal(RELEASES_URL)}>v{manifestVersion()}</Button>
+          <Tooltip label={resourcesEnabled ? 'Desativar recursos da extensão' : 'Ativar recursos da extensão'} placement="bottom">
+            <span className="onframe-popup-resource-switch">
+              <Switch checked={resourcesEnabled} disabled={busy} onChange={(value) => void toggleResources(value)} label="Recursos da extensão" size="md" />
+            </span>
           </Tooltip>
-          <Tooltip label="Atualizar dados" placement="bottom">
-            <Button kind="secondary" size="sm" aria-label="Atualizar dados" disabled={busy} onClick={() => void load()} icon={<Ph n="arrow-clockwise" size={17} />} />
+          <Tooltip label="Abrir opções da extensão" placement="left">
+            <Button kind="quiet" size="sm" iconOnly aria-label="Abrir opções da extensão" onClick={openOptions} icon={<Ph n="gear" size={18} />} />
           </Tooltip>
         </div>
       </header>
-
-      <Card padding={20}>
-        <div className="onframe-stack">
-          <div className="onframe-row onframe-row-between">
-            <div>
-              <p className="onframe-eyebrow">ACESSO</p>
-              <h1 className="onframe-card-title">Workspace</h1>
-            </div>
-            <Badge tone={status.tone} size="sm">{status.label}</Badge>
-          </div>
-
-          {connected && (
-            <>
-              <div className="onframe-popup-account">
-                <Avatar name={initials(connection.user.name || connection.user.email)} src={connection.user.avatarUrl} alt="" size={40} />
-                <div className="onframe-grow">
-                  <p className="onframe-list-title">{connection.user.name || connection.user.email}</p>
-                  <p className="onframe-list-meta">{connection.workspace.name}</p>
-                </div>
-              </div>
-              {accounts.length > 0 && (
-                <div className="onframe-list" aria-label="Contas Mercado Livre">
-                  {accounts.slice(0, 3).map((account) => (
-                    <div className="onframe-popup-account" key={account.id || account.user_id}>
-                      <Avatar name={account.display_name || account.nickname || account.user_id} src={trustedLogo(account.logo)} alt="" size={32} />
-                      <div className="onframe-grow">
-                        <p className="onframe-list-title">{account.display_name || account.nickname || `Conta ${account.user_id}`}</p>
-                        <p className="onframe-list-meta">Mercado Livre</p>
-                      </div>
-                      <Badge tone={account.enabled === false ? 'grey' : 'green'} size="sm">{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button kind="secondary" style={{ width: '100%' }} onClick={openOptions} icon={<Ph n="arrow-square-out" size={16} />}>Abrir painel do workspace</Button>
-            </>
-          )}
-          {feedback && <p className="onframe-muted" role="status">{feedback}</p>}
-        </div>
-      </Card>
-
-      <Card padding={20}>
-        <div className="onframe-stack">
-          <div className="onframe-row onframe-row-between">
-            <div>
-              <p className="onframe-eyebrow">EDITOR</p>
-              <h2 className="onframe-card-title">Visibilidade na página</h2>
-            </div>
-            <Switch checked={editorVisible} disabled={busy} onChange={(value) => void toggleEditor(value)} label={editorVisible ? 'Visível' : 'Oculto'} size="sm" />
-          </div>
-          <p className="onframe-muted">Controla o editor quando você estiver em um anúncio do Mercado Livre.</p>
-        </div>
-      </Card>
-
-      <Card padding={20}>
-        <div className="onframe-row onframe-row-between">
-          <div>
-            <p className="onframe-eyebrow">APLICATIVO</p>
-            <h2 className="onframe-card-title">Atualização</h2>
-            <p className="onframe-card-copy">Instale a versão mais recente pelo atualizador.</p>
-          </div>
-          <Button kind="secondary" aria-label="Abrir atualizador" onClick={openUpdater} icon={<Ph n="arrow-square-out" size={17} />} />
-        </div>
-      </Card>
+      {feedback && <Alert tone="danger">{feedback}</Alert>}
     </main>
   );
 }
