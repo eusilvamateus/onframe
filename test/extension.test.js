@@ -281,6 +281,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(optionsCss, /\.onframe-popup\s*\{\s*width:\s*100vw;/);
   assert.match(optionsCss, /\.onframe-popup-session\s*\{[^}]*height:\s*600px;/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-session\s*\{[^}]*100vh/);
+  assert.doesNotMatch(optionsCss, /\.onframe-popup-session-header\s*\{[^}]*border-bottom/);
   assert.match(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--ob-border\);/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*border:\s*1px/);
   assert.match(optionsCss, /\.onframe-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-s-3\);/);

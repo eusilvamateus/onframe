@@ -131,7 +131,7 @@ button, input { font: inherit; }
 .onframe-popup-icon-tile--orange { color: var(--ob-orange-700); background: var(--ob-orange-100); }
 .onframe-popup-icon-tile--red { color: var(--ob-danger); background: var(--ob-red-100); }
 .onframe-popup-session { height: 600px; padding: 0; gap: 0; overflow: hidden; }
-.onframe-popup-session-header { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: var(--ob-s-2); min-height: 64px; padding: var(--ob-s-3); border-bottom: 1px solid var(--ob-border); }
+.onframe-popup-session-header { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: var(--ob-s-2); min-height: 64px; padding: var(--ob-s-3); }
 .onframe-popup-session-heading { min-width: 0; }
 .onframe-popup-session-heading h1 { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-md); font-weight: var(--ob-w-bold); line-height: var(--ob-lh-snug); }
 .onframe-popup-session-heading p { margin: 2px 0 0; overflow: hidden; color: var(--ob-fg-soft); font-size: var(--ob-fs-xs); line-height: var(--ob-lh-normal); text-overflow: ellipsis; white-space: nowrap; }
