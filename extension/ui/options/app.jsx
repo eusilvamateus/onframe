@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Checkbox, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Switch, Tabs, ToastStack, ToggleButton, Tooltip, toast } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Switch, Tabs, ToastStack, ToggleButton, Tooltip, toast } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
@@ -9,6 +9,7 @@ import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
+import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { formatDate, initials, manifestVersion, openExternal, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
@@ -529,55 +530,6 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
   );
 }
 
-function MemberModal({ dialog, accounts, busy, onClose, onConfirm }) {
-  const member = dialog?.member;
-  const [kind, setKind] = useState('email');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('collaborator');
-  const [accountIds, setAccountIds] = useState([]);
-
-  useEffect(() => {
-    setKind('email');
-    setEmail('');
-    setRole(member?.role || 'collaborator');
-    setAccountIds((member?.accounts || []).map((account) => account.id || account.accountId).filter(Boolean));
-  }, [member, dialog?.type]);
-
-  if (!dialog || !['invite', 'member'].includes(dialog.type)) return null;
-  const isInvite = dialog.type === 'invite';
-  const administrator = role === 'admin';
-  const demotingAdmin = !isInvite && member.role === 'admin' && !administrator;
-  return (
-    <Modal
-      open
-      onClose={onClose}
-      title={isInvite ? 'Convidar pessoa' : `Acesso de ${member.name || member.email}`}
-      footer={<><Button kind="secondary" disabled={busy} onClick={onClose}>Cancelar</Button><Button kind={demotingAdmin ? 'danger' : 'primary'} disabled={busy} onClick={() => onConfirm({ kind, email, role, accountIds })}>{isInvite ? 'Enviar convite' : demotingAdmin ? 'Rebaixar administrador' : 'Salvar acesso'}</Button></>}
-    >
-      <div className="onframe-stack">
-        {isInvite && <Tabs tabs={[{ id: 'email', label: 'E-mail' }, { id: 'link', label: 'Link' }]} active={kind} onChange={setKind} variant="pill" size="sm" />}
-        {isInvite && kind === 'email' && <Input label="E-mail" type="email" value={email} placeholder="pessoa@empresa.com" onChange={(event) => setEmail(event.target.value)} />}
-        <Select label="Permissão" options={['Colaborador', 'Administrador']} value={administrator ? 'Administrador' : 'Colaborador'} onChange={(value) => setRole(value === 'Administrador' ? 'admin' : 'collaborator')} />
-        {administrator && <p className="onframe-muted">Administradores acessam todas as contas e podem gerenciar pessoas e convites.</p>}
-        {demotingAdmin && <Alert tone="warning">Esta pessoa perderá a administração e terá acesso somente às contas atribuídas abaixo.</Alert>}
-        {!administrator && (
-          <div className="onframe-stack">
-            <p className="onframe-field-label">Contas atribuídas</p>
-            {accounts.length === 0 ? <p className="onframe-muted">Nenhuma conta conectada.</p> : (
-              <div className="onframe-check-list">
-                {accounts.map((account) => {
-                  const id = account.id;
-                  return <Checkbox key={id} checked={accountIds.includes(id)} label={accountName(account)} onChange={(checked) => setAccountIds((current) => checked ? [...current, id] : current.filter((value) => value !== id))} />;
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </Modal>
-  );
-}
-
 function OptionsApp() {
   const [connection, setConnection] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
@@ -1068,7 +1020,7 @@ function OptionsApp() {
         </div>
       </Drawer>
 
-      <MemberModal dialog={dialog} accounts={accounts} busy={loading} onClose={() => setDialog(null)} onConfirm={(values) => void submitMember(values)} />
+      <WorkspaceAccessModal dialog={dialog} accounts={accounts} busy={loading} onClose={() => setDialog(null)} onConfirm={(values) => void submitMember(values)} />
       <Modal
         open={dialog?.type === 'account-delete' || dialog?.type === 'member-delete' || dialog?.type === 'workspace-leave'}
         onClose={() => setDialog(null)}

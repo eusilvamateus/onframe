@@ -1,10 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Button, Ph, Skeleton, Switch, Tooltip } from '@onblide/ui';
+import { Alert, Avatar, Button, List, ListItem, Ph, Skeleton, Switch, ToastStack, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
 import { sendRemoteMessage, userError } from '../shared/runtime';
+import { WorkspaceSession } from './WorkspaceSession';
 
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
@@ -32,6 +33,7 @@ function openOptions() {
 
 function Popup() {
   const [connection, setConnection] = useState(null);
+  const [view, setView] = useState('home');
   const [resourcesEnabled, setResourcesEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -44,6 +46,7 @@ function Popup() {
         readResourcesPreference()
       ]);
       setConnection(nextConnection);
+      if (!nextConnection?.connected) setView('home');
       setResourcesEnabled(nextResourcesEnabled);
       setFeedback('');
     } catch (error) {
@@ -94,6 +97,8 @@ function Popup() {
   </main>;
   const personName = connection.user.name || 'Conta OnFrame';
 
+  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} onConnectionChanged={load} />;
+
   return (
     <main className="onframe-popup onframe-popup-home">
       <header className="onframe-popup-userbar">
@@ -116,8 +121,19 @@ function Popup() {
         </div>
       </header>
       {feedback && <Alert tone="danger">{feedback}</Alert>}
+      <List className="onframe-popup-home-list" ariaLabel="Sessões da extensão">
+        <ListItem
+          className="onframe-popup-card-row onframe-popup-home-row"
+          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--blue"><Ph n="users-three" size={18} /></span>}
+          title="Workspace"
+          description="Pessoas, convites e acesso às contas"
+          strong
+          onClick={() => setView('workspace')}
+          trailing={<Ph n="caret-right" size={16} />}
+        />
+      </List>
     </main>
   );
 }
 
-createRoot(document.getElementById('root')).render(<Popup />);
+createRoot(document.getElementById('root')).render(<><ToastStack position="bottom-center" limit={1} /><Popup /></>);
