@@ -182,6 +182,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
   const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SessionsSettings'));
+  const integrations = options.slice(options.indexOf('function Integrations'), options.indexOf('function settingsOptionItems'));
 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);
@@ -213,6 +214,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /id: 'settings', label: 'Configurações'/);
   assert.match(options, /function Home/);
   assert.match(options, /function Integrations/);
+  assert.match(integrations, /eyebrow="MERCADO LIVRE"/);
+  assert.match(integrations, /title=\{admin \? 'Contas conectadas' : 'Contas atribuídas'\}/);
+  assert.doesNotMatch(integrations, /title="Mercado Livre"/);
   assert.match(people, /function WorkspacePeople/);
   assert.match(options, /activeSection=\{settingsTab\}/);
   assert.doesNotMatch(options, /label: 'Visão geral'/);

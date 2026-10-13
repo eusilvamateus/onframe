@@ -176,7 +176,7 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRemove, loading 
     <div className="onframe-stack">
       <SectionHeader
         eyebrow="MERCADO LIVRE"
-        title="Mercado Livre"
+        title={admin ? 'Contas conectadas' : 'Contas atribuídas'}
         copy={admin ? 'Conecte e controle as contas disponíveis neste workspace.' : 'Contas atribuídas ao seu acesso neste workspace.'}
         actions={admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus" size={17} />}>Conectar conta</Button>}
       />
