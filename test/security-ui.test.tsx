@@ -4,7 +4,7 @@ import React from 'react';
 import { Button, CodeInput, Link, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
-import { EmailVerification, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
+import { EmailVerification, PasskeySettings, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
 import { SecuritySettings } from '../extension/ui/options/SecuritySettings.jsx';
 import { AuthPanel, PasswordField } from '../extension/ui/shared/AuthPanel.jsx';
 
@@ -250,6 +250,29 @@ test('alteracao de email usa verificacao previa e preserva confirmacoes nativas'
     assert.equal(changed, false);
     assert.equal(h.messages.some((message: { action?: string }) => message.action === 'identity-sync'), false);
   } finally { await h.close(); }
+});
+
+test('chaves cadastradas so aparecem apos confirmar o codigo do email', async () => {
+  const securityOverview = { passkeys: [{ id: 'key-1', name: 'Casa', createdAt: '2026-10-12T17:38:00Z', lastUsedAt: null }] };
+  const invalid = await harness(() => <PasskeySettings profile={profile} securityOverview={securityOverview} />, true);
+  try {
+    assert.doesNotMatch(JSON.stringify(invalid.renderer.toJSON()), /Casa|Ainda não utilizada|Use uma chave de acesso/);
+    assert.equal(invalid.renderer.root.findAllByProps({ ariaLabel: 'Chaves cadastradas' }).length, 0);
+    await emailVerified(invalid.renderer);
+    assert.doesNotMatch(JSON.stringify(invalid.renderer.toJSON()), /Casa|Ainda não utilizada/);
+  } finally { await invalid.close(); }
+
+  const valid = await harness(() => <PasskeySettings profile={profile} securityOverview={securityOverview} />);
+  try {
+    const tabs: string[] = [];
+    (globalThis.chrome as any).tabs = { create: ({ url }: { url: string }) => tabs.push(url) };
+    assert.doesNotMatch(JSON.stringify(valid.renderer.toJSON()), /Casa|Ainda não utilizada/);
+    await emailVerified(valid.renderer);
+    assert.match(JSON.stringify(valid.renderer.toJSON()), /Casa|Ainda não utilizada/);
+    assert.equal(valid.renderer.root.findAllByProps({ ariaLabel: 'Chaves cadastradas' }).length, 1);
+    assert.equal(tabs.length, 1);
+    assert.ok(tabs[0].startsWith('https://onframe.onblide.com/auth/passkeys?action=manage'));
+  } finally { await valid.close(); }
 });
 
 test('dados de seguranca ausentes nao se tornam zero sessoes ou 2FA desativado', async () => {

@@ -183,8 +183,10 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
 export function PasskeySettings({ profile, securityOverview }) {
   const [opened, setOpened] = useState(false);
   return <section className="onframe-stack onframe-security-form" aria-label="Chaves de acesso">
-    <p className="onframe-muted">Use uma chave de acesso para entrar com a biometria ou o desbloqueio do seu dispositivo.</p>
-    <List dividers ariaLabel="Chaves cadastradas">{(securityOverview?.passkeys || []).map((key) => <ListItem key={key.id} leading={<Ph n="key" size={20} />} title={key.name || 'Chave de acesso'} wrap description={`Adicionada em ${formatDate(key.createdAt)} · ${key.lastUsedAt ? `Último uso: ${formatDate(key.lastUsedAt)}` : 'Ainda não utilizada'}`} />)}</List>
+    {opened && <>
+      <p className="onframe-muted">Use uma chave de acesso para entrar com a biometria ou o desbloqueio do seu dispositivo.</p>
+      <List dividers ariaLabel="Chaves cadastradas">{(securityOverview?.passkeys || []).map((key) => <ListItem key={key.id} leading={<Ph n="key" size={20} />} title={key.name || 'Chave de acesso'} wrap description={`Adicionada em ${formatDate(key.createdAt)} · ${key.lastUsedAt ? `Último uso: ${formatDate(key.lastUsedAt)}` : 'Ainda não utilizada'}`} />)}</List>
+    </>}
     {opened ? <Alert tone="info">Continue na aba segura aberta para criar, renomear ou remover suas chaves de acesso.</Alert> : <EmailVerification email={profile.user.email} purpose="gerenciar suas chaves de acesso" onVerified={async (client) => {
       const { data, error } = await client.auth.getSession();
       if (error || !data.session) throw error || new Error('session');
