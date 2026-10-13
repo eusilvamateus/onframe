@@ -26,9 +26,11 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
 
 test('integracoes alternam visualizacao e permitem renomear sem perder controles da conta', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
-  const helpers = source.slice(source.indexOf('function accountName'), source.indexOf('function searchValue'));
-  const component = source.slice(source.indexOf('function IntegrationAccount'), source.indexOf('function settingsOptionItems'));
-  const compiled = transformSync(`${helpers}\n${component}\nIntegrations`, {
+  const accountSource = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'IntegrationAccount.jsx'), 'utf8');
+  const helpers = accountSource.slice(accountSource.indexOf('export function accountName'), accountSource.indexOf('export function IntegrationAccount')).replaceAll('export ', '');
+  const accountComponent = accountSource.slice(accountSource.indexOf('export function IntegrationAccount')).replace('export ', '');
+  const integrations = source.slice(source.indexOf('function Integrations'), source.indexOf('function settingsOptionItems'));
+  const compiled = transformSync(`${helpers}\n${accountComponent}\n${integrations}\nIntegrations`, {
     loader: 'jsx', jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment'
   }).code;
   const opened = [];
@@ -266,6 +268,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(options, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /@onblide\/ui\/styles\.css/);
+  assert.match(popup, /<IntegrationsSession/);
+  assert.match(popup, /title="Integrações"/);
+  assert.match(popup, /setView\('integrations'\)/);
   assert.match(popupHtml, /<html lang="pt-BR" class="onframe-popup-window">/);
   assert.match(popupHtml, /<body class="onframe-popup-document">/);
   assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*420px;[^}]*min-width:\s*420px/);

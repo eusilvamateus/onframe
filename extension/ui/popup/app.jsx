@@ -6,6 +6,7 @@ import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
+import { IntegrationsSession } from './IntegrationsSession';
 
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
@@ -98,6 +99,7 @@ function Popup() {
   const personName = connection.user.name || 'Conta OnFrame';
 
   if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} onConnectionChanged={load} />;
+  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} />;
 
   return (
     <main className="onframe-popup onframe-popup-home">
@@ -129,6 +131,15 @@ function Popup() {
           description="Pessoas, convites e acesso às contas"
           strong
           onClick={() => setView('workspace')}
+          trailing={<Ph n="caret-right" size={16} />}
+        />
+        <ListItem
+          className="onframe-popup-card-row onframe-popup-home-row"
+          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--orange"><Ph n="storefront" size={18} /></span>}
+          title="Integrações"
+          description="Contas conectadas e acesso ao Mercado Livre"
+          strong
+          onClick={() => setView('integrations')}
           trailing={<Ph n="caret-right" size={16} />}
         />
       </List>
