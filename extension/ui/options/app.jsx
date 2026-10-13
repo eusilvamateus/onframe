@@ -886,7 +886,7 @@ function OptionsApp() {
   ) : null;
   const pageContext = (
     <div className="onframe-options-context-crumbs">
-      {settingsDetail && <Button kind="primary" size="sm" icon={<Ph n="caret-left" size={16} />} onClick={goBackFromSettingsDetail}>Voltar</Button>}
+      {settingsDetail && <Button kind="primary" size="sm" icon={<Ph n="arrow-circle-left" size={16} />} onClick={goBackFromSettingsDetail}>Voltar</Button>}
       <Breadcrumbs items={breadcrumbs} size="sm" maxItems={3} onNavigate={navigateBreadcrumb} />
     </div>
   );
