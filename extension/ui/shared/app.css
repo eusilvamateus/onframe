@@ -110,7 +110,7 @@ button, input { font: inherit; }
 .onframe-auth-page { display: grid; min-height: 100vh; place-items: center; padding: var(--ob-s-5); background: var(--ob-bg-alt); }
 .onframe-auth-surface { width: min(100%, 560px); }
 .onframe-popup-window, .onframe-popup-document { background: transparent; border-radius: var(--ob-r-surface); overflow: hidden; }
-.onframe-popup-document { width: 420px; min-width: 420px; clip-path: inset(0 round var(--ob-r-surface)); }
+.onframe-popup-document { width: 480px; min-width: 480px; clip-path: inset(0 round var(--ob-r-surface)); }
 .onframe-popup-document #root { width: 100%; background: var(--ob-surface); border-radius: inherit; overflow: hidden; }
 .onframe-popup { width: 100%; padding: var(--ob-s-3); display: flex; flex-direction: column; gap: var(--ob-s-3); }
 .onframe-popup-home { min-height: 72px; }

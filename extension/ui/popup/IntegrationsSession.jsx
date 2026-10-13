@@ -107,7 +107,7 @@ export function IntegrationsSession({ connection, onBack, onOpenOptions }) {
           </div>
 
           {!loading && accounts.length > 0 && <div className="onframe-popup-integration-view-bar">
-            <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="lg">
+            <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="sm">
               <Tooltip label="Visualizar como lista"><ToggleButton value="list" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
               <Tooltip label="Visualizar como cards"><ToggleButton value="cards" icon="squares-four" ariaLabel="Cards" /></Tooltip>
             </ButtonGroup>
