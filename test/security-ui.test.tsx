@@ -108,6 +108,7 @@ test('senha e email nao exibem formulario de alteracao antes de verificar email'
       assert.equal(fields[0].props.disabled, true);
       assert.equal(h.renderer.root.findAllByType(CodeInput).length, 0);
       assert.equal(h.renderer.root.findAll((node) => String(node.props.className || '').includes('onframe-security-verification')).length, 1);
+      assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-brand' }).length, 0);
       assert.equal(h.requests.length, 0);
     } finally { await h.close(); }
   }

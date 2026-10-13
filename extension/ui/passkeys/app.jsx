@@ -99,7 +99,7 @@ function PasskeyPage() {
   }
 
   if (ready && factor && !complete) return <main className="onframe-auth-page">
-    <VerificationFrame title="Confirme no aplicativo" brandSrc="/security/onframe-stacked-primary.png" headingLevel={1}>
+    <VerificationFrame title="Confirme no aplicativo" headingLevel={1}>
       <form className="onframe-auth-fields" onSubmit={(event) => { event.preventDefault(); void run(async () => finishLogin(await verifySecondFactor(client, factor.id, code))); }} aria-busy={busy}>
         <VerificationEmailField email={email} />
         {factor.factors.length > 1 && <Tabs tabs={factor.factors.map((value, index) => ({ id: value.id, label: value.friendly_name || `Autenticador ${index + 1}` }))} active={factor.id} onChange={(id) => { setFactor((current) => ({ ...current, id })); setCode(''); setNotice(null); }} size="sm" />}
@@ -111,7 +111,7 @@ function PasskeyPage() {
   </main>;
 
   return <main className="onframe-auth-page"><section className="onframe-auth-surface onframe-stack" aria-label="Chaves de acesso">
-    <div className="onframe-brand"><LogoMark size={28} /><p className="onframe-eyebrow">ONFRAME</p></div>
+    {!managing && <div className="onframe-brand"><LogoMark size={28} /><p className="onframe-eyebrow">ONFRAME</p></div>}
     <h1 className="onframe-page-title">{verifying ? 'Verificação em duas etapas' : managing ? 'Chaves de acesso' : 'Entrar com chave de acesso'}</h1>
     {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
     {ready && !managing && !verifying && !complete && !factor && <div className="onframe-captcha" ref={challengeRef} />}

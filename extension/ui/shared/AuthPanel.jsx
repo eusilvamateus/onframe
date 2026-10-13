@@ -70,10 +70,9 @@ export function VerificationCodeField({ label, length, value, onChange, error, d
   </fieldset>;
 }
 
-export function VerificationFrame({ title, children, brandSrc, headingLevel = 2 }) {
+export function VerificationFrame({ title, children, headingLevel = 2 }) {
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   return <div className="onframe-auth-panel onframe-security-verification">
-    <AuthBrand src={brandSrc} />
     <Card padding={24}><div className="onframe-auth-content">
       <Heading className="onframe-auth-title">{title}</Heading>
       {children}

@@ -90,6 +90,8 @@ test('verificacao hospedada de chaves reutiliza a interface de codigo do login',
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
   const build = fs.readFileSync(path.join(root, 'scripts', 'build-security-ui.js'), 'utf8');
   assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
+  assert.doesNotMatch(passkeys, /brandSrc=/);
+  assert.match(passkeys, /!managing && <div className="onframe-brand"/);
   assert.match(passkeys, /<VerificationEmailField email=\{email\}/);
   assert.match(passkeys, /<VerificationCodeField label="Código do aplicativo autenticador" length=\{6\}/);
   assert.doesNotMatch(passkeys, /<Input label="Código do aplicativo autenticador"/);
@@ -187,6 +189,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(authPanel, /alt="OnFrame"/);
   assert.match(authPanel, /by onblide/);
   assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*min\(100%, 192px\);[^}]*align-self:\s*center;[^}]*flex-direction:\s*column;[^}]*align-items:\s*flex-end;[^}]*gap:\s*var\(--ob-s-2\)/);
+  assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.match(optionsCss, /\.onframe-auth-brand \.onframe-help\s*\{[^}]*white-space:\s*nowrap/);
   assert.match(optionsCss, /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/);
   assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-s-5\);[^}]*min-width:\s*0/);

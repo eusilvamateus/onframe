@@ -36,7 +36,7 @@ button, input { font: inherit; }
 .onframe-eyebrow { margin: 0; color: var(--ob-fg-accent); font-family: var(--ob-font-mono); font-size: 10px; font-weight: var(--ob-w-medium); letter-spacing: var(--ob-tracking-wide); text-transform: uppercase; }
 .onframe-muted { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); line-height: var(--ob-lh-relaxed); }
 .onframe-stack { display: flex; flex-direction: column; gap: var(--ob-s-4); }
-.onframe-security-form { width: 100%; max-width: var(--ob-max-w-sm); }
+.onframe-security-form { width: 100%; max-width: var(--ob-max-w-sm); margin-inline: auto; }
 .onframe-credential-form { max-width: 448px; margin-inline: auto; }
 .onframe-authenticator-qr { width: 192px; height: 192px; object-fit: contain; }
 .onframe-row { display: flex; align-items: center; gap: var(--ob-s-3); }
