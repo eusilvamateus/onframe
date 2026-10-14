@@ -254,6 +254,7 @@ test('Turnstile so executa sob demanda e exibe area apenas durante interacao', a
 test('popup e opções usam o pacote oficial da Onblide sem expor um código de pareamento', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
+  const popupLoading = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'PopupLoading.jsx'), 'utf8');
   const popupHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'index.html'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const people = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'WorkspacePeople.jsx'), 'utf8');
@@ -400,7 +401,11 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8'), /\.onframe-credential-form\s*\{[^}]*max-width: 448px;[^}]*margin-inline: auto;/);
   assert.doesNotMatch(optionsCss, /\.onframe-profile-access\s*\{/);
   assert.match(popup, /className="onframe-popup-userbar"/);
-  assert.match(popup, /connection === null[^]*<Skeleton circle height=\{40\}/);
+  assert.match(popup, /connection === null[^]*<PopupLoading \/>/);
+  assert.match(popupLoading, /<Skeleton circle height=\{40\}/);
+  assert.match(popupLoading, /onframe-popup-home-loading-row/);
+  assert.match(popup, /nextConnection\?\.connected\) void refreshOverview\(\)/);
+  assert.doesNotMatch(popup, /await refreshOverview\(\)/);
   assert.match(popup, /<Avatar name=\{personName\} src=\{connection\.user\.avatarUrl\} alt="" size=\{40\} \/>/);
   assert.match(popup, /<Switch checked=\{resourcesEnabled\} disabled=\{busy\}/);
   assert.match(popup, /label="Recursos da extensão" size="md" \/>/);

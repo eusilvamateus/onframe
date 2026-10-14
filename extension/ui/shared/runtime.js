@@ -55,6 +55,20 @@ export function formatDate(value) {
   }).format(date);
 }
 
+export function formatRelativeDate(value, reference = Date.now()) {
+  const date = new Date(value);
+  const elapsed = Number(reference) - date.getTime();
+  if (Number.isNaN(date.getTime()) || !Number.isFinite(elapsed)) return '-';
+  if (elapsed < 60_000) return 'agora';
+  if (elapsed < 3_600_000) return `há ${Math.floor(elapsed / 60_000)} min`;
+  if (elapsed < 86_400_000) return `há ${Math.floor(elapsed / 3_600_000)} h`;
+  if (elapsed < 604_800_000) {
+    const days = Math.floor(elapsed / 86_400_000);
+    return `há ${days} ${days === 1 ? 'dia' : 'dias'}`;
+  }
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date);
+}
+
 export function initials(value) {
   return String(value || 'OnFrame')
     .split(/\s+/u)

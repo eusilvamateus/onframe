@@ -1,5 +1,5 @@
 import { Avatar, Badge, Button, Card, Link, Ph, Tooltip } from '@onblide/ui';
-import { formatDate, openExternal } from './runtime';
+import { formatDate, formatRelativeDate, openExternal } from './runtime';
 
 const TYPE_META = {
   price: { label: 'Preço', icon: 'currency-circle-dollar', tone: 'green' },
@@ -71,6 +71,16 @@ function ActorContext({ event, onOpenActor }) {
   </div>;
 }
 
+function CompactContext({ event }) {
+  const actorName = event?.actor?.name || event?.actor?.email || 'Pessoa não identificada';
+  const accountName = event?.account?.name;
+  return <div className="onframe-history-compact-context">
+    <Avatar name={actorName} src={event?.actor?.avatarUrl} alt="" size={18} />
+    <span className="onframe-history-compact-actor">{actorName}</span>
+    {accountName && <Badge tone="grey" size="sm" dot={false}><span className="onframe-history-compact-account">{accountName}</span></Badge>}
+  </div>;
+}
+
 export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
   const meta = itemEditTypeMeta(event.changeType);
   const content = <div className={`onframe-history-event${compact ? ' onframe-history-event--compact' : ''}`}>
@@ -81,8 +91,13 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
           <h3 title={itemEditTitle(event)}>{itemEditTitle(event)}</h3>
           {!compact && <Badge tone={meta.tone}>{meta.label}</Badge>}
         </div>
-        <p className="onframe-history-event-summary">{event.summary}</p>
-        {compact && <ActorContext event={event} />}
+        {compact ? <>
+          <div className="onframe-history-compact-change">
+            <p className="onframe-history-event-summary" title={event.summary}>{event.summary}</p>
+            <time dateTime={event.createdAt} title={formatDate(event.createdAt)}>{formatRelativeDate(event.createdAt)}</time>
+          </div>
+          <CompactContext event={event} />
+        </> : <p className="onframe-history-event-summary">{event.summary}</p>}
       </div>
       {event?.item?.permalink && <Tooltip label="Abrir anúncio" placement="left">
         <Button kind="quiet" tone="primary" size="sm" iconOnly aria-label={`Abrir ${itemEditTitle(event)}`} onClick={() => openExternal(event.item.permalink)} icon={<Ph n="arrow-square-out" size={17} />} />

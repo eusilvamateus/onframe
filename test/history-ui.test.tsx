@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Avatar, Button, Link, Select } from '@onblide/ui';
+import { Avatar, Badge, Button, Link, Select } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { HistorySession } from '../extension/ui/popup/HistorySession.jsx';
 import { ItemEditHistory } from '../extension/ui/options/ItemEditHistory.jsx';
 import { ItemEditEventCard } from '../extension/ui/shared/ItemEditEvent.jsx';
+import { formatRelativeDate } from '../extension/ui/shared/runtime.js';
 
 const firstEvent = {
   id: 'event-1',
@@ -52,10 +53,24 @@ test('popup resume alteracoes recentes e abre o relatorio completo', async () =>
   assert.equal(messages[0].query.limit, 20);
   assert.equal(renderer.root.findByType(ItemEditEventCard).props.compact, true);
   assert.equal(renderer.root.findByType(Avatar).props.src, 'https://example.com/mateus.jpg');
+  const accountBadge = renderer.root.findByType(Badge);
+  assert.equal(accountBadge.props.tone, 'grey');
+  assert.equal(accountBadge.props.size, 'sm');
+  assert.equal(accountBadge.props.dot, false);
+  assert.equal(accountBadge.props.children.props.children, 'Loja principal');
+  assert.equal(renderer.root.findByType('time').props.dateTime, firstEvent.createdAt);
   const fullHistory = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Abrir histórico completo');
   await act(async () => fullHistory.props.onClick());
   assert.equal(opened, true);
   renderer.unmount();
+});
+
+test('data compacta preserva leitura curta sem perder a data completa', () => {
+  const reference = new Date('2026-10-13T13:00:00.000Z').getTime();
+  assert.equal(formatRelativeDate('2026-10-13T12:59:30.000Z', reference), 'agora');
+  assert.equal(formatRelativeDate('2026-10-13T12:10:00.000Z', reference), 'há 50 min');
+  assert.equal(formatRelativeDate('2026-10-13T07:00:00.000Z', reference), 'há 6 h');
+  assert.equal(formatRelativeDate('2026-10-11T13:00:00.000Z', reference), 'há 2 dias');
 });
 
 test('opcoes filtram e paginam o historico detalhado', async () => {

@@ -1,13 +1,14 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Button, List, ListItem, Ph, Skeleton, Switch, ToastStack, Tooltip } from '@onblide/ui';
+import { Alert, Avatar, Button, List, ListItem, Ph, Switch, ToastStack, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
 import { IntegrationsSession } from './IntegrationsSession';
 import { HistorySession } from './HistorySession';
+import { PopupLoading } from './PopupLoading';
 import { historySummary, integrationsSummary, workspaceSummary } from './summaries';
 
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
@@ -62,12 +63,12 @@ function Popup() {
         sendRemoteMessage('status'),
         readResourcesPreference()
       ]);
-      if (nextConnection?.connected) await refreshOverview();
-      else setOverview(null);
       setConnection(nextConnection);
       if (!nextConnection?.connected) setView('home');
       setResourcesEnabled(nextResourcesEnabled);
       setFeedback('');
+      setOverview(null);
+      if (nextConnection?.connected) void refreshOverview();
     } catch (error) {
       setConnection({ connected: false, reason: 'unavailable' });
       setFeedback(userError(error));
@@ -93,21 +94,7 @@ function Popup() {
     }
   }
 
-  if (connection === null) return <main className="onframe-popup onframe-popup-home" aria-busy="true" aria-label="Carregando conta">
-    <header className="onframe-popup-userbar">
-      <div className="onframe-popup-user">
-        <Skeleton circle height={40} />
-        <div className="onframe-popup-skeleton-copy">
-          <Skeleton width={112} height={14} />
-          <Skeleton width={164} height={10} />
-        </div>
-      </div>
-      <div className="onframe-popup-actions">
-        <Skeleton width={40} height={22} radius={999} />
-        <Skeleton width={32} height={32} />
-      </div>
-    </header>
-  </main>;
+  if (connection === null) return <PopupLoading />;
 
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
   if (!connected) return <main className="onframe-popup onframe-popup-auth">

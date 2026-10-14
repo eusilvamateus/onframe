@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import React from 'react';
+import { Skeleton } from '@onblide/ui';
+import { create } from 'react-test-renderer';
+import { PopupLoading } from '../extension/ui/popup/PopupLoading.jsx';
 import { historySummary, integrationsSummary, workspaceSummary } from '../extension/ui/popup/summaries.js';
+
+test('carregamento inicial reserva a estrutura completa do popup', () => {
+  const renderer = create(<PopupLoading />);
+  const surface = renderer.root.findByProps({ 'aria-label': 'Carregando conta' });
+  assert.equal(surface.props['aria-busy'], 'true');
+  assert.equal(renderer.root.findAllByProps({ className: 'onframe-popup-home-loading-row' }).length, 3);
+  assert.equal(renderer.root.findAllByType(Skeleton).length, 17);
+  renderer.unmount();
+});
 
 test('resumos do popup apresentam contagens reais com pluralizacao', () => {
   const overview = {
