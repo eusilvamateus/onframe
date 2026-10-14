@@ -10,7 +10,7 @@ function LoadingHistory() {
   </div>;
 }
 
-export function HistorySession({ connection, onBack, onOpenOptions, onOpenFullHistory }) {
+export function HistorySession({ connection, onBack, onOpenOptions, onOpenFullHistory, footer }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState('');
@@ -45,6 +45,7 @@ export function HistorySession({ connection, onBack, onOpenOptions, onOpenFullHi
         </section>
         <Button kind="secondary" onClick={onOpenFullHistory} icon={<Ph n="arrow-square-out" size={17} />}>Abrir histórico completo</Button>
       </div>
+      {footer}
     </main>
   );
 }

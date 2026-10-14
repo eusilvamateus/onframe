@@ -11,6 +11,7 @@ import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 import { IdentitySecurityError, requireIdentitySession } from './identity-security';
 import { accountSecurity, revokeProviderSessions } from './account-security';
 import { listItemEditHistory } from './item-edit-history';
+import { latestOnFrameRelease } from './releases';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -1761,6 +1762,11 @@ export default {
       if (url.pathname === '/v1/app/overview' && request.method === 'GET') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await workspaceOverview(env, actor));
+      }
+
+      if (url.pathname === '/v1/app/release' && request.method === 'GET') {
+        await authenticateExtensionSession(request, env);
+        return json(await latestOnFrameRelease());
       }
 
       if (url.pathname === '/v1/app/item-edit-history' && request.method === 'GET') {

@@ -25,5 +25,9 @@ export function PopupLoading() {
         <Skeleton width={16} height={16} />
       </div>)}
     </div>
+    <footer className="onframe-popup-footer" aria-hidden="true">
+      <Skeleton width={82} height={32} radius={6} />
+      <Skeleton width={104} height={32} radius={6} />
+    </footer>
   </main>;
 }

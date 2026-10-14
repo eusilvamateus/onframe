@@ -10,7 +10,7 @@ function LoadingAccounts() {
   </div>;
 }
 
-export function IntegrationsSession({ connection, onBack, onOpenOptions }) {
+export function IntegrationsSession({ connection, onBack, onOpenOptions, footer }) {
   const admin = connection.workspace.role === 'admin';
   const [accounts, setAccounts] = useState([]);
   const [mode, setMode] = useState('list');
@@ -126,6 +126,8 @@ export function IntegrationsSession({ connection, onBack, onOpenOptions }) {
           </div>}
         </section>
       </div>
+
+      {footer}
 
       <Modal
         open={Boolean(accountToRemove)}

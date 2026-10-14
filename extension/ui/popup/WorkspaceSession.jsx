@@ -20,7 +20,7 @@ function LoadingList() {
   </div>;
 }
 
-export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnectionChanged }) {
+export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnectionChanged, footer }) {
   const admin = connection.workspace.role === 'admin';
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -205,6 +205,8 @@ export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnecti
           </section>
         </>}
       </div>
+
+      {footer}
 
       <WorkspaceAccessModal dialog={dialog} accounts={accounts} busy={busy} onClose={() => setDialog(null)} onConfirm={(values) => void submitAccess(values)} />
       <Modal

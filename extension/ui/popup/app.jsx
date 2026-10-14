@@ -8,6 +8,7 @@ import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
 import { IntegrationsSession } from './IntegrationsSession';
 import { HistorySession } from './HistorySession';
+import { PopupFooter } from './PopupFooter';
 import { PopupLoading } from './PopupLoading';
 import { historySummary, integrationsSummary, workspaceSummary } from './summaries';
 
@@ -44,6 +45,7 @@ function Popup() {
   const [view, setView] = useState('home');
   const [resourcesEnabled, setResourcesEnabled] = useState(true);
   const [overview, setOverview] = useState(null);
+  const [release, setRelease] = useState(undefined);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
 
@@ -53,6 +55,14 @@ function Popup() {
       setOverview(nextOverview);
     } catch {
       setOverview(null);
+    }
+  }, []);
+
+  const refreshRelease = useCallback(async () => {
+    try {
+      setRelease(await sendRemoteMessage('app-release'));
+    } catch {
+      setRelease(null);
     }
   }, []);
 
@@ -68,14 +78,18 @@ function Popup() {
       setResourcesEnabled(nextResourcesEnabled);
       setFeedback('');
       setOverview(null);
-      if (nextConnection?.connected) void refreshOverview();
+      setRelease(undefined);
+      if (nextConnection?.connected) {
+        void refreshOverview();
+        void refreshRelease();
+      }
     } catch (error) {
       setConnection({ connected: false, reason: 'unavailable' });
       setFeedback(userError(error));
     } finally {
       setBusy(false);
     }
-  }, [refreshOverview]);
+  }, [refreshOverview, refreshRelease]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -94,6 +108,22 @@ function Popup() {
     }
   }
 
+  async function disconnect() {
+    setBusy(true);
+    setFeedback('');
+    try {
+      await sendRemoteMessage('disconnect');
+      setConnection({ connected: false, reason: 'disconnected' });
+      setRelease(undefined);
+      setView('home');
+    } catch (error) {
+      setView('home');
+      setFeedback(userError(error, 'Não foi possível desconectar.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (connection === null) return <PopupLoading />;
 
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
@@ -102,15 +132,16 @@ function Popup() {
     <AuthPanel onConnected={load} />
   </main>;
   const personName = connection.user.name || 'Conta OnFrame';
+  const footer = <PopupFooter release={release} busy={busy} onDisconnect={() => void disconnect()} />;
 
   function returnHome() {
     setView('home');
     void refreshOverview();
   }
 
-  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onConnectionChanged={load} />;
-  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} />;
-  if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onOpenFullHistory={() => openOptions('history')} />;
+  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onConnectionChanged={load} footer={footer} />;
+  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} footer={footer} />;
+  if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onOpenFullHistory={() => openOptions('history')} footer={footer} />;
 
   return (
     <main className="onframe-popup onframe-popup-home">
@@ -163,6 +194,7 @@ function Popup() {
           trailing={<Ph n="caret-right" size={16} />}
         />
       </List>
+      {footer}
     </main>
   );
 }

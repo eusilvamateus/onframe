@@ -54,6 +54,11 @@ Use `Atualizar agora` no popup ou nas opções. O navegador pode pedir
 autorização para abrir `onframe-updater://update`. Ao final, recarregue a
 extensão em `chrome://extensions` ou `edge://extensions`.
 
+No rodapé do popup, a versão instalada aparece à esquerda. Quando uma versão
+mais recente estiver disponível, o indicador sobre essa tag abre um menu com
+acesso ao changelog e ao atualizador. O botão `Desconectar`, à direita, encerra
+a sessão da extensão.
+
 Para atualizar manualmente no Windows:
 
 `B`powershell

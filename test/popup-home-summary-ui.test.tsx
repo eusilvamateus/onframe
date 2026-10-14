@@ -11,7 +11,7 @@ test('carregamento inicial reserva a estrutura completa do popup', () => {
   const surface = renderer.root.findByProps({ 'aria-label': 'Carregando conta' });
   assert.equal(surface.props['aria-busy'], 'true');
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-popup-home-loading-row' }).length, 3);
-  assert.equal(renderer.root.findAllByType(Skeleton).length, 17);
+  assert.equal(renderer.root.findAllByType(Skeleton).length, 19);
   renderer.unmount();
 });
 

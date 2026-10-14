@@ -255,6 +255,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const popupLoading = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'PopupLoading.jsx'), 'utf8');
+  const popupFooter = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'PopupFooter.jsx'), 'utf8');
   const popupHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'index.html'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const people = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'WorkspacePeople.jsx'), 'utf8');
@@ -286,6 +287,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-popup-session\s*\{[^}]*height:\s*600px;/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-session\s*\{[^}]*100vh/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-session-header\s*\{[^}]*border-bottom/);
+  assert.match(optionsCss, /\.onframe-popup-footer\s*\{[^}]*justify-content:\s*space-between;[^}]*border-top:\s*1px solid var\(--ob-border\)/);
   assert.match(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--ob-border\);/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*border:\s*1px/);
   assert.match(optionsCss, /\.onframe-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-s-3\);/);
@@ -404,13 +406,19 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popup, /connection === null[^]*<PopupLoading \/>/);
   assert.match(popupLoading, /<Skeleton circle height=\{40\}/);
   assert.match(popupLoading, /onframe-popup-home-loading-row/);
-  assert.match(popup, /nextConnection\?\.connected\) void refreshOverview\(\)/);
+  assert.match(popup, /void refreshOverview\(\);/);
+  assert.match(popup, /void refreshRelease\(\);/);
   assert.doesNotMatch(popup, /await refreshOverview\(\)/);
   assert.match(popup, /<Avatar name=\{personName\} src=\{connection\.user\.avatarUrl\} alt="" size=\{40\} \/>/);
   assert.match(popup, /<Switch checked=\{resourcesEnabled\} disabled=\{busy\}/);
   assert.match(popup, /label="Recursos da extensão" size="md" \/>/);
   assert.match(popup, /aria-label="Abrir opções da extensão"[^>]*onClick=\{openOptions\}/);
   assert.doesNotMatch(popup, /LogoMark|manifestVersion|openUpdater|sendToTab|activeProductTab|sendRemoteMessage\('accounts'\)/);
+  assert.match(popup, /<PopupFooter release=\{release\} busy=\{busy\}/);
+  assert.match(popupFooter, /<Menu/);
+  assert.match(popupFooter, /placement="top"/);
+  assert.match(popupFooter, /kind="cream" size="sm" count=\{updateAvailable \? 1 : undefined\}/);
+  assert.match(popupFooter, /kind="quiet" tone="danger" size="sm"/);
   assert.doesNotMatch(popup, /<Card|<Badge|Visibilidade na página|Abrir painel do workspace/);
   assert.match(optionsCss, /\.onframe-popup-resource-switch label > span:last-child\s*\{[^}]*position:\s*absolute;[^}]*width:\s*1px;/);
   assert.match(authPanel, /FieldShell/);
@@ -494,6 +502,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
       if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST') return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/extension-sessions/from-auth')) return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts')) return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
+      if (url.endsWith('/v1/app/release')) return Response.json({ latestVersion: '0.6.0', changelogUrl: 'https://github.com/eusilvamateus/onframe/releases/tag/v0.6.0' });
       if (url.endsWith('/v1/accounts/123')) {
         const payload = options.method === 'PATCH' ? JSON.parse(options.body) : {};
         return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', displayName: payload.displayName || null, enabled: payload.enabled ?? true }] });
@@ -550,6 +559,11 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(accounts.ok, true);
   assert.equal(accounts.body.accounts[0].user_id, '123');
 
+  const release = await send({ type: 'onframe:remote', action: 'app-release' });
+  assert.equal(release.ok, true);
+  assert.equal(release.body.latestVersion, '0.6.0');
+  assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
+
   const updated = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', payload: { enabled: false } });
   assert.equal(updated.ok, true);
   assert.equal(updated.body.accounts[0].enabled, false);
@@ -592,6 +606,7 @@ test('Worker mantém as contas e o contrato remoto como única fronteira', () =>
   assert.match(worker, /\/v1\/accounts/);
   assert.match(worker, /\/v1\/extension-sessions\/from-auth/);
   assert.match(worker, /\/v1\/extension-auth-flows/);
+  assert.match(worker, /\/v1\/app\/release/);
   assert.doesNotMatch(worker, /extension_pairings|\/v1\/connect\/issue/);
   assert.doesNotMatch(contracts, /\.\.\/\.\.\/service/);
   assert.match(contracts, /\.\/domain\/routes\/items\.js/);

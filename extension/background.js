@@ -44,6 +44,7 @@ async function handleRemoteMessage(message) {
   if (action === 'account-update') return updateRemoteAccount(message.userId, message.payload);
   if (action === 'account-remove') return removeRemoteAccount(message.userId);
   if (action === 'app-overview') return requestPlatform('/v1/app/overview');
+  if (action === 'app-release') return requestPlatform('/v1/app/release');
   if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
