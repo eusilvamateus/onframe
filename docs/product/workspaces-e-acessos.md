@@ -47,3 +47,8 @@ As opções da extensão organizam o painel em três destinos principais:
   `Conta` contém perfil, credenciais e sessões; `Workspace` é exclusiva de
   administradores e reúne nome, pessoas, permissões e convites; `Aplicativo`
   concentra a atualização da extensão.
+
+O início do popup resume essas mesmas áreas com dados do workspace: pessoas e
+convites pendentes, contas disponíveis e desativadas e alterações confirmadas
+nas últimas 24 horas. As contagens de contas e histórico respeitam as
+atribuições da pessoa no workspace.

@@ -21,6 +21,7 @@ const MELI_TOKEN_URL = 'https://api.mercadolibre.com/oauth/token';
 const MELI_ME_URL = 'https://api.mercadolibre.com/users/me';
 const MELI_TOKEN_KEY_VERSION = 2;
 const EXTENSION_ID = 'lcmagfimconmglpokmlkcjieohohnigj';
+const OVERVIEW_RECENT_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 type RuntimeEnv = Env & AuthEmailRuntimeEnv & {
   MELI_CLIENT_ID?: string;
@@ -1059,18 +1060,61 @@ async function activateWorkspace(env: RuntimeEnv, actor: ExtensionSessionActor, 
   return json(createdExtensionSessionPayload(session), 201);
 }
 
-async function workspaceOverview(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Record<string, unknown>> {
-  const [accounts, members, recent] = await env.ONFRAME_DB.batch([
-    env.ONFRAME_DB.prepare(`
-      SELECT COUNT(*) AS count
-      FROM seller_accounts
-      WHERE workspace_id = ?
-    `).bind(actor.workspaceId),
+export async function workspaceOverview(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Record<string, unknown>> {
+  const accountSummary = actor.workspaceRole === 'admin'
+    ? env.ONFRAME_DB.prepare(`
+        SELECT COUNT(*) AS count,
+               COALESCE(SUM(CASE WHEN enabled = 0 THEN 1 ELSE 0 END), 0) AS disabled_count
+        FROM seller_accounts
+        WHERE workspace_id = ?
+      `).bind(actor.workspaceId)
+    : env.ONFRAME_DB.prepare(`
+        SELECT COUNT(*) AS count,
+               COALESCE(SUM(CASE WHEN accounts.enabled = 0 THEN 1 ELSE 0 END), 0) AS disabled_count
+        FROM seller_accounts AS accounts
+        WHERE accounts.workspace_id = ?
+          AND EXISTS (
+            SELECT 1 FROM account_members
+            WHERE account_members.seller_account_id = accounts.id
+              AND account_members.user_id = ?
+          )
+      `).bind(actor.workspaceId, actor.userId);
+  const pendingInvitations = actor.workspaceRole === 'admin'
+    ? env.ONFRAME_DB.prepare(`
+        SELECT COUNT(*) AS count
+        FROM workspace_invitations
+        WHERE workspace_id = ?
+          AND accepted_at IS NULL
+          AND revoked_at IS NULL
+          AND expires_at > ?
+      `).bind(actor.workspaceId, now())
+    : env.ONFRAME_DB.prepare('SELECT 0 AS count');
+  const recentEdits = actor.workspaceRole === 'admin'
+    ? env.ONFRAME_DB.prepare(`
+        SELECT COUNT(*) AS count
+        FROM item_edit_events
+        WHERE workspace_id = ? AND created_at >= ?
+      `).bind(actor.workspaceId, now() - OVERVIEW_RECENT_EDIT_WINDOW_MS)
+    : env.ONFRAME_DB.prepare(`
+        SELECT COUNT(*) AS count
+        FROM item_edit_events AS events
+        WHERE events.workspace_id = ?
+          AND events.created_at >= ?
+          AND EXISTS (
+            SELECT 1 FROM account_members
+            WHERE account_members.seller_account_id = events.seller_account_id
+              AND account_members.user_id = ?
+          )
+      `).bind(actor.workspaceId, now() - OVERVIEW_RECENT_EDIT_WINDOW_MS, actor.userId);
+  const [accounts, members, invitations, edits, recent] = await env.ONFRAME_DB.batch([
+    accountSummary,
     env.ONFRAME_DB.prepare(`
       SELECT COUNT(*) AS count
       FROM workspace_members
       WHERE workspace_id = ?
     `).bind(actor.workspaceId),
+    pendingInvitations,
+    recentEdits,
     env.ONFRAME_DB.prepare(`
       SELECT audit_events.id, audit_events.operation, audit_events.created_at, users.display_name, users.email
       FROM audit_events
@@ -1081,10 +1125,14 @@ async function workspaceOverview(env: RuntimeEnv, actor: ExtensionSessionActor):
     `).bind(actor.workspaceId)
   ]);
   const countAt = (result: D1Result<unknown>) => Number((result.results[0] as { count?: number } | undefined)?.count || 0);
+  const accountRow = accounts.results[0] as { count?: number; disabled_count?: number } | undefined;
   return {
     workspace: { id: actor.workspaceId, name: actor.workspaceName, role: actor.workspaceRole },
-    accountCount: countAt(accounts),
+    accountCount: Number(accountRow?.count || 0),
+    disabledAccountCount: Number(accountRow?.disabled_count || 0),
     memberCount: countAt(members),
+    pendingInvitationCount: countAt(invitations),
+    recentEditCount: countAt(edits),
     recentActivity: (recent.results as Array<{ id: string; operation: string; created_at: number; display_name: string | null; email: string | null }>).map((event) => ({
       id: event.id,
       operation: event.operation,

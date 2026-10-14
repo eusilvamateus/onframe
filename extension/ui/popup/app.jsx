@@ -8,6 +8,7 @@ import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
 import { IntegrationsSession } from './IntegrationsSession';
 import { HistorySession } from './HistorySession';
+import { historySummary, integrationsSummary, workspaceSummary } from './summaries';
 
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
@@ -41,8 +42,18 @@ function Popup() {
   const [connection, setConnection] = useState(null);
   const [view, setView] = useState('home');
   const [resourcesEnabled, setResourcesEnabled] = useState(true);
+  const [overview, setOverview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
+
+  const refreshOverview = useCallback(async () => {
+    try {
+      const nextOverview = await sendRemoteMessage('app-overview');
+      setOverview(nextOverview);
+    } catch {
+      setOverview(null);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -51,6 +62,8 @@ function Popup() {
         sendRemoteMessage('status'),
         readResourcesPreference()
       ]);
+      if (nextConnection?.connected) await refreshOverview();
+      else setOverview(null);
       setConnection(nextConnection);
       if (!nextConnection?.connected) setView('home');
       setResourcesEnabled(nextResourcesEnabled);
@@ -61,7 +74,7 @@ function Popup() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [refreshOverview]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -103,9 +116,14 @@ function Popup() {
   </main>;
   const personName = connection.user.name || 'Conta OnFrame';
 
-  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} onConnectionChanged={load} />;
-  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} />;
-  if (view === 'history') return <HistorySession connection={connection} onBack={() => setView('home')} onOpenOptions={openOptions} onOpenFullHistory={() => openOptions('history')} />;
+  function returnHome() {
+    setView('home');
+    void refreshOverview();
+  }
+
+  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onConnectionChanged={load} />;
+  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} />;
+  if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onOpenFullHistory={() => openOptions('history')} />;
 
   return (
     <main className="onframe-popup onframe-popup-home">
@@ -134,7 +152,7 @@ function Popup() {
           className="onframe-popup-card-row onframe-popup-home-row"
           leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--blue"><Ph n="users-three" size={18} /></span>}
           title="Workspace"
-          description="Pessoas, convites e acesso às contas"
+          description={workspaceSummary(overview, connection.workspace.role)}
           strong
           onClick={() => setView('workspace')}
           trailing={<Ph n="caret-right" size={16} />}
@@ -143,7 +161,7 @@ function Popup() {
           className="onframe-popup-card-row onframe-popup-home-row"
           leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--orange"><Ph n="storefront" size={18} /></span>}
           title="Integrações"
-          description="Contas conectadas e acesso ao Mercado Livre"
+          description={integrationsSummary(overview)}
           strong
           onClick={() => setView('integrations')}
           trailing={<Ph n="caret-right" size={16} />}
@@ -152,7 +170,7 @@ function Popup() {
           className="onframe-popup-card-row onframe-popup-home-row"
           leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--green"><Ph n="clock-counter-clockwise" size={18} /></span>}
           title="Histórico"
-          description="Alterações confirmadas nos anúncios"
+          description={historySummary(overview)}
           strong
           onClick={() => setView('history')}
           trailing={<Ph n="caret-right" size={16} />}

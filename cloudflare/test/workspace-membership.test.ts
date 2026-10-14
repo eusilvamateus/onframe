@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
-import { acceptWorkspaceInvitation, leaveWorkspace, provisionActor, removeWorkspaceMember, updateWorkspaceMember } from '../src/index.ts';
+import { acceptWorkspaceInvitation, leaveWorkspace, provisionActor, removeWorkspaceMember, updateWorkspaceMember, workspaceOverview } from '../src/index.ts';
 
 const actor = {
   userId: 'user-1', workspaceId: 'workspace-1', workspaceRole: 'admin',
@@ -117,6 +117,59 @@ test('convite nao altera papel de quem ja participa do workspace', async () => {
   });
   await assert.rejects(acceptWorkspaceInvitation(env, actor, 'a'.repeat(43)), { code: 'workspace_already_member' });
   assert.equal(queries.some((query) => query.sql.includes('UPDATE workspace_invitations')), false);
+});
+
+test('resumo do workspace respeita atribuicoes e considera apenas pendencias e edicoes recentes', async () => {
+  const simulator = new Miniflare({ workers: [{ config: {
+    name: 'workspace-overview-tests', compatibilityDate: '2026-09-24',
+    manifest: { mainModule: 'index.js', modules: { 'index.js': { type: 'esm', contents: "export default { fetch() { return new Response('ok'); } }" } } },
+    env: { ONFRAME_DB: { type: 'd1', id: 'workspace-overview-test-db' } }
+  } }] });
+  try {
+    const db = await simulator.getD1Database('ONFRAME_DB');
+    const files = (await readdir(new URL('../migrations/', import.meta.url))).filter((file) => file.endsWith('.sql')).sort();
+    for (const file of files) {
+      const sql = await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8');
+      await db.batch(unstable_splitSqlQuery(sql).map((statement) => db.prepare(statement)));
+    }
+    const timestamp = Date.now();
+    await db.batch([
+      db.prepare("INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at, identity_version) VALUES ('admin-1', 'subject-admin', 'admin@example.com', 'Admin', 1, 1, 1), ('collab-1', 'subject-collab', 'collab@example.com', 'Colaborador', 1, 1, 1)"),
+      db.prepare("INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'admin-1', 1, 1)"),
+      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator', 1, 1)"),
+      db.prepare("INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '101', 'Conta 1', 1, 1, 1), ('account-2', 'workspace-1', '102', 'Conta 2', 0, 1, 1), ('account-3', 'workspace-1', '103', 'Conta 3', 1, 1, 1)"),
+      db.prepare("INSERT INTO account_members (seller_account_id, user_id, created_at, updated_at) VALUES ('account-1', 'collab-1', 1, 1), ('account-2', 'collab-1', 1, 1)"),
+      db.prepare("INSERT INTO workspace_invitations (id, workspace_id, token_hash, kind, email, role, created_by_user_id, expires_at, revoked_at, created_at, updated_at) VALUES ('invite-active', 'workspace-1', 'active', 'email', 'active@example.com', 'collaborator', 'admin-1', ?, NULL, 1, 1), ('invite-expired', 'workspace-1', 'expired', 'email', 'expired@example.com', 'collaborator', 'admin-1', ?, NULL, 1, 1), ('invite-revoked', 'workspace-1', 'revoked', 'email', 'revoked@example.com', 'collaborator', 'admin-1', ?, ?, 1, 1)").bind(timestamp + 60_000, timestamp - 60_000, timestamp + 60_000, timestamp),
+      db.prepare("INSERT INTO item_edit_events (id, workspace_id, seller_account_id, user_id, request_id, item_id, change_type, action, summary, details_json, created_at) VALUES ('edit-1', 'workspace-1', 'account-1', 'admin-1', 'request-1', 'MLB1', 'price', 'updated', 'Preço alterado', '{}', ?), ('edit-2', 'workspace-1', 'account-2', 'admin-1', 'request-2', 'MLB2', 'description', 'updated', 'Descrição alterada', '{}', ?), ('edit-3', 'workspace-1', 'account-3', 'admin-1', 'request-3', 'MLB3', 'photos', 'updated', 'Fotos alteradas', '{}', ?), ('edit-old', 'workspace-1', 'account-1', 'admin-1', 'request-old', 'MLB4', 'price', 'updated', 'Preço alterado', '{}', ?)").bind(timestamp, timestamp, timestamp, timestamp - (25 * 60 * 60 * 1000))
+    ]);
+
+    const adminOverview = await workspaceOverview({ ONFRAME_DB: db } as any, {
+      ...actor,
+      userId: 'admin-1',
+      workspaceName: 'Principal'
+    }) as any;
+    assert.deepEqual({
+      accountCount: adminOverview.accountCount,
+      disabledAccountCount: adminOverview.disabledAccountCount,
+      memberCount: adminOverview.memberCount,
+      pendingInvitationCount: adminOverview.pendingInvitationCount,
+      recentEditCount: adminOverview.recentEditCount
+    }, { accountCount: 3, disabledAccountCount: 1, memberCount: 2, pendingInvitationCount: 1, recentEditCount: 3 });
+
+    const collaboratorOverview = await workspaceOverview({ ONFRAME_DB: db } as any, {
+      ...actor,
+      userId: 'collab-1',
+      workspaceRole: 'collaborator',
+      workspaceName: 'Principal'
+    }) as any;
+    assert.deepEqual({
+      accountCount: collaboratorOverview.accountCount,
+      disabledAccountCount: collaboratorOverview.disabledAccountCount,
+      memberCount: collaboratorOverview.memberCount,
+      pendingInvitationCount: collaboratorOverview.pendingInvitationCount,
+      recentEditCount: collaboratorOverview.recentEditCount
+    }, { accountCount: 2, disabledAccountCount: 1, memberCount: 2, pendingInvitationCount: 0, recentEditCount: 2 });
+  } finally { await simulator.dispose(); }
 });
 
 test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login', async () => {
