@@ -13,6 +13,8 @@ const {
 
 const BULK_SCOPE = 'user_product_family';
 const CONCURRENCY = 4;
+const COMMIT_BATCH_SIZE = 3;
+const PROMOTION_COMMIT_BATCH_SIZE = 2;
 
 async function buildBulkPreview(client, itemId, input = {}) {
   const operation = normalizeOperation(input);
@@ -24,9 +26,9 @@ async function buildBulkPreview(client, itemId, input = {}) {
 async function commitBulkAction(client, itemId, input = {}) {
   const operation = normalizeOperation(input);
   const hasTargetSelection = Array.isArray(input.targetItemIds);
-  const commitPromotionFamilyDirectly = operation.type.indexOf('promotion.offer.') === 0 && !hasTargetSelection;
+  const commitPromotionDirectly = operation.type.indexOf('promotion.offer.') === 0;
   const selected = normalizeTargetItemIds(input.targetItemIds);
-  if ((!commitPromotionFamilyDirectly && !selected.length) || (hasTargetSelection && !selected.length)) {
+  if ((!commitPromotionDirectly && !selected.length) || (hasTargetSelection && !selected.length)) {
     const err = new Error('bulk_missing_targets');
     err.statusCode = 400;
     throw err;
@@ -43,8 +45,11 @@ async function commitBulkAction(client, itemId, input = {}) {
     throw err;
   }
 
-  const results = await mapLimit(candidates, 2, async (target) => {
-    if (commitPromotionFamilyDirectly) {
+  const batchSize = commitPromotionDirectly ? PROMOTION_COMMIT_BATCH_SIZE : COMMIT_BATCH_SIZE;
+  const batch = candidates.slice(0, batchSize);
+  const remainingTargetItemIds = candidates.slice(batchSize).map((target) => target.itemId);
+  const results = await mapLimit(batch, 2, async (target) => {
+    if (commitPromotionDirectly) {
       try {
         const result = await commitTarget(client, operation, target);
         return {
@@ -57,6 +62,7 @@ async function commitBulkAction(client, itemId, input = {}) {
           result
         };
       } catch (err) {
+        if (err && err.accepted) return targetPendingConfirmation(target, err);
         return targetError(target, err, 'failed');
       }
     }
@@ -80,7 +86,7 @@ async function commitBulkAction(client, itemId, input = {}) {
     }
   });
 
-  return buildBulkResponse('commit', operation, targets, results);
+  return buildBulkResponse('commit', operation, targets, results, remainingTargetItemIds);
 }
 
 async function resolveFamilyTargets(client, itemId, input = {}) {
@@ -203,8 +209,9 @@ async function commitTarget(client, operation, target) {
   throw err;
 }
 
-function buildBulkResponse(phase, operation, targets, results) {
+function buildBulkResponse(phase, operation, targets, results, remainingTargetItemIds = []) {
   const entries = Array.isArray(results) ? results : [];
+  const continuation = normalizeTargetItemIds(remainingTargetItemIds);
   return {
     ok: true,
     phase,
@@ -217,8 +224,10 @@ function buildBulkResponse(phase, operation, targets, results) {
       blocked: entries.filter((entry) => entry.status === 'blocked').length,
       applied: entries.filter((entry) => entry.status === 'applied').length,
       skipped: entries.filter((entry) => entry.status === 'skipped').length,
-      failed: entries.filter((entry) => entry.status === 'failed').length
+      failed: entries.filter((entry) => entry.status === 'failed').length,
+      pending: entries.filter((entry) => entry.status === 'pending_confirmation').length
     },
+    continuation: continuation.length ? { targetItemIds: continuation } : null,
     targets: entries
   };
 }
@@ -282,6 +291,31 @@ function targetError(target, err, status) {
     statusCode: err && err.statusCode ? err.statusCode : null,
     message: sanitizeError(err)
   };
+}
+
+function targetPendingConfirmation(target, err) {
+  const pending = {
+    itemId: target.itemId,
+    userProductId: target.userProductId || null,
+    title: target.title || null,
+    current: Boolean(target.current),
+    eligible: true,
+    status: 'pending_confirmation',
+    reasonCode: err && err.message ? String(err.message) : 'promotion_change_not_confirmed',
+    statusCode: err && err.statusCode ? err.statusCode : null,
+    message: 'O Mercado Livre aceitou a alteração e ainda está confirmando o novo estado.',
+    result: err && err.acceptedResult ? err.acceptedResult : null
+  };
+  Object.defineProperty(pending, '_reconciliation', {
+    configurable: false,
+    enumerable: false,
+    value: {
+      payload: err && err.verificationPayload ? err.verificationPayload : null,
+      result: err && err.acceptedResult ? err.acceptedResult : null
+    },
+    writable: false
+  });
+  return pending;
 }
 
 async function mapLimit(items, limit, iteratee) {

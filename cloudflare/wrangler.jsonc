@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "onframe-api",
-  "main": "src/index.ts",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": false,
@@ -11,6 +11,13 @@
   "observability": {
     "enabled": true
   },
+  "workflows": [
+    {
+      "name": "onframe-promotion-reconciliation",
+      "binding": "PROMOTION_RECONCILIATION",
+      "class_name": "PromotionReconciliationWorkflow"
+    }
+  ],
   "vars": {
     "MELI_REDIRECT_URI": "https://onframe.onblide.com/oauth/mercadolivre/callback",
     "AUTH_EMAIL_FROM": "OnFrame <acesso@onframe.onblide.com>",

@@ -20,7 +20,7 @@ const PROMOTION_TYPES = Object.freeze({
 });
 
 const APPLIED_OFFER_STATUSES = new Set(['pending', 'programmed', 'sync_requested', 'started', 'active']);
-const PROMOTION_CONFIRMATION_RETRY_DELAY_MS = 400;
+const PROMOTION_CONFIRMATION_RETRY_DELAYS_MS = [0, 400, 800, 1200];
 
 const ADAPTERS = Object.freeze({
   [PROMOTION_TYPES.PRICE_DISCOUNT]: adapter({
@@ -452,15 +452,20 @@ async function confirmOfferMutation(client, itemId, action, payload, response) {
   assertPromotionMutationAccepted(response);
   if (!client || typeof client.getItemPromotions !== 'function') return;
 
-  let entries = await loadOfferEntriesForVerification(client, itemId, payload);
-  if (isOfferMutationConfirmed(entries, action, payload)) return;
-
-  await wait(PROMOTION_CONFIRMATION_RETRY_DELAY_MS);
-  entries = await loadOfferEntriesForVerification(client, itemId, payload);
-  if (isOfferMutationConfirmed(entries, action, payload)) return;
+  for (const delayMs of PROMOTION_CONFIRMATION_RETRY_DELAYS_MS) {
+    if (delayMs) await wait(delayMs);
+    try {
+      if (await verifyOfferMutation(client, itemId, action, payload)) return;
+    } catch (err) {
+      // A falha da leitura de confirmação não desfaz uma escrita já aceita.
+    }
+  }
 
   const err = new Error('promotion_change_not_confirmed');
   err.statusCode = 409;
+  err.accepted = true;
+  err.acceptedResult = response;
+  err.verificationPayload = payload;
   err.body = {
     action,
     promotion_type: payload.promotion_type,
@@ -468,6 +473,12 @@ async function confirmOfferMutation(client, itemId, action, payload, response) {
     offer_id: payload.offer_id || null
   };
   throw err;
+}
+
+async function verifyOfferMutation(client, itemId, action, payload) {
+  if (!client || typeof client.getItemPromotions !== 'function') return true;
+  const entries = await loadOfferEntriesForVerification(client, itemId, payload);
+  return isOfferMutationConfirmed(entries, action, payload);
 }
 
 async function loadOfferEntriesForVerification(client, itemId, payload) {
@@ -1258,5 +1269,6 @@ module.exports = {
   listCampaigns,
   previewOfferAction,
   updateCampaign,
-  updateOffer
+  updateOffer,
+  verifyOfferMutation
 };

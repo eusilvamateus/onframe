@@ -118,6 +118,9 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
       snapshots: () => ({ first: itemBefore, latest: itemBefore })
     };
     await recordConfirmedItemEdits({ ...base, account: { id: 'account-1', meliUserId: '123', nickname: 'Conta 1' } });
+    await recordConfirmedItemEdits({ ...base, account: { id: 'account-1', meliUserId: '123', nickname: 'Conta 1' } });
+    const duplicateCount = await db.prepare("SELECT COUNT(*) AS count FROM item_edit_events WHERE request_id = 'request-1'").first<{ count: number }>();
+    assert.equal(duplicateCount?.count, 1);
     await recordConfirmedItemEdits({ ...base, requestId: 'request-2', account: { id: 'account-2', meliUserId: '456', nickname: 'Conta 2' } });
     await db.prepare("UPDATE item_edit_events SET item_thumbnail_url = NULL, item_permalink = NULL WHERE request_id = 'request-2'").run();
 

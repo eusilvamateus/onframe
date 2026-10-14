@@ -36,6 +36,13 @@ const {
   listen
 } = require('./helpers');
 
+test('módulo de fotos preserva a qualidade ao receber o mesmo contexto novamente', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const handler = source.slice(source.indexOf('function handlePageContextChange'), source.indexOf('async function loadContext'));
+  assert.match(handler, /state\.loaded && isSamePhotoContext\(update\.context\)/);
+  assert.match(handler, /rerenderTray\(\);\s*return;/s);
+});
+
 test('buildCommitPayload preserva variacoes nao editadas', () => {
   const payload = buildCommitPayload(
     {

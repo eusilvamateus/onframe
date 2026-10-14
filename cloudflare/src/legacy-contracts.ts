@@ -25,5 +25,6 @@ export {
 } from './domain/routes/characteristics.js';
 export { handlePictureCommit, handlePictureFixSize, handlePictureQuality, handlePictureUpload } from './domain/routes/pictures.js';
 export { handleBulkCommit, handleBulkPreview } from './domain/routes/bulk.js';
+export { verifyOfferMutation } from './domain/promotions.js';
 export { resolveItemClient } from './domain/account-client.js';
 export { sanitizeError, userFriendlyError } from './domain/errors.js';

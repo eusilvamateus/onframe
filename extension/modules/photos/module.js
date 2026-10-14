@@ -166,7 +166,28 @@
       return;
     }
 
+    if (state.loaded && isSamePhotoContext(update.context)) {
+      state.context = update.context;
+      state.pageSignature = pageSignature;
+      state.loadedPageSignature = pageSignature;
+      state.ownerUserId = update.context && update.context.ownerAccount && update.context.ownerAccount.user_id || null;
+      rerenderTray();
+      return;
+    }
+
     void loadContext({ context: update.context });
+  }
+
+  function isSamePhotoContext(context) {
+    const currentItemId = state.context && state.context.item && state.context.item.id;
+    const nextItemId = context && context.item && context.item.id;
+    const currentOwnerId = state.context && state.context.ownerAccount && state.context.ownerAccount.user_id;
+    const nextOwnerId = context && context.ownerAccount && context.ownerAccount.user_id;
+    const nextVariationId = context && context.selectedVariationId || null;
+    return Boolean(currentItemId && nextItemId &&
+      String(currentItemId) === String(nextItemId) &&
+      String(currentOwnerId || '') === String(nextOwnerId || '') &&
+      String(state.selectedVariationId || '') === String(nextVariationId || ''));
   }
 
   async function loadContext(options = {}) {

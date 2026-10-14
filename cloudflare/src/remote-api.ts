@@ -30,7 +30,8 @@ import {
   handleBulkPreview,
   resolveItemClient,
   sanitizeError,
-  userFriendlyError
+  userFriendlyError,
+  verifyOfferMutation
 } from './legacy-contracts';
 
 const MELI_API_BASE = 'https://api.mercadolibre.com';
@@ -38,10 +39,16 @@ const TOKEN_REFRESH_SKEW_MS = 5 * 60 * 1000;
 const TOKEN_REFRESH_LOCK_MS = 15 * 1000;
 const TOKEN_REFRESH_WAIT_ATTEMPTS = 30;
 const TOKEN_REFRESH_WAIT_MS = 100;
+const RECONCILIATION_RETENTION_MS = 24 * 60 * 60 * 1000;
 const quickCache = createItemRouteCache();
 
-type RemoteRuntimeEnv = {
+export type PromotionReconciliationParams = {
+  reconciliationId: string;
+};
+
+export type RemoteRuntimeEnv = {
   ONFRAME_DB: D1Database;
+  PROMOTION_RECONCILIATION: Workflow<PromotionReconciliationParams>;
   MELI_CLIENT_ID?: string;
   MELI_CLIENT_SECRET?: string;
   MELI_TOKEN_CIPHER_KEY_BASE64?: string;
@@ -79,6 +86,42 @@ type SellerCredential = {
   updatedAt: number;
   refreshLockId: string | null;
   refreshLockExpiresAt: number | null;
+};
+
+type PromotionReconciliationRow = {
+  id: string;
+  workspace_id: string;
+  seller_account_id: string;
+  user_id: string | null;
+  request_id: string;
+  source_item_id: string;
+  item_id: string;
+  operation: string;
+  payload_json: string;
+  accepted_result_json: string;
+  actor_name: string | null;
+  actor_email: string | null;
+  status: 'pending' | 'confirmed' | 'unconfirmed';
+  attempts: number;
+  last_error: string | null;
+  workflow_started_at: number | null;
+  created_at: number;
+  updated_at: number;
+  completed_at: number | null;
+  expires_at: number;
+  meli_user_id?: string;
+  nickname?: string | null;
+  site_id?: string | null;
+  profile_url?: string | null;
+  account_enabled?: number;
+};
+
+export type ReconciliationOutcome = {
+  id: string;
+  itemId: string;
+  status: 'pending' | 'confirmed' | 'unconfirmed' | 'missing';
+  attempts: number;
+  message?: string;
 };
 
 type LegacyAccount = {
@@ -169,6 +212,10 @@ export async function handleRemoteApiRequest(input: {
   };
 
   try {
+    if (route === 'GET /bulk/reconciliations') {
+      return listPromotionReconciliations(input.env, input.actor, input.url);
+    }
+
     if (route === 'POST /resolve') {
       return unwrapLegacyRouteResult(await handleResolve({
         req: input.request,
@@ -219,12 +266,23 @@ export async function handleRemoteApiRequest(input: {
     const bulkCommit = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/commit$/u);
     if (input.request.method === 'POST' && bulkCommit) {
       const client = await resolveBulkClient(bulkCommit[1]);
-      return runItemMutation('bulk.commit', bulkCommit[1], client, () => handleBulkCommit({
-        req: input.request,
-        client,
-        itemId: bulkCommit[1],
-        readJson
-      }));
+      return runItemMutation('bulk.commit', bulkCommit[1], client, async () => {
+        const result = await handleBulkCommit({
+          req: input.request,
+          client,
+          itemId: bulkCommit[1],
+          readJson
+        });
+        await registerPendingPromotionReconciliations({
+          actor: input.actor,
+          client,
+          env: input.env,
+          requestId: input.requestId,
+          result,
+          sourceItemId: bulkCommit[1]
+        });
+        return result;
+      });
     }
 
     const descriptionBulk = apiPath.match(/^\/items\/(MLB\d+)\/description\/bulk$/u);
@@ -394,6 +452,277 @@ function unwrapLegacyRouteResult(value: unknown): unknown {
     ? payload.error
     : 'A requisicao nao pode ser concluida.';
   throw new RemoteApiError(errorCodeForStatus(statusCode), statusCode, message, result.payload);
+}
+
+async function registerPendingPromotionReconciliations(input: {
+  actor: RemoteApiActor;
+  client: RemoteMeliClient;
+  env: RemoteRuntimeEnv;
+  requestId: string;
+  result: unknown;
+  sourceItemId: string;
+}): Promise<void> {
+  const result = recordOrNull(input.result);
+  const action = typeof result?.action === 'string' ? result.action : '';
+  const targets = Array.isArray(result?.targets) ? result.targets : [];
+  if (!/^promotion\.offer\.(create|update|delete)$/u.test(action) || !targets.length) return;
+
+  const account = input.client.historyAccount();
+  for (const candidate of targets) {
+    const target = recordOrNull(candidate);
+    if (!target || target.status !== 'pending_confirmation') continue;
+    const itemId = typeof target.itemId === 'string' ? target.itemId : '';
+    const metadata = recordOrNull(target._reconciliation);
+    const payload = recordOrNull(metadata?.payload);
+    if (!itemId || !payload) continue;
+
+    const reconciliationId = crypto.randomUUID();
+    const now = Date.now();
+    try {
+      await input.env.ONFRAME_DB.prepare(`
+        INSERT INTO promotion_reconciliations (
+          id, workspace_id, seller_account_id, user_id, request_id,
+          source_item_id, item_id, operation, payload_json, accepted_result_json,
+          actor_name, actor_email, status, attempts, created_at, updated_at, expires_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
+      `).bind(
+        reconciliationId,
+        input.actor.workspaceId,
+        account.id,
+        input.actor.userId,
+        input.requestId,
+        input.sourceItemId,
+        itemId,
+        action,
+        JSON.stringify(payload),
+        JSON.stringify(metadata?.result ?? target.result ?? {}),
+        input.actor.displayName || null,
+        input.actor.email || null,
+        now,
+        now,
+        now + RECONCILIATION_RETENTION_MS
+      ).run();
+      target.reconciliationId = reconciliationId;
+      await startPromotionReconciliation(input.env, reconciliationId);
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: 'promotion_reconciliation_registration_failed',
+        itemId,
+        reconciliationId,
+        requestId: input.requestId,
+        error: sanitizeError(error)
+      }));
+    }
+  }
+}
+
+async function listPromotionReconciliations(
+  env: RemoteRuntimeEnv,
+  actor: RemoteApiActor,
+  url: URL
+): Promise<Record<string, unknown>> {
+  const ids = uniqueReconciliationIds(url.searchParams.get('ids'));
+  if (!ids.length) throw new RemoteApiError('reconciliation_ids_required', 400, 'Informe as operações que deseja consultar.');
+
+  const placeholders = ids.map(() => '?').join(', ');
+  const records = await env.ONFRAME_DB.prepare(`
+    SELECT id, item_id, status, attempts, last_error, workflow_started_at, accepted_result_json
+    FROM promotion_reconciliations
+    WHERE workspace_id = ? AND user_id = ? AND id IN (${placeholders})
+  `).bind(actor.workspaceId, actor.userId, ...ids).all<{
+    id: string;
+    item_id: string;
+    status: 'pending' | 'confirmed' | 'unconfirmed';
+    attempts: number;
+    last_error: string | null;
+    workflow_started_at: number | null;
+    accepted_result_json: string;
+  }>();
+
+  const rows = records.results ?? [];
+  await Promise.all(rows
+    .filter((row) => row.status === 'pending' && !row.workflow_started_at)
+    .map((row) => startPromotionReconciliation(env, row.id)));
+
+  return {
+    operations: rows.map((row) => ({
+      id: row.id,
+      itemId: row.item_id,
+      status: row.status,
+      attempts: Number(row.attempts || 0),
+      message: reconciliationMessage(row.status, row.last_error),
+      result: row.status === 'confirmed' ? parseStoredJson(row.accepted_result_json) : undefined
+    }))
+  };
+}
+
+async function startPromotionReconciliation(env: RemoteRuntimeEnv, reconciliationId: string): Promise<void> {
+  try {
+    await env.PROMOTION_RECONCILIATION.create({
+      id: reconciliationId,
+      params: { reconciliationId }
+    });
+    await env.ONFRAME_DB.prepare(`
+      UPDATE promotion_reconciliations
+      SET workflow_started_at = COALESCE(workflow_started_at, ?), updated_at = ?
+      WHERE id = ? AND status = 'pending'
+    `).bind(Date.now(), Date.now(), reconciliationId).run();
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: 'promotion_reconciliation_start_failed',
+      reconciliationId,
+      error: sanitizeError(error)
+    }));
+  }
+}
+
+function uniqueReconciliationIds(value: string | null): string[] {
+  return Array.from(new Set(String(value || '').split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(entry))))
+    .slice(0, 50);
+}
+
+function reconciliationMessage(status: PromotionReconciliationRow['status'], lastError: string | null): string {
+  if (status === 'confirmed') return 'Alteração confirmada pelo Mercado Livre.';
+  if (status === 'unconfirmed') return 'O estado final não foi confirmado. Atualize as promoções antes de repetir a ação.';
+  return lastError
+    ? 'A alteração foi aceita e uma nova confirmação será tentada automaticamente.'
+    : 'A alteração foi aceita e aguarda confirmação do Mercado Livre.';
+}
+
+function recordOrNull(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function parseStoredJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
+export async function reconcilePromotionOperation(
+  env: RemoteRuntimeEnv,
+  reconciliationId: string
+): Promise<ReconciliationOutcome> {
+  const row = await env.ONFRAME_DB.prepare(`
+    SELECT reconciliations.*,
+           accounts.meli_user_id, accounts.nickname, accounts.site_id, accounts.profile_url,
+           accounts.enabled AS account_enabled
+    FROM promotion_reconciliations AS reconciliations
+    INNER JOIN seller_accounts AS accounts ON accounts.id = reconciliations.seller_account_id
+    WHERE reconciliations.id = ?
+  `).bind(reconciliationId).first<PromotionReconciliationRow>();
+  if (!row) return { id: reconciliationId, itemId: '', status: 'missing', attempts: 0 };
+  if (row.status !== 'pending') return reconciliationOutcome(row);
+  if (row.expires_at <= Date.now() || row.account_enabled !== 1) {
+    return markPromotionReconciliationUnconfirmed(env, reconciliationId);
+  }
+
+  const attempts = Number(row.attempts || 0) + 1;
+  const payload = recordOrNull(parseStoredJson(row.payload_json));
+  const action = row.operation.match(/^promotion\.offer\.(create|update|delete)$/u)?.[1];
+  if (!payload || !action || !row.meli_user_id) {
+    return markPromotionReconciliationUnconfirmed(env, reconciliationId, 'reconciliation_payload_invalid');
+  }
+
+  const account: SellerAccount = {
+    id: row.seller_account_id,
+    meliUserId: row.meli_user_id,
+    nickname: row.nickname || null,
+    siteId: row.site_id || null,
+    profileUrl: row.profile_url || null,
+    enabled: row.account_enabled === 1
+  };
+  const client = new RemoteMeliClient(env, account);
+
+  try {
+    const confirmed = await verifyOfferMutation(client, row.item_id, action, payload);
+    if (!confirmed) {
+      await updatePendingPromotionReconciliation(env, reconciliationId, attempts, null);
+      return { id: row.id, itemId: row.item_id, status: 'pending', attempts };
+    }
+
+    await client.getItem(row.item_id);
+    await recordConfirmedItemEdits({
+      account: client.historyAccount(),
+      actor: {
+        userId: row.user_id,
+        workspaceId: row.workspace_id,
+        displayName: row.actor_name || undefined,
+        email: row.actor_email || undefined
+      },
+      env,
+      itemId: row.item_id,
+      operation: row.operation,
+      payload,
+      requestId: row.request_id,
+      result: parseStoredJson(row.accepted_result_json),
+      snapshots: (itemId) => client.historySnapshots(itemId)
+    });
+
+    const now = Date.now();
+    await env.ONFRAME_DB.prepare(`
+      UPDATE promotion_reconciliations
+      SET status = 'confirmed', attempts = ?, last_error = NULL, updated_at = ?, completed_at = ?
+      WHERE id = ? AND status = 'pending'
+    `).bind(attempts, now, now, reconciliationId).run();
+    return {
+      id: row.id,
+      itemId: row.item_id,
+      status: 'confirmed',
+      attempts
+    };
+  } catch (error) {
+    const message = sanitizeError(error);
+    await updatePendingPromotionReconciliation(env, reconciliationId, attempts, message);
+    return { id: row.id, itemId: row.item_id, status: 'pending', attempts, message };
+  }
+}
+
+async function updatePendingPromotionReconciliation(
+  env: RemoteRuntimeEnv,
+  reconciliationId: string,
+  attempts: number,
+  lastError: string | null
+): Promise<void> {
+  await env.ONFRAME_DB.prepare(`
+    UPDATE promotion_reconciliations
+    SET attempts = ?, last_error = ?, updated_at = ?
+    WHERE id = ? AND status = 'pending'
+  `).bind(attempts, lastError, Date.now(), reconciliationId).run();
+}
+
+export async function markPromotionReconciliationUnconfirmed(
+  env: RemoteRuntimeEnv,
+  reconciliationId: string,
+  lastError: string | null = null
+): Promise<ReconciliationOutcome> {
+  const now = Date.now();
+  await env.ONFRAME_DB.prepare(`
+    UPDATE promotion_reconciliations
+    SET status = 'unconfirmed', last_error = COALESCE(?, last_error), updated_at = ?, completed_at = ?
+    WHERE id = ? AND status = 'pending'
+  `).bind(lastError, now, now, reconciliationId).run();
+  const row = await env.ONFRAME_DB.prepare(`
+    SELECT id, item_id, status, attempts, last_error
+    FROM promotion_reconciliations
+    WHERE id = ?
+  `).bind(reconciliationId).first<PromotionReconciliationRow>();
+  if (!row) return { id: reconciliationId, itemId: '', status: 'missing', attempts: 0 };
+  return reconciliationOutcome(row);
+}
+
+function reconciliationOutcome(row: PromotionReconciliationRow): ReconciliationOutcome {
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    status: row.status,
+    attempts: Number(row.attempts || 0),
+    message: reconciliationMessage(row.status, row.last_error)
+  };
 }
 
 async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiActor): Promise<RemoteApiContext> {

@@ -23,6 +23,27 @@ test('domínio comercial pertence ao Worker e é compatível com a suíte Node',
   assert.equal(fs.existsSync(path.join(root, 'service')), false);
 });
 
+test('promoções pendentes usam Workflow durável e reconciliação consultável', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(root, 'cloudflare', 'wrangler.jsonc'), 'utf8'));
+  const worker = fs.readFileSync(path.join(root, 'cloudflare', 'src', 'remote-api.ts'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, 'cloudflare', 'src', 'promotion-reconciliation-workflow.ts'), 'utf8');
+  const extension = fs.readFileSync(path.join(root, 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const migration = fs.readFileSync(path.join(root, 'cloudflare', 'migrations', '0011_promotion_reconciliations.sql'), 'utf8');
+
+  assert.deepEqual(config.workflows, [{
+    name: 'onframe-promotion-reconciliation',
+    binding: 'PROMOTION_RECONCILIATION',
+    class_name: 'PromotionReconciliationWorkflow'
+  }]);
+  assert.equal(config.main, 'src/worker.ts');
+  assert.match(workflow, /class PromotionReconciliationWorkflow extends WorkflowEntrypoint/);
+  assert.match(worker, /GET \/bulk\/reconciliations/);
+  assert.match(worker, /PROMOTION_RECONCILIATION\.create/);
+  assert.match(extension, /\/api\/bulk\/reconciliations\?ids=/);
+  assert.match(migration, /CREATE TABLE promotion_reconciliations/);
+  assert.match(migration, /idx_item_edit_events_idempotent/);
+});
+
 test('bootstrap preserva instalação e atualização, sem ciclo de serviço', () => {
   const bootstrap = path.join(root, 'scripts', 'bootstrap');
   const expected = [

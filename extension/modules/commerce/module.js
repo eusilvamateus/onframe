@@ -3454,8 +3454,6 @@
         return;
       }
 
-      clearPromotionEstimateTimer(key);
-      delete state.promotionEstimates[key];
       state.promotionConfirm = { key, action, values };
       state.promotionFocusKey = key;
       state.actionError = '';
@@ -4238,10 +4236,7 @@
       state.actionError = '';
       rerenderPopover();
       try {
-        const result = await api(itemApiPath('/bulk/commit'), {
-          method: 'POST',
-          body: JSON.stringify(bulkRequest('pricing.standard.update', payload, targetItemIds))
-        });
+        const result = await commitBulkInBatches('pricing.standard.update', payload, targetItemIds);
         state.priceEditing = false;
         state.priceDraft = '';
         state.priceBulkPreview = null;
@@ -4504,10 +4499,7 @@
           state.operationPendingAction = action;
           state.actionError = '';
           rerenderModal();
-          const result = await api(itemApiPath('/bulk/commit'), {
-            method: 'POST',
-            body: JSON.stringify(bulkRequest(`promotion.offer.${action}`, payload))
-          });
+          const result = await commitBulkInBatches(`promotion.offer.${action}`, payload);
           notifyBulkResult(result, promotionActionSuccessLabel(action));
           state.promotionFormKey = '';
           state.promotionFormAction = '';
@@ -4517,6 +4509,7 @@
           state.promotionConfirm = null;
           await loadSummaries(state.requestId);
           schedulePromotionManagerEstimates();
+          void reconcileBulkResult(result, promotionActionSuccessLabel(action));
           return;
         }
 
@@ -4824,6 +4817,110 @@
       return request;
     }
 
+    async function commitBulkInBatches(action, payload, targetItemIds) {
+      const responses = [];
+      const seenContinuations = new Set();
+      let pendingTargetItemIds = Array.isArray(targetItemIds) ? targetItemIds : undefined;
+
+      for (let page = 0; page < 100; page += 1) {
+        const response = await api(itemApiPath('/bulk/commit'), {
+          method: 'POST',
+          body: JSON.stringify(bulkRequest(action, payload, pendingTargetItemIds))
+        });
+        responses.push(response);
+
+        const next = response && response.continuation && Array.isArray(response.continuation.targetItemIds)
+          ? response.continuation.targetItemIds.filter(Boolean)
+          : [];
+        if (!next.length) return mergeBulkResponses(responses);
+
+        const signature = next.join(',');
+        if (seenContinuations.has(signature)) throw new Error('bulk_continuation_repeated');
+        seenContinuations.add(signature);
+        pendingTargetItemIds = next;
+      }
+
+      throw new Error('bulk_continuation_limit');
+    }
+
+    function mergeBulkResponses(responses) {
+      const pages = Array.isArray(responses) ? responses.filter(Boolean) : [];
+      const first = pages[0] || {};
+      const targets = pages.flatMap((page) => Array.isArray(page.targets) ? page.targets : []);
+      return Object.assign({}, first, {
+        continuation: null,
+        counts: {
+          total: targets.length,
+          eligible: targets.filter((target) => target && target.eligible).length,
+          blocked: targets.filter((target) => target && target.status === 'blocked').length,
+          applied: targets.filter((target) => target && target.status === 'applied').length,
+          skipped: targets.filter((target) => target && target.status === 'skipped').length,
+          failed: targets.filter((target) => target && target.status === 'failed').length,
+          pending: targets.filter((target) => target && target.status === 'pending_confirmation').length,
+          unconfirmed: targets.filter((target) => target && target.status === 'unconfirmed').length
+        },
+        targets
+      });
+    }
+
+    async function reconcileBulkResult(initialResult, title) {
+      let result = initialResult;
+      const reconciliationIds = Array.from(new Set((Array.isArray(result && result.targets) ? result.targets : [])
+        .map((target) => target && target.status === 'pending_confirmation' ? target.reconciliationId : '')
+        .filter(Boolean)));
+      if (!reconciliationIds.length) return;
+
+      for (let attempt = 0; attempt < 150; attempt += 1) {
+        await waitForPromotionReconciliation(2000);
+        let response;
+        try {
+          response = await api(`/api/bulk/reconciliations?ids=${encodeURIComponent(reconciliationIds.join(','))}`);
+        } catch (error) {
+          continue;
+        }
+
+        const operations = Array.isArray(response && response.operations) ? response.operations : [];
+        const byId = new Map(operations.map((operation) => [operation && operation.id, operation]));
+        const targets = (Array.isArray(result && result.targets) ? result.targets : []).map((target) => {
+          const operation = target && target.reconciliationId ? byId.get(target.reconciliationId) : null;
+          if (!operation || operation.status === 'pending') return target;
+          if (operation.status === 'confirmed') {
+            return Object.assign({}, target, {
+              eligible: true,
+              status: 'applied',
+              message: operation.message || 'Alteração confirmada pelo Mercado Livre.',
+              result: operation.result || target.result || null
+            });
+          }
+          if (operation.status === 'unconfirmed') {
+            return Object.assign({}, target, {
+              eligible: false,
+              status: 'unconfirmed',
+              reasonCode: 'promotion_change_unconfirmed',
+              message: operation.message || 'O estado final não foi confirmado.'
+            });
+          }
+          return target;
+        });
+        result = mergeBulkResponses([Object.assign({}, result, { targets })]);
+        if (Number(result.counts && result.counts.pending || 0) > 0) continue;
+
+        notifyBulkResult(result, title);
+        try {
+          await loadSummaries(state.requestId);
+          schedulePromotionManagerEstimates();
+          mountCommerce();
+        } catch (error) {
+          // A confirmação já foi persistida; uma falha de atualização visual não a desfaz.
+        }
+        return;
+      }
+    }
+
+    function waitForPromotionReconciliation(milliseconds) {
+      return new Promise((resolve) => setTimeout(resolve, milliseconds));
+    }
+
     function bulkHash(action, payload) {
       return `${action}:${JSON.stringify(payload || {})}`;
     }
@@ -4834,15 +4931,28 @@
       const failed = Number(counts.failed || 0);
       const blocked = Number(counts.blocked || 0);
       const skipped = Number(counts.skipped || 0);
+      const pending = Number(counts.pending || 0);
+      const unconfirmed = Number(counts.unconfirmed || 0);
       const unchanged = failed + blocked + skipped;
-      if (!applied) {
+      if (!applied && !pending && !unconfirmed) {
         state.actionError = 'Nenhuma variação foi alterada.';
         return;
       }
-      const body = unchanged
-        ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterada${unchanged === 1 ? '' : 's'}.`
-        : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
-      showToast(unchanged ? 'warning' : 'success', title, body);
+      const appliedText = `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
+      const pendingText = `${pending} aguarda${pending === 1 ? '' : 'm'} confirmação do Mercado Livre.`;
+      const unconfirmedText = `${unconfirmed} não teve${unconfirmed === 1 ? '' : 'ram'} o estado final confirmado.`;
+      const unchangedText = `${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterada${unchanged === 1 ? '' : 's'}.`;
+      const body = [
+        applied ? appliedText : '',
+        pending ? pendingText : '',
+        unconfirmed ? unconfirmedText : '',
+        unchanged ? unchangedText : ''
+      ].filter(Boolean).join(' ');
+      showToast(
+        pending || unconfirmed || unchanged ? 'warning' : 'success',
+        pending && !applied ? 'Alteração enviada' : unconfirmed && !applied ? 'Confirmação inconclusiva' : title,
+        body
+      );
     }
 
     function promotionActionSuccessLabel(action) {

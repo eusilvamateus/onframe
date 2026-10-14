@@ -165,7 +165,29 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   ]);
   assert.equal(manifest.action.default_popup, 'ui/popup/index.html');
   assert.equal(manifest.options_ui.page, 'ui/options/index.html');
+  assert.ok(manifest.content_scripts[0].js.indexOf('core/fonts.js') < manifest.content_scripts[0].js.indexOf('core/icons.js'));
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'launcher')), false);
+});
+
+test('fontes do content script usam URLs da extensão', () => {
+  const source = fs.readFileSync(path.join(extensionRoot, 'core', 'fonts.js'), 'utf8');
+  const foundations = fs.readFileSync(path.join(extensionRoot, 'styles', 'foundations.css'), 'utf8');
+  const phosphor = fs.readFileSync(path.join(extensionRoot, 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
+  const appended = [];
+  const document = {
+    getElementById: () => null,
+    createElement: () => ({}),
+    head: { appendChild: (node) => appended.push(node) }
+  };
+  vm.runInNewContext(source, {
+    document,
+    chrome: { runtime: { getURL: (value) => `chrome-extension://onframe/${value}` } }
+  });
+
+  assert.equal(appended.length, 1);
+  assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
+  assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
+  assert.doesNotMatch(phosphor, /@font-face|Phosphor\.woff2/);
 });
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {

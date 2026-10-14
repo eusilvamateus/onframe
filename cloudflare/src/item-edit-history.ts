@@ -3,7 +3,7 @@ type HistoryEnv = {
 };
 
 type HistoryActor = {
-  userId: string;
+  userId: string | null;
   workspaceId: string;
   workspaceRole?: 'admin' | 'collaborator';
   displayName?: string;
@@ -65,7 +65,7 @@ export async function recordConfirmedItemEdits(input: ConfirmedEditInput): Promi
   await input.env.ONFRAME_DB.batch(drafts.map((draft) => {
     const item = draft.itemSnapshot || {};
     return input.env.ONFRAME_DB.prepare(`
-      INSERT INTO item_edit_events (
+      INSERT OR IGNORE INTO item_edit_events (
         id, workspace_id, seller_account_id, user_id, request_id,
         item_id, item_title, item_thumbnail_url, item_permalink,
         account_name, account_meli_user_id, actor_name, actor_email,
