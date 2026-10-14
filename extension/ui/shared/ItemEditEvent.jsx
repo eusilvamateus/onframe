@@ -61,14 +61,42 @@ function HistoryDetails({ event }) {
   return null;
 }
 
-function ActorContext({ event, onOpenActor }) {
+function ActorLink({ event, onOpenActor }) {
   const actorName = event?.actor?.name || event?.actor?.email || 'Pessoa não identificada';
-  const context = itemEditContext(event);
-  return <div className="onframe-history-actor-context">
-    <Avatar name={actorName} src={event?.actor?.avatarUrl} alt="" size={20} />
-    {onOpenActor ? <Link href="#configuracoes-workspace-people" variant="quiet" onClick={(clickEvent) => { clickEvent.preventDefault(); onOpenActor(event.actor); }}>{actorName}</Link> : <span>{actorName}</span>}
-    {context && <span>· {context}</span>}
+  return <div className="onframe-history-metadata-item onframe-history-actor-context">
+    <Avatar name={actorName} src={event?.actor?.avatarUrl} alt="" size={22} />
+    <div><span>Responsável</span>
+      {onOpenActor ? <Link href="#configuracoes-workspace-people" variant="quiet" onClick={(clickEvent) => { clickEvent.preventDefault(); onOpenActor(event.actor); }}>{actorName}</Link> : <strong>{actorName}</strong>}
+    </div>
   </div>;
+}
+
+function EventMetadata({ event, onOpenActor }) {
+  return <div className="onframe-history-event-metadata">
+    <ActorLink event={event} onOpenActor={onOpenActor} />
+    <div className="onframe-history-metadata-item">
+      <Ph n="storefront" size={18} />
+      <div><span>Conta</span><strong>{event?.account?.name || 'Conta não identificada'}</strong></div>
+    </div>
+    <div className="onframe-history-metadata-item">
+      <Ph n="calendar-blank" size={18} />
+      <div><span>Data e horário</span><time dateTime={event.createdAt}>{formatDate(event.createdAt)}</time></div>
+    </div>
+  </div>;
+}
+
+function ItemReference({ event }) {
+  const itemId = event?.item?.id;
+  if (!itemId) return null;
+  if (!event?.item?.permalink) return <span className="onframe-history-item-reference">Anúncio {itemId}</span>;
+  return <Link
+    href={event.item.permalink}
+    variant="quiet"
+    className="onframe-history-item-reference"
+    onClick={(clickEvent) => { clickEvent.preventDefault(); openExternal(event.item.permalink); }}
+  >
+    Anúncio {itemId}<Ph n="arrow-square-out" size={14} />
+  </Link>;
 }
 
 function CompactContext({ event }) {
@@ -89,7 +117,6 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
       <div className="onframe-history-event-copy">
         <div className="onframe-history-event-title-row">
           <h3 title={itemEditTitle(event)}>{itemEditTitle(event)}</h3>
-          {!compact && <Badge tone={meta.tone}>{meta.label}</Badge>}
         </div>
         {compact ? <>
           <div className="onframe-history-compact-change">
@@ -97,18 +124,19 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
             <time dateTime={event.createdAt} title={formatDate(event.createdAt)}>{formatRelativeDate(event.createdAt)}</time>
           </div>
           <CompactContext event={event} />
-        </> : <p className="onframe-history-event-summary">{event.summary}</p>}
+        </> : <ItemReference event={event} />}
       </div>
-      {event?.item?.permalink && <Tooltip label="Abrir anúncio" placement="left">
+      {!compact && <div className="onframe-history-change-context">
+        <span className={`onframe-history-change-icon onframe-history-type-icon--${meta.tone}`}><Ph n={meta.icon} size={17} /></span>
+        <div><span>{meta.label}</span><strong>{event.summary}</strong></div>
+      </div>}
+      {compact && event?.item?.permalink && <Tooltip label="Abrir anúncio" placement="left">
         <Button kind="quiet" tone="primary" size="sm" iconOnly aria-label={`Abrir ${itemEditTitle(event)}`} onClick={() => openExternal(event.item.permalink)} icon={<Ph n="arrow-square-out" size={17} />} />
       </Tooltip>}
     </div>
     {!compact && <>
       <HistoryDetails event={event} />
-      <div className="onframe-history-event-footer">
-        <ActorContext event={event} onOpenActor={onOpenActor} />
-        <span className="onframe-history-event-item-id">{event?.item?.id}</span>
-      </div>
+      <EventMetadata event={event} onOpenActor={onOpenActor} />
     </>}
   </div>;
 

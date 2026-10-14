@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Avatar, Badge, Button, Link, Select } from '@onblide/ui';
+import { Avatar, Badge, Button, Chip, Datepicker, Link, Pagination, Popover, Select } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { HistorySession } from '../extension/ui/popup/HistorySession.jsx';
-import { ItemEditHistory } from '../extension/ui/options/ItemEditHistory.jsx';
+import { historyPeriodQuery, ItemEditHistory } from '../extension/ui/options/ItemEditHistory.jsx';
 import { ItemEditEventCard } from '../extension/ui/shared/ItemEditEvent.jsx';
 import { formatRelativeDate } from '../extension/ui/shared/runtime.js';
 
@@ -28,7 +28,10 @@ function installChromeMock(messages: Array<Record<string, unknown>>, firstPageEv
       lastError: null,
       sendMessage(message, callback) {
         messages.push(message);
-        callback({ ok: true, body: message.query?.cursor ? { events: [{ ...firstEvent, id: 'event-2' }], nextCursor: null } : { events: firstPageEvents, nextCursor: firstPageEvents.length ? '100.event-cursor' : null } });
+        const page = Number(message.query?.page || 1);
+        callback({ ok: true, body: page === 2
+          ? { events: [{ ...firstEvent, id: 'event-2' }], page: 2, total: 11, totalPages: 2, nextCursor: null }
+          : { events: firstPageEvents, page: 1, total: firstPageEvents.length ? 11 : 0, totalPages: firstPageEvents.length ? 2 : 1, nextCursor: firstPageEvents.length ? '100.event-cursor' : null } });
       }
     },
     tabs: { create() {} }
@@ -73,6 +76,14 @@ test('data compacta preserva leitura curta sem perder a data completa', () => {
   assert.equal(formatRelativeDate('2026-10-11T13:00:00.000Z', reference), 'há 2 dias');
 });
 
+test('periodo personalizado gera limites locais completos para a consulta', () => {
+  assert.deepEqual(historyPeriodQuery({ start: '2025-01-02', end: '2025-01-05' }), {
+    from: new Date(2025, 0, 2, 0, 0, 0, 0).getTime(),
+    to: new Date(2025, 0, 5, 23, 59, 59, 999).getTime()
+  });
+  assert.deepEqual(historyPeriodQuery({ start: '', end: '' }), { from: '', to: '' });
+});
+
 test('opcoes filtram e paginam o historico detalhado', async () => {
   const messages: Array<Record<string, unknown>> = [];
   installChromeMock(messages);
@@ -88,19 +99,45 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
     />);
   });
 
-  assert.equal(renderer.root.findAllByType(Select).length, 3);
+  const popovers = renderer.root.findAllByType(Popover);
+  assert.deepEqual(popovers.map((popover) => popover.props.title), ['Período', 'Filtrar histórico']);
+  const periodPopover = popovers.find((popover) => popover.props.title === 'Período');
+  let periodRenderer;
+  await act(async () => { periodRenderer = create(periodPopover.props.children(() => {})); });
+  const datepicker = periodRenderer.root.findByType(Datepicker);
+  assert.equal(datepicker.props.mode, 'range');
+  assert.equal(datepicker.props.calendarDisplay, 'inline');
+  assert.equal(datepicker.props.label, 'Intervalo personalizado');
+  assert.equal(periodRenderer.root.findAllByProps({ type: 'date' }).length, 0);
+  const periodChips = periodRenderer.root.findAllByType(Chip);
+  assert.deepEqual(periodChips.map((chip) => chip.props.label), ['Todo o período', 'Hoje', 'Últimos 7 dias', 'Últimos 30 dias', 'Últimos 90 dias']);
+  assert.equal(periodChips.filter((chip) => chip.props.selected).length, 1);
+  periodRenderer.unmount();
   assert.equal(renderer.root.findByType(ItemEditEventCard).props.compact, undefined);
-  const actorLink = renderer.root.findByType(Link);
+  assert.equal(renderer.root.findAllByType(Badge).length, 0);
+  const actorLink = renderer.root.findAllByType(Link).find((link) => link.props.href === '#configuracoes-workspace-people');
   await act(async () => actorLink.props.onClick({ preventDefault() {} }));
   assert.equal(openedActor.id, 'user-1');
   assert.equal(renderer.root.findByProps({ 'aria-label': 'Alteração de preço' }).children.length > 0, true);
-  const loadMore = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Carregar mais');
+  const pagination = renderer.root.findByType(Pagination);
   await act(async () => {
-    loadMore.props.onClick();
+    pagination.props.onChange(2);
     await Promise.resolve();
   });
-  assert.equal(messages.some((message) => message.query?.cursor === '100.event-cursor'), true);
-  assert.equal(renderer.root.findAllByType(ItemEditEventCard).length, 2);
+  assert.equal(messages.some((message) => message.query?.page === 2 && message.query?.limit === 10), true);
+  assert.equal(renderer.root.findAllByType(ItemEditEventCard).length, 1);
+
+  const filterPopover = renderer.root.findAllByType(Popover).find((popover) => popover.props.title === 'Filtrar histórico');
+  let filterRenderer;
+  await act(async () => { filterRenderer = create(filterPopover.props.children(() => {})); });
+  const filterSelects = filterRenderer.root.findAllByType(Select);
+  assert.equal(filterSelects.length, 3);
+  const optionLabels = filterSelects.flatMap((select) => select.props.options.map((option) => option.label));
+  assert.equal(optionLabels.includes('Loja principal'), true);
+  assert.equal(optionLabels.includes('Loja principal · 123'), false);
+  assert.equal(optionLabels.includes('Mateus Silva'), true);
+  assert.equal(optionLabels.includes('Mateus Silva · mateus@example.com'), false);
+  filterRenderer.unmount();
   renderer.unmount();
 });
 

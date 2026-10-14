@@ -77,7 +77,7 @@ async function handleRemoteMessage(message) {
 function itemEditHistoryPath(query) {
   const source = query && typeof query === 'object' ? query : {};
   const params = new URLSearchParams();
-  for (const key of ['cursor', 'limit', 'itemId', 'accountId', 'userId', 'changeType']) {
+  for (const key of ['cursor', 'limit', 'page', 'itemId', 'accountId', 'userId', 'changeType', 'from', 'to']) {
     const value = String(source[key] === undefined || source[key] === null ? '' : source[key]).trim();
     if (value) params.set(key, value);
   }

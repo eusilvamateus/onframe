@@ -128,13 +128,27 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
     assert.equal(enrichedPage.events.every((event) => event.item.thumbnailUrl === 'https://http2.mlstatic.com/test.jpg'), true);
     assert.equal(enrichedPage.events.every((event) => event.item.permalink === itemBefore.permalink), true);
 
-    const adminPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?limit=1')) as { events: Array<{ actor: { avatarUrl: string | null } }>; nextCursor: string };
+    const adminPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?limit=1')) as { events: Array<{ actor: { avatarUrl: string | null } }>; nextCursor: string; total: number; totalPages: number };
     assert.equal(adminPage.events.length, 1);
     assert.equal(adminPage.events[0].actor.avatarUrl, 'https://example.com/admin.jpg');
+    assert.equal(adminPage.total, 2);
+    assert.equal(adminPage.totalPages, 2);
     assert.ok(adminPage.nextCursor);
     const nextAdminPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL(`https://example.com/v1/app/item-edit-history?limit=1&cursor=${encodeURIComponent(adminPage.nextCursor)}`)) as { events: unknown[]; nextCursor: string | null };
     assert.equal(nextAdminPage.events.length, 1);
     assert.equal(nextAdminPage.nextCursor, null);
+
+    const numberedPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?limit=1&page=2')) as { events: unknown[]; page: number; total: number; totalPages: number };
+    assert.equal(numberedPage.events.length, 1);
+    assert.equal(numberedPage.page, 2);
+    assert.equal(numberedPage.total, 2);
+    assert.equal(numberedPage.totalPages, 2);
+
+    await db.prepare("UPDATE item_edit_events SET created_at = CASE request_id WHEN 'request-1' THEN 1000 ELSE 2000 END").run();
+    const periodPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?from=1500&to=2500')) as { events: Array<{ account: { id: string } }>; total: number };
+    assert.equal(periodPage.events.length, 1);
+    assert.equal(periodPage.events[0].account.id, 'account-2');
+    assert.equal(periodPage.total, 1);
 
     const collaboratorPage = await listItemEditHistory({ ONFRAME_DB: db }, {
       userId: 'collab-1', workspaceId: 'workspace-1', workspaceRole: 'collaborator'

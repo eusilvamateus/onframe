@@ -128,6 +128,9 @@ export function buildConfirmedEditDrafts(input: Pick<ConfirmedEditInput, 'itemId
 export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, url: URL): Promise<Record<string, unknown>> {
   const limit = boundedLimit(url.searchParams.get('limit'));
   const cursor = parseCursor(url.searchParams.get('cursor'));
+  const pageParam = String(url.searchParams.get('page') || '').trim();
+  const paginated = Boolean(pageParam);
+  const requestedPage = boundedPage(pageParam);
   const filters: string[] = ['events.workspace_id = ?'];
   const values: unknown[] = [actor.workspaceId];
 
@@ -143,7 +146,19 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
   addFilter(filters, values, 'events.seller_account_id', url.searchParams.get('accountId'));
   addFilter(filters, values, 'events.user_id', url.searchParams.get('userId'));
   addFilter(filters, values, 'events.change_type', url.searchParams.get('changeType'));
-  if (cursor) {
+  addTimestampFilter(filters, values, 'events.created_at', '>=', url.searchParams.get('from'));
+  addTimestampFilter(filters, values, 'events.created_at', '<=', url.searchParams.get('to'));
+
+  const count = await env.ONFRAME_DB.prepare(`
+    SELECT COUNT(*) AS total
+    FROM item_edit_events AS events
+    WHERE ${filters.join('\n      AND ')}
+  `).bind(...values).first<{ total: number }>();
+  const total = Number(count?.total) || 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = paginated ? Math.min(requestedPage, totalPages) : 1;
+
+  if (!paginated && cursor) {
     filters.push('(events.created_at < ? OR (events.created_at = ? AND events.id < ?))');
     values.push(cursor.createdAt, cursor.createdAt, cursor.id);
   }
@@ -177,8 +192,8 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
     LEFT JOIN seller_accounts ON seller_accounts.id = events.seller_account_id
     WHERE ${filters.join('\n      AND ')}
     ORDER BY events.created_at DESC, events.id DESC
-    LIMIT ?
-  `).bind(...values, limit + 1).all<HistoryRecord & {
+    LIMIT ? OFFSET ?
+  `).bind(...values, paginated ? limit : limit + 1, paginated ? (page - 1) * limit : 0).all<HistoryRecord & {
     current_actor_name: string | null;
     current_actor_email: string | null;
     current_actor_avatar_url: string | null;
@@ -187,13 +202,16 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
     current_item_permalink: string | null;
   }>();
   const rows = records.results ?? [];
-  const hasMore = rows.length > limit;
+  const hasMore = paginated ? page < totalPages : rows.length > limit;
   const visible = rows.slice(0, limit);
   const last = visible.at(-1);
 
   return {
     events: visible.map(toHistoryPayload),
-    nextCursor: hasMore && last ? `${last.created_at}.${last.id}` : null
+    nextCursor: hasMore && last ? `${last.created_at}.${last.id}` : null,
+    page,
+    total,
+    totalPages
   };
 }
 
@@ -345,9 +363,23 @@ function addFilter(filters: string[], values: unknown[], column: string, value: 
   values.push(normalized);
 }
 
+function addTimestampFilter(filters: string[], values: unknown[], column: string, operator: '>=' | '<=', value: string | null): void {
+  const normalized = String(value || '').trim();
+  if (!normalized) return;
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) return;
+  filters.push(`${column} ${operator} ?`);
+  values.push(Math.trunc(parsed));
+}
+
 function boundedLimit(value: string | null): number {
   const parsed = Number(value || 20);
   return Number.isInteger(parsed) ? Math.min(50, Math.max(1, parsed)) : 20;
+}
+
+function boundedPage(value: string | null): number {
+  const parsed = Number(value || 1);
+  return Number.isInteger(parsed) ? Math.max(1, parsed) : 1;
 }
 
 function parseCursor(value: string | null): { createdAt: number; id: string } | null {

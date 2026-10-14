@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Ph, SearchInput, Select, Skeleton } from '@onblide/ui';
+import { Alert, Button, Card, Chip, Datepicker, Pagination, Ph, Popover, SearchInput, Select, Skeleton } from '@onblide/ui';
 import { ItemEditEventCard } from '../shared/ItemEditEvent';
 import { SectionHeader } from '../shared/SectionHeader';
 import { accountName } from '../shared/IntegrationAccount';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 
+const PAGE_SIZE = 10;
+const EMPTY_PERIOD = { preset: 'all', start: '', end: '' };
 const TYPE_OPTIONS = [
   { label: 'Todos os tipos', id: '' },
   { label: 'Preço', id: 'price' },
@@ -13,9 +15,201 @@ const TYPE_OPTIONS = [
   { label: 'Promoção', id: 'promotion' },
   { label: 'Fotos', id: 'pictures' }
 ];
+const PERIOD_PRESETS = [
+  { id: 'all', label: 'Todo o período' },
+  { id: 'today', label: 'Hoje', days: 1 },
+  { id: '7d', label: 'Últimos 7 dias', days: 7 },
+  { id: '30d', label: 'Últimos 30 dias', days: 30 },
+  { id: '90d', label: 'Últimos 90 dias', days: 90 }
+];
+
+function presetPeriod(preset) {
+  const option = PERIOD_PRESETS.find((entry) => entry.id === preset);
+  if (!option?.days) return { ...EMPTY_PERIOD };
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setDate(start.getDate() - option.days + 1);
+  return { preset, start: isoDate(start), end: isoDate(end) };
+}
+
+function isoDate(value) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return '';
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dateFromIso(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(String(value || ''));
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day, 12);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function timestampAt(value, endOfDay = false) {
+  const date = typeof value === 'string' ? dateFromIso(value) : value;
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const result = new Date(date);
+  result.setHours(endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  return result.getTime();
+}
+
+export function historyPeriodQuery(period) {
+  return {
+    from: timestampAt(period?.start),
+    to: timestampAt(period?.end, true)
+  };
+}
+
+function calendarValue(period) {
+  return {
+    start: dateFromIso(period.start),
+    end: dateFromIso(period.end)
+  };
+}
+
+function customPeriod(start, end) {
+  return { preset: 'custom', start: String(start || ''), end: String(end || '') };
+}
+
+function isCompletePeriod(period) {
+  if (!period.start && !period.end) return true;
+  return Boolean(period.start && period.end && period.start <= period.end);
+}
+
+function periodError(period) {
+  if (Boolean(period.start) !== Boolean(period.end)) return 'Informe a data inicial e a data final.';
+  if (period.start && period.end && period.start > period.end) return 'A data final deve ser igual ou posterior à inicial.';
+  return '';
+}
+
+function periodCalendarRange(range) {
+  return customPeriod(isoDate(range?.start), isoDate(range?.end));
+}
+
+function formatPeriodDate(value, format) {
+  const date = dateFromIso(value);
+  return date ? format.format(date) : '';
+}
+
+function periodLabel(period) {
+  const preset = PERIOD_PRESETS.find((option) => option.id === period.preset);
+  if (preset) return preset.label;
+  if (!period.start || !period.end) return 'Período personalizado';
+  const format = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return `${formatPeriodDate(period.start, format)} – ${formatPeriodDate(period.end, format)}`;
+}
 
 function selectId(options, label) {
   return options.find((option) => option.label === label)?.id || '';
+}
+
+function HistoryFilters({ accountOptions, peopleOptions, admin, accountId, userId, changeType, onApply }) {
+  const [draftAccountId, setDraftAccountId] = useState(accountId);
+  const [draftUserId, setDraftUserId] = useState(userId);
+  const [draftChangeType, setDraftChangeType] = useState(changeType);
+  const activeCount = [accountId, admin && userId, changeType].filter(Boolean).length;
+
+  function syncDraft(open) {
+    if (!open) return;
+    setDraftAccountId(accountId);
+    setDraftUserId(userId);
+    setDraftChangeType(changeType);
+  }
+
+  return <Popover
+    title="Filtrar histórico"
+    width={380}
+    align="end"
+    onOpenChange={syncDraft}
+    trigger={<Button kind="secondary" icon={<Ph n="funnel-simple" size={17} />}>Filtros{activeCount ? ` (${activeCount})` : ''}</Button>}
+  >
+    {(close) => <>
+      <div className="onframe-history-filter-form" role="group" aria-label="Filtros do histórico" tabIndex={0}>
+        <Select
+          label="Conta"
+          options={accountOptions}
+          value={accountOptions.find((option) => option.id === draftAccountId)?.label || accountOptions[0].label}
+          onChange={(label) => setDraftAccountId(selectId(accountOptions, label))}
+        />
+        {admin && <Select
+          label="Pessoa"
+          options={peopleOptions}
+          value={peopleOptions.find((option) => option.id === draftUserId)?.label || peopleOptions[0].label}
+          onChange={(label) => setDraftUserId(selectId(peopleOptions, label))}
+        />}
+        <Select
+          label="Tipo de alteração"
+          options={TYPE_OPTIONS}
+          value={TYPE_OPTIONS.find((option) => option.id === draftChangeType)?.label || TYPE_OPTIONS[0].label}
+          onChange={(label) => setDraftChangeType(selectId(TYPE_OPTIONS, label))}
+        />
+      </div>
+      <div className="onframe-history-popover-actions">
+        <Button kind="quiet" onClick={() => {
+          setDraftAccountId('');
+          setDraftUserId('');
+          setDraftChangeType('');
+        }}>Limpar</Button>
+        <Button onClick={() => {
+          onApply({ accountId: draftAccountId, userId: admin ? draftUserId : '', changeType: draftChangeType });
+          close();
+        }}>Aplicar filtros</Button>
+      </div>
+    </>}
+  </Popover>;
+}
+
+function PeriodFilter({ period, onApply }) {
+  const [draft, setDraft] = useState(period);
+  const complete = isCompletePeriod(draft);
+  const validationError = periodError(draft);
+
+  return <Popover
+    title="Período"
+    width={420}
+    align="end"
+    onOpenChange={(open) => { if (open) setDraft(period); }}
+    trigger={<Button kind="secondary" icon={<Ph n="calendar-blank" size={17} />}>{periodLabel(period)}</Button>}
+  >
+    {(close) => <>
+      <div className="onframe-history-period-layout">
+        <div className="onframe-history-period-presets" aria-label="Períodos rápidos">
+          {PERIOD_PRESETS.map((preset) => <Chip
+            key={preset.id}
+            label={preset.label}
+            size="sm"
+            selected={draft.preset === preset.id}
+            onToggle={() => setDraft(presetPeriod(preset.id))}
+          />)}
+        </div>
+        <div className="onframe-history-period-picker">
+          <Datepicker
+            label="Intervalo personalizado"
+            mode="range"
+            calendarDisplay="inline"
+            value={calendarValue(draft)}
+            max={new Date()}
+            weekStartsOn={1}
+            onChange={(range) => setDraft(periodCalendarRange(range))}
+          />
+        </div>
+      </div>
+      <div className="onframe-history-popover-actions">
+        <span className={`onframe-history-period-summary${validationError ? ' onframe-history-period-summary--error' : ''}`}>{validationError || periodLabel(draft)}</span>
+        <Button disabled={!complete} onClick={() => {
+          onApply(draft);
+          close();
+        }}>Aplicar período</Button>
+      </div>
+    </>}
+  </Popover>;
 }
 
 function LoadingHistory() {
@@ -26,73 +220,99 @@ function LoadingHistory() {
 
 export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenActor }) {
   const [events, setEvents] = useState([]);
-  const [nextCursor, setNextCursor] = useState(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [itemId, setItemId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [userId, setUserId] = useState('');
   const [changeType, setChangeType] = useState('');
+  const [period, setPeriod] = useState(EMPTY_PERIOD);
   const requestVersion = useRef(0);
 
   const accountOptions = [{ label: 'Todas as contas', id: '' }].concat(accounts.map((account) => ({
-    label: `${accountName(account)} · ${account.user_id}`,
+    label: accountName(account),
     id: account.id
   })));
   const visiblePeople = admin ? members : currentUser ? [currentUser] : [];
   const peopleOptions = [{ label: 'Todas as pessoas', id: '' }].concat(visiblePeople.map((person) => ({
-    label: `${person.name || person.email} · ${person.email}`,
+    label: person.name || person.email,
     id: person.id
   })));
 
   useEffect(() => {
-    const timer = setTimeout(() => setItemId(String(search || '').trim().toUpperCase()), 300);
+    const timer = setTimeout(() => {
+      setItemId(String(search || '').trim().toUpperCase());
+      setPage(1);
+    }, 300);
     return () => clearTimeout(timer);
   }, [search]);
 
-  const load = useCallback(async (cursor = null, append = false) => {
+  const load = useCallback(async () => {
     const version = ++requestVersion.current;
-    if (append) setLoadingMore(true);
-    else setLoading(true);
+    setLoading(true);
     setError('');
     try {
       const result = await sendRemoteMessage('item-edit-history', {
-        query: { limit: 20, cursor, itemId, accountId, userId, changeType }
+        query: {
+          limit: PAGE_SIZE,
+          page,
+          itemId,
+          accountId,
+          userId,
+          changeType,
+          ...historyPeriodQuery(period)
+        }
       });
       if (version !== requestVersion.current) return;
-      setEvents((current) => append ? current.concat(result.events || []) : result.events || []);
-      setNextCursor(result.nextCursor || null);
+      setEvents(result.events || []);
+      setTotal(Number(result.total) || 0);
+      setTotalPages(Math.max(1, Number(result.totalPages) || 1));
     } catch (loadError) {
       if (version === requestVersion.current) setError(userError(loadError, 'Não foi possível carregar o histórico.'));
     } finally {
-      if (version === requestVersion.current) {
-        setLoading(false);
-        setLoadingMore(false);
-      }
+      if (version === requestVersion.current) setLoading(false);
     }
-  }, [accountId, changeType, itemId, userId]);
+  }, [accountId, changeType, itemId, page, period, userId]);
 
   useEffect(() => { void load(); }, [load]);
 
-  const hasFilters = Boolean(search || accountId || userId || changeType);
+  const hasFilters = Boolean(search || accountId || userId || changeType || period.start || period.end);
   function clearFilters() {
     setSearch('');
     setItemId('');
     setAccountId('');
     setUserId('');
     setChangeType('');
+    setPeriod(EMPTY_PERIOD);
+    setPage(1);
   }
 
   return <div className="onframe-stack">
     <SectionHeader eyebrow="ANÚNCIOS" title="Alterações confirmadas" copy="Consulte o que foi alterado pela extensão, quando e por quem." />
-    <div className="onframe-history-filters" aria-label="Filtros do histórico">
-      <SearchInput value={search} onChange={setSearch} loading={loading && search !== itemId} placeholder="Buscar por ID do anúncio" ariaLabel="Buscar por ID do anúncio" width="100%" />
-      <Select options={accountOptions} value={accountOptions.find((option) => option.id === accountId)?.label || accountOptions[0].label} onChange={(label) => setAccountId(selectId(accountOptions, label))} label="Conta" />
-      {admin && <Select options={peopleOptions} value={peopleOptions.find((option) => option.id === userId)?.label || peopleOptions[0].label} onChange={(label) => setUserId(selectId(peopleOptions, label))} label="Pessoa" />}
-      <Select options={TYPE_OPTIONS} value={TYPE_OPTIONS.find((option) => option.id === changeType)?.label || TYPE_OPTIONS[0].label} onChange={(label) => setChangeType(selectId(TYPE_OPTIONS, label))} label="Tipo de alteração" />
-      {hasFilters && <Button kind="quiet" tone="neutral" onClick={clearFilters} icon={<Ph n="x-circle" size={17} />}>Limpar filtros</Button>}
+    <div className="onframe-history-toolbar" aria-label="Controles do histórico">
+      <SearchInput value={search} onChange={setSearch} loading={loading && String(search || '').trim().toUpperCase() !== itemId} placeholder="Buscar por ID do anúncio" ariaLabel="Buscar por ID do anúncio" width="100%" />
+      <div className="onframe-history-toolbar-actions">
+        <PeriodFilter period={period} onApply={(nextPeriod) => { setPeriod(nextPeriod); setPage(1); }} />
+        <HistoryFilters
+          accountOptions={accountOptions}
+          peopleOptions={peopleOptions}
+          admin={admin}
+          accountId={accountId}
+          userId={userId}
+          changeType={changeType}
+          onApply={(filters) => {
+            setAccountId(filters.accountId);
+            setUserId(filters.userId);
+            setChangeType(filters.changeType);
+            setPage(1);
+          }}
+        />
+        {hasFilters && <Button kind="quiet" tone="neutral" iconOnly aria-label="Limpar filtros" onClick={clearFilters} icon={<Ph n="x-circle" size={17} />} />}
+      </div>
     </div>
     {error && <Alert tone="danger" action="Tentar novamente" onAction={() => void load()}>{error}</Alert>}
     {loading ? <LoadingHistory /> : events.length === 0 && !error ? <Card padding={24}>
@@ -104,7 +324,10 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
       <div className="onframe-history-list">
         {events.map((event) => <ItemEditEventCard key={event.id} event={event} onOpenActor={onOpenActor} />)}
       </div>
-      {nextCursor && <div className="onframe-history-load-more"><Button kind="secondary" disabled={loadingMore} onClick={() => void load(nextCursor, true)} icon={loadingMore ? <Ph n="circle-notch" size={17} /> : <Ph n="caret-down" size={17} />}>{loadingMore ? 'Carregando' : 'Carregar mais'}</Button></div>}
+      <div className="onframe-history-pagination">
+        <span>{total === 1 ? '1 alteração' : `${total} alterações`}</span>
+        <Pagination page={page} total={totalPages} onChange={setPage} />
+      </div>
     </> : null}
   </div>;
 }

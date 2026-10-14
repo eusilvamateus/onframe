@@ -525,6 +525,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
       if (url.endsWith('/v1/extension-sessions/from-auth')) return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts')) return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
       if (url.endsWith('/v1/app/release')) return Response.json({ latestVersion: '0.6.0', changelogUrl: 'https://github.com/eusilvamateus/onframe/releases/tag/v0.6.0' });
+      if (url.includes('/v1/app/item-edit-history')) return Response.json({ events: [], page: 1, total: 0, totalPages: 1 });
       if (url.endsWith('/v1/accounts/123')) {
         const payload = options.method === 'PATCH' ? JSON.parse(options.body) : {};
         return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', displayName: payload.displayName || null, enabled: payload.enabled ?? true }] });
@@ -535,7 +536,8 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
       return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'OnFrame' } });
     },
     Headers,
-    Response
+    Response,
+    URLSearchParams
   };
   vm.runInNewContext(source, sandbox);
   const send = (message) => new Promise((resolve) => assert.equal(listener(message, {}, resolve), true));
@@ -585,6 +587,17 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(release.ok, true);
   assert.equal(release.body.latestVersion, '0.6.0');
   assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
+
+  const history = await send({
+    type: 'onframe:remote',
+    action: 'item-edit-history',
+    query: { page: 1, limit: 10, from: 1767240000000, to: 1767585599999 }
+  });
+  assert.equal(history.ok, true);
+  const historyUrl = new URL(requests.at(-1).url);
+  assert.equal(historyUrl.pathname, '/v1/app/item-edit-history');
+  assert.equal(historyUrl.searchParams.get('from'), '1767240000000');
+  assert.equal(historyUrl.searchParams.get('to'), '1767585599999');
 
   const updated = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', payload: { enabled: false } });
   assert.equal(updated.ok, true);
