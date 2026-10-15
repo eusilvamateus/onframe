@@ -8,6 +8,7 @@ extension/ui/options/app.css
 extension/ui/popup/app.js
 extension/ui/popup/app.css
 extension/core/period.js
+extension/core/datepicker.js
 extension/ui/options/*.ttf
 extension/ui/popup/*.ttf
 extension/ui/options/*.woff

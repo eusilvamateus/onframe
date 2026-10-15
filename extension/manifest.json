@@ -59,6 +59,7 @@
         "core/fonts.js",
         "core/icons.js",
         "core/period.js",
+        "core/datepicker.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",

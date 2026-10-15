@@ -14,6 +14,7 @@
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const formatarPeriodo = rootScope.OnFramePeriod && rootScope.OnFramePeriod.formatarPeriodo;
+    const Datepicker = rootScope.OnFrameDatepicker;
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -91,14 +92,11 @@
       promotionBulkEnabled: false,
       promotionConfirm: null,
       promotionFocusKey: '',
-      directDiscountDateErrors: {},
       promotionSearch: '',
       promotionStatusFilters: [],
       promotionTypeFilters: [],
       promotionFinancialFilters: [],
       promotionFiltersOpen: false,
-      datePickerRoot: null,
-      datePickerOutsideHandler: null,
       modalPositionFrame: null,
       promotionModalResume: null,
       promotionModalResumeFocus: '',
@@ -164,11 +162,10 @@
       state.promotionBulkEnabled = false;
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
-      state.directDiscountDateErrors = {};
       state.promotionModalResume = null;
       state.promotionModalResumeFocus = '';
       resetPromotionListFilters();
-      removeDatePicker();
+      unmountDatepickers();
       cancelModalPositionRestore();
       state.renderTimer = null;
       state.requestId += 1;
@@ -1089,7 +1086,7 @@
       const markup = buildPromotionModal();
       if (markup === state.lastModalMarkup) return;
       state.lastModalMarkup = markup;
-      removeDatePicker();
+      unmountDatepickers();
       removePromotionResultPopover();
       state.renderingPromotionModal = true;
       try {
@@ -1125,7 +1122,7 @@
       const markup = buildDirectDiscountModal();
       if (markup === state.lastDirectDiscountModalMarkup) return;
       state.lastDirectDiscountModalMarkup = markup;
-      removeDatePicker();
+      unmountDatepickers();
       state.renderingPromotionModal = true;
       try {
         state.directDiscountModalRoot.innerHTML = markup;
@@ -1298,36 +1295,14 @@
     function renderDirectDiscountDateRange(draft) {
       const startDate = draft && draft.start_date || '';
       const finishDate = draft && draft.finish_date || '';
-      const startValidation = directDiscountDateRangeValidation('start_date');
-      const finishValidation = directDiscountDateRangeValidation('finish_date');
 
       return `
         <div class="onframe-commerce-direct-discount-date-range" data-direct-discount-date-range>
-          <div class="onframe-commerce-direct-discount-date-range-fields">
-            <label class="onframe-commerce-field${startValidation ? ' warn' : ''}">
-              <span class="onframe-commerce-field-label">De</span>
-              <span class="ob-field-shell${startValidation ? ' is-error' : ''}">
-                <input class="ob-field-input" data-direct-discount-date-range-display="start_date" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="dd/mm/aaaa" value="${escapeAttribute(formatDateInput(startDate))}" aria-describedby="onframe-direct-discount-start-help" ${startValidation ? 'aria-invalid="true"' : ''}>
-              </span>
-              <input data-field="start_date" type="hidden" value="${escapeAttribute(startDate)}">
-              <small class="ob-field-help${startValidation ? ' is-error' : ''}" id="onframe-direct-discount-start-help" aria-live="polite">${startValidation ? escapeHtml(startValidation.message) : ''}</small>
-            </label>
-            <label class="onframe-commerce-field${finishValidation ? ' warn' : ''}">
-              <span class="onframe-commerce-field-label">Até</span>
-              <span class="ob-field-shell${finishValidation ? ' is-error' : ''}">
-                <input class="ob-field-input" data-direct-discount-date-range-display="finish_date" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="dd/mm/aaaa" value="${escapeAttribute(formatDateInput(finishDate))}" aria-describedby="onframe-direct-discount-finish-help" ${finishValidation ? 'aria-invalid="true"' : ''}>
-              </span>
-              <input data-field="finish_date" type="hidden" value="${escapeAttribute(finishDate)}">
-              <small class="ob-field-help${finishValidation ? ' is-error' : ''}" id="onframe-direct-discount-finish-help" aria-live="polite">${finishValidation ? escapeHtml(finishValidation.message) : ''}</small>
-            </label>
-          </div>
+          <div data-onframe-datepicker-root data-date-mode="range" data-date-label="Vigência"></div>
+          <input data-field="start_date" type="hidden" value="${escapeAttribute(startDate)}">
+          <input data-field="finish_date" type="hidden" value="${escapeAttribute(finishDate)}">
         </div>
       `;
-    }
-
-    function directDiscountDateRangeValidation(field) {
-      const message = state.directDiscountDateErrors && state.directDiscountDateErrors[field];
-      return message ? { tone: 'warn', message } : null;
     }
 
     function directDiscountActionLabel() {
@@ -3003,25 +2978,6 @@
       return Number.isNaN(date.getTime()) ? null : date;
     }
 
-    function formatDateInput(value) {
-      const date = parseIsoDate(value);
-      if (!date) return '';
-      return [
-        String(date.getDate()).padStart(2, '0'),
-        String(date.getMonth() + 1).padStart(2, '0'),
-        String(date.getFullYear())
-      ].join('/');
-    }
-
-    function parseDisplayDate(value) {
-      const text = String(value || '').trim();
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(text)) return null;
-      const [day, month, year] = text.split('/').map(Number);
-      const date = new Date(year, month - 1, day);
-      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-      return date;
-    }
-
     function parseIsoDate(value) {
       const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (!match) return null;
@@ -3042,22 +2998,6 @@
       ].join('-');
     }
 
-    function maskDateInput(value) {
-      const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
-      if (digits.length <= 2) return digits;
-      if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-      return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-    }
-
-    function formatDatePickerMonth(date) {
-      const month = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-      return month.charAt(0).toUpperCase() + month.slice(1);
-    }
-
-    function addMonths(date, amount) {
-      return new Date(date.getFullYear(), date.getMonth() + amount, 1);
-    }
-
     function renderPromotionFields(fields, key, entry) {
       const list = Array.isArray(fields) ? fields : [];
       if (!list.length) return '';
@@ -3074,14 +3014,10 @@
       const fieldClass = validation && validation.tone ? ` ${validation.tone}` : '';
       if (field === 'start_date' || field === 'finish_date') {
         return `
-          <label class="onframe-commerce-field onframe-commerce-date-field onframe-commerce-field-${escapeAttribute(field)}">
-            <span>${escapeHtml(CommerceModel.fieldLabel(field))}</span>
-            <div class="onframe-commerce-date-control">
-              <input class="onframe-commerce-date-display" data-date-display="${escapeAttribute(field)}" type="text" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="dd/mm/aaaa" value="${escapeAttribute(formatDateInput(value))}">
-              <input data-field="${escapeAttribute(field)}" type="hidden" value="${escapeAttribute(value)}">
-              <button class="onframe-commerce-date-button" data-action="open-date-picker" data-date-target="${escapeAttribute(field)}" type="button" aria-label="Escolher data">${icon('calendar', 14)}</button>
-            </div>
-          </label>
+          <div class="onframe-commerce-field onframe-commerce-date-field onframe-commerce-field-${escapeAttribute(field)}">
+            <div data-onframe-datepicker-root data-date-mode="single" data-date-field="${escapeAttribute(field)}" data-date-label="${escapeAttribute(CommerceModel.fieldLabel(field))}"></div>
+            <input data-field="${escapeAttribute(field)}" type="hidden" value="${escapeAttribute(value)}">
+          </div>
         `;
       }
 
@@ -3206,12 +3142,10 @@
           rerenderModal();
         });
       }
-      bindButton(state.modalRoot, 'open-date-picker', (button) => openDatePicker(button.closest('.onframe-commerce-date-field') && button.closest('.onframe-commerce-date-field').querySelector('[data-date-display]')));
       bindBulkControls(state.modalRoot);
       bindPromotionFieldDrafts(state.modalRoot);
       bindDirectDiscountFields(state.modalRoot);
-      bindDirectDiscountDateRange(state.modalRoot);
-      bindDateFields(state.modalRoot);
+      mountDatepickers(state.modalRoot);
     }
 
     function bindDirectDiscountModalEvents() {
@@ -3219,8 +3153,8 @@
       bindButton(state.directDiscountModalRoot, 'create-offer', (button) => void performPromotionAction(button, 'create'));
       bindButton(state.directDiscountModalRoot, 'cancel-promotion-form', cancelPromotionForm);
       bindDirectDiscountFields(state.directDiscountModalRoot);
-      bindDirectDiscountDateRange(state.directDiscountModalRoot);
       bindPromotionFieldDrafts(state.directDiscountModalRoot);
+      mountDatepickers(state.directDiscountModalRoot);
 
       const backdrop = state.directDiscountModalRoot.querySelector('.onframe-commerce-direct-discount-overlay');
       if (backdrop) {
@@ -3308,19 +3242,40 @@
       });
     }
 
-    function bindDateFields(container) {
-      container.querySelectorAll('[data-date-display]').forEach((input) => {
-        input.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          openDatePicker(input);
-        });
-        input.addEventListener('focus', () => openDatePicker(input));
-        input.addEventListener('input', () => syncTypedDate(input));
-        input.addEventListener('keydown', (event) => {
-          if (event.key === 'ArrowDown') {
-            event.preventDefault();
-            openDatePicker(input);
+    function mountDatepickers(container) {
+      if (!container || !Datepicker || typeof Datepicker.mount !== 'function') return;
+      container.querySelectorAll('[data-onframe-datepicker-root]').forEach((host) => {
+        const range = host.closest('[data-direct-discount-date-range]');
+        if (host.dataset.dateMode === 'range' && range) {
+          const start = range.querySelector('[data-field="start_date"]');
+          const finish = range.querySelector('[data-field="finish_date"]');
+          if (!start || !finish) return;
+          Datepicker.mount(host, {
+            mode: 'range',
+            label: host.dataset.dateLabel || 'Vigência',
+            error: host.dataset.dateError || undefined,
+            value: { start: parseIsoDate(start.value), end: parseIsoDate(finish.value) },
+            onChange: (value) => applyDirectDiscountDateRange(
+              range,
+              toIsoDate(value && value.start),
+              toIsoDate(value && value.end)
+            )
+          });
+          return;
+        }
+
+        const field = host.dataset.dateField;
+        const wrapper = host.closest('.onframe-commerce-date-field');
+        const input = wrapper && wrapper.querySelector(`[data-field="${field}"]`);
+        if (!field || !input) return;
+        Datepicker.mount(host, {
+          mode: 'single',
+          label: host.dataset.dateLabel || CommerceModel.fieldLabel(field),
+          stepper: 'day',
+          value: parseIsoDate(input.value),
+          onChange: (value) => {
+            input.value = toIsoDate(value);
+            savePromotionFieldDraft(input);
           }
         });
       });
@@ -3343,25 +3298,6 @@
             savePromotionFieldDraft(input);
             reviewPromotionFieldDraft(input);
           }, 0);
-        });
-      });
-    }
-
-    function bindDirectDiscountDateRange(container) {
-      container.querySelectorAll('[data-direct-discount-date-range]').forEach((range) => {
-        range.querySelectorAll('[data-direct-discount-date-range-display]').forEach((input) => {
-          input.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            openDirectDiscountDateRange(range);
-          });
-          input.addEventListener('focus', () => openDirectDiscountDateRange(range));
-          input.addEventListener('input', () => syncDirectDiscountDateRangeInput(range, input));
-          input.addEventListener('keydown', (event) => {
-            if (event.key !== 'ArrowDown') return;
-            event.preventDefault();
-            openDirectDiscountDateRange(range);
-          });
         });
       });
     }
@@ -3392,7 +3328,6 @@
       const card = input.closest('[data-entry-key]');
       const next = event && event.relatedTarget || document.activeElement;
       if (card && next && card.contains(next)) return false;
-      if (state.datePickerRoot && next && state.datePickerRoot.contains(next)) return false;
       return !next || typeof next.closest !== 'function' || !next.closest('[data-action]');
     }
 
@@ -3530,236 +3465,16 @@
       state.actionError = '';
     }
 
-    function openDatePicker(input) {
-      if (!input) return;
-      const field = input.closest('.onframe-commerce-date-field');
-      if (!field) return;
-      const hidden = field.querySelector(`[data-field="${input.dataset.dateDisplay}"]`);
-      if (!hidden) return;
-      removeDatePicker();
-
-      const monthDate = parseIsoDate(hidden.value) || parseDisplayDate(input.value) || new Date();
-      const root = document.createElement('div');
-      root.className = 'onframe-commerce-datepicker';
-      field.appendChild(root);
-      state.datePickerRoot = root;
-      renderDatePicker(root, input, hidden, new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-
-      state.datePickerOutsideHandler = (event) => {
-        if (field.contains(event.target)) return;
-        removeDatePicker();
-      };
-      setTimeout(() => document.addEventListener('click', state.datePickerOutsideHandler), 0);
-    }
-
-    function renderDatePicker(root, input, hidden, monthDate) {
-      const selectedIso = hidden.value || '';
-      root.dataset.month = toIsoDate(monthDate);
-      root.innerHTML = buildDatePickerMarkup(monthDate, selectedIso);
-
-      bindButton(root, 'date-prev-month', () => renderDatePicker(root, input, hidden, addMonths(monthDate, -1)));
-      bindButton(root, 'date-next-month', () => renderDatePicker(root, input, hidden, addMonths(monthDate, 1)));
-      bindButton(root, 'date-today', () => selectDate(input, hidden, new Date()));
-      bindButton(root, 'date-clear', () => {
-        input.value = '';
-        hidden.value = '';
-        savePromotionFieldDraft(hidden);
-        removeDatePicker();
-      });
-      root.querySelectorAll('[data-date-day]').forEach((button) => {
-        button.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const date = parseIsoDate(button.dataset.dateDay);
-          if (date) selectDate(input, hidden, date);
-        });
-      });
-    }
-
-    function buildDatePickerMarkup(monthDate, selectedIso) {
-      const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
-      const firstDay = monthStart.getDay();
-      const blanks = Array.from({ length: firstDay }, () => '<span></span>').join('');
-      const days = Array.from({ length: daysInMonth }, (_, index) => {
-        const day = index + 1;
-        const iso = toIsoDate(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
-        const selected = iso === selectedIso ? ' selected' : '';
-        return `<button class="onframe-commerce-date-day${selected}" data-date-day="${escapeAttribute(iso)}" type="button">${day}</button>`;
-      }).join('');
-
-      return `
-        <div class="onframe-commerce-datepicker-head">
-          <button data-action="date-prev-month" type="button" aria-label="Mês anterior">${icon('caretLeft', 14)}</button>
-          <strong>${escapeHtml(formatDatePickerMonth(monthStart))}</strong>
-          <button data-action="date-next-month" type="button" aria-label="Próximo mês">${icon('caretRight', 14)}</button>
-        </div>
-        <div class="onframe-commerce-datepicker-grid">
-          ${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day) => `<span class="onframe-commerce-date-weekday">${day}</span>`).join('')}
-          ${blanks}
-          ${days}
-        </div>
-        <div class="onframe-commerce-datepicker-foot">
-          <button data-action="date-clear" type="button">Limpar</button>
-          <button data-action="date-today" type="button">Hoje</button>
-        </div>
-      `;
-    }
-
-    function openDirectDiscountDateRange(range) {
-      if (!range) return;
-      const start = range.querySelector('[data-field="start_date"]');
-      const finish = range.querySelector('[data-field="finish_date"]');
-      const overlay = range.closest('.onframe-commerce-direct-discount-overlay');
-      if (!start || !finish || !overlay) return;
-      removeDatePicker();
-
-      const monthDate = parseIsoDate(start.value) || parseIsoDate(finish.value) || new Date();
-      const root = document.createElement('div');
-      root.className = 'onframe-commerce-datepicker onframe-commerce-datepicker-range onframe-commerce-datepicker-floating';
-      overlay.appendChild(root);
-      state.datePickerRoot = root;
-      renderDirectDiscountDateRangePicker(root, range, new Date(monthDate.getFullYear(), monthDate.getMonth(), 1));
-
-      state.datePickerOutsideHandler = (event) => {
-        if (range.contains(event.target) || root.contains(event.target)) return;
-        removeDatePicker();
-      };
-      setTimeout(() => document.addEventListener('click', state.datePickerOutsideHandler), 0);
-    }
-
-    function renderDirectDiscountDateRangePicker(root, range, monthDate) {
-      const start = range.querySelector('[data-field="start_date"]');
-      const finish = range.querySelector('[data-field="finish_date"]');
-      if (!start || !finish) return;
-      root.dataset.month = toIsoDate(monthDate);
-      root.innerHTML = buildDirectDiscountDateRangePickerMarkup(monthDate, start.value, finish.value);
-      positionDirectDiscountDateRangePicker(root, range);
-
-      bindButton(root, 'date-prev-month', () => renderDirectDiscountDateRangePicker(root, range, addMonths(monthDate, -1)));
-      bindButton(root, 'date-next-month', () => renderDirectDiscountDateRangePicker(root, range, addMonths(monthDate, 1)));
-      bindButton(root, 'date-range-clear', () => applyDirectDiscountDateRange(range, '', ''));
-      root.querySelectorAll('[data-date-day]').forEach((button) => {
-        button.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          selectDirectDiscountDateRange(range, button.dataset.dateDay);
-        });
-      });
-    }
-
-    function positionDirectDiscountDateRangePicker(root, range) {
-      const overlay = range.closest('.onframe-commerce-direct-discount-overlay');
-      if (!overlay || !root || typeof range.getBoundingClientRect !== 'function') return;
-      const overlayRect = overlay.getBoundingClientRect();
-      const rangeRect = range.getBoundingClientRect();
-      const pickerRect = root.getBoundingClientRect();
-      const gap = 8;
-      const margin = 12;
-      const availableBelow = overlayRect.bottom - rangeRect.bottom - gap;
-      const availableAbove = rangeRect.top - overlayRect.top - gap;
-      const preferredTop = availableBelow >= pickerRect.height || availableBelow >= availableAbove
-        ? rangeRect.bottom - overlayRect.top + gap
-        : rangeRect.top - overlayRect.top - pickerRect.height - gap;
-      const maxTop = Math.max(margin, overlayRect.height - pickerRect.height - margin);
-      const maxLeft = Math.max(margin, overlayRect.width - pickerRect.width - margin);
-      root.style.top = `${Math.round(Math.max(margin, Math.min(preferredTop, maxTop)))}px`;
-      root.style.left = `${Math.round(Math.max(margin, Math.min(rangeRect.left - overlayRect.left, maxLeft)))}px`;
-    }
-
-    function buildDirectDiscountDateRangePickerMarkup(monthDate, startIso, finishIso) {
-      const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-      const daysInMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate();
-      const firstDay = monthStart.getDay();
-      const blanks = Array.from({ length: firstDay }, () => '<span></span>').join('');
-      const days = Array.from({ length: daysInMonth }, (_, index) => {
-        const day = index + 1;
-        const iso = toIsoDate(new Date(monthStart.getFullYear(), monthStart.getMonth(), day));
-        const rangeStart = iso === startIso ? ' range-start' : '';
-        const rangeEnd = iso === finishIso ? ' range-end' : '';
-        const inRange = startIso && finishIso && iso > startIso && iso < finishIso ? ' in-range' : '';
-        return `<button class="onframe-commerce-date-day${rangeStart}${rangeEnd}${inRange}" data-date-day="${escapeAttribute(iso)}" type="button">${day}</button>`;
-      }).join('');
-
-      return `
-        <div class="onframe-commerce-datepicker-head">
-          <button data-action="date-prev-month" type="button" aria-label="Mês anterior">${icon('caretLeft', 14)}</button>
-          <strong>${escapeHtml(formatDatePickerMonth(monthStart))}</strong>
-          <button data-action="date-next-month" type="button" aria-label="Próximo mês">${icon('caretRight', 14)}</button>
-        </div>
-        <div class="onframe-commerce-datepicker-grid">
-          ${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day) => `<span class="onframe-commerce-date-weekday">${day}</span>`).join('')}
-          ${blanks}
-          ${days}
-        </div>
-        <div class="onframe-commerce-datepicker-foot">
-          <button data-action="date-range-clear" type="button">Limpar</button>
-        </div>
-      `;
-    }
-
-    function selectDirectDiscountDateRange(range, iso) {
-      const date = parseIsoDate(iso);
-      if (!date) return;
-      const start = range.querySelector('[data-field="start_date"]');
-      const finish = range.querySelector('[data-field="finish_date"]');
-      if (!start || !finish) return;
-      if (!start.value || finish.value || iso < start.value) {
-        applyDirectDiscountDateRange(range, iso, '');
-        if (state.datePickerRoot) {
-          renderDirectDiscountDateRangePicker(state.datePickerRoot, range, new Date(date.getFullYear(), date.getMonth(), 1));
-        }
-        return;
-      }
-      applyDirectDiscountDateRange(range, start.value, iso);
-      removeDatePicker();
-    }
-
-    function syncDirectDiscountDateRangeInput(range, input) {
-      input.value = maskDateInput(input.value);
-      const field = input.dataset.directDiscountDateRangeDisplay;
-      const date = parseDisplayDate(input.value);
-      if (!date) {
-        if (input.value.length === 10) setDirectDiscountDateRangeError(range, field, 'Informe uma data válida.');
-        else setDirectDiscountDateRangeError(range, field, '');
-        return;
-      }
-
-      const iso = toIsoDate(date);
-      const start = range.querySelector('[data-field="start_date"]');
-      const finish = range.querySelector('[data-field="finish_date"]');
-      if (!start || !finish) return;
-      if (field === 'start_date') {
-        applyDirectDiscountDateRange(range, iso, '');
-      } else if (!start.value) {
-        setDirectDiscountDateRangeError(range, field, 'Escolha a data inicial primeiro.');
-        return;
-      } else if (iso < start.value) {
-        setDirectDiscountDateRangeError(range, field, 'A data final deve ser posterior à inicial.');
-        return;
-      } else {
-        applyDirectDiscountDateRange(range, start.value, iso);
-      }
-      if (state.datePickerRoot) {
-        renderDirectDiscountDateRangePicker(state.datePickerRoot, range, new Date(date.getFullYear(), date.getMonth(), 1));
-      }
-    }
-
     function applyDirectDiscountDateRange(range, startIso, finishIso) {
       const card = range.closest('[data-entry-key]');
       const key = card && card.dataset ? card.dataset.entryKey : '';
       const entry = card ? getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex)) : null;
       const start = range.querySelector('[data-field="start_date"]');
       const finish = range.querySelector('[data-field="finish_date"]');
-      const startDisplay = range.querySelector('[data-direct-discount-date-range-display="start_date"]');
-      const finishDisplay = range.querySelector('[data-direct-discount-date-range-display="finish_date"]');
-      if (!key || !entry || !start || !finish || !startDisplay || !finishDisplay) return;
+      if (!key || !entry || !start || !finish) return;
 
       start.value = startIso;
       finish.value = finishIso;
-      startDisplay.value = formatDateInput(startIso);
-      finishDisplay.value = formatDateInput(finishIso);
-      state.directDiscountDateErrors = {};
       state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, {
         start_date: startIso,
         finish_date: finishIso
@@ -3773,49 +3488,15 @@
       syncPromotionModalMarkupCache();
     }
 
-    function setDirectDiscountDateRangeError(range, field, message) {
-      state.directDiscountDateErrors = Object.assign({}, state.directDiscountDateErrors, {
-        [field]: message
-      });
-      const input = range.querySelector(`[data-direct-discount-date-range-display="${field}"]`);
-      updatePromotionFieldFeedback(input && input.closest('.onframe-commerce-field'), directDiscountDateRangeValidation(field));
-      syncPromotionModalMarkupCache();
-    }
-
     function clearDirectDiscountEstimate(key) {
       clearPromotionEstimateTimer(key);
       delete state.promotionEstimates[key];
     }
 
-    function syncTypedDate(input) {
-      input.value = maskDateInput(input.value);
-      const field = input.closest('.onframe-commerce-date-field');
-      const hidden = field ? field.querySelector(`[data-field="${input.dataset.dateDisplay}"]`) : null;
-      if (!hidden) return;
-      const date = parseDisplayDate(input.value);
-      hidden.value = date ? toIsoDate(date) : '';
-      savePromotionFieldDraft(hidden);
-      if (date && state.datePickerRoot) {
-        renderDatePicker(state.datePickerRoot, input, hidden, new Date(date.getFullYear(), date.getMonth(), 1));
-      }
-    }
-
-    function selectDate(input, hidden, date) {
-      const iso = toIsoDate(date);
-      input.value = formatDateInput(iso);
-      hidden.value = iso;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      hidden.dispatchEvent(new Event('change', { bubbles: true }));
-      removeDatePicker();
-    }
-
-    function removeDatePicker() {
-      if (state.datePickerOutsideHandler) {
-        document.removeEventListener('click', state.datePickerOutsideHandler);
-        state.datePickerOutsideHandler = null;
-      }
-      if (state.datePickerRoot) state.datePickerRoot.remove();
-      state.datePickerRoot = null;
+    function unmountDatepickers() {
+      if (!Datepicker || typeof Datepicker.unmountWithin !== 'function') return;
+      Datepicker.unmountWithin(state.modalRoot);
+      Datepicker.unmountWithin(state.directDiscountModalRoot);
     }
 
     function cancelModalPositionRestore() {
@@ -3863,16 +3544,16 @@
       const card = active.closest && active.closest('[data-entry-key]');
       const key = card && card.dataset ? card.dataset.entryKey : '';
       const field = active.dataset ? active.dataset.field : '';
-      const dateDisplay = active.dataset ? active.dataset.dateDisplay : '';
       const directDiscountField = active.dataset ? active.dataset.directDiscountField : '';
-      const directDiscountDateRangeDisplay = active.dataset ? active.dataset.directDiscountDateRangeDisplay : '';
-      if (!key || (!field && !dateDisplay && !directDiscountField && !directDiscountDateRangeDisplay)) return null;
+      const datepicker = active.closest && active.closest('[data-onframe-datepicker-root]');
+      const datepickerField = datepicker && (datepicker.dataset.dateField || datepicker.dataset.dateMode) || '';
+      if (!key || (!field && !directDiscountField && !datepickerField)) return null;
       return {
         key,
         field,
-        dateDisplay,
         directDiscountField,
-        directDiscountDateRangeDisplay,
+        datepickerField,
+        datepickerInput: datepicker ? Array.from(datepicker.querySelectorAll('input')).indexOf(active) : -1,
         start: typeof active.selectionStart === 'number' ? active.selectionStart : null,
         end: typeof active.selectionEnd === 'number' ? active.selectionEnd : null
       };
@@ -3888,14 +3569,15 @@
         if (snapshot.start !== null && typeof search.setSelectionRange === 'function') search.setSelectionRange(snapshot.start, snapshot.end);
         return;
       }
-      const selector = snapshot.dateDisplay
-        ? `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-date-display="${escapeAttribute(snapshot.dateDisplay)}"]`
-        : snapshot.directDiscountDateRangeDisplay
-          ? `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-direct-discount-date-range-display="${escapeAttribute(snapshot.directDiscountDateRangeDisplay)}"]`
+      const selector = snapshot.datepickerField
+        ? `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-onframe-datepicker-root][data-${snapshot.datepickerField === 'range' ? 'date-mode' : 'date-field'}="${escapeAttribute(snapshot.datepickerField)}"]`
         : snapshot.directDiscountField
           ? `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-direct-discount-field="${escapeAttribute(snapshot.directDiscountField)}"]`
         : `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-field="${escapeAttribute(snapshot.field)}"]`;
-      const input = modalRoot.querySelector(selector);
+      const target = modalRoot.querySelector(selector);
+      const input = snapshot.datepickerField
+        ? target && target.querySelectorAll('input')[Math.max(0, snapshot.datepickerInput)]
+        : target;
       if (!input || typeof input.focus !== 'function') return;
       input.focus({ preventScroll: true });
       if (snapshot.start !== null && typeof input.setSelectionRange === 'function') {
@@ -4226,7 +3908,6 @@
       state.promotionFormAction = '';
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
-      state.directDiscountDateErrors = {};
       state.promotionModalResume = null;
       state.promotionModalResumeFocus = '';
       state.promotionDraftValues = {};
@@ -4373,7 +4054,6 @@
       state.promotionFormAction = 'create';
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
-      state.directDiscountDateErrors = {};
       ensureDirectDiscountDraft(key, entry);
       state.actionError = '';
       state.promotionModalOpen = false;
@@ -4394,11 +4074,10 @@
       state.promotionEstimates = {};
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
-      state.directDiscountDateErrors = {};
       state.promotionModalResume = null;
       state.promotionModalResumeFocus = '';
       resetPromotionListFilters();
-      removeDatePicker();
+      unmountDatepickers();
       cancelModalPositionRestore();
       removeModal();
       removeDirectDiscountModal();
@@ -4530,10 +4209,9 @@
       state.promotionFormAction = '';
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
-      state.directDiscountDateErrors = {};
       state.promotionBulkEnabled = false;
       state.actionError = '';
-      removeDatePicker();
+      unmountDatepickers();
       if (returningFromDirectDiscount) {
         state.directDiscountModalOpen = false;
         state.promotionModalOpen = true;
@@ -4547,7 +4225,6 @@
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
       state.promotionDraftValues = {};
-      state.directDiscountDateErrors = {};
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
       if (!state.context || !state.itemId) {
@@ -4987,12 +4664,14 @@
     function removeModal() {
       clearPromotionModalTransition();
       removePromotionResultPopover();
+      if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.modalRoot);
       if (state.modalRoot) state.modalRoot.remove();
       state.modalRoot = null;
       state.lastModalMarkup = '';
     }
 
     function removeDirectDiscountModal() {
+      if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.directDiscountModalRoot);
       if (state.directDiscountModalRoot) state.directDiscountModalRoot.remove();
       state.directDiscountModalRoot = null;
       state.lastDirectDiscountModalMarkup = '';

@@ -167,6 +167,7 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   assert.equal(manifest.options_ui.page, 'ui/options/index.html');
   assert.ok(manifest.content_scripts[0].js.indexOf('core/fonts.js') < manifest.content_scripts[0].js.indexOf('core/icons.js'));
   assert.ok(manifest.content_scripts[0].js.indexOf('core/period.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
+  assert.ok(manifest.content_scripts[0].js.indexOf('core/datepicker.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'launcher')), false);
 });
 

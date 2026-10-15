@@ -921,6 +921,12 @@
   position: relative;
 }
 
+.onframe-commerce-date-field [data-onframe-datepicker-root],
+.onframe-commerce-direct-discount-date-range [data-onframe-datepicker-root] {
+  width: 100%;
+  min-width: 0;
+}
+
 .onframe-commerce-field.warn > input:not([type="hidden"]) {
   border-color: color-mix(in srgb, var(--ob-red) 70%, var(--ob-border));
   background: var(--ob-red-100);
@@ -946,142 +952,6 @@
 
 .onframe-commerce-field.ok .onframe-commerce-field-help {
   color: var(--ob-green-700);
-}
-
-.onframe-commerce-date-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px;
-  align-items: center;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.onframe-commerce-date-control input.onframe-commerce-date-display {
-  min-height: 36px;
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-}
-
-.onframe-commerce-date-control input.onframe-commerce-date-display:focus {
-  border-color: transparent;
-  box-shadow: none;
-}
-
-.onframe-commerce-date-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-right: 4px;
-  border: 0;
-  border-radius: var(--ob-r-xs);
-  background: transparent;
-  color: var(--ob-ink-soft);
-  cursor: pointer;
-}
-
-.onframe-commerce-date-button:hover {
-  background: var(--ob-blue-100);
-  color: var(--ob-blue-700);
-}
-
-.onframe-commerce-datepicker {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: var(--ob-z-dropdown);
-  width: 286px;
-  padding: 12px;
-  border: 1px solid var(--ob-line);
-  border-radius: var(--ob-r-md);
-  background: var(--ob-surface);
-  box-shadow: var(--ob-shadow-lg);
-}
-
-.onframe-commerce-datepicker-head {
-  display: grid;
-  grid-template-columns: 30px 1fr 30px;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.onframe-commerce-datepicker-head strong {
-  color: var(--ob-ink-strong);
-  text-align: center;
-  font: 700 12px/1.2 var(--ob-font);
-}
-
-.onframe-commerce-datepicker-head button,
-.onframe-commerce-datepicker-foot button {
-  min-height: 30px;
-  border: 0;
-  border-radius: var(--ob-r-xs);
-  background: transparent;
-  color: var(--ob-blue);
-  cursor: pointer;
-  font: 700 12px/1 var(--ob-font);
-}
-
-.onframe-commerce-datepicker-head button:hover,
-.onframe-commerce-datepicker-foot button:hover {
-  background: var(--ob-blue-100);
-}
-
-.onframe-commerce-datepicker-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-
-.onframe-commerce-date-weekday {
-  padding: 5px 0;
-  color: var(--ob-ink-soft);
-  text-align: center;
-  font: 700 10px/1 var(--ob-font);
-}
-
-.onframe-commerce-date-day {
-  min-width: 0;
-  height: 31px;
-  border: 0;
-  border-radius: var(--ob-r-xs);
-  background: var(--ob-surface);
-  color: var(--ob-ink-strong);
-  cursor: pointer;
-  font: 600 12px/1 var(--ob-font);
-}
-
-.onframe-commerce-date-day:hover {
-  background: var(--ob-blue-100);
-  color: var(--ob-blue-700);
-}
-
-.onframe-commerce-date-day.selected {
-  background: var(--ob-blue);
-  color: var(--ob-fg-on-color);
-}
-
-.onframe-commerce-date-day.range-start,
-.onframe-commerce-date-day.range-end {
-  background: var(--ob-blue);
-  color: var(--ob-fg-on-color);
-}
-
-.onframe-commerce-date-day.in-range {
-  border-radius: 0;
-  background: var(--ob-blue-100);
-  color: var(--ob-blue-700);
-}
-
-.onframe-commerce-datepicker-foot {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--ob-line);
 }
 
 .onframe-commerce-backdrop {
@@ -1630,10 +1500,6 @@
   border-top: 1px solid var(--ob-line);
 }
 
-.onframe-commerce-datepicker-range .onframe-commerce-datepicker-foot {
-  justify-content: flex-start;
-}
-
 .onframe-commerce-modal {
   width: min(980px, calc(100vw - 36px));
   height: min(780px, calc(100vh - 36px));
@@ -1846,17 +1712,6 @@
 
 .onframe-commerce-direct-discount-date-range {
   position: relative;
-}
-
-.onframe-commerce-direct-discount-date-range-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: var(--ob-gap-md);
-}
-
-.onframe-commerce-direct-discount-date-range .onframe-commerce-datepicker {
-  width: min(300px, calc(100vw - 72px));
 }
 
 .onframe-commerce-direct-discount-actions {

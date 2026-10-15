@@ -53,6 +53,22 @@ builds.push(esbuild.build({
   logLevel: 'info'
 }));
 
+fs.rmSync(path.join(root, 'extension', 'core', 'datepicker.js'), { force: true });
+builds.push(esbuild.build({
+  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'datepicker-bridge.jsx')],
+  outfile: path.join(root, 'extension', 'core', 'datepicker.js'),
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: ['chrome110'],
+  jsx: 'automatic',
+  minify: true,
+  alias: reactAliases,
+  loader: { '.svg': 'text' },
+  logLevel: 'info',
+  metafile: true
+}).then(assertSingleReact));
+
 Promise.all(builds).catch(() => process.exit(1));
 
 function assertSingleReact(result) {

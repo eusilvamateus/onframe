@@ -676,8 +676,7 @@
 }
 
 .ob-field,
-.onframe-commerce-field > input:not([type="hidden"]),
-.onframe-commerce-date-control {
+.onframe-commerce-field > input:not([type="hidden"]) {
   border: 1.5px solid var(--ob-border);
   border-radius: var(--ob-r-control);
   background: var(--ob-surface);
@@ -693,8 +692,7 @@
 }
 
 .ob-field:focus,
-.onframe-commerce-field > input:not([type="hidden"]):focus,
-.onframe-commerce-date-control:focus-within {
+.onframe-commerce-field > input:not([type="hidden"]):focus {
   border-color: var(--ob-blue);
   box-shadow: 0 0 0 3px var(--ob-focus-ring);
   outline: none;

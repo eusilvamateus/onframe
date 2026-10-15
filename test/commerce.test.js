@@ -263,16 +263,20 @@ test('commerce model preserva mensagem amigavel ja traduzida', () => {
   );
 });
 
-test('promocoes usam datepicker OnFrame em vez do calendario nativo', () => {
+test('promocoes montam o Datepicker oficial sem calendario proprio', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const bridge = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'datepicker-bridge.jsx'), 'utf8');
 
   assert.strictEqual(source.includes('type="date"'), false);
-  assert.match(source, /onframe-commerce-datepicker/);
-  assert.match(source, /data-date-display/);
-  assert.match(source, /data-direct-discount-date-range-display/);
-  assert.match(source, /function buildDirectDiscountDateRangePickerMarkup/);
-  assert.match(source, /data-action="date-range-clear"/);
-  assert.strictEqual(icons.resolve('calendar'), 'calendar');
+  assert.match(source, /const Datepicker = rootScope\.OnFrameDatepicker/);
+  assert.match(source, /data-onframe-datepicker-root/);
+  assert.match(source, /stepper: 'day'/);
+  assert.match(source, /mode: 'range'/);
+  assert.doesNotMatch(source, /function buildDatePickerMarkup|function buildDirectDiscountDateRangePickerMarkup/);
+  assert.match(bridge, /import \{ Datepicker \} from '@onblide\/ui'/);
+  assert.match(bridge, /mode="range"/);
+  assert.match(bridge, /stepper=\{options\.stepper\}/);
+  assert.match(bridge, /calendarDisplay="popover"/);
 });
 
 test('popover de preco resume valores e custos em um card horizontal', () => {
@@ -393,7 +397,7 @@ test('modal de promocoes preserva posicao ao revisar oferta', () => {
   assert.match(source, /state\.modalPositionFrame = requestAnimationFrame/);
   assert.match(source, /function cancelModalPositionRestore/);
   assert.match(source, /card\.contains\(next\)/);
-  assert.match(source, /state\.datePickerRoot/);
+  assert.match(source, /datepickerField/);
   assert.match(source, /data-entry-key/);
 });
 
@@ -442,12 +446,9 @@ test('modal cria desconto direto em dialogo separado da tabela', () => {
   assert.doesNotMatch(directDiscountSource, /cancel-promotion-confirm/);
   assert.match(source, /if \(!confirming && !entry\.direct_discount_draft\)/);
   assert.match(source, /function renderDirectDiscountDateRange/);
-  assert.match(source, /function selectDirectDiscountDateRange/);
-  assert.match(source, /function positionDirectDiscountDateRangePicker/);
-  assert.match(source, /onframe-commerce-datepicker-floating/);
-  assert.match(source, /applyDirectDiscountDateRange\(range, start\.value, iso\);[\s\S]{0,80}removeDatePicker\(\);/);
-  assert.match(source, /date-range-clear/);
-  assert.doesNotMatch(source.slice(source.indexOf('function buildDirectDiscountDateRangePickerMarkup'), source.indexOf('function selectDirectDiscountDateRange')), /Hoje/);
+  assert.match(source, /data-onframe-datepicker-root data-date-mode="range"/);
+  assert.match(source, /Datepicker\.mount\(host, \{[\s\S]*mode: 'range'/);
+  assert.match(source, /onChange: \(value\) => applyDirectDiscountDateRange/);
   assert.match(source, /function promotionDraftWarning/);
   assert.match(source, /const draftWarning = promotionDraftWarning\(entry, values\);/);
   assert.match(source, /groups\.activeOffers,[\s\S]*groups\.scheduledOffers[\s\S]*\.flat\(\)\.find\(isPriceDiscountPromotion\)/);
@@ -459,8 +460,8 @@ test('modal cria desconto direto em dialogo separado da tabela', () => {
   assert.match(styles, /\.onframe-commerce-direct-discount \.onframe-commerce-field\s*{\s*grid-template-rows: 14px 44px minmax\(14px, auto\)/s);
   assert.match(styles, /\.onframe-commerce-direct-discount \.ob-field-shell > \.ob-field-input:focus-visible[\s\S]*?border: 0;[\s\S]*?outline: 0;[\s\S]*?box-shadow: none;/);
   assert.match(styles, /\.onframe-commerce-direct-discount-summary\s*{[\s\S]*min-height: 88px/s);
-  assert.match(styles, /\.onframe-commerce-date-day\.in-range/);
-  assert.match(styles, /\.onframe-commerce-datepicker-range .onframe-commerce-datepicker-foot/);
+  assert.match(styles, /\.onframe-commerce-direct-discount-date-range \[data-onframe-datepicker-root\]/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-datepicker/);
 });
 
 test('filtro de promocoes fecha fora do painel e antes do desconto direto', () => {
