@@ -10,6 +10,11 @@ O popup usa esse contrato para um resumo recente e direto. As opcoes da
 extensao usam a mesma consulta paginada, com filtros, para apresentar o
 relatorio completo.
 
+Na listagem completa, cada evento permanece resumido ate a pessoa acionar
+`Ver detalhes`. A expansao acontece dentro do proprio card e apresenta somente
+o conteudo pertinente ao tipo de alteracao, sem abrir outra pagina ou modal.
+Eventos sem detalhes estruturados permanecem sem essa acao.
+
 ## Conteudo registrado
 
 Cada evento identifica o workspace, a conta conectada, a pessoa, o anuncio, o

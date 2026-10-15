@@ -19,6 +19,22 @@ const firstEvent = {
   createdAt: '2026-10-13T12:00:00.000Z'
 };
 
+const promotionEvent = {
+  ...firstEvent,
+  id: 'event-promotion',
+  changeType: 'promotion',
+  action: 'created',
+  summary: 'Promoção adicionada',
+  operation: 'promotion.offer.create',
+  details: {
+    promotion: { type: 'SELLER_CAMPAIGN', id: 'C-MLB123', offerId: null, name: 'Desconto de Outubro' },
+    before: { status: 'inactive', price: { amount: 100, currency: 'BRL' }, discountPercentage: null, stock: null, startDate: null, endDate: null },
+    after: { status: 'active', price: { amount: 80, currency: 'BRL' }, discountPercentage: 20, stock: null, startDate: '2026-10-01', endDate: '2026-10-31' },
+    changedFields: ['status', 'price', 'discountPercentage', 'startDate', 'endDate'],
+    origin: { mode: 'bulk', scope: 'user_product_family' }
+  }
+};
+
 function installChromeMock(messages: Array<Record<string, unknown>>, firstPageEvents = [firstEvent]) {
   globalThis.document = {
     addEventListener() {},
@@ -75,6 +91,66 @@ test('data compacta preserva leitura curta sem perder a data completa', () => {
   assert.equal(formatRelativeDate('2026-10-13T12:10:00.000Z', reference), 'há 50 min');
   assert.equal(formatRelativeDate('2026-10-13T07:00:00.000Z', reference), 'há 6 h');
   assert.equal(formatRelativeDate('2026-10-11T13:00:00.000Z', reference), 'há 2 dias');
+});
+
+test('card revela detalhes da promocao no proprio item do historico', async () => {
+  let renderer;
+  await act(async () => { renderer = create(<ItemEditEventCard event={promotionEvent} />); });
+
+  let output = JSON.stringify(renderer.toJSON());
+  assert.equal(output.includes('Desconto de Outubro'), false);
+  const disclosure = renderer.root.findAllByType(Button).find((button) => String(button.props['aria-label']).startsWith('Ver detalhes'));
+  assert.ok(disclosure);
+  assert.equal(disclosure.props.kind, 'quiet');
+  assert.equal(disclosure.props.pressed, false);
+  assert.equal(disclosure.props['aria-expanded'], false);
+
+  await act(async () => disclosure.props.onClick());
+  output = JSON.stringify(renderer.toJSON());
+  assert.equal(output.includes('Desconto de Outubro'), true);
+  assert.equal(output.includes('Campanha do vendedor'), true);
+  assert.equal(output.includes('R$ 100,00'), true);
+  assert.equal(output.includes('R$ 80,00'), true);
+  assert.equal(output.includes('Aplicada à família de anúncios.'), true);
+  assert.ok(renderer.root.findByProps({ 'aria-label': 'Alteração de promoção' }));
+
+  const closeDisclosure = renderer.root.findAllByType(Button).find((button) => String(button.props['aria-label']).startsWith('Ocultar detalhes'));
+  assert.equal(closeDisclosure.props.pressed, true);
+  assert.equal(closeDisclosure.props['aria-expanded'], true);
+  renderer.unmount();
+});
+
+test('cards detalham descricao ficha tecnica e fotos somente quando existe conteudo', async () => {
+  const cases = [
+    {
+      event: { ...firstEvent, id: 'description', changeType: 'description', action: 'updated', summary: 'Descrição alterada', details: { before: { exists: true, length: 120 }, after: { exists: true, length: 180 } } },
+      expected: ['Descrição existente', 'Descrição atualizada', '180 caracteres']
+    },
+    {
+      event: { ...firstEvent, id: 'characteristics', changeType: 'characteristics', action: 'updated', summary: '1 característica alterada', details: { changes: [{ id: 'COLOR', label: 'Cor', before: 'Azul', after: 'Verde' }] } },
+      expected: ['Cor', 'Azul', 'Verde']
+    },
+    {
+      event: { ...firstEvent, id: 'pictures', changeType: 'pictures', action: 'updated', summary: 'Fotos alteradas', details: { beforeCount: 2, afterCount: 3, added: [{ id: 'C', thumbnailUrl: '' }], removed: [], reordered: true } },
+      expected: ['2 fotos', '3 fotos', 'Foto adicionada', 'A ordem das fotos foi alterada.']
+    }
+  ];
+
+  for (const entry of cases) {
+    let renderer;
+    await act(async () => { renderer = create(<ItemEditEventCard event={entry.event} />); });
+    const disclosure = renderer.root.findAllByType(Button).find((button) => String(button.props['aria-label']).startsWith('Ver detalhes'));
+    assert.ok(disclosure);
+    await act(async () => disclosure.props.onClick());
+    const output = JSON.stringify(renderer.toJSON());
+    entry.expected.forEach((text) => assert.equal(output.includes(text), true));
+    renderer.unmount();
+  }
+
+  let legacyRenderer;
+  await act(async () => { legacyRenderer = create(<ItemEditEventCard event={{ ...promotionEvent, id: 'legacy', detailsVersion: 0, details: {} }} />); });
+  assert.equal(legacyRenderer.root.findAllByType(Button).some((button) => String(button.props['aria-label']).startsWith('Ver detalhes')), false);
+  legacyRenderer.unmount();
 });
 
 test('periodo personalizado gera limites locais completos para a consulta', () => {
@@ -171,6 +247,10 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   const actorLink = renderer.root.findAllByType(Link).find((link) => link.props.href === '#configuracoes-workspace-people');
   await act(async () => actorLink.props.onClick({ preventDefault() {} }));
   assert.equal(openedActor.id, 'user-1');
+  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Alteração de preço' }).length, 0);
+  const detailButton = renderer.root.findAllByType(Button).find((button) => String(button.props['aria-label']).startsWith('Ver detalhes de Produto de teste'));
+  assert.ok(detailButton);
+  await act(async () => detailButton.props.onClick());
   assert.equal(renderer.root.findByProps({ 'aria-label': 'Alteração de preço' }).children.length > 0, true);
   const pagination = renderer.root.findByType(Pagination);
   await act(async () => {
