@@ -46,7 +46,7 @@ function installChromeMock(messages: Array<Record<string, unknown>>, firstPageEv
       sendMessage(message, callback) {
         messages.push(message);
         const page = Number(message.query?.page || 1);
-        callback({ ok: true, body: page === 2
+        callback({ ok: true, body: message.query?.cursor || page === 2
           ? { events: [{ ...firstEvent, id: 'event-2' }], page: 2, total: 11, totalPages: 2, nextCursor: null }
           : { events: firstPageEvents, page: 1, total: firstPageEvents.length ? 11 : 0, totalPages: firstPageEvents.length ? 2 : 1, nextCursor: firstPageEvents.length ? '100.event-cursor' : null } });
       }
@@ -64,22 +64,35 @@ test('popup resume alteracoes recentes e abre o relatorio completo', async () =>
     renderer = create(<HistorySession
       connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace' } }}
       onBack={() => {}}
-      onOpenOptions={() => {}}
       onOpenFullHistory={() => { opened = true; }}
+      header={<div data-popup-user-header="true" />}
     />);
   });
 
   assert.equal(messages[0].action, 'item-edit-history');
-  assert.equal(messages[0].query.limit, 20);
+  assert.equal(messages[0].query.limit, 5);
+  assert.equal(renderer.root.findByProps({ 'data-popup-user-header': 'true' }).type, 'div');
+  const backButton = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Voltar');
+  assert.equal(backButton.props.kind, 'quiet');
+  assert.equal(backButton.props.tone, 'primary');
+  assert.equal(backButton.props.size, 'sm');
+  assert.equal(backButton.props.icon.props.n, 'caret-circle-left');
   assert.equal(renderer.root.findByType(ItemEditEventCard).props.compact, true);
   assert.equal(renderer.root.findByType(Avatar).props.src, 'https://example.com/mateus.jpg');
-  const accountBadge = renderer.root.findByType(Badge);
-  assert.equal(accountBadge.props.tone, 'grey');
-  assert.equal(accountBadge.props.size, 'sm');
-  assert.equal(accountBadge.props.dot, false);
-  assert.equal(accountBadge.props.children.props.children, 'Loja principal');
+  assert.equal(renderer.root.findByProps({ className: 'onframe-history-compact-account' }).children[0], 'Loja principal');
   assert.equal(renderer.root.findByType('time').props.dateTime, firstEvent.createdAt);
-  const fullHistory = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Abrir histórico completo');
+  const loadMore = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Carregar mais');
+  assert.equal(loadMore.props.kind, 'quiet');
+  assert.equal(loadMore.props.tone, 'primary');
+  assert.equal(loadMore.props.size, 'sm');
+  await act(async () => {
+    loadMore.props.onClick();
+    await Promise.resolve();
+  });
+  assert.deepEqual(messages[1].query, { limit: 5, cursor: '100.event-cursor' });
+  assert.equal(renderer.root.findAllByType(ItemEditEventCard).length, 2);
+  assert.equal(renderer.root.findAllByType(Button).some((button) => button.props.children === 'Carregar mais'), false);
+  const fullHistory = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Ver tudo');
   await act(async () => fullHistory.props.onClick());
   assert.equal(opened, true);
   renderer.unmount();
@@ -91,6 +104,24 @@ test('data compacta preserva leitura curta sem perder a data completa', () => {
   assert.equal(formatRelativeDate('2026-10-13T12:10:00.000Z', reference), 'há 50 min');
   assert.equal(formatRelativeDate('2026-10-13T07:00:00.000Z', reference), 'há 6 h');
   assert.equal(formatRelativeDate('2026-10-11T13:00:00.000Z', reference), 'há 2 dias');
+});
+
+test('titulo truncado do historico compacto revela o texto completo em tooltip', async () => {
+  let renderer;
+  await act(async () => {
+    renderer = create(<ItemEditEventCard event={firstEvent} compact />, {
+      createNodeMock(element) {
+        return element.props.className === 'onframe-history-event-title-container'
+          ? { querySelector: () => ({ scrollWidth: 360, clientWidth: 180 }) }
+          : null;
+      }
+    });
+  });
+
+  const titleTooltip = renderer.root.findAllByType(Tooltip).find((tooltip) => tooltip.props.label?.props?.children === firstEvent.item.title);
+  assert.ok(titleTooltip);
+  assert.equal(titleTooltip.props.placement, 'bottom');
+  renderer.unmount();
 });
 
 test('card revela detalhes da promocao no proprio item do historico', async () => {

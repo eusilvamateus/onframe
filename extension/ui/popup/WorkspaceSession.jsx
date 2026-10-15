@@ -20,7 +20,7 @@ function LoadingList() {
   </div>;
 }
 
-export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnectionChanged, footer }) {
+export function WorkspaceSession({ connection, onBack, onConnectionChanged, footer, header }) {
   const admin = connection.workspace.role === 'admin';
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -141,7 +141,8 @@ export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnecti
 
   return (
     <main className="onframe-popup onframe-popup-session">
-      <PopupSessionHeader title="Workspace" subtitle={connection.workspace.name} onBack={onBack} onOpenOptions={onOpenOptions} />
+      {header}
+      <PopupSessionHeader title="Workspace" subtitle={connection.workspace.name} onBack={onBack} />
 
       <div className="onframe-popup-session-body">
         {feedback && <Alert tone={feedback.tone} action={feedback.action} onAction={feedback.onAction} dismissible onClose={() => setFeedback(null)}>{feedback.message}</Alert>}
@@ -150,7 +151,7 @@ export function WorkspaceSession({ connection, onBack, onOpenOptions, onConnecti
           <section className="onframe-popup-section" aria-labelledby="workspace-people-title">
             <div className="onframe-popup-section-header">
               <div><h2 id="workspace-people-title">Pessoas</h2><p>{members.length} {members.length === 1 ? 'pessoa' : 'pessoas'} neste workspace</p></div>
-              <Tooltip label="Convidar pessoa" placement="left"><Button kind="quiet" tone="primary" size="sm" iconOnly disabled={busy} aria-label="Convidar pessoa" onClick={() => setDialog({ type: 'invite' })} icon={<Ph n="user-plus" size={18} />} /></Tooltip>
+              <Button kind="quiet" tone="primary" size="sm" disabled={busy} onClick={() => setDialog({ type: 'invite' })} icon={<Ph n="user-plus" size={16} />}>Convidar pessoa</Button>
             </div>
             <List className="onframe-popup-card-list" ariaLabel="Pessoas do workspace">
               {members.map((member) => {

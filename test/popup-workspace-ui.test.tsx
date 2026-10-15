@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { ListItem } from '@onblide/ui';
+import { Button, ListItem, Tooltip } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { WorkspaceSession } from '../extension/ui/popup/WorkspaceSession.jsx';
 
@@ -48,5 +48,10 @@ test('sessao do workspace lista pessoas, convites e mantem a propria conta sem a
   assert.match(String(otherItem?.props.description), /Todas as contas/);
   assert.match(String(invitationItem?.props.description), /Colaborador/);
   assert.equal(leaveItem?.props.disabled, false);
+  const inviteButton = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Convidar pessoa');
+  assert.equal(inviteButton.props.kind, 'quiet');
+  assert.equal(inviteButton.props.tone, 'primary');
+  assert.equal(inviteButton.props.size, 'sm');
+  assert.equal(renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Convidar pessoa'), false);
   renderer.unmount();
 });

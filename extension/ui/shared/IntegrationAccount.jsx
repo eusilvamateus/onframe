@@ -92,5 +92,7 @@ export function IntegrationAccount({ account, admin, mode, loading, onUpdate, on
     ? `onframe-integration-card${compact ? ' onframe-popup-integration-account' : ''}`
     : compact ? 'onframe-popup-integration-list-item' : 'onframe-integration-list-item';
   const padding = compact ? 12 : mode === 'cards' ? 20 : 16;
-  return <Card padding={padding}><div className={accountClass}>{identity}{controls}</div></Card>;
+  const content = <div className={accountClass}>{identity}{controls}</div>;
+  if (compact && mode === 'list') return <div className="onframe-popup-integration-list-row">{content}</div>;
+  return <Card padding={padding}>{content}</Card>;
 }

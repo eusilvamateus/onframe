@@ -10,7 +10,7 @@ function LoadingAccounts() {
   </div>;
 }
 
-export function IntegrationsSession({ connection, onBack, onOpenOptions, footer }) {
+export function IntegrationsSession({ connection, onBack, footer, header }) {
   const admin = connection.workspace.role === 'admin';
   const [accounts, setAccounts] = useState([]);
   const [mode, setMode] = useState('list');
@@ -85,7 +85,8 @@ export function IntegrationsSession({ connection, onBack, onOpenOptions, footer 
 
   return (
     <main className="onframe-popup onframe-popup-session">
-      <PopupSessionHeader title="Integrações" subtitle={connection.workspace.name} onBack={onBack} onOpenOptions={onOpenOptions} />
+      {header}
+      <PopupSessionHeader title="Integrações" subtitle={connection.workspace.name} onBack={onBack} />
 
       <div className="onframe-popup-session-body">
         {feedback && <Alert tone={feedback.tone} dismissible onClose={() => setFeedback(null)}>{feedback.message}</Alert>}
@@ -95,7 +96,7 @@ export function IntegrationsSession({ connection, onBack, onOpenOptions, footer 
               <h2 id="integrations-accounts-title">{admin ? 'Contas conectadas' : 'Contas atribuídas'}</h2>
               <p>{accounts.length} {accounts.length === 1 ? 'conta' : 'contas'} do Mercado Livre</p>
             </div>
-            {admin && <Tooltip label="Conectar conta" placement="left"><Button kind="quiet" tone="primary" size="sm" iconOnly disabled={unavailable} aria-label="Conectar conta" onClick={() => void connectAccount()} icon={<Ph n="plus-circle" size={19} />} /></Tooltip>}
+            {admin && <Button kind="quiet" tone="primary" size="sm" disabled={unavailable} onClick={() => void connectAccount()} icon={<Ph n="plus-circle" size={16} />}>Adicionar integração</Button>}
           </div>
 
           {!loading && accounts.length > 0 && <div className="onframe-popup-integration-view-bar">

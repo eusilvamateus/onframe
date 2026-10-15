@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { ButtonGroup, Card, Modal, Switch } from '@onblide/ui';
+import { Button, ButtonGroup, Card, Modal, Switch, Tooltip } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { IntegrationsSession } from '../extension/ui/popup/IntegrationsSession.jsx';
 import { IntegrationAccount } from '../extension/ui/shared/IntegrationAccount.jsx';
@@ -55,12 +55,24 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   const integration = renderer.root.findByType(IntegrationAccount);
   assert.equal(integration.props.compact, true);
   assert.equal(integration.props.admin, true);
-  assert.equal(renderer.root.findAllByType(Card).length, 1);
+  assert.equal(integration.props.mode, 'list');
+  assert.equal(renderer.root.findAllByType(Card).length, 0);
+  assert.equal(renderer.root.findAllByProps({ className: 'onframe-popup-integration-list-row' }).length, 1);
   assert.equal(renderer.root.findByType(Switch).props.size, 'md');
-  assert.equal(renderer.root.findByType(ButtonGroup).props.size, 'md');
+  const viewGroup = renderer.root.findByType(ButtonGroup);
+  assert.equal(viewGroup.props.size, 'md');
+  await act(async () => viewGroup.props.onChange('cards'));
+  assert.equal(renderer.root.findByType(IntegrationAccount).props.mode, 'cards');
+  assert.equal(renderer.root.findAllByType(Card).length, 1);
+  assert.equal(renderer.root.findAllByProps({ className: 'onframe-popup-integration-grid' }).length, 1);
+  const addIntegration = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Adicionar integração');
+  assert.equal(addIntegration.props.kind, 'quiet');
+  assert.equal(addIntegration.props.tone, 'primary');
+  assert.equal(addIntegration.props.size, 'sm');
+  assert.equal(renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Adicionar integração'), false);
 
   await act(async () => {
-    renderer.root.findByProps({ 'aria-label': 'Conectar conta' }).props.onClick();
+    addIntegration.props.onClick();
     await Promise.resolve();
   });
   assert.equal(messages.some((message) => message.action === 'oauth-start'), true);
@@ -96,6 +108,6 @@ test('colaborador visualiza contas sem controles administrativos', async () => {
   const integration = renderer.root.findByType(IntegrationAccount);
   assert.equal(integration.props.admin, false);
   assert.equal(renderer.root.findAllByType(Switch).length, 0);
-  assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Conectar conta' }).length, 0);
+  assert.equal(renderer.root.findAllByType(Button).some((button) => button.props.children === 'Adicionar integração'), false);
   renderer.unmount();
 });

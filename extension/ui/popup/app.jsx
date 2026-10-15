@@ -14,6 +14,29 @@ import { historySummary, integrationsSummary, workspaceSummary } from './summari
 
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
+function PopupUserHeader({ connection, resourcesEnabled, busy, onToggleResources, onOpenOptions }) {
+  const personName = connection.user.name || 'Conta OnFrame';
+  return <header className="onframe-popup-userbar">
+    <div className="onframe-popup-user">
+      <Avatar name={personName} src={connection.user.avatarUrl} alt="" size={40} />
+      <div className="onframe-popup-user-copy">
+        <h1 className="onframe-popup-user-name">{personName}</h1>
+        <p className="onframe-popup-user-email">{connection.user.email}</p>
+      </div>
+    </div>
+    <div className="onframe-popup-actions">
+      <Tooltip label={resourcesEnabled ? 'Desativar recursos da extensão' : 'Ativar recursos da extensão'} placement="bottom">
+        <span className="onframe-popup-resource-switch">
+          <Switch checked={resourcesEnabled} disabled={busy} onChange={onToggleResources} label="Recursos da extensão" size="md" />
+        </span>
+      </Tooltip>
+      <Tooltip label="Abrir opções da extensão" placement="left">
+        <Button kind="quiet" size="sm" iconOnly aria-label="Abrir opções da extensão" onClick={onOpenOptions} icon={<Ph n="gear" size={18} />} />
+      </Tooltip>
+    </div>
+  </header>;
+}
+
 function readResourcesPreference() {
   return new Promise((resolve) => chrome.storage.local.get({ [RESOURCES_ENABLED_KEY]: true }, (result) => {
     resolve(result?.[RESOURCES_ENABLED_KEY] !== false);
@@ -131,39 +154,27 @@ function Popup() {
     {feedback && <Alert tone="danger">{feedback}</Alert>}
     <AuthPanel onConnected={load} />
   </main>;
-  const personName = connection.user.name || 'Conta OnFrame';
   const footer = <PopupFooter release={release} busy={busy} onDisconnect={() => void disconnect()} />;
+  const userHeader = <PopupUserHeader
+    connection={connection}
+    resourcesEnabled={resourcesEnabled}
+    busy={busy}
+    onToggleResources={(value) => void toggleResources(value)}
+    onOpenOptions={openOptions}
+  />;
 
   function returnHome() {
     setView('home');
     void refreshOverview();
   }
 
-  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onConnectionChanged={load} footer={footer} />;
-  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={returnHome} onOpenOptions={openOptions} footer={footer} />;
-  if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenOptions={openOptions} onOpenFullHistory={() => openOptions('history')} footer={footer} />;
+  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={returnHome} onConnectionChanged={load} footer={footer} header={userHeader} />;
+  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={returnHome} footer={footer} header={userHeader} />;
+  if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenFullHistory={() => openOptions('history')} footer={footer} header={userHeader} />;
 
   return (
     <main className="onframe-popup onframe-popup-home">
-      <header className="onframe-popup-userbar">
-        <div className="onframe-popup-user">
-          <Avatar name={personName} src={connection.user.avatarUrl} alt="" size={40} />
-          <div className="onframe-popup-user-copy">
-            <h1 className="onframe-popup-user-name">{personName}</h1>
-            <p className="onframe-popup-user-email">{connection.user.email}</p>
-          </div>
-        </div>
-        <div className="onframe-popup-actions">
-          <Tooltip label={resourcesEnabled ? 'Desativar recursos da extensão' : 'Ativar recursos da extensão'} placement="bottom">
-            <span className="onframe-popup-resource-switch">
-              <Switch checked={resourcesEnabled} disabled={busy} onChange={(value) => void toggleResources(value)} label="Recursos da extensão" size="md" />
-            </span>
-          </Tooltip>
-          <Tooltip label="Abrir opções da extensão" placement="left">
-            <Button kind="quiet" size="sm" iconOnly aria-label="Abrir opções da extensão" onClick={openOptions} icon={<Ph n="gear" size={18} />} />
-          </Tooltip>
-        </div>
-      </header>
+      {userHeader}
       {feedback && <Alert tone="danger">{feedback}</Alert>}
       <List className="onframe-popup-home-list" ariaLabel="Sessões da extensão">
         <ListItem

@@ -1,5 +1,5 @@
-import { useId, useState } from 'react';
-import { Avatar, Badge, Button, Card, Link, Ph, Tooltip } from '@onblide/ui';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Avatar, Button, Card, Link, Ph, Tooltip } from '@onblide/ui';
 import { formatDate, formatRelativeDate, openExternal } from './runtime';
 
 const TYPE_META = {
@@ -262,28 +262,58 @@ function CompactContext({ event }) {
   const actorName = event?.actor?.name || event?.actor?.email || 'Pessoa não identificada';
   const accountName = event?.account?.name;
   return <div className="onframe-history-compact-context">
-    <Avatar name={actorName} src={event?.actor?.avatarUrl} alt="" size={18} />
-    <span className="onframe-history-compact-actor">{actorName}</span>
-    {accountName && <Badge tone="grey" size="sm" dot={false}><span className="onframe-history-compact-account">{accountName}</span></Badge>}
+    <span className="onframe-history-compact-actor-context">
+      <Avatar name={actorName} src={event?.actor?.avatarUrl} alt="" size={18} />
+      <span className="onframe-history-compact-actor">{actorName}</span>
+    </span>
+    {accountName && <span className="onframe-history-compact-account-context">
+      <Ph n="storefront" size={14} />
+      <span className="onframe-history-compact-account">{accountName}</span>
+    </span>}
   </div>;
 }
 
 export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
   const [expanded, setExpanded] = useState(false);
+  const [titleTruncated, setTitleTruncated] = useState(false);
+  const titleRef = useRef(null);
   const detailsId = useId();
   const meta = itemEditTypeMeta(event.changeType);
+  const title = itemEditTitle(event);
   const expandable = !compact && hasEventDetails(event);
   const detailAction = expanded ? 'Ocultar detalhes' : 'Ver detalhes';
+
+  useEffect(() => {
+    const element = titleRef.current;
+    if (!compact || !element) return undefined;
+    const update = () => {
+      const heading = element.querySelector('h3');
+      setTitleTruncated(Boolean(heading && heading.scrollWidth > heading.clientWidth));
+    };
+    update();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [compact, title]);
+
   const content = <div className={`onframe-history-event${compact ? ' onframe-history-event--compact' : ''}`}>
     <div className="onframe-history-event-main">
       <ProductImage event={event} meta={meta} />
       <div className="onframe-history-event-copy">
         <div className="onframe-history-event-title-row">
-          <h3 title={itemEditTitle(event)}>{itemEditTitle(event)}</h3>
+          <div ref={titleRef} className="onframe-history-event-title-container">
+            {compact && titleTruncated
+              ? <Tooltip label={<span className="onframe-history-event-title-tooltip-label">{title}</span>} placement="bottom" maxWidth={320}><span className="onframe-history-event-title-tooltip"><h3>{title}</h3></span></Tooltip>
+              : <h3>{title}</h3>}
+          </div>
         </div>
         {compact ? <>
           <div className="onframe-history-compact-change">
-            <p className="onframe-history-event-summary" title={event.summary}>{event.summary}</p>
+            <span className="onframe-history-compact-summary" title={event.summary}>
+              <span className={`onframe-history-compact-type onframe-history-type-icon--${meta.tone}`}><Ph n={meta.icon} size={13} /></span>
+              <span>{event.summary}</span>
+            </span>
             <time dateTime={event.createdAt} title={formatDate(event.createdAt)}>{formatRelativeDate(event.createdAt)}</time>
           </div>
           <CompactContext event={event} />
@@ -299,7 +329,7 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
             size="sm"
             iconOnly
             pressed={expanded}
-            aria-label={`${detailAction} de ${itemEditTitle(event)}`}
+            aria-label={`${detailAction} de ${title}`}
             aria-expanded={expanded}
             aria-controls={detailsId}
             onClick={() => setExpanded((value) => !value)}
@@ -308,7 +338,7 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
         </Tooltip>}
       </div>}
       {compact && event?.item?.permalink && <Tooltip label="Abrir anúncio" placement="left">
-        <Button kind="quiet" tone="primary" size="sm" iconOnly aria-label={`Abrir ${itemEditTitle(event)}`} onClick={() => openExternal(event.item.permalink)} icon={<Ph n="arrow-square-out" size={17} />} />
+        <Button kind="quiet" tone="primary" size="sm" iconOnly aria-label={`Abrir ${title}`} onClick={() => openExternal(event.item.permalink)} icon={<Ph n="arrow-square-out" size={17} />} />
       </Tooltip>}
     </div>
     {!compact && <>
@@ -319,5 +349,6 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
     </>}
   </div>;
 
-  return <Card padding={compact ? 12 : 16}>{content}</Card>;
+  if (compact) return <article className="onframe-popup-history-row">{content}</article>;
+  return <Card padding={16}>{content}</Card>;
 }
