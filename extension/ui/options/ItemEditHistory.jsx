@@ -216,7 +216,7 @@ function PeriodFilter({ period, onApply }) {
   return <Tooltip label="Período">
     <Popover
       title="Período"
-      width={420}
+      width={308}
       align="end"
       onOpenChange={(open) => { if (open) setDraft(period); }}
       trigger={<Chip icon="calendar-blank" label={historyPeriodLabel(period)} size="md" selected={Boolean(period.start && period.end)} />}

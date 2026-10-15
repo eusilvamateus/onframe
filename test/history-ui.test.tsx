@@ -106,6 +106,7 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   const popovers = renderer.root.findAllByType(Popover);
   assert.deepEqual(popovers.map((popover) => popover.props.title), ['Período', 'Filtrar histórico']);
   const periodPopover = popovers.find((popover) => popover.props.title === 'Período');
+  assert.equal(periodPopover.props.width, 308);
   const periodTooltip = renderer.root.findAllByType(Tooltip).find((tooltip) => tooltip.props.label === 'Período');
   assert.ok(periodTooltip);
   assert.equal(periodPopover.props.trigger.type, Chip);
