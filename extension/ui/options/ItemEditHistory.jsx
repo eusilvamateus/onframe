@@ -170,7 +170,7 @@ function HistoryFilters({ accountOptions, peopleOptions, admin, accountId, userI
     width={380}
     align="end"
     onOpenChange={syncDraft}
-    trigger={<Button kind="secondary" size="sm" icon={<Ph n="funnel-simple" size={17} />}>Filtros{activeCount ? ` (${activeCount})` : ''}</Button>}
+    trigger={<Button kind="secondary" size="md" icon={<Ph n="funnel-simple" size={17} />}>Filtros{activeCount ? ` (${activeCount})` : ''}</Button>}
   >
     {(close) => <>
       <div className="onframe-history-filter-form" role="group" aria-label="Filtros do histórico" tabIndex={0}>
@@ -347,7 +347,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
             setPage(1);
           }}
         />
-        {hasFilters && <Button kind="quiet" tone="neutral" size="sm" iconOnly aria-label="Limpar filtros" onClick={clearFilters} icon={<Ph n="x-circle" size={17} />} />}
+        {hasFilters && <Button kind="quiet" tone="neutral" size="md" iconOnly aria-label="Limpar filtros" onClick={clearFilters} icon={<Ph n="x-circle" size={17} />} />}
       </div>
     </div>
     {error && <Alert tone="danger" action="Tentar novamente" onAction={() => void load()}>{error}</Alert>}
