@@ -110,6 +110,7 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   assert.ok(periodTooltip);
   assert.equal(periodPopover.props.trigger.type, Chip);
   assert.equal(periodPopover.props.trigger.props.label, 'Sem filtro');
+  assert.equal(periodPopover.props.trigger.props.size, 'md');
   let periodRenderer;
   await act(async () => { periodRenderer = create(periodPopover.props.children(() => {})); });
   assert.equal(periodRenderer.root.findAllByType(Datepicker).length, 0);
@@ -178,6 +179,7 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   assert.equal(renderer.root.findAllByType(ItemEditEventCard).length, 1);
 
   const filterPopover = renderer.root.findAllByType(Popover).find((popover) => popover.props.title === 'Filtrar histórico');
+  assert.equal(filterPopover.props.trigger.props.size, 'sm');
   let filterRenderer;
   await act(async () => { filterRenderer = create(filterPopover.props.children(() => {})); });
   const filterSelects = filterRenderer.root.findAllByType(Select);
