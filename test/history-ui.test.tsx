@@ -180,7 +180,11 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   assert.equal(renderer.root.findAllByType(ItemEditEventCard).length, 1);
 
   const filterPopover = renderer.root.findAllByType(Popover).find((popover) => popover.props.title === 'Filtrar histórico');
+  assert.equal(filterPopover.props.width, 308);
   assert.equal(filterPopover.props.trigger.props.size, 'md');
+  assert.equal(filterPopover.props.trigger.props.children, 'Filtros');
+  assert.equal(filterPopover.props.trigger.props.count, undefined);
+  assert.equal(filterPopover.props.trigger.props.countTone, 'blue');
   let filterRenderer;
   await act(async () => { filterRenderer = create(filterPopover.props.children(() => {})); });
   const filterSelects = filterRenderer.root.findAllByType(Select);

@@ -37,13 +37,14 @@ export function PasswordField({ label, labelAction, value, onChange, autoComplet
         />
         <Tooltip label={actionLabel} placement="top">
           <Button
-            kind="ghost"
+            kind="quiet"
+            tone="neutral"
             size="sm"
+            iconOnly
             aria-label={actionLabel}
             disabled={disabled}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => setVisible((current) => !current)}
-            style={{ minWidth: 32, padding: 6 }}
             icon={<Ph n={visible ? 'eye' : 'eye-closed'} size={17} />}
           />
         </Tooltip>

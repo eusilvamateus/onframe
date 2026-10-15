@@ -453,27 +453,11 @@
   text-align: center;
 }
 
-.onblide-ml-remove {
+.onblide-ml-remove-action {
   position: absolute;
   right: 5px;
   top: 5px;
   z-index: 3;
-  display: inline-grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: var(--ob-r-pill);
-  background: var(--ob-red-100);
-  color: var(--ob-red);
-  cursor: pointer;
-  padding: 0;
-  transition: background var(--ob-dur-fast) var(--ob-ease), color var(--ob-dur-fast) var(--ob-ease);
-}
-
-.onblide-ml-remove:hover {
-  background: var(--ob-red);
-  color: var(--ob-surface);
 }
 
 .onblide-ml-quality-badge {

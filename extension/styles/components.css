@@ -838,47 +838,6 @@
   font-weight: var(--ob-w-semibold);
 }
 
-.ob-auth-password-toggle {
-  position: relative;
-  z-index: 0;
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  padding: 7px;
-  border: 1.5px solid transparent;
-  border-radius: var(--ob-r-control);
-  background: transparent;
-  color: var(--ob-fg-soft);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 14px;
-  transition: background 160ms var(--ob-ease), color 160ms var(--ob-ease), border-color 160ms var(--ob-ease);
-}
-
-.ob-auth-password-toggle:hover:not(:disabled) {
-  background: var(--ob-line-soft);
-}
-
-.ob-auth-password-toggle[aria-pressed="true"] {
-  z-index: 1;
-  border-color: transparent;
-  background: var(--ob-blue-100);
-  color: var(--ob-blue-700);
-}
-
-.ob-auth-password-toggle:focus-visible {
-  z-index: 2;
-  box-shadow: 0 0 0 3px var(--ob-focus-ring);
-  outline: none;
-}
-
-.ob-auth-password-toggle:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* O controle de visibilidade pertence ao botão da extensão, não ao navegador. */
 .ob-field-input[type="password"]::-ms-reveal,
 .ob-field-input[type="password"]::-ms-clear {
@@ -1556,35 +1515,6 @@
   opacity: 1;
   pointer-events: auto;
   transform: translateY(-50%) translateX(0);
-}
-
-.account-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ob-fg-mute);
-  cursor: pointer;
-  box-shadow: none;
-  transition: color var(--ob-dur-fast) var(--ob-ease), transform var(--ob-dur-fast) var(--ob-ease);
-}
-
-.account-icon-btn:hover,
-.account-icon-btn:focus-visible {
-  color: var(--ob-blue);
-  transform: translateY(-1px);
-  outline: none;
-}
-
-.account-icon-btn.danger:hover,
-.account-icon-btn.danger:focus-visible,
-.account-icon-btn.danger.is-confirming {
-  color: var(--ob-danger);
 }
 
 .ob-shell a,

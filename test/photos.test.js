@@ -244,6 +244,19 @@ test('modulo de fotos consome contexto resolvido pelo shell', () => {
   assert.match(source, /context\.selectedVariationId/);
 });
 
+test('remocao de foto usa a acao destrutiva do Button do design system', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
+
+  assert.match(source, /const DesignSystemButton = rootScope\.OnFrameButton/);
+  assert.match(source, /data-button-label="Remover foto"/);
+  assert.match(source, /data-button-icon="trash"/);
+  assert.match(source, /data-button-tone="danger"/);
+  assert.match(source, /tooltip: host\.dataset\.buttonLabel \|\| 'Ação'/);
+  assert.doesNotMatch(source, /<button class="onblide-ml-remove"/);
+  assert.doesNotMatch(styles, /\.onblide-ml-remove:hover/);
+});
+
 test('dock de fotos separa recolhimento da abertura do editor', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');

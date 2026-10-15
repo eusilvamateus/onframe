@@ -60,6 +60,7 @@
         "core/icons.js",
         "core/period.js",
         "core/datepicker.js",
+        "core/button.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",

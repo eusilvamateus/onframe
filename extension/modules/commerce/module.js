@@ -15,6 +15,7 @@
     const isProductPageUrl = Detection.isProductPageUrl;
     const formatarPeriodo = rootScope.OnFramePeriod && rootScope.OnFramePeriod.formatarPeriodo;
     const Datepicker = rootScope.OnFrameDatepicker;
+    const DesignSystemButton = rootScope.OnFrameButton;
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -165,7 +166,7 @@
       state.promotionModalResume = null;
       state.promotionModalResumeFocus = '';
       resetPromotionListFilters();
-      unmountDatepickers();
+      unmountDesignSystemControls();
       cancelModalPositionRestore();
       state.renderTimer = null;
       state.requestId += 1;
@@ -1086,7 +1087,7 @@
       const markup = buildPromotionModal();
       if (markup === state.lastModalMarkup) return;
       state.lastModalMarkup = markup;
-      unmountDatepickers();
+      unmountDesignSystemControls();
       removePromotionResultPopover();
       state.renderingPromotionModal = true;
       try {
@@ -1122,7 +1123,7 @@
       const markup = buildDirectDiscountModal();
       if (markup === state.lastDirectDiscountModalMarkup) return;
       state.lastDirectDiscountModalMarkup = markup;
-      unmountDatepickers();
+      unmountDesignSystemControls();
       state.renderingPromotionModal = true;
       try {
         state.directDiscountModalRoot.innerHTML = markup;
@@ -1397,48 +1398,46 @@
       const createLabel = promotionActionLabel('create', null, false, userFields, key);
       const updateLabel = promotionActionLabel('update', null, false, userFields, key);
       return `
-        ${canCreate ? renderIconTooltipButton({
+        ${canCreate ? renderDesignSystemIconButton({
           action: 'create-offer',
           label: createLabel,
-          iconMarkup: promotionActionIcon('create', key, confirm, formOpen),
-          className: 'onframe-commerce-icon-btn onframe-commerce-promotion-action-btn',
-          tooltipId: promotionTooltipId(key, 'create'),
+          iconName: promotionActionIconName('create', key, confirm, formOpen),
+          tone: 'success',
           placement: 'left',
-          disabled: promotionActionDisabled(false)
+          disabled: state.busy
         }) : ''}
-        ${canUpdate ? renderIconTooltipButton({
+        ${canUpdate ? renderDesignSystemIconButton({
           action: 'update-offer',
           label: updateLabel,
-          iconMarkup: promotionActionIcon('update', key, confirm, formOpen),
-          className: 'onframe-commerce-icon-btn onframe-commerce-promotion-action-btn',
-          tooltipId: promotionTooltipId(key, 'update'),
+          iconName: promotionActionIconName('update', key, confirm, formOpen),
+          tone: 'primary',
           placement: 'left',
-          disabled: promotionActionDisabled(false)
+          disabled: state.busy
         }) : ''}
-        ${canDelete ? renderIconTooltipButton({
+        ${canDelete ? renderDesignSystemIconButton({
           action: 'delete-offer',
           label: 'Remover promoção',
-          iconMarkup: promotionActionIcon('delete', key, confirm, formOpen),
-          className: 'onframe-commerce-icon-btn onframe-commerce-promotion-action-btn danger',
-          tooltipId: promotionTooltipId(key, 'delete'),
+          iconName: promotionActionIconName('delete', key, confirm, formOpen),
+          tone: 'danger',
           placement: 'left',
-          disabled: promotionActionDisabled(false)
+          disabled: state.busy
         }) : ''}
       `;
     }
 
-    function renderIconTooltipButton({ action, label, iconMarkup, className, tooltipId, placement = 'top', disabled = '' }) {
-      return `
-        <span class="ob-tooltip" data-placement="${escapeAttribute(placement)}">
-          <button class="${escapeAttribute(className)}" data-action="${escapeAttribute(action)}" type="button" aria-label="${escapeAttribute(label)}" aria-describedby="${escapeAttribute(tooltipId)}" ${disabled}>${iconMarkup}</button>
-          <span class="ob-tooltip-content" id="${escapeAttribute(tooltipId)}" role="tooltip">${escapeHtml(label)}<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
-        </span>
-      `;
-    }
-
-    function promotionTooltipId(key, action) {
-      const safeKey = String(key || '').replace(/[^a-z0-9_-]/gi, '-');
-      return `onframe-promotion-${safeKey}-${action}-tooltip`;
+    function renderDesignSystemIconButton({ action, label, iconName, tone, placement = 'top', disabled = false, controls = '', expanded = false, entryKey = '' }) {
+      return `<span
+        data-onframe-button-root
+        data-action="${escapeAttribute(action)}"
+        data-button-label="${escapeAttribute(label)}"
+        data-button-icon="${escapeAttribute(iconName)}"
+        data-button-tone="${escapeAttribute(tone)}"
+        data-button-placement="${escapeAttribute(placement)}"
+        data-button-disabled="${disabled ? 'true' : 'false'}"
+        ${controls ? `data-button-controls="${escapeAttribute(controls)}"` : ''}
+        data-button-expanded="${expanded ? 'true' : 'false'}"
+        ${entryKey ? `data-entry-key="${escapeAttribute(entryKey)}"` : ''}
+      ></span>`;
     }
 
     function buildPromotionRows() {
@@ -1569,12 +1568,13 @@
 
     function renderPromotionResultPopoverTrigger(key) {
       const id = promotionResultPopoverId(key);
-      return `
-        <span class="ob-tooltip onframe-commerce-promotion-result-tooltip" data-placement="top">
-          <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-info" data-action="toggle-promotion-result-popover" type="button" aria-label="Ver detalhes do cálculo" aria-controls="${escapeAttribute(id)}" aria-expanded="false">${icon('info', 14)}</button>
-          <span class="ob-tooltip-content" role="tooltip">Ver detalhes do cálculo<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
-        </span>
-      `;
+      return renderDesignSystemIconButton({
+        action: 'toggle-promotion-result-popover',
+        label: 'Ver detalhes do cálculo',
+        iconName: 'info',
+        tone: 'primary',
+        controls: id
+      });
     }
 
     function promotionResultPopoverId(key) {
@@ -1599,7 +1599,7 @@
       removePromotionResultPopover();
       state.promotionResultPopoverKey = key;
       state.promotionResultPopoverAnchor = button;
-      button.setAttribute('aria-expanded', 'true');
+      updateDesignSystemButton(button, { pressed: true, expanded: true });
       renderPromotionResultPopover(details);
     }
 
@@ -1620,7 +1620,7 @@
       removePromotionResultPopover();
       state.promotionResultPopoverKey = popoverKey;
       state.promotionResultPopoverAnchor = button;
-      button.setAttribute('aria-expanded', 'true');
+      updateDesignSystemButton(button, { pressed: true, expanded: true });
       renderCouponDetailsPopover({ key, entry, rows });
     }
 
@@ -1831,12 +1831,14 @@
     function renderCouponDetailsPopoverTrigger(entry, key) {
       if (!couponDetailRows(entry).length) return '';
       const id = couponDetailsPopoverId(key);
-      return `
-        <span class="ob-tooltip onframe-commerce-promotion-result-tooltip" data-placement="top">
-          <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-info" data-action="toggle-coupon-details-popover" data-entry-key="${escapeAttribute(key)}" type="button" aria-label="Ver detalhes do cupom" aria-controls="${escapeAttribute(id)}" aria-expanded="false">${icon('info', 14)}</button>
-          <span class="ob-tooltip-content" role="tooltip">Ver detalhes do cupom<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
-        </span>
-      `;
+      return renderDesignSystemIconButton({
+        action: 'toggle-coupon-details-popover',
+        label: 'Ver detalhes do cupom',
+        iconName: 'info',
+        tone: 'primary',
+        controls: id,
+        entryKey: key
+      });
     }
 
     function renderCouponDetailsPopover(details) {
@@ -2806,7 +2808,12 @@
 
     function promotionActionIcon(action, key, confirm, formOpen) {
       if (isPromotionActionPending(key, action)) return spinner();
-      const iconName = confirm && confirm.action === action
+      return icon(promotionActionIconName(action, key, confirm, formOpen), 14);
+    }
+
+    function promotionActionIconName(action, key, confirm, formOpen) {
+      if (isPromotionActionPending(key, action)) return 'spinner-gap';
+      return confirm && confirm.action === action
         ? 'checkCircle'
         : formOpen && state.promotionFormAction === action
           ? 'checkCircle'
@@ -2815,7 +2822,6 @@
             : action === 'update'
               ? 'pencil'
               : 'trash';
-      return icon(iconName, 14);
     }
 
     function promotionActionDisabled(blocked) {
@@ -3146,6 +3152,7 @@
       bindPromotionFieldDrafts(state.modalRoot);
       bindDirectDiscountFields(state.modalRoot);
       mountDatepickers(state.modalRoot);
+      mountButtons(state.modalRoot);
     }
 
     function bindDirectDiscountModalEvents() {
@@ -3155,6 +3162,7 @@
       bindDirectDiscountFields(state.directDiscountModalRoot);
       bindPromotionFieldDrafts(state.directDiscountModalRoot);
       mountDatepickers(state.directDiscountModalRoot);
+      mountButtons(state.directDiscountModalRoot);
 
       const backdrop = state.directDiscountModalRoot.querySelector('.onframe-commerce-direct-discount-overlay');
       if (backdrop) {
@@ -3279,6 +3287,35 @@
           }
         });
       });
+    }
+
+    function mountButtons(container) {
+      if (!container || !DesignSystemButton || typeof DesignSystemButton.mount !== 'function') return;
+      container.querySelectorAll('[data-onframe-button-root]').forEach((host) => {
+        DesignSystemButton.mount(host, {
+          kind: 'quiet',
+          tone: host.dataset.buttonTone || 'neutral',
+          size: 'sm',
+          iconOnly: true,
+          label: host.dataset.buttonLabel || 'Ação',
+          tooltip: host.dataset.buttonLabel || 'Ação',
+          placement: host.dataset.buttonPlacement || 'top',
+          icon: phosphorIconName(host.dataset.buttonIcon),
+          disabled: host.dataset.buttonDisabled === 'true',
+          controls: host.dataset.buttonControls || undefined,
+          expanded: host.dataset.buttonExpanded === 'true'
+        });
+      });
+    }
+
+    function updateDesignSystemButton(host, options) {
+      if (!host || !DesignSystemButton || typeof DesignSystemButton.update !== 'function') return;
+      DesignSystemButton.update(host, options);
+    }
+
+    function phosphorIconName(name) {
+      const names = { checkCircle: 'check-circle', pencil: 'pencil-simple' };
+      return names[name] || name || 'circle';
     }
 
     function bindPromotionFieldDrafts(container) {
@@ -3497,6 +3534,17 @@
       if (!Datepicker || typeof Datepicker.unmountWithin !== 'function') return;
       Datepicker.unmountWithin(state.modalRoot);
       Datepicker.unmountWithin(state.directDiscountModalRoot);
+    }
+
+    function unmountButtons() {
+      if (!DesignSystemButton || typeof DesignSystemButton.unmountWithin !== 'function') return;
+      DesignSystemButton.unmountWithin(state.modalRoot);
+      DesignSystemButton.unmountWithin(state.directDiscountModalRoot);
+    }
+
+    function unmountDesignSystemControls() {
+      unmountDatepickers();
+      unmountButtons();
     }
 
     function cancelModalPositionRestore() {
@@ -4077,7 +4125,7 @@
       state.promotionModalResume = null;
       state.promotionModalResumeFocus = '';
       resetPromotionListFilters();
-      unmountDatepickers();
+      unmountDesignSystemControls();
       cancelModalPositionRestore();
       removeModal();
       removeDirectDiscountModal();
@@ -4211,7 +4259,7 @@
       state.promotionFocusKey = '';
       state.promotionBulkEnabled = false;
       state.actionError = '';
-      unmountDatepickers();
+      unmountDesignSystemControls();
       if (returningFromDirectDiscount) {
         state.directDiscountModalOpen = false;
         state.promotionModalOpen = true;
@@ -4652,9 +4700,7 @@
     }
 
     function removePromotionResultPopover() {
-      if (state.promotionResultPopoverAnchor && typeof state.promotionResultPopoverAnchor.setAttribute === 'function') {
-        state.promotionResultPopoverAnchor.setAttribute('aria-expanded', 'false');
-      }
+      updateDesignSystemButton(state.promotionResultPopoverAnchor, { pressed: false, expanded: false });
       if (state.promotionResultPopoverRoot) state.promotionResultPopoverRoot.remove();
       state.promotionResultPopoverRoot = null;
       state.promotionResultPopoverKey = '';
@@ -4665,6 +4711,7 @@
       clearPromotionModalTransition();
       removePromotionResultPopover();
       if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.modalRoot);
+      if (DesignSystemButton && typeof DesignSystemButton.unmountWithin === 'function') DesignSystemButton.unmountWithin(state.modalRoot);
       if (state.modalRoot) state.modalRoot.remove();
       state.modalRoot = null;
       state.lastModalMarkup = '';
@@ -4672,6 +4719,7 @@
 
     function removeDirectDiscountModal() {
       if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.directDiscountModalRoot);
+      if (DesignSystemButton && typeof DesignSystemButton.unmountWithin === 'function') DesignSystemButton.unmountWithin(state.directDiscountModalRoot);
       if (state.directDiscountModalRoot) state.directDiscountModalRoot.remove();
       state.directDiscountModalRoot = null;
       state.lastDirectDiscountModalMarkup = '';

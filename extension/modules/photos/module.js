@@ -14,6 +14,7 @@
   const escapeHtml = Shared.escapeHtml;
   const escapeAttribute = Shared.escapeAttribute;
   const isProductPageUrl = Detection.isProductPageUrl;
+  const DesignSystemButton = rootScope.OnFrameButton;
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const EDITOR_MORPH_OPEN_DURATION = 900;
   const EDITOR_MORPH_CLOSE_DURATION = 950;
@@ -337,8 +338,10 @@
     const markup = buildTrayMarkup();
     if (markup === state.lastTrayMarkup) return;
     state.lastTrayMarkup = markup;
+    unmountButtons(state.tray);
     state.tray.innerHTML = markup;
     bindTrayEvents();
+    mountButtons(state.tray);
   }
 
   function buildTrayMarkup() {
@@ -497,7 +500,16 @@
         <img src="${escapeAttribute(url)}" alt="" draggable="false">
         <span class="onblide-ml-order">${index + 1}</span>
         ${renderPictureQualityBadge(picture, quality)}
-        <button class="onblide-ml-remove" data-action="remove" data-picture-id="${escapeAttribute(picture.localId)}" type="button" aria-label="Remover foto">${icon('x', 13)}</button>
+        <span
+          class="onblide-ml-remove-action"
+          data-onframe-button-root
+          data-action="remove"
+          data-picture-id="${escapeAttribute(picture.localId)}"
+          data-button-label="Remover foto"
+          data-button-icon="trash"
+          data-button-tone="danger"
+          data-button-placement="left"
+        ></span>
       </div>
     `;
   }
@@ -548,8 +560,10 @@
     }
     if (markup === state.lastDialogMarkup) return;
     state.lastDialogMarkup = markup;
+    unmountButtons(state.dialogRoot);
     state.dialogRoot.innerHTML = markup;
     bindQualityDialogEvents();
+    mountButtons(state.dialogRoot);
     syncProcessingProgress();
   }
 
@@ -775,6 +789,28 @@
   function bindTrayEvents() {
     bindCommonActionEvents(state.tray);
     bindPictureEditorEvents(state.tray);
+  }
+
+  function mountButtons(container) {
+    if (!container || !DesignSystemButton || typeof DesignSystemButton.mount !== 'function') return;
+    container.querySelectorAll('[data-onframe-button-root]').forEach((host) => {
+      DesignSystemButton.mount(host, {
+        kind: 'quiet',
+        tone: host.dataset.buttonTone || 'neutral',
+        size: 'sm',
+        iconOnly: true,
+        label: host.dataset.buttonLabel || 'Ação',
+        tooltip: host.dataset.buttonLabel || 'Ação',
+        placement: host.dataset.buttonPlacement || 'top',
+        icon: host.dataset.buttonIcon || 'circle',
+        disabled: host.dataset.buttonDisabled === 'true'
+      });
+    });
+  }
+
+  function unmountButtons(container) {
+    if (!container || !DesignSystemButton || typeof DesignSystemButton.unmountWithin !== 'function') return;
+    DesignSystemButton.unmountWithin(container);
   }
 
   function bindQualityDialogEvents() {
@@ -2094,12 +2130,14 @@
   }
 
   function removeTray() {
+    unmountButtons(state.tray);
     if (state.tray) state.tray.remove();
     state.tray = null;
     state.lastTrayMarkup = '';
   }
 
   function removeQualityDialog() {
+    unmountButtons(state.dialogRoot);
     if (state.dialogRoot) state.dialogRoot.remove();
     state.dialogRoot = null;
     state.lastDialogMarkup = '';

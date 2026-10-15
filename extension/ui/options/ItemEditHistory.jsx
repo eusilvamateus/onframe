@@ -167,10 +167,10 @@ function HistoryFilters({ accountOptions, peopleOptions, admin, accountId, userI
 
   return <Popover
     title="Filtrar histórico"
-    width={380}
+    width={308}
     align="end"
     onOpenChange={syncDraft}
-    trigger={<Button kind="secondary" size="md" icon={<Ph n="funnel-simple" size={17} />}>Filtros{activeCount ? ` (${activeCount})` : ''}</Button>}
+    trigger={<Button kind="secondary" size="md" count={activeCount || undefined} countTone="blue" icon={<Ph n="funnel-simple" size={17} />}>Filtros</Button>}
   >
     {(close) => <>
       <div className="onframe-history-filter-form" role="group" aria-label="Filtros do histórico" tabIndex={0}>

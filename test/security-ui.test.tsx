@@ -82,6 +82,11 @@ test('campo de senha preserva um unico botao de revelar e ocultar sem alterar o 
       assert.equal(buttons.length, 1);
       assert.equal(buttons[0].props['aria-label'], 'Mostrar senha');
       assert.equal(buttons[0].props.disabled, disabled);
+      const button = h.renderer.root.findByType(Button);
+      assert.equal(button.props.kind, 'quiet');
+      assert.equal(button.props.tone, 'neutral');
+      assert.equal(button.props.iconOnly, true);
+      assert.equal(button.props.style, undefined);
       if (!disabled) {
         await act(async () => buttons[0].props.onClick());
         assert.equal(h.renderer.root.findByType('input').props.type, 'text');

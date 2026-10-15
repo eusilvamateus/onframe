@@ -279,6 +279,17 @@ test('promocoes montam o Datepicker oficial sem calendario proprio', () => {
   assert.match(bridge, /calendarDisplay="popover"/);
 });
 
+test('modulos legados montam o Button oficial com tom, tooltip e estado pressionado', () => {
+  const bridge = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'button-bridge.jsx'), 'utf8');
+
+  assert.match(bridge, /import \{ Button, Ph, Tooltip \} from '@onblide\/ui'/);
+  assert.match(bridge, /kind=\{options\.kind \|\| 'quiet'\}/);
+  assert.match(bridge, /tone=\{options\.tone \|\| 'neutral'\}/);
+  assert.match(bridge, /pressed=\{options\.pressed\}/);
+  assert.match(bridge, /aria-expanded=\{options\.expanded\}/);
+  assert.match(bridge, /function update\(host, nextOptions\)/);
+});
+
 test('popover de preco resume valores e custos em um card horizontal', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
@@ -730,17 +741,19 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /class="ob-table-header onframe-commerce-promotion-column-name"/);
   assert.match(source, /class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-name"/);
   assert.match(source, /onframe-commerce-promotion-row-actions-content/);
-  assert.match(source, /onframe-commerce-promotion-action-btn/);
+  assert.match(source, /const DesignSystemButton = rootScope\.OnFrameButton/);
+  assert.match(source, /function renderDesignSystemIconButton/);
+  assert.match(source, /data-onframe-button-root/);
+  assert.match(source, /tone: host\.dataset\.buttonTone \|\| 'neutral'/);
+  assert.match(source, /iconOnly: true/);
+  assert.match(source, /updateDesignSystemButton\(button, \{ pressed: true, expanded: true \}\)/);
+  assert.doesNotMatch(source, /function renderIconTooltipButton/);
   assert.match(source, /<button class="onframe-commerce-icon-btn" data-action="close-promotion-modal" type="button" aria-label="Fechar">/);
   assert.doesNotMatch(source, /onframe-promotion-modal-close-tooltip/);
   assert.match(styles, /\.onframe-commerce-modal-head > div > span\s*\{/);
   assert.doesNotMatch(styles, /\.onframe-commerce-modal-head span\s*\{/);
   assert.match(source, /<button class="onframe-commerce-btn" data-action="reload-commerce" type="button"/);
   assert.match(source, /Atualizar promoções<\/button>\s*<button class="onframe-commerce-btn" data-action="close-promotion-modal"/);
-  assert.match(source, /function renderIconTooltipButton/);
-  assert.match(source, /class="ob-tooltip"/);
-  assert.match(source, /role="tooltip"/);
-  assert.match(source, /aria-describedby=/);
   assert.match(source, /formOpen && state\.promotionFormAction === action/);
   assert.match(source, /: 'trash';/);
   assert.doesNotMatch(source, /andes-table/);
@@ -753,7 +766,8 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(styles, /\.onframe-commerce-promotion-table\s*{\s*min-width: 760px/s);
   assert.match(styles, /\.onframe-commerce-promotion-column-actions\s*{\s*width: 104px/s);
   assert.match(styles, /\.onframe-commerce-promotion-column-period\s*{\s*width: 18%;\s*min-width: 184px/s);
-  assert.match(styles, /\.onframe-commerce-promotion-action-btn\.danger:hover:not\(:disabled\)[\s\S]*color: var\(--ob-danger\)/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-promotion-action-btn/);
+  assert.doesNotMatch(styles, /\.onframe-commerce-promotion-result-info/);
   assert.match(styles, /\.onframe-commerce-promotion-filter-wrap > \.onframe-commerce-btn\s*{[^}]*height: 36px/s);
   assert.match(styles, /\.onframe-commerce-modal\s*{[^}]*height: min\(780px, calc\(100vh - 36px\)\)[^}]*display: flex[^}]*overflow: hidden/s);
   assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*flex: 1 1 auto[^}]*min-height: 0[^}]*overflow: auto/s);
@@ -773,7 +787,7 @@ test('resultado da promocao abre popover com os custos que formam o valor liquid
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
   assert.match(source, /function renderPromotionResultPopoverTrigger/);
-  assert.match(source, /data-action="toggle-promotion-result-popover"/);
+  assert.match(source, /action: 'toggle-promotion-result-popover'/);
   assert.match(source, /function buildPromotionResultPopover/);
   assert.match(source, /Detalhes do cálculo/);
   assert.match(source, /Preço promocional/);
