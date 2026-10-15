@@ -20,13 +20,17 @@ const itemBefore = {
   attributes: [{ id: 'COLOR', name: 'Cor', value_name: 'Azul' }]
 };
 
-function drafts(operation: string, payload: Record<string, unknown>, result: unknown) {
+function drafts(operation: string, payload: Record<string, unknown>, result: unknown, options: {
+  snapshots?: () => { first: Record<string, unknown> | null; latest: Record<string, unknown> | null };
+  promotionSnapshots?: () => { first: unknown; latest: unknown };
+} = {}) {
   return buildConfirmedEditDrafts({
     itemId: itemBefore.id,
     operation,
     payload,
     result,
-    snapshots: () => ({ first: itemBefore, latest: itemBefore })
+    snapshots: options.snapshots || (() => ({ first: itemBefore, latest: itemBefore })),
+    promotionSnapshots: options.promotionSnapshots
   });
 }
 
@@ -35,14 +39,35 @@ test('historico estrutura apenas dados relevantes por tipo de edicao', () => {
     ok: true,
     standardPrice: { amount: 120, currency_id: 'BRL' }
   });
-  assert.deepEqual(price[0].details, { before: 100, after: 120, currency: 'BRL' });
-
-  const description = drafts('description.update', { plainText: 'conteudo que nao deve ser persistido' }, {
-    ok: true,
-    created: false
+  assert.deepEqual(price[0].details, {
+    before: { amount: 100, currency: 'BRL' },
+    after: { amount: 120, currency: 'BRL' }
   });
-  assert.deepEqual(description[0].details, {});
-  assert.equal(JSON.stringify(description).includes('conteudo que nao deve ser persistido'), false);
+  assert.equal(price[0].detailsVersion, 1);
+  assert.equal(price[0].operation, 'pricing.standard.update');
+
+  const priceWithoutPreviousValue = drafts('pricing.standard.update', { amount: 120 }, {
+    ok: true,
+    standardPrice: { amount: 120, currency_id: 'BRL' }
+  }, {
+    snapshots: () => ({ first: { ...itemBefore, price: null }, latest: itemBefore })
+  });
+  assert.equal(priceWithoutPreviousValue[0].details.before, null);
+
+  const descriptionText = 'conteudo que nao deve ser persistido';
+  const description = drafts('description.update', { plainText: descriptionText }, {
+    ok: true,
+    created: false,
+    history: {
+      before: { exists: true, length: 20 },
+      after: { exists: true, length: descriptionText.length }
+    }
+  });
+  assert.deepEqual(description[0].details, {
+    before: { exists: true, length: 20 },
+    after: { exists: true, length: descriptionText.length }
+  });
+  assert.equal(JSON.stringify(description).includes(descriptionText), false);
 
   const characteristics = drafts('characteristics.update', {
     attributes: [{ id: 'COLOR', valueName: 'Verde' }]
@@ -59,6 +84,74 @@ test('historico estrutura apenas dados relevantes por tipo de edicao', () => {
   assert.equal(characteristics[0].itemSnapshot?.thumbnailUrl, 'https://http2.mlstatic.com/summary.jpg');
 });
 
+test('historico de fotos registra inclusoes remocoes e reordenacao sem perder as contagens', () => {
+  const before = {
+    ...itemBefore,
+    pictures: [
+      { id: 'A', secure_url: 'https://http2.mlstatic.com/a.jpg' },
+      { id: 'B', secure_url: 'https://http2.mlstatic.com/b.jpg' }
+    ]
+  };
+  const after = {
+    ...itemBefore,
+    pictures: [
+      { id: 'B', secure_url: 'https://http2.mlstatic.com/b.jpg' },
+      { id: 'C', secure_url: 'https://http2.mlstatic.com/c.jpg' }
+    ]
+  };
+  const pictures = drafts('pictures.update', { pictures: after.pictures }, { ok: true, item: after }, {
+    snapshots: () => ({ first: before, latest: after })
+  });
+
+  assert.deepEqual(pictures[0].details, {
+    beforeCount: 2,
+    afterCount: 2,
+    added: [{ id: 'C', thumbnailUrl: 'https://http2.mlstatic.com/c.jpg' }],
+    removed: [{ id: 'A', thumbnailUrl: 'https://http2.mlstatic.com/a.jpg' }],
+    reordered: false
+  });
+});
+
+test('historico de promocao compara o estado confirmado antes e depois da operacao', () => {
+  const promotion = drafts('promotion.offer.create', {
+    promotionType: 'SELLER_CAMPAIGN',
+    promotionId: 'C-MLB123',
+    dealPrice: 80
+  }, { ok: true, price: 80, original_price: 100 }, {
+    promotionSnapshots: () => ({
+      first: [{ id: 'C-MLB123', type: 'SELLER_CAMPAIGN', name: 'Campanha de outubro', status: 'candidate', price: 100, original_price: 100 }],
+      latest: [{ id: 'C-MLB123', type: 'SELLER_CAMPAIGN', name: 'Campanha de outubro', status: 'started', price: 80, original_price: 100 }]
+    })
+  });
+
+  assert.deepEqual(promotion[0].details, {
+    promotion: {
+      type: 'SELLER_CAMPAIGN',
+      id: 'C-MLB123',
+      offerId: null,
+      name: 'Campanha de outubro'
+    },
+    before: {
+      status: 'inactive',
+      price: { amount: 100, currency: 'BRL' },
+      discountPercentage: null,
+      stock: null,
+      startDate: null,
+      endDate: null
+    },
+    after: {
+      status: 'active',
+      price: { amount: 80, currency: 'BRL' },
+      discountPercentage: 20,
+      stock: null,
+      startDate: null,
+      endDate: null
+    },
+    changedFields: ['status', 'price', 'discountPercentage'],
+    origin: { mode: 'single', scope: 'item' }
+  });
+});
+
 test('historico em lote ignora alvos que nao foram aplicados', () => {
   const result = drafts('bulk.commit', { payload: { amount: 130 } }, {
     ok: true,
@@ -73,6 +166,32 @@ test('historico em lote ignora alvos que nao foram aplicados', () => {
   assert.equal(result.length, 1);
   assert.equal(result[0].itemId, 'MLB1234567890');
   assert.equal(result[0].changeType, 'price');
+});
+
+test('historico de promocao em lote registra a origem da familia', () => {
+  const result = drafts('bulk.commit', {
+    payload: {
+      promotionType: 'SELLER_CAMPAIGN',
+      promotionId: 'C-MLB123',
+      dealPrice: 80
+    }
+  }, {
+    ok: true,
+    phase: 'commit',
+    scope: 'user_product_family',
+    action: 'promotion.offer.create',
+    targets: [
+      { itemId: itemBefore.id, status: 'applied', result: { ok: true, price: 80, original_price: 100 } }
+    ]
+  }, {
+    promotionSnapshots: () => ({
+      first: [{ id: 'C-MLB123', type: 'SELLER_CAMPAIGN', status: 'candidate', price: 100, original_price: 100 }],
+      latest: [{ id: 'C-MLB123', type: 'SELLER_CAMPAIGN', status: 'started', price: 80, original_price: 100 }]
+    })
+  });
+
+  assert.deepEqual(result[0].details.origin, { mode: 'bulk', scope: 'user_product_family' });
+  assert.equal(result[0].operation, 'promotion.offer.create');
 });
 
 test('resposta rejeitada nao produz evento de historico', () => {
@@ -128,9 +247,11 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
     assert.equal(enrichedPage.events.every((event) => event.item.thumbnailUrl === 'https://http2.mlstatic.com/test.jpg'), true);
     assert.equal(enrichedPage.events.every((event) => event.item.permalink === itemBefore.permalink), true);
 
-    const adminPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?limit=1')) as { events: Array<{ actor: { avatarUrl: string | null } }>; nextCursor: string; total: number; totalPages: number };
+    const adminPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?limit=1')) as { events: Array<{ actor: { avatarUrl: string | null }; operation: string | null; detailsVersion: number }>; nextCursor: string; total: number; totalPages: number };
     assert.equal(adminPage.events.length, 1);
     assert.equal(adminPage.events[0].actor.avatarUrl, 'https://example.com/admin.jpg');
+    assert.equal(adminPage.events[0].operation, 'pricing.standard.update');
+    assert.equal(adminPage.events[0].detailsVersion, 1);
     assert.equal(adminPage.total, 2);
     assert.equal(adminPage.totalPages, 2);
     assert.ok(adminPage.nextCursor);
@@ -155,6 +276,17 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
     }, new URL('https://example.com/v1/app/item-edit-history')) as { events: Array<{ account: { id: string } }> };
     assert.equal(collaboratorPage.events.length, 1);
     assert.equal(collaboratorPage.events[0].account.id, 'account-1');
+
+    await db.prepare(`
+      INSERT INTO item_edit_events (
+        id, workspace_id, seller_account_id, user_id, request_id,
+        item_id, change_type, action, summary, details_json, created_at
+      ) VALUES ('legacy-event', 'workspace-1', 'account-1', 'admin-1', 'legacy-request',
+        'MLBLEGACY', 'price', 'updated', 'Preço alterado', '{"before":90,"after":100,"currency":"BRL"}', 3000)
+    `).run();
+    const legacyPage = await listItemEditHistory({ ONFRAME_DB: db }, base.actor, new URL('https://example.com/v1/app/item-edit-history?itemId=MLBLEGACY')) as { events: Array<{ operation: string | null; detailsVersion: number }> };
+    assert.equal(legacyPage.events[0].operation, null);
+    assert.equal(legacyPage.events[0].detailsVersion, 0);
   } finally {
     await simulator.dispose();
   }

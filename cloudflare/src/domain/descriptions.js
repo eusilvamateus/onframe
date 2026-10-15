@@ -26,7 +26,18 @@ async function upsertOwnedDescription(client, item, plainText) {
     ok: true,
     itemId: item.id,
     created: !current.exists,
-    description: normalizeDescription(item.id, result, true)
+    description: normalizeDescription(item.id, result, true),
+    history: {
+      before: descriptionHistoryState(current),
+      after: { exists: true, length: plainText.length }
+    }
+  };
+}
+
+function descriptionHistoryState(description) {
+  return {
+    exists: Boolean(description && description.exists),
+    length: description && description.exists ? String(description.plainText || '').length : 0
   };
 }
 

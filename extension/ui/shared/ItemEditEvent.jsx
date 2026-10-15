@@ -23,9 +23,10 @@ export function itemEditContext(event) {
 
 function formatMoney(value, currency = 'BRL') {
   if (value === undefined || value === null || value === '') return 'Não informado';
-  const amount = Number(value);
+  const money = value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+  const amount = Number(money ? money.amount : value);
   if (!Number.isFinite(amount)) return 'Não informado';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency || 'BRL' }).format(amount);
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: money?.currency || currency || 'BRL' }).format(amount);
 }
 
 function ProductImage({ event, meta }) {

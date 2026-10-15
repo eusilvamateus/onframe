@@ -20,21 +20,39 @@ anuncio, e a pessoa usa o nome, o e-mail e o avatar atuais do workspace.
 
 O nivel de detalhe depende da operacao:
 
-- preco: valor anterior, valor confirmado e moeda;
-- descricao: somente se foi adicionada ou alterada, sem armazenar o texto;
+- preco: valor anterior e valor confirmado, cada um com valor e moeda;
+- descricao: existencia e tamanho antes e depois, sem armazenar o texto;
 - caracteristicas: campos enviados, com valor anterior e valor confirmado;
-- promocao: inclusao, alteracao ou remocao, sem copiar a configuracao inteira;
-- fotos: quantidade anterior e quantidade confirmada.
+- promocao: identificacao, estado anterior e confirmado, campos alterados e
+  origem individual ou em lote;
+- fotos: quantidades, inclusoes, remocoes e indicacao de reordenacao.
 
 Operacoes em lote geram um evento independente para cada anuncio efetivamente
 alterado. Isso permite filtrar por anuncio e evita tratar um sucesso parcial
 como se toda a familia tivesse sido modificada.
 
+## Contrato de detalhes
+
+Cada evento novo informa a operacao canonica em `operation` e a versao do
+objeto `details` em `detailsVersion`. A versao atual e `1`:
+
+- `price`: `before` e `after` usam `{ amount, currency }`;
+- `description`: `before` e `after` usam `{ exists, length }`;
+- `characteristics`: `changes` lista `{ id, label, before, after }`;
+- `pictures`: informa `beforeCount`, `afterCount`, `added`, `removed` e
+  `reordered`;
+- `promotion`: informa `promotion`, `before`, `after`, `changedFields` e
+  `origin`.
+
+Eventos criados antes desse contrato continuam consultaveis com
+`detailsVersion: 0` e `operation: null`. Consumidores devem manter a leitura do
+formato legado enquanto esses registros existirem.
+
 ## Consulta e acesso
 
 `GET /v1/app/item-edit-history` devolve os eventos do workspace em ordem
-decrescente, com cursor e limite de ate 50 registros. A consulta aceita os
-filtros `itemId`, `accountId`, `userId` e `changeType`.
+decrescente, com paginacao e limite de ate 50 registros. A consulta aceita os
+filtros `itemId`, `accountId`, `userId`, `changeType`, `from` e `to`.
 
 Administradores podem consultar todas as contas do workspace. Colaboradores
 veem somente eventos das contas que continuam atribuidas a eles.
@@ -45,3 +63,7 @@ O Worker grava o evento somente depois de o contrato de edicao concluir com
 sucesso. Em operacoes em lote, apenas alvos com estado `applied` sao gravados.
 A falha interna de escrita e registrada na observabilidade, sem transformar uma
 alteracao ja confirmada pelo Mercado Livre em uma falsa falha para a pessoa.
+
+Promocoes usam a leitura anterior a mutacao e a leitura que confirmou o estado
+final. Quando a API aceita a alteracao mas ainda nao a reflete, a reconciliacao
+duravel preserva o estado anterior e so cria o evento depois da confirmacao.

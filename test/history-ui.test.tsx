@@ -14,7 +14,8 @@ const firstEvent = {
   account: { id: 'account-1', name: 'Loja principal', meliUserId: '123' },
   actor: { id: 'user-1', name: 'Mateus Silva', email: 'mateus@example.com', avatarUrl: 'https://example.com/mateus.jpg' },
   changeType: 'price', action: 'updated', summary: 'Preço alterado',
-  details: { before: 100, after: 120, currency: 'BRL' },
+  detailsVersion: 1,
+  details: { before: { amount: 100, currency: 'BRL' }, after: { amount: 120, currency: 'BRL' } },
   createdAt: '2026-10-13T12:00:00.000Z'
 };
 

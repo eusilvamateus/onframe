@@ -99,6 +99,7 @@ type PromotionReconciliationRow = {
   operation: string;
   payload_json: string;
   accepted_result_json: string;
+  history_before_json: string | null;
   actor_name: string | null;
   actor_email: string | null;
   status: 'pending' | 'confirmed' | 'unconfirmed';
@@ -198,7 +199,8 @@ export async function handleRemoteApiRequest(input: {
       payload: requestPayload,
       requestId: input.requestId,
       result,
-      snapshots: (targetItemId) => client.historySnapshots(targetItemId)
+      snapshots: (targetItemId) => client.historySnapshots(targetItemId),
+      promotionSnapshots: (targetItemId) => client.historyPromotionSnapshots(targetItemId)
     }).catch((error) => {
       console.error(JSON.stringify({
         event: 'item_edit_history_write_failed',
@@ -482,9 +484,9 @@ async function registerPendingPromotionReconciliations(input: {
       await input.env.ONFRAME_DB.prepare(`
         INSERT INTO promotion_reconciliations (
           id, workspace_id, seller_account_id, user_id, request_id,
-          source_item_id, item_id, operation, payload_json, accepted_result_json,
+          source_item_id, item_id, operation, payload_json, accepted_result_json, history_before_json,
           actor_name, actor_email, status, attempts, created_at, updated_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
       `).bind(
         reconciliationId,
         input.actor.workspaceId,
@@ -496,6 +498,7 @@ async function registerPendingPromotionReconciliations(input: {
         action,
         JSON.stringify(payload),
         JSON.stringify(metadata?.result ?? target.result ?? {}),
+        JSON.stringify(input.client.historyPromotionSnapshots(itemId).first ?? null),
         input.actor.displayName || null,
         input.actor.email || null,
         now,
@@ -660,7 +663,11 @@ export async function reconcilePromotionOperation(
       payload,
       requestId: row.request_id,
       result: parseStoredJson(row.accepted_result_json),
-      snapshots: (itemId) => client.historySnapshots(itemId)
+      snapshots: (itemId) => client.historySnapshots(itemId),
+      promotionSnapshots: (itemId) => ({
+        first: parseStoredJson(row.history_before_json || 'null'),
+        latest: client.historyPromotionSnapshots(itemId).latest
+      })
     });
 
     const now = Date.now();
@@ -866,6 +873,8 @@ async function readRequestJson(request: Request, options: { maxBytes?: number } 
 class RemoteMeliClient {
   private readonly firstItemSnapshots = new Map<string, Record<string, unknown>>();
   private readonly latestItemSnapshots = new Map<string, Record<string, unknown>>();
+  private readonly firstPromotionSnapshots = new Map<string, unknown>();
+  private readonly latestPromotionSnapshots = new Map<string, unknown>();
 
   constructor(
     private readonly env: RemoteRuntimeEnv,
@@ -899,6 +908,27 @@ class RemoteMeliClient {
       latest: this.latestItemSnapshots.get(itemId) || null
     };
   }
+
+  historyPromotionSnapshots(itemId: string): { first: unknown; latest: unknown } {
+    return {
+      first: this.firstPromotionSnapshots.get(itemId) ?? null,
+      latest: this.latestPromotionSnapshots.get(itemId) ?? null
+    };
+  }
+
+  private rememberPromotionSnapshot(itemId: string, snapshot: unknown): void {
+    if (!this.firstPromotionSnapshots.has(itemId)) this.firstPromotionSnapshots.set(itemId, snapshot);
+    this.latestPromotionSnapshots.set(itemId, snapshot);
+  }
+
+  private async ensurePromotionHistoryBefore(itemId: string): Promise<void> {
+    if (this.firstPromotionSnapshots.has(itemId)) return;
+    try {
+      await this.getItemPromotions(itemId);
+    } catch {
+      // Historico auxiliar nao deve impedir uma mutacao valida.
+    }
+  }
   async getItemPrices(itemId: string, options: { displayVersion?: boolean; showAllPrices?: boolean } = {}): Promise<unknown> {
     return this.request(withQuery(`/items/${encodeURIComponent(itemId)}/prices`, { display_version: options.displayVersion ? 'true' : undefined }), {
       headers: options.showAllPrices ? { 'show-all-prices': 'true' } : undefined
@@ -924,7 +954,11 @@ class RemoteMeliClient {
   async getCatalogCompetition(itemId: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/price_to_win?version=v2`); }
   async getBuyboxSync(itemId: string): Promise<unknown> { return this.request(`/public/buybox/sync/${encodeURIComponent(itemId)}`, { headers: { 'x-public': 'true' } }); }
   async getSellerPromotions(userId: string | number): Promise<unknown> { return this.request(`/seller-promotions/users/${encodeURIComponent(userId)}?app_version=v2`); }
-  async getItemPromotions(itemId: string): Promise<unknown> { return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`); }
+  async getItemPromotions(itemId: string): Promise<unknown> {
+    const promotions = await this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`);
+    this.rememberPromotionSnapshot(itemId, promotions);
+    return promotions;
+  }
   async getPromotion(promotionId: string, promotionType: string): Promise<unknown> { return this.request(withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}`, { promotion_type: promotionType, app_version: 'v2' })); }
   async getPromotionItems(promotionId: string, promotionType: string, params: Record<string, unknown> = {}): Promise<unknown> {
     return this.request(withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}/items`, { ...params, promotion_type: promotionType, app_version: 'v2' }));
@@ -933,9 +967,18 @@ class RemoteMeliClient {
   async createPromotionCampaign(payload: unknown): Promise<unknown> { return this.request('/seller-promotions/promotions?app_version=v2', { method: 'POST', body: JSON.stringify(payload) }); }
   async updatePromotionCampaign(promotionId: string, payload: unknown): Promise<unknown> { return this.request(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}?app_version=v2`, { method: 'PUT', body: JSON.stringify(payload) }); }
   async deletePromotionCampaign(promotionId: string, promotionType: string): Promise<unknown> { return this.request(withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}`, { promotion_type: promotionType, app_version: 'v2' }), { method: 'DELETE' }); }
-  async createPromotionOffer(itemId: string, payload: unknown): Promise<unknown> { return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, { method: 'POST', body: JSON.stringify(payload) }); }
-  async updatePromotionOffer(itemId: string, payload: unknown): Promise<unknown> { return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, { method: 'PUT', body: JSON.stringify(payload) }); }
-  async deletePromotionOffer(itemId: string, params: Record<string, unknown> = {}): Promise<unknown> { return this.request(withQuery(`/seller-promotions/items/${encodeURIComponent(itemId)}`, { ...params, app_version: 'v2' }), { method: 'DELETE' }); }
+  async createPromotionOffer(itemId: string, payload: unknown): Promise<unknown> {
+    await this.ensurePromotionHistoryBefore(itemId);
+    return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, { method: 'POST', body: JSON.stringify(payload) });
+  }
+  async updatePromotionOffer(itemId: string, payload: unknown): Promise<unknown> {
+    await this.ensurePromotionHistoryBefore(itemId);
+    return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
+  async deletePromotionOffer(itemId: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    await this.ensurePromotionHistoryBefore(itemId);
+    return this.request(withQuery(`/seller-promotions/items/${encodeURIComponent(itemId)}`, { ...params, app_version: 'v2' }), { method: 'DELETE' });
+  }
   async getItemDescription(itemId: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/description`); }
   async createItemDescription(itemId: string, plainText: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/description`, { method: 'POST', body: JSON.stringify({ plain_text: plainText }) }); }
   async updateItemDescription(itemId: string, plainText: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/description?api_version=2`, { method: 'PUT', body: JSON.stringify({ plain_text: plainText }) }); }

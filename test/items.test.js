@@ -24,6 +24,7 @@ const {
   createCampaign,
   createOffer,
   deleteOffer,
+  descriptions,
   detection,
   photosModel,
   commerceModel,
@@ -35,6 +36,23 @@ const {
   fakeElement,
   listen
 } = require('./helpers');
+
+test('descricao retorna metadados de historico sem repetir o conteudo alterado', async () => {
+  const beforeText = 'Descricao anterior';
+  const afterText = 'Nova descricao';
+  const result = await descriptions.upsertDescription({
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123 }),
+    getItemDescription: async () => ({ plain_text: beforeText }),
+    updateItemDescription: async () => ({ plain_text: afterText })
+  }, 'MLB1234567890', { plainText: afterText });
+
+  assert.deepStrictEqual(result.history, {
+    before: { exists: true, length: beforeText.length },
+    after: { exists: true, length: afterText.length }
+  });
+  assert.strictEqual(JSON.stringify(result.history).includes(afterText), false);
+});
 
 test('pickMode diferencia anuncio sem variacoes, variacoes antigas e user product', () => {
   assert.strictEqual(pickMode({ id: 'MLB1', variations: [] }), 'classic');
