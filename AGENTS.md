@@ -24,6 +24,13 @@ Livre, leia [a integracao Mercado Livre](docs/integrations/mercado-livre.md).
 Antes de alterar o Worker ou os scripts de bootstrap, leia
 [a arquitetura do projeto](docs/architecture/estrutura-do-projeto.md).
 
+## Limites de Escopo
+
+O agente só tem permissão para alterar arquivos dentro deste repositório. Não
+altere nenhum outro projeto ou diretório, inclusive o design system, sem ordem ou
+autorização explícita do usuário para aquele local. Referenciar, consultar ou usar
+uma dependência externa não concede permissão para modificá-la.
+
 ## Comandos de Build, Teste e Desenvolvimento
 
 Execute os comandos na raiz do repositório com Node.js 20 ou superior:
