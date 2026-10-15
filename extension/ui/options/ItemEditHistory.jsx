@@ -30,9 +30,10 @@ function presetPeriod(preset) {
   if (preset === 'custom') return customPeriod('', '');
   const end = new Date();
   end.setHours(0, 0, 0, 0);
+  if (preset === 'today') return dayPeriod(end);
+  if (preset === 'month') return monthPeriod(end, end);
   const start = new Date(end);
-  if (preset === 'month') start.setDate(1);
-  else start.setDate(start.getDate() - option.days + 1);
+  start.setDate(start.getDate() - option.days + 1);
   return { preset, start: isoDate(start), end: isoDate(end) };
 }
 
@@ -81,9 +82,22 @@ function customPeriod(start, end) {
   return { preset: 'custom', start: String(start || ''), end: String(end || '') };
 }
 
+function dayPeriod(value) {
+  const date = isoDate(value);
+  return { preset: 'today', start: date, end: date };
+}
+
+function monthPeriod(value, today = new Date()) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return { preset: 'month', start: '', end: '' };
+  const start = new Date(value.getFullYear(), value.getMonth(), 1, 12);
+  const monthEnd = new Date(value.getFullYear(), value.getMonth() + 1, 0, 12);
+  const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  const end = monthEnd > currentDay ? currentDay : monthEnd;
+  return { preset: 'month', start: isoDate(start), end: isoDate(end) };
+}
+
 function isCompletePeriod(period) {
-  if (period.preset === 'custom') return Boolean(period.start && period.end && period.start <= period.end);
-  if (!period.start && !period.end) return true;
+  if (period.preset === 'all') return true;
   return Boolean(period.start && period.end && period.start <= period.end);
 }
 
@@ -95,6 +109,39 @@ function periodError(period) {
 
 function periodCalendarRange(range) {
   return customPeriod(isoDate(range?.start), isoDate(range?.end));
+}
+
+function PeriodDatepicker({ draft, validationError, onChange }) {
+  if (draft.preset === 'today') return <Datepicker
+    label="Dia"
+    value={dateFromIso(draft.start)}
+    max={new Date()}
+    stepper="day"
+    calendarDisplay="popover"
+    weekStartsOn={1}
+    error={validationError || undefined}
+    onChange={(date) => onChange(dayPeriod(date))}
+  />;
+  if (draft.preset === 'month') return <Datepicker
+    label="Mês"
+    value={dateFromIso(draft.start)}
+    max={new Date()}
+    stepper="month"
+    calendarDisplay="popover"
+    error={validationError || undefined}
+    onChange={(date) => onChange(monthPeriod(date))}
+  />;
+  if (!['7d', '30d', 'custom'].includes(draft.preset)) return null;
+  return <Datepicker
+    label="Intervalo"
+    mode="range"
+    calendarDisplay="popover"
+    value={calendarValue(draft)}
+    max={new Date()}
+    weekStartsOn={1}
+    error={validationError || undefined}
+    onChange={(range) => onChange(periodCalendarRange(range))}
+  />;
 }
 
 export function historyPeriodLabel(period, hoje = new Date()) {
@@ -185,17 +232,8 @@ function PeriodFilter({ period, onApply }) {
               onToggle={() => setDraft(presetPeriod(preset.id))}
             />)}
           </div>
-          {draft.preset === 'custom' && <div className="onframe-history-period-picker">
-            <Datepicker
-              label="Intervalo"
-              mode="range"
-              calendarDisplay="popover"
-              value={calendarValue(draft)}
-              max={new Date()}
-              weekStartsOn={1}
-              error={validationError || undefined}
-              onChange={(range) => setDraft(periodCalendarRange(range))}
-            />
+          {draft.preset !== 'all' && <div className="onframe-history-period-picker">
+            <PeriodDatepicker draft={draft} validationError={validationError} onChange={setDraft} />
           </div>}
         </div>
         <div className="onframe-history-popover-actions">
