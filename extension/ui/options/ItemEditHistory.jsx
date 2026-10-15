@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Card, Chip, Datepicker, Pagination, Ph, Popover, SearchInput, Select, Skeleton } from '@onblide/ui';
+import { Alert, Button, Card, Chip, Datepicker, formatarPeriodo, Pagination, Ph, Popover, SearchInput, Select, Skeleton, Tooltip } from '@onblide/ui';
 import { ItemEditEventCard } from '../shared/ItemEditEvent';
 import { SectionHeader } from '../shared/SectionHeader';
 import { accountName } from '../shared/IntegrationAccount';
@@ -16,20 +16,23 @@ const TYPE_OPTIONS = [
   { label: 'Fotos', id: 'pictures' }
 ];
 const PERIOD_PRESETS = [
-  { id: 'all', label: 'Todo o período' },
-  { id: 'today', label: 'Hoje', days: 1 },
+  { id: 'all', label: 'Sem filtro' },
   { id: '7d', label: 'Últimos 7 dias', days: 7 },
   { id: '30d', label: 'Últimos 30 dias', days: 30 },
-  { id: '90d', label: 'Últimos 90 dias', days: 90 }
+  { id: 'today', label: 'Do dia', days: 1 },
+  { id: 'month', label: 'Do mês' },
+  { id: 'custom', label: 'Intervalo' }
 ];
 
 function presetPeriod(preset) {
   const option = PERIOD_PRESETS.find((entry) => entry.id === preset);
-  if (!option?.days) return { ...EMPTY_PERIOD };
+  if (!option || preset === 'all') return { ...EMPTY_PERIOD };
+  if (preset === 'custom') return customPeriod('', '');
   const end = new Date();
   end.setHours(0, 0, 0, 0);
   const start = new Date(end);
-  start.setDate(start.getDate() - option.days + 1);
+  if (preset === 'month') start.setDate(1);
+  else start.setDate(start.getDate() - option.days + 1);
   return { preset, start: isoDate(start), end: isoDate(end) };
 }
 
@@ -79,6 +82,7 @@ function customPeriod(start, end) {
 }
 
 function isCompletePeriod(period) {
+  if (period.preset === 'custom') return Boolean(period.start && period.end && period.start <= period.end);
   if (!period.start && !period.end) return true;
   return Boolean(period.start && period.end && period.start <= period.end);
 }
@@ -93,17 +97,8 @@ function periodCalendarRange(range) {
   return customPeriod(isoDate(range?.start), isoDate(range?.end));
 }
 
-function formatPeriodDate(value, format) {
-  const date = dateFromIso(value);
-  return date ? format.format(date) : '';
-}
-
-function periodLabel(period) {
-  const preset = PERIOD_PRESETS.find((option) => option.id === period.preset);
-  if (preset) return preset.label;
-  if (!period.start || !period.end) return 'Período personalizado';
-  const format = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-  return `${formatPeriodDate(period.start, format)} – ${formatPeriodDate(period.end, format)}`;
+export function historyPeriodLabel(period, hoje = new Date()) {
+  return formatarPeriodo(dateFromIso(period.start), dateFromIso(period.end), { hoje }) || 'Sem filtro';
 }
 
 function selectId(options, label) {
@@ -171,45 +166,48 @@ function PeriodFilter({ period, onApply }) {
   const complete = isCompletePeriod(draft);
   const validationError = periodError(draft);
 
-  return <Popover
-    title="Período"
-    width={420}
-    align="end"
-    onOpenChange={(open) => { if (open) setDraft(period); }}
-    trigger={<Button kind="secondary" icon={<Ph n="calendar-blank" size={17} />}>{periodLabel(period)}</Button>}
-  >
-    {(close) => <>
-      <div className="onframe-history-period-layout">
-        <div className="onframe-history-period-presets" aria-label="Períodos rápidos">
-          {PERIOD_PRESETS.map((preset) => <Chip
-            key={preset.id}
-            label={preset.label}
-            size="sm"
-            selected={draft.preset === preset.id}
-            onToggle={() => setDraft(presetPeriod(preset.id))}
-          />)}
+  return <Tooltip label="Período">
+    <Popover
+      title="Período"
+      width={420}
+      align="end"
+      onOpenChange={(open) => { if (open) setDraft(period); }}
+      trigger={<Chip icon="calendar-blank" label={historyPeriodLabel(period)} selected={Boolean(period.start && period.end)} />}
+    >
+      {(close) => <>
+        <div className="onframe-history-period-layout">
+          <div className="onframe-history-period-presets" aria-label="Períodos rápidos">
+            {PERIOD_PRESETS.map((preset) => <Chip
+              key={preset.id}
+              label={preset.label}
+              size="sm"
+              selected={draft.preset === preset.id}
+              onToggle={() => setDraft(presetPeriod(preset.id))}
+            />)}
+          </div>
+          {draft.preset === 'custom' && <div className="onframe-history-period-picker">
+            <Datepicker
+              label="Intervalo"
+              mode="range"
+              calendarDisplay="popover"
+              value={calendarValue(draft)}
+              max={new Date()}
+              weekStartsOn={1}
+              error={validationError || undefined}
+              onChange={(range) => setDraft(periodCalendarRange(range))}
+            />
+          </div>}
         </div>
-        <div className="onframe-history-period-picker">
-          <Datepicker
-            label="Intervalo personalizado"
-            mode="range"
-            calendarDisplay="inline"
-            value={calendarValue(draft)}
-            max={new Date()}
-            weekStartsOn={1}
-            onChange={(range) => setDraft(periodCalendarRange(range))}
-          />
+        <div className="onframe-history-popover-actions">
+          <Button kind="quiet" onClick={() => setDraft({ ...EMPTY_PERIOD })}>Limpar</Button>
+          <Button disabled={!complete} onClick={() => {
+            onApply(draft);
+            close();
+          }}>Aplicar período</Button>
         </div>
-      </div>
-      <div className="onframe-history-popover-actions">
-        <span className={`onframe-history-period-summary${validationError ? ' onframe-history-period-summary--error' : ''}`}>{validationError || periodLabel(draft)}</span>
-        <Button disabled={!complete} onClick={() => {
-          onApply(draft);
-          close();
-        }}>Aplicar período</Button>
-      </div>
-    </>}
-  </Popover>;
+      </>}
+    </Popover>
+  </Tooltip>;
 }
 
 function LoadingHistory() {

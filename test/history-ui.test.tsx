@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Avatar, Badge, Button, Chip, Datepicker, Link, Pagination, Popover, Select } from '@onblide/ui';
+import { Avatar, Badge, Button, Chip, Datepicker, Link, Pagination, Popover, Select, Tooltip } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { HistorySession } from '../extension/ui/popup/HistorySession.jsx';
-import { historyPeriodQuery, ItemEditHistory } from '../extension/ui/options/ItemEditHistory.jsx';
+import { historyPeriodLabel, historyPeriodQuery, ItemEditHistory } from '../extension/ui/options/ItemEditHistory.jsx';
 import { ItemEditEventCard } from '../extension/ui/shared/ItemEditEvent.jsx';
 import { formatRelativeDate } from '../extension/ui/shared/runtime.js';
 
@@ -82,6 +82,10 @@ test('periodo personalizado gera limites locais completos para a consulta', () =
     to: new Date(2025, 0, 5, 23, 59, 59, 999).getTime()
   });
   assert.deepEqual(historyPeriodQuery({ start: '', end: '' }), { from: '', to: '' });
+  const hoje = new Date(2026, 9, 14);
+  assert.equal(historyPeriodLabel({ start: '2026-08-01', end: '2026-10-31' }, hoje), 'Agosto - Outubro');
+  assert.equal(historyPeriodLabel({ start: '2026-08-05', end: '2026-10-14' }, hoje), '05 Agosto - 14 Outubro');
+  assert.equal(historyPeriodLabel({ start: '', end: '' }, hoje), 'Sem filtro');
 });
 
 test('opcoes filtram e paginam o historico detalhado', async () => {
@@ -102,16 +106,27 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   const popovers = renderer.root.findAllByType(Popover);
   assert.deepEqual(popovers.map((popover) => popover.props.title), ['Período', 'Filtrar histórico']);
   const periodPopover = popovers.find((popover) => popover.props.title === 'Período');
+  const periodTooltip = renderer.root.findAllByType(Tooltip).find((tooltip) => tooltip.props.label === 'Período');
+  assert.ok(periodTooltip);
+  assert.equal(periodPopover.props.trigger.type, Chip);
+  assert.equal(periodPopover.props.trigger.props.label, 'Sem filtro');
   let periodRenderer;
   await act(async () => { periodRenderer = create(periodPopover.props.children(() => {})); });
+  assert.equal(periodRenderer.root.findAllByType(Datepicker).length, 0);
+  const periodChips = periodRenderer.root.findAllByType(Chip);
+  assert.deepEqual(periodChips.map((chip) => chip.props.label), ['Sem filtro', 'Últimos 7 dias', 'Últimos 30 dias', 'Do dia', 'Do mês', 'Intervalo']);
+  assert.equal(periodChips.filter((chip) => chip.props.selected).length, 1);
+  await act(async () => periodChips.find((chip) => chip.props.label === 'Intervalo').props.onToggle());
+  periodRenderer.unmount();
+  const updatedPeriodPopover = renderer.root.findAllByType(Popover).find((popover) => popover.props.title === 'Período');
+  await act(async () => { periodRenderer = create(updatedPeriodPopover.props.children(() => {})); });
   const datepicker = periodRenderer.root.findByType(Datepicker);
   assert.equal(datepicker.props.mode, 'range');
-  assert.equal(datepicker.props.calendarDisplay, 'inline');
-  assert.equal(datepicker.props.label, 'Intervalo personalizado');
+  assert.equal(datepicker.props.calendarDisplay, 'popover');
+  assert.equal(datepicker.props.label, 'Intervalo');
   assert.equal(periodRenderer.root.findAllByProps({ type: 'date' }).length, 0);
-  const periodChips = periodRenderer.root.findAllByType(Chip);
-  assert.deepEqual(periodChips.map((chip) => chip.props.label), ['Todo o período', 'Hoje', 'Últimos 7 dias', 'Últimos 30 dias', 'Últimos 90 dias']);
-  assert.equal(periodChips.filter((chip) => chip.props.selected).length, 1);
+  assert.ok(periodRenderer.root.findAllByType(Button).some((button) => button.props.children === 'Limpar'));
+  assert.equal(periodRenderer.root.findAllByType(Button).find((button) => button.props.children === 'Aplicar período').props.disabled, true);
   periodRenderer.unmount();
   assert.equal(renderer.root.findByType(ItemEditEventCard).props.compact, undefined);
   assert.equal(renderer.root.findAllByType(Badge).length, 0);

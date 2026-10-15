@@ -16,7 +16,7 @@ const entries = [
   path.join(root, 'extension', 'ui', 'popup')
 ];
 
-Promise.all(entries.map((directory) => {
+const builds = entries.map((directory) => {
   fs.rmSync(path.join(directory, 'assets'), { recursive: true, force: true });
   fs.rmSync(path.join(directory, 'app.js'), { force: true });
   fs.rmSync(path.join(directory, 'app.css'), { force: true });
@@ -39,7 +39,21 @@ Promise.all(entries.map((directory) => {
     logLevel: 'info',
     metafile: true
   }).then(assertSingleReact);
-})).catch(() => process.exit(1));
+});
+
+fs.rmSync(path.join(root, 'extension', 'core', 'period.js'), { force: true });
+builds.push(esbuild.build({
+  entryPoints: [path.join(root, 'extension', 'ui', 'shared', 'period-global.js')],
+  outfile: path.join(root, 'extension', 'core', 'period.js'),
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: ['chrome110'],
+  treeShaking: true,
+  logLevel: 'info'
+}));
+
+Promise.all(builds).catch(() => process.exit(1));
 
 function assertSingleReact(result) {
   const conflicts = Object.keys(result.metafile.inputs)

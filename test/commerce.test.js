@@ -561,7 +561,7 @@ test('popover de promocoes apresenta cupom do item como beneficio de checkout', 
   assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(pricePromotionEntries\(groups\)\);/);
   assert.match(source, /if \(programmed\) return programmed;\s*return null;/s);
   assert.match(source, /function promotionStartTimestamp/);
-  assert.match(source, /function formatPromotionPeriodCompact/);
+  assert.match(source, /function formatPromotionPeriod/);
   assert.match(source, /function renderPromotionPopoverCampaign/);
   assert.match(source, /function renderPromotionPopoverCouponList/);
   assert.match(source, /function renderPromotionPopoverCouponRow/);
@@ -712,10 +712,10 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(source, /function comparePromotionRows/);
   assert.match(source, /function promotionListStatusLabel/);
   assert.match(source, /function renderPromotionListResult/);
-  assert.match(source, /function formatPromotionPeriodShort/);
-  assert.match(source, /return `De \$\{start\} a \$\{end\}`/);
-  assert.match(source, /return `\$\{date\.getDate\(\)\} de \$\{month\}`/);
-  assert.match(source, /<small>\$\{escapeHtml\(formatPromotionPeriodShort\(entry\) \|\| 'Sem vigência informada'\)\}<\/small>\s*<span class="onframe-commerce-status/);
+  assert.match(source, /const formatarPeriodo = rootScope\.OnFramePeriod && rootScope\.OnFramePeriod\.formatarPeriodo/);
+  assert.match(source, /return formatarPeriodo\(start, end\)/);
+  assert.doesNotMatch(source, /function formatPromotionPeriod(?:Short|Compact)|function format(?:Short|Compact)PromotionDate|function formatCentralDate/);
+  assert.match(source, /<small>\$\{escapeHtml\(formatPromotionPeriod\(entry\) \|\| 'Sem vigência informada'\)\}<\/small>\s*<span class="onframe-commerce-status/);
   assert.match(source, /Com redução de tarifas/);
   assert.match(source, /Com redução de tarifa/);
   assert.match(source, /promotionFinancialFilters/);

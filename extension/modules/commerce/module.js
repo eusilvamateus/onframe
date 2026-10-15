@@ -13,6 +13,7 @@
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
+    const formatarPeriodo = rootScope.OnFramePeriod && rootScope.OnFramePeriod.formatarPeriodo;
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -1379,7 +1380,7 @@
           </td>
           <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-period" data-label="Estado e vigência">
             <div class="onframe-commerce-promotion-period-content">
-              <small>${escapeHtml(formatPromotionPeriodShort(entry) || 'Sem vigência informada')}</small>
+              <small>${escapeHtml(formatPromotionPeriod(entry) || 'Sem vigência informada')}</small>
               <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
             </div>
           </td>
@@ -1743,38 +1744,6 @@
       return value === null ? '' : `-${CommerceModel.formatMoney(value, currency)}`;
     }
 
-    function formatPromotionPeriodShort(entry) {
-      const start = formatShortPromotionDate(entry && (entry.start_date || entry.startDate));
-      const end = formatShortPromotionDate(entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate));
-      if (start && end) return `De ${start} a ${end}`;
-      if (start) return `A partir de ${start}`;
-      if (end) return `Até ${end}`;
-      return '';
-    }
-
-    function formatPromotionPeriodCompact(entry) {
-      const start = formatCompactPromotionDate(entry && (entry.start_date || entry.startDate));
-      const end = formatCompactPromotionDate(entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate));
-      if (start && end) return `${start} - ${end}`;
-      if (start) return `A partir de ${start}`;
-      if (end) return `Até ${end}`;
-      return '';
-    }
-
-    function formatShortPromotionDate(value) {
-      const date = parseIsoDate(value) || parseDateValue(value);
-      if (!date) return '';
-      const month = date.toLocaleDateString('pt-BR', { month: 'long' });
-      return `${date.getDate()} de ${month}`;
-    }
-
-    function formatCompactPromotionDate(value) {
-      const date = parseIsoDate(value) || parseDateValue(value);
-      if (!date) return '';
-      const month = date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-      return `${date.getDate()} ${month}`;
-    }
-
     function couponCampaignData(entry) {
       return entry && entry.coupon && typeof entry.coupon === 'object' ? entry.coupon : {};
     }
@@ -1996,7 +1965,7 @@
       const originalPrice = promotionSummaryOriginalPrice(entry);
       const finalPrice = promotionSummaryDisplayPrice(entry);
       const discount = discountPercent(originalPrice, finalPrice);
-      const period = formatPromotionPeriodShort(entry) || 'Sem vigência informada';
+      const period = formatPromotionPeriod(entry) || 'Sem vigência informada';
       const status = promotionDisplayStatusLabel(entry);
       const tone = promotionDisplayTone(entry);
       const financialBenefit = renderPromotionPopoverFinancialBenefits(entry);
@@ -2078,7 +2047,7 @@
     }
 
     function renderPromotionPopoverCouponRow(entry) {
-      const period = formatPromotionPeriodCompact(entry) || 'Sem vigência informada';
+      const period = formatPromotionPeriod(entry) || 'Sem vigência informada';
       const status = promotionDisplayStatusLabel(entry);
       const tone = promotionDisplayTone(entry);
       const terms = couponCompactTerms(entry);
@@ -2940,12 +2909,11 @@
     }
 
     function formatPromotionPeriod(entry) {
-      const start = formatCentralDate(entry && (entry.start_date || entry.startDate));
-      const end = formatCentralDate(entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate));
-      if (start && end) return `DE ${start} A ${end}`;
-      if (start) return `A PARTIR DE ${start}`;
-      if (end) return `ATÉ ${end}`;
-      return '';
+      if (typeof formatarPeriodo !== 'function') return '';
+      const start = parseIsoDate(entry && (entry.start_date || entry.startDate)) || parseDateValue(entry && (entry.start_date || entry.startDate));
+      const endValue = entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
+      const end = parseIsoDate(endValue) || parseDateValue(endValue);
+      return formatarPeriodo(start, end);
     }
 
     function discountPercent(originalPrice, finalPrice) {
@@ -3027,13 +2995,6 @@
         String(entry.id || entry.promotion_id || ''),
         String(entry.offer_id || '')
       ].join(':');
-    }
-
-    function formatCentralDate(value) {
-      const date = parseIsoDate(value) || parseDateValue(value);
-      if (!date) return '';
-      const month = date.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
-      return `${date.getDate()} DE ${month}`;
     }
 
     function parseDateValue(value) {

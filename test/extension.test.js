@@ -166,6 +166,7 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   assert.equal(manifest.action.default_popup, 'ui/popup/index.html');
   assert.equal(manifest.options_ui.page, 'ui/options/index.html');
   assert.ok(manifest.content_scripts[0].js.indexOf('core/fonts.js') < manifest.content_scripts[0].js.indexOf('core/icons.js'));
+  assert.ok(manifest.content_scripts[0].js.indexOf('core/period.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'launcher')), false);
 });
 
@@ -287,10 +288,16 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
   const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const history = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'ItemEditHistory.jsx'), 'utf8');
+  const periodGlobal = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'period-global.js'), 'utf8');
   const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SessionsSettings'));
   const integrations = options.slice(options.indexOf('function Integrations'), options.indexOf('function settingsOptionItems'));
 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
+  assert.match(history, /formatarPeriodo\(dateFromIso\(period\.start\), dateFromIso\(period\.end\), \{ hoje \}\)/);
+  assert.doesNotMatch(history, /Intl\.DateTimeFormat|formatPeriodDate/);
+  assert.match(periodGlobal, /import \{ formatarPeriodo \} from '@onblide\/ui\/periodo'/);
+  assert.match(buildScript, /period-global\.js/);
   assert.match(options, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /@onblide\/ui\/styles\.css/);
   assert.match(popup, /<IntegrationsSession/);
@@ -302,6 +309,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popupHtml, /<body class="onframe-popup-document">/);
   assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*480px;[^}]*min-width:\s*480px/);
   assert.match(optionsCss, /\.onframe-history-product-media \.onframe-history-type-icon\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/);
+  assert.match(optionsCss, /\.onframe-history-period-picker\s*\{[^}]*justify-content:\s*center/);
+  assert.match(optionsCss, /\.onframe-history-period-picker > div\s*\{[^}]*width:\s*276px;[^}]*max-width:\s*100%/);
   assert.match(optionsCss, /\.onframe-popup-window, \.onframe-popup-document\s*\{[^}]*background:\s*transparent;[^}]*border-radius:\s*var\(--ob-r-surface\);[^}]*overflow:\s*hidden;/);
   assert.match(optionsCss, /\.onframe-popup-document #root\s*\{[^}]*background:\s*var\(--ob-surface\);[^}]*border-radius:\s*inherit;[^}]*overflow:\s*hidden;/);
   assert.match(optionsCss, /\.onframe-popup\s*\{[^}]*width:\s*100%;/);
