@@ -511,6 +511,8 @@ test('codigo por email usa OTP nativo sem criar conta ou fluxo externo e autenti
     });
     assert.equal(h.requests.filter((request) => request.path === 'verify').length, 1);
     assert.equal(connected, 1);
+    assert.equal(h.renderer.root.findByType(CodeInput).props.value, '123456');
+    assert.equal(h.renderer.root.findByType(CodeInput).props.status, 'success');
   } finally { await h.close(); }
 });
 

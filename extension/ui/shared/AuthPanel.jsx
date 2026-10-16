@@ -71,10 +71,10 @@ export function VerificationEmailField({ email, onEdit }) {
   </div>;
 }
 
-export function VerificationCodeField({ label, length, value, onChange, error, disabled }) {
+export function VerificationCodeField({ label, length, value, onChange, error, status, disabled }) {
   return <fieldset className="onframe-auth-code-field" disabled={disabled} aria-label={label}>
     <legend className="onframe-field-label">{label}</legend>
-    <div className="onframe-auth-code-scroll"><CodeInput length={length} value={value} onChange={onChange} status={error ? 'error' : 'default'} /></div>
+    <div className="onframe-auth-code-scroll"><CodeInput length={length} value={value} onChange={onChange} status={error ? 'error' : status || 'default'} /></div>
   </fieldset>;
 }
 
@@ -103,6 +103,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   const [secondFactor, setSecondFactor] = useState(null);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState(false);
+  const [codeSuccess, setCodeSuccess] = useState(false);
   const [cooldownUntil, setCooldownUntil] = useState(resumeState?.cooldownUntil || 0);
   const [cooldown, setCooldown] = useState(() => Math.max(0, Math.ceil(((resumeState?.cooldownUntil || 0) - Date.now()) / 1000)));
   const [resending, setResending] = useState(false);
@@ -140,7 +141,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   function update(name, value) { setFields((current) => ({ ...current, [name]: value })); }
   function changeMode(nextMode) {
     if (!AUTH_MODES[nextMode] || pending.current) return;
-    setMode(nextMode); setPhase('email'); setCode(''); setCodeError(false);
+    setMode(nextMode); setPhase('email'); setCode(''); setCodeError(false); setCodeSuccess(false);
     setSecondFactor(null); setFeedback(null); setResending(false);
     setFields((current) => ({ ...current, password: '', confirmation: '' }));
   }
@@ -154,8 +155,11 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
     const { data, error } = await client.auth.mfa.listFactors();
     if (error) throw error;
     setFields((current) => ({ ...current, password: '', confirmation: '' }));
-    setCode(''); setResending(false);
-    if (data.totp.length) setSecondFactor({ client, id: data.totp[0].id, factors: data.totp });
+    setResending(false);
+    if (data.totp.length) {
+      setCode(''); setCodeSuccess(false);
+      setSecondFactor({ client, id: data.totp[0].id, factors: data.totp });
+    }
     else await authenticate(session.access_token);
   }
   async function run(callback, fallback, verification = false) {
@@ -163,7 +167,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
     pending.current = true; setBusy(true); setFeedback(null);
     try { await callback(); }
     catch (error) {
-      setCodeError(verification);
+      setCodeError(verification); setCodeSuccess(false);
       setFeedback({ tone: 'danger', message: RemoteAuth.authErrorMessage(error, fallback) });
     } finally { pending.current = false; setBusy(false); }
   }
@@ -178,7 +182,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
         await RemoteAuth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } },
           { redirectTo: 'https://onframe.onblide.com/connect?verification=login' });
         update('email', email);
-        setPhase('code'); setCode(''); setCodeError(false); setResending(false);
+        setPhase('code'); setCode(''); setCodeError(false); setCodeSuccess(false); setResending(false);
         setCooldown(60); setCooldownUntil(Date.now() + 60_000);
         setCaptchaMounted(false);
       } catch (error) { challengeInstance.current?.reset(); throw error; }
@@ -188,16 +192,19 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
     if (!/^\d+$/u.test(value) || value.length !== codeLength) return;
     await run(async () => {
       if (secondFactor) {
-        await authenticate((await verifySecondFactor(secondFactor.client, secondFactor.id, value)).access_token);
+        const session = await verifySecondFactor(secondFactor.client, secondFactor.id, value);
+        setCodeSuccess(true);
+        await authenticate(session.access_token);
       } else {
         const session = await RemoteAuth.request(config, 'verify', { email: RemoteAuth.normalizeEmail(fields.email), token: value, type: 'email' });
+        setCodeSuccess(true);
         await acceptSession(session);
       }
     }, 'Código incorreto ou expirado. Tente novamente ou reenvie.', true);
   }
   function changeCode(value) {
     if (pending.current) return;
-    setCode(value); setCodeError(false); setFeedback(null);
+    setCode(value); setCodeError(false); setCodeSuccess(false); setFeedback(null);
     if (/^\d+$/u.test(value) && value.length === codeLength) void verifyCode(value);
   }
   async function submit(event) {
@@ -264,8 +271,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
           {!verifying && (phase === 'password' || (mode === 'signup' && phase === 'email')) && <PasswordField label="Senha" labelAction={mode === 'signin' ? <Link href="#recuperar-senha" onClick={linkTo('recovery')}>Esqueci minha senha</Link> : undefined} value={fields.password} onChange={(value) => update('password', value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} disabled={busy} />}
           {!verifying && mode === 'signup' && phase === 'email' && <PasswordField label="Confirme a senha" value={fields.confirmation} onChange={(value) => update('confirmation', value)} autoComplete="new-password" disabled={busy} />}
           {verifying && <>
-            {secondFactor?.factors.length > 1 && <Tabs tabs={secondFactor.factors.map((factor, index) => ({ id: factor.id, label: factor.friendly_name || `Autenticador ${index + 1}` }))} active={secondFactor.id} onChange={(id) => { setSecondFactor((current) => ({ ...current, id })); setCode(''); setCodeError(false); }} size="sm" />}
-            <VerificationCodeField label={secondFactor ? 'Código do aplicativo autenticador' : 'Insira o código de verificação'} length={codeLength} value={code} onChange={changeCode} error={codeError} disabled={busy} />
+            {secondFactor?.factors.length > 1 && <Tabs tabs={secondFactor.factors.map((factor, index) => ({ id: factor.id, label: factor.friendly_name || `Autenticador ${index + 1}` }))} active={secondFactor.id} onChange={(id) => { setSecondFactor((current) => ({ ...current, id })); setCode(''); setCodeError(false); setCodeSuccess(false); }} size="sm" />}
+            <VerificationCodeField label={secondFactor ? 'Código do aplicativo autenticador' : 'Insira o código de verificação'} length={codeLength} value={code} onChange={changeCode} error={codeError} status={codeSuccess ? 'success' : 'default'} disabled={busy} />
             {!secondFactor && <p className="onframe-help">Se houver uma conta para este e-mail, você receberá um código de {codeLength} dígitos.</p>}
           </>}
           {feedback && <Alert tone={feedback.tone}>{feedback.message}</Alert>}
