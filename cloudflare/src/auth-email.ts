@@ -2,7 +2,7 @@ import { Webhook, WebhookVerificationError } from 'standardwebhooks';
 
 const AUTH_EMAIL_HOOK_PATH = '/hooks/supabase/send-email';
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
-const LOGO_URL = 'https://onblide-design-system.vercel.app/img/marca/png/onblide-horizontal-primary.png';
+const LOGO_URL = 'https://onframe.onblide.com/security/onframe-stacked-primary.png';
 const MAX_HOOK_BODY_BYTES = 20 * 1024;
 const DELIVERY_LEASE_MS = 15 * 1000;
 
@@ -171,12 +171,8 @@ function verificationUrl(env: AuthEmailRuntimeEnv, actionType: string, tokenHash
 }
 
 function wordmark(): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td valign="middle"><img src="${LOGO_URL}" width="116" alt="Onblide" style="display:block;width:116px;height:auto;border:0;outline:none;text-decoration:none;"></td>
-    <td width="12"></td>
-    <td valign="middle" style="border-left:1px solid #ececec;padding-left:12px;color:#a8a8a8;font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;font-weight:600;letter-spacing:.04em;line-height:1;">ONFRAME</td>
-  </tr>
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+  <tr><td align="center"><img src="${LOGO_URL}" width="144" alt="OnFrame" style="display:block;width:144px;height:auto;border:0;outline:none;text-decoration:none;"></td></tr>
 </table>`;
 }
 
@@ -190,25 +186,14 @@ function actionButton(href: string, label: string): string {
 </table>`;
 }
 
-function alert(title: string, description: string, tone: 'info' | 'warning' = 'info'): string {
-  const colors = tone === 'warning'
-    ? { background: '#fde6d3', border: 'rgba(235,124,45,.28)' }
-    : { background: '#e0eaff', border: 'rgba(10,78,228,.28)' };
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:20px;border-collapse:separate;">
-  <tr><td style="padding:14px 16px;border:1px solid ${colors.border};border-radius:12px;background:${colors.background};">
-    <p style="margin:0 0 3px;color:#2a2a2a;font-size:14px;font-weight:600;line-height:1.35;">${escapeHtml(title)}</p>
-    <p style="margin:0;color:#545454;font-size:13.5px;line-height:1.5;">${escapeHtml(description)}</p>
-  </td></tr>
-</table>`;
+function plainNote(title: string, description: string): string {
+  return `<p style="margin:20px 0 0;color:#7a7a7a;font-size:13.5px;line-height:1.5;"><strong style="color:#545454;font-weight:600;">${escapeHtml(title)}</strong><br>${escapeHtml(description)}</p>`;
 }
 
 function codeInput(token: string): string {
-  const cells = Array.from(token, (character) => `<td class="code-cell" align="center" valign="middle" style="width:48px;height:56px;border:2px solid #0a4ee4;border-radius:12px;background:#ffffff;color:#2a2a2a;font-family:'JetBrains Mono','Courier New',monospace;font-size:22px;font-weight:700;line-height:1;">${escapeHtml(character)}</td>`);
-  const spacedCells = cells.flatMap((cell, index) => index === cells.length - 1 ? [cell] : [cell, '<td class="code-gap" width="10" style="width:10px;">&nbsp;</td>']);
-
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
   <tr><td align="center">
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>${spacedCells.join('')}</tr></table>
+    <span class="access-code" style="display:inline-block;padding:14px 16px 14px 24px;border:2px solid #0a4ee4;border-radius:12px;background:#ffffff;color:#2a2a2a;font-family:'JetBrains Mono','Courier New',monospace;font-size:24px;font-weight:700;letter-spacing:8px;line-height:1;white-space:nowrap;">${escapeHtml(token)}</span>
   </td></tr>
 </table>`;
 }
@@ -270,7 +255,7 @@ function actionEmail(options: {
 ${codeInput(options.token)}
 ${actionButton(options.verificationUrl, options.buttonLabel)}
 <p style="margin:0;color:#7a7a7a;font-size:14px;line-height:1.45;">O código e o link são de uso único.</p>
-${options.warning ? alert('Não foi você?', options.warning, 'warning') : ''}`;
+${options.warning ? plainNote('Não foi você?', options.warning) : ''}`;
 
   return emailShell({
     title: options.title,
@@ -295,7 +280,7 @@ function linkEmail(options: {
 <div style="height:24px;line-height:24px;">&nbsp;</div>
 ${actionButton(options.verificationUrl, options.buttonLabel)}
 <p style="margin:20px 0 0;color:#7a7a7a;font-size:14px;line-height:1.45;">Este link é de uso único.</p>
-${options.warning ? alert('Não foi você?', options.warning, 'warning') : ''}`;
+${options.warning ? plainNote('Não foi você?', options.warning) : ''}`;
 
   return emailShell({
     title: options.title,
@@ -311,13 +296,12 @@ function notificationEmail(options: {
   eyebrow: string;
   description: string;
   note: string;
-  tone?: 'info' | 'warning';
 }): string {
   return emailShell({
     title: options.title,
     eyebrow: options.eyebrow,
     preview: options.description,
-    content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">${escapeHtml(options.description)}</p>${alert('Segurança da conta', options.note, options.tone ?? 'info')}`,
+    content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">${escapeHtml(options.description)}</p>${plainNote('Segurança da conta', options.note)}`,
     note: 'Este é um aviso transacional. Nenhuma ação é necessária se a alteração foi feita por você.'
   });
 }
@@ -426,7 +410,6 @@ function notificationDelivery(event: AuthEmailEvent, options: {
   eyebrow: string;
   description: string;
   note: string;
-  tone?: 'info' | 'warning';
 }): AuthEmailDelivery {
   return {
     actionType: options.actionType,
@@ -473,7 +456,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           html: emailShell({
             title: 'Seu código de acesso', eyebrow: 'ACESSO À CONTA',
             preview: 'Use este código para entrar no OnFrame.',
-            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela de login.</p>${codeInput(tokenFor(event.email_data))}${alert('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não solicitou o acesso.', 'warning')}`,
+            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela de login.</p>${codeInput(tokenFor(event.email_data))}${plainNote('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não solicitou o acesso.')}`,
             note: 'Este código é de uso único.'
           })
         }];
@@ -484,7 +467,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           html: emailShell({
             title: 'Confirme seu e-mail', eyebrow: 'VERIFICAÇÃO DE IDENTIDADE',
             preview: 'Use este código na tela de segurança do OnFrame.',
-            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela em que você iniciou a verificação.</p>${codeInput(tokenFor(event.email_data))}${alert('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.', 'warning')}`,
+            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela em que você iniciou a verificação.</p>${codeInput(tokenFor(event.email_data))}${plainNote('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.')}`,
             note: 'Este código é de uso único e permite verificar o acesso à sua conta.'
           })
         }];
@@ -532,8 +515,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'Sua senha foi alterada',
         eyebrow: 'SEGURANÇA DA CONTA',
         description: 'A senha da sua conta OnFrame foi alterada.',
-        note: 'Se você não fez esta alteração, recupere o acesso imediatamente.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
       })];
     case 'email_changed_notification':
       return [notificationDelivery(event, {
@@ -541,8 +523,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'O e-mail da sua conta foi alterado',
         eyebrow: 'SEGURANÇA DA CONTA',
         description: `O endereço de e-mail da sua conta foi atualizado${nonEmptyString(event.email_data?.old_email) ? ` a partir de ${nonEmptyString(event.email_data?.old_email)}.` : '.'}`,
-        note: 'Se você não fez esta alteração, recupere o acesso imediatamente.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
       })];
     case 'phone_changed_notification':
       return [notificationDelivery(event, {
@@ -550,8 +531,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'O telefone da sua conta foi alterado',
         eyebrow: 'SEGURANÇA DA CONTA',
         description: 'O telefone associado à sua conta OnFrame foi atualizado.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
       })];
     case 'mfa_factor_enrolled_notification':
       return [notificationDelivery(event, {
@@ -559,8 +539,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'Um método de verificação foi adicionado',
         eyebrow: 'AUTENTICAÇÃO EM DUAS ETAPAS',
         description: 'Um novo método de verificação em duas etapas foi adicionado à sua conta.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
       })];
     case 'mfa_factor_unenrolled_notification':
       return [notificationDelivery(event, {
@@ -568,8 +547,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'Um método de verificação foi removido',
         eyebrow: 'AUTENTICAÇÃO EM DUAS ETAPAS',
         description: 'Um método de verificação em duas etapas foi removido da sua conta.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
       })];
     case 'identity_linked_notification':
       return [notificationDelivery(event, {
@@ -577,8 +555,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'Um método de acesso foi conectado',
         eyebrow: 'SEGURANÇA DA CONTA',
         description: 'Um método adicional de acesso foi conectado à sua conta OnFrame.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
       })];
     case 'identity_unlinked_notification':
       return [notificationDelivery(event, {
@@ -586,8 +563,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         title: 'Um método de acesso foi removido',
         eyebrow: 'SEGURANÇA DA CONTA',
         description: 'Um método de acesso foi removido da sua conta OnFrame.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.',
-        tone: 'warning'
+        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
       })];
     default:
       throw new AuthEmailHookError('auth_email_action_unsupported', 400);
