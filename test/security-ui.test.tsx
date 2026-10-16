@@ -329,6 +329,28 @@ test('login usa Tabs pill para Email e senha e Magic Link sem aba de cadastro ne
   }
 });
 
+test('magic link retoma a etapa do codigo sem restaurar o OTP', async () => {
+  const states: object[] = [];
+  const h = await harness(() => <AuthPanel
+    initialState={{ mode: 'magic', phase: 'code', name: '', email: 'pessoa@example.com', cooldownUntil: Date.now() + 60_000 }}
+    onStateChange={(state) => states.push(state)}
+  />);
+  try {
+    const email = h.renderer.root.findAllByType('input').find((input) => input.props.type === 'email');
+    assert.equal(email?.props.value, 'pessoa@example.com');
+    assert.equal(email?.props.disabled, true);
+    const code = h.renderer.root.findByType(CodeInput);
+    assert.equal(code.props.value, '');
+    await act(async () => code.props.onChange('123'));
+    assert.equal(h.renderer.root.findByType(CodeInput).props.value, '123');
+    assert.ok(states.length > 0);
+    assert.equal(states.at(-1)?.phase, 'code');
+    assert.equal(states.at(-1)?.email, 'pessoa@example.com');
+    assert.equal(Object.hasOwn(states.at(-1) || {}, 'code'), false);
+    assert.equal(Object.hasOwn(states.at(-1) || {}, 'password'), false);
+  } finally { await h.close(); }
+});
+
 test('alternar metodos nao recria o desafio nem executa captcha antes do envio', async () => {
   const h = await harness(() => <AuthPanel />);
   try {

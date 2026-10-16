@@ -10,10 +10,10 @@ function LoadingAccounts() {
   </div>;
 }
 
-export function IntegrationsSession({ connection, onBack, footer, header }) {
+export function IntegrationsSession({ connection, initialState, onStateChange, onBack, footer, header }) {
   const admin = connection.workspace.role === 'admin';
   const [accounts, setAccounts] = useState([]);
-  const [mode, setMode] = useState('list');
+  const [mode, setMode] = useState(initialState?.mode === 'cards' ? 'cards' : 'list');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
@@ -83,6 +83,12 @@ export function IntegrationsSession({ connection, onBack, footer, header }) {
 
   const unavailable = loading || busy;
 
+  function changeMode(nextMode) {
+    const normalizedMode = nextMode === 'cards' ? 'cards' : 'list';
+    setMode(normalizedMode);
+    onStateChange?.({ mode: normalizedMode });
+  }
+
   return (
     <main className="onframe-popup onframe-popup-session">
       {header}
@@ -100,7 +106,7 @@ export function IntegrationsSession({ connection, onBack, footer, header }) {
           </div>
 
           {!loading && accounts.length > 0 && <div className="onframe-popup-integration-view-bar">
-            <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="md">
+            <ButtonGroup selection="single" value={mode} onChange={changeMode} ariaLabel="Visualização das contas" size="md">
               <Tooltip label="Visualizar como lista"><ToggleButton value="list" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
               <Tooltip label="Visualizar como cards"><ToggleButton value="cards" icon="squares-four" ariaLabel="Cards" /></Tooltip>
             </ButtonGroup>

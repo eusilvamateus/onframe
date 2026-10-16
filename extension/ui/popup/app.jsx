@@ -1,9 +1,10 @@
 import { createRoot } from 'react-dom/client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
 import { Alert, Avatar, Button, List, ListItem, Ph, Switch, ToastStack, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
+import { clearPopupSessionState, emptyPopupSessionState, normalizePopupSessionState, readPopupSessionState, writePopupSessionState } from '../shared/popup-session-state';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
 import { IntegrationsSession } from './IntegrationsSession';
@@ -71,6 +72,17 @@ function Popup() {
   const [release, setRelease] = useState(undefined);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [popupSession, setPopupSession] = useState(null);
+  const popupSessionRef = useRef(emptyPopupSessionState());
+
+  const persistPopupSession = useCallback((patch) => {
+    const next = normalizePopupSessionState({ ...popupSessionRef.current, ...patch });
+    popupSessionRef.current = next;
+    setPopupSession(next);
+    void writePopupSessionState(next);
+  }, []);
+  const persistAuthState = useCallback((auth) => persistPopupSession({ auth }), [persistPopupSession]);
+  const persistIntegrationsState = useCallback((integrations) => persistPopupSession({ integrations }), [persistPopupSession]);
 
   const refreshOverview = useCallback(async () => {
     try {
@@ -89,19 +101,24 @@ function Popup() {
     }
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ resetUi = false } = {}) => {
     setBusy(true);
     try {
-      const [nextConnection, nextResourcesEnabled] = await Promise.all([
+      const [nextConnection, nextResourcesEnabled, savedPopupSession] = await Promise.all([
         sendRemoteMessage('status'),
-        readResourcesPreference()
+        readResourcesPreference(),
+        readPopupSessionState()
       ]);
+      const nextPopupSession = resetUi ? emptyPopupSessionState() : savedPopupSession;
+      popupSessionRef.current = nextPopupSession;
+      setPopupSession(nextPopupSession);
       setConnection(nextConnection);
-      if (!nextConnection?.connected) setView('home');
+      setView(nextConnection?.connected ? nextPopupSession.view : 'home');
       setResourcesEnabled(nextResourcesEnabled);
       setFeedback('');
       setOverview(null);
       setRelease(undefined);
+      if (resetUi) void clearPopupSessionState();
       if (nextConnection?.connected) {
         void refreshOverview();
         void refreshRelease();
@@ -139,6 +156,9 @@ function Popup() {
       setConnection({ connected: false, reason: 'disconnected' });
       setRelease(undefined);
       setView('home');
+      popupSessionRef.current = emptyPopupSessionState();
+      setPopupSession(popupSessionRef.current);
+      void clearPopupSessionState();
     } catch (error) {
       setView('home');
       setFeedback(userError(error, 'Não foi possível desconectar.'));
@@ -152,7 +172,7 @@ function Popup() {
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
   if (!connected) return <main className="onframe-popup onframe-popup-auth">
     {feedback && <Alert tone="danger">{feedback}</Alert>}
-    <AuthPanel onConnected={load} />
+    <AuthPanel initialState={popupSession?.auth} onStateChange={persistAuthState} onConnected={() => load({ resetUi: true })} />
   </main>;
   const footer = <PopupFooter release={release} busy={busy} onDisconnect={() => void disconnect()} />;
   const userHeader = <PopupUserHeader
@@ -165,11 +185,27 @@ function Popup() {
 
   function returnHome() {
     setView('home');
+    persistPopupSession({ view: 'home' });
     void refreshOverview();
   }
 
-  if (view === 'workspace') return <WorkspaceSession connection={connection} onBack={returnHome} onConnectionChanged={load} footer={footer} header={userHeader} />;
-  if (view === 'integrations') return <IntegrationsSession connection={connection} onBack={returnHome} footer={footer} header={userHeader} />;
+  function openView(nextView) {
+    setView(nextView);
+    persistPopupSession({ view: nextView });
+  }
+
+  const workspaceSession = popupSession?.workspace?.workspaceId === connection.workspace.id ? popupSession.workspace : null;
+
+  if (view === 'workspace') return <WorkspaceSession
+    connection={connection}
+    initialState={workspaceSession}
+    onStateChange={(workspace) => persistPopupSession({ workspace: { workspaceId: connection.workspace.id, ...workspace } })}
+    onBack={returnHome}
+    onConnectionChanged={() => load({ resetUi: true })}
+    footer={footer}
+    header={userHeader}
+  />;
+  if (view === 'integrations') return <IntegrationsSession connection={connection} initialState={popupSession?.integrations} onStateChange={persistIntegrationsState} onBack={returnHome} footer={footer} header={userHeader} />;
   if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenFullHistory={() => openOptions('history')} footer={footer} header={userHeader} />;
 
   return (
@@ -183,7 +219,7 @@ function Popup() {
           title="Workspace"
           description={workspaceSummary(overview, connection.workspace.role)}
           strong
-          onClick={() => setView('workspace')}
+          onClick={() => openView('workspace')}
           trailing={<Ph n="caret-right" size={16} />}
         />
         <ListItem
@@ -192,7 +228,7 @@ function Popup() {
           title="Integrações"
           description={integrationsSummary(overview)}
           strong
-          onClick={() => setView('integrations')}
+          onClick={() => openView('integrations')}
           trailing={<Ph n="caret-right" size={16} />}
         />
         <ListItem
@@ -201,7 +237,7 @@ function Popup() {
           title="Histórico"
           description={historySummary(overview)}
           strong
-          onClick={() => setView('history')}
+          onClick={() => openView('history')}
           trailing={<Ph n="caret-right" size={16} />}
         />
       </List>

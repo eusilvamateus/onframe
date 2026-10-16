@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Avatar, Badge, Button, List, ListItem, Modal, Ph, Skeleton, Tooltip, toast } from '@onblide/ui';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
+import { normalizeInviteDraft } from '../shared/popup-session-state';
 import { formatDate, sendRemoteMessage, userError } from '../shared/runtime';
 import { PopupSessionHeader } from './PopupSessionHeader';
 
@@ -20,15 +21,17 @@ function LoadingList() {
   </div>;
 }
 
-export function WorkspaceSession({ connection, onBack, onConnectionChanged, footer, header }) {
+export function WorkspaceSession({ connection, initialState, onStateChange, onBack, onConnectionChanged, footer, header }) {
   const admin = connection.workspace.role === 'admin';
+  const restoredInviteDraft = normalizeInviteDraft(initialState?.inviteDraft);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(admin);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const [dialog, setDialog] = useState(null);
+  const [dialog, setDialog] = useState(admin && initialState?.inviteOpen ? { type: 'invite' } : null);
+  const [inviteDraft, setInviteDraft] = useState(restoredInviteDraft);
 
   const loadWorkspace = useCallback(async () => {
     if (!admin) return;
@@ -67,6 +70,24 @@ export function WorkspaceSession({ connection, onBack, onConnectionChanged, foot
     }
   }
 
+  function openInvite() {
+    setDialog({ type: 'invite' });
+    onStateChange?.({ inviteOpen: true, inviteDraft });
+  }
+
+  function updateInviteDraft(nextDraft) {
+    const next = normalizeInviteDraft(nextDraft);
+    setInviteDraft(next);
+    onStateChange?.({ inviteOpen: true, inviteDraft: next });
+  }
+
+  function closeAccessDialog() {
+    const emptyDraft = normalizeInviteDraft(null);
+    setDialog(null);
+    setInviteDraft(emptyDraft);
+    onStateChange?.({ inviteOpen: false, inviteDraft: emptyDraft });
+  }
+
   async function submitAccess(values) {
     const currentDialog = dialog;
     const result = await run(async () => {
@@ -85,7 +106,7 @@ export function WorkspaceSession({ connection, onBack, onConnectionChanged, foot
     }, currentDialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null);
 
     if (!result) return;
-    setDialog(null);
+    closeAccessDialog();
     const invitationUrl = result.invitation?.url;
     if (!invitationUrl) return;
     try {
@@ -151,7 +172,7 @@ export function WorkspaceSession({ connection, onBack, onConnectionChanged, foot
           <section className="onframe-popup-section" aria-labelledby="workspace-people-title">
             <div className="onframe-popup-section-header">
               <div><h2 id="workspace-people-title">Pessoas</h2><p>{members.length} {members.length === 1 ? 'pessoa' : 'pessoas'} neste workspace</p></div>
-              <Button kind="quiet" tone="primary" size="sm" disabled={busy} onClick={() => setDialog({ type: 'invite' })} icon={<Ph n="user-plus" size={16} />}>Convidar pessoa</Button>
+              <Button kind="quiet" tone="primary" size="sm" disabled={busy} onClick={openInvite} icon={<Ph n="user-plus" size={16} />}>Convidar pessoa</Button>
             </div>
             <List className="onframe-popup-card-list" ariaLabel="Pessoas do workspace">
               {members.map((member) => {
@@ -209,7 +230,7 @@ export function WorkspaceSession({ connection, onBack, onConnectionChanged, foot
 
       {footer}
 
-      <WorkspaceAccessModal dialog={dialog} accounts={accounts} busy={busy} onClose={() => setDialog(null)} onConfirm={(values) => void submitAccess(values)} />
+      <WorkspaceAccessModal dialog={dialog} accounts={accounts} busy={busy} initialValues={inviteDraft} onDraftChange={updateInviteDraft} onClose={closeAccessDialog} onConfirm={(values) => void submitAccess(values)} />
       <Modal
         open={confirmation}
         onClose={() => setDialog(null)}

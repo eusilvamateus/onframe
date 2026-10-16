@@ -5,6 +5,7 @@ import { Skeleton } from '@onblide/ui';
 import { create } from 'react-test-renderer';
 import { PopupLoading } from '../extension/ui/popup/PopupLoading.jsx';
 import { historySummary, integrationsSummary, workspaceSummary } from '../extension/ui/popup/summaries.js';
+import { POPUP_SESSION_STATE_KEY, clearPopupSessionState, normalizePopupSessionState, readPopupSessionState, writePopupSessionState } from '../extension/ui/shared/popup-session-state.js';
 
 test('carregamento inicial reserva a estrutura completa do popup', () => {
   const renderer = create(<PopupLoading />);
@@ -39,4 +40,40 @@ test('resumos do popup tratam singular, vazio e indisponibilidade', () => {
   assert.equal(workspaceSummary(null, 'admin'), 'Pessoas, convites e acesso às contas');
   assert.equal(integrationsSummary(null), 'Contas conectadas e acesso ao Mercado Livre');
   assert.equal(historySummary(null), 'Alterações confirmadas nos anúncios');
+});
+
+test('estado retomavel do popup persiste somente dados nao sensiveis na sessao', async () => {
+  const originalChrome = globalThis.chrome;
+  let stored = null;
+  globalThis.chrome = {
+    runtime: { lastError: null },
+    storage: { session: {
+      get(defaults, callback) { callback({ ...defaults, [POPUP_SESSION_STATE_KEY]: stored }); },
+      set(values, callback) { stored = values[POPUP_SESSION_STATE_KEY]; callback(); },
+      remove(_key, callback) { stored = null; callback(); }
+    } }
+  } as typeof chrome;
+
+  try {
+    const raw = {
+      view: 'workspace',
+      auth: { mode: 'magic', phase: 'code', name: 'Mateus', email: 'mateus@example.com', cooldownUntil: 123456, password: 'segredo', confirmation: 'segredo', code: '654321' },
+      workspace: { workspaceId: 'workspace-1', inviteOpen: true, inviteDraft: { kind: 'email', email: 'pessoa@example.com', role: 'collaborator', accountIds: ['account-1'], token: 'secreto' } },
+      integrations: { mode: 'cards' }
+    };
+
+    await writePopupSessionState(raw);
+    const restored = await readPopupSessionState();
+    assert.deepEqual(restored, normalizePopupSessionState(raw));
+    assert.equal(restored.view, 'workspace');
+    assert.equal(restored.auth?.phase, 'code');
+    assert.equal(restored.workspace?.inviteDraft.email, 'pessoa@example.com');
+    assert.equal(restored.integrations.mode, 'cards');
+    assert.doesNotMatch(JSON.stringify(stored), /segredo|654321|secreto/);
+
+    await clearPopupSessionState();
+    assert.equal(stored, null);
+  } finally {
+    globalThis.chrome = originalChrome;
+  }
 });

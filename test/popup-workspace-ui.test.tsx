@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, ListItem, Tooltip } from '@onblide/ui';
+import { Button, ListItem, Modal, Tooltip } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { WorkspaceSession } from '../extension/ui/popup/WorkspaceSession.jsx';
 
@@ -54,4 +54,37 @@ test('sessao do workspace lista pessoas, convites e mantem a propria conta sem a
   assert.equal(inviteButton.props.size, 'sm');
   assert.equal(renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Convidar pessoa'), false);
   renderer.unmount();
+});
+
+test('convite em andamento reabre com o rascunho e cancelar limpa a retomada', async () => {
+  installChromeMock();
+  const originalDocument = globalThis.document;
+  globalThis.document = { activeElement: null, addEventListener() {}, removeEventListener() {} } as unknown as Document;
+  const states = [];
+  let renderer;
+  try {
+    await act(async () => {
+      renderer = create(<WorkspaceSession
+        connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+        initialState={{ inviteOpen: true, inviteDraft: { kind: 'email', email: 'rascunho@example.com', role: 'collaborator', accountIds: ['account-1'] } }}
+        onStateChange={(state) => states.push(state)}
+        onBack={() => {}}
+        onConnectionChanged={async () => {}}
+      />);
+    });
+
+    const email = renderer.root.findAllByType('input').find((input) => input.props.type === 'email');
+    assert.equal(email?.props.value, 'rascunho@example.com');
+    await act(async () => email?.props.onChange({ target: { value: 'novo@example.com' } }));
+    assert.equal(states.at(-1).inviteOpen, true);
+    assert.equal(states.at(-1).inviteDraft.email, 'novo@example.com');
+
+    const accessModal = renderer.root.findAllByType(Modal).find((modal) => modal.props.open);
+    await act(async () => accessModal?.props.onClose());
+    assert.equal(states.at(-1).inviteOpen, false);
+    assert.equal(states.at(-1).inviteDraft.email, '');
+  } finally {
+    renderer?.unmount();
+    globalThis.document = originalDocument;
+  }
 });

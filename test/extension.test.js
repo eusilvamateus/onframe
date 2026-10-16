@@ -307,8 +307,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popup, /<IntegrationsSession/);
   assert.match(popup, /<HistorySession/);
   assert.match(popup, /title="Integrações"/);
-  assert.match(popup, /setView\('integrations'\)/);
-  assert.match(popup, /setView\('history'\)/);
+  assert.match(popup, /openView\('integrations'\)/);
+  assert.match(popup, /openView\('history'\)/);
+  assert.match(popup, /writePopupSessionState\(next\)/);
   assert.match(popupHtml, /<html lang="pt-BR" class="onframe-popup-window">/);
   assert.match(popupHtml, /<body class="onframe-popup-document">/);
   assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*480px;[^}]*min-width:\s*480px/);

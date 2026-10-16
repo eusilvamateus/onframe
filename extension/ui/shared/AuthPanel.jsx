@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Alert, Button, Card, CodeInput, FieldShell, Input, Link, Ph, Tabs, Tooltip } from '@onblide/ui';
+import { normalizeAuthResumeState } from './popup-session-state';
 import { sendRemoteMessage } from './runtime';
 import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 
@@ -88,27 +89,33 @@ export function VerificationFrame({ title, children, headingLevel = 2 }) {
   </div>;
 }
 
-export function AuthPanel({ onConnected, onPending }) {
+export function AuthPanel({ initialState, onStateChange, onConnected, onPending }) {
   const RemoteAuth = window.OnFrameRemoteAuth;
+  const resumeState = normalizeAuthResumeState(initialState);
   const challengeRef = useRef(null);
   const challengeInstance = useRef(null);
   const pending = useRef(false);
-  const [mode, setMode] = useState('signin');
-  const [phase, setPhase] = useState('email');
+  const [mode, setMode] = useState(resumeState?.mode || 'signin');
+  const [phase, setPhase] = useState(resumeState?.phase || 'email');
   const [config, setConfig] = useState(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const [fields, setFields] = useState({ name: '', email: '', password: '', confirmation: '' });
+  const [fields, setFields] = useState({ name: resumeState?.name || '', email: resumeState?.email || '', password: '', confirmation: '' });
   const [secondFactor, setSecondFactor] = useState(null);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState(resumeState?.cooldownUntil || 0);
+  const [cooldown, setCooldown] = useState(() => Math.max(0, Math.ceil(((resumeState?.cooldownUntil || 0) - Date.now()) / 1000)));
   const [resending, setResending] = useState(false);
   const [captchaMounted, setCaptchaMounted] = useState(false);
   const codeLength = secondFactor ? 6 : config?.emailOtpLength || 6;
   const needsCaptcha = !secondFactor && (phase === 'password' || phase === 'details' || (phase === 'email' && ['magic', 'recovery'].includes(mode)) || resending);
 
   useEffect(() => { if (needsCaptcha) setCaptchaMounted(true); }, [needsCaptcha]);
+
+  useEffect(() => {
+    onStateChange?.({ mode, phase, name: fields.name, email: fields.email, cooldownUntil });
+  }, [cooldownUntil, fields.email, fields.name, mode, onStateChange, phase]);
 
   useEffect(() => {
     let active = true;
@@ -123,10 +130,13 @@ export function AuthPanel({ onConnected, onPending }) {
     return () => { challengeInstance.current?.destroy(); challengeInstance.current = null; };
   }, [RemoteAuth, config, captchaMounted]);
   useEffect(() => {
-    if (!cooldown) return undefined;
+    if (!cooldown) {
+      if (cooldownUntil) setCooldownUntil(0);
+      return undefined;
+    }
     const timer = setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
     return () => clearTimeout(timer);
-  }, [cooldown]);
+  }, [cooldown, cooldownUntil]);
 
   function update(name, value) { setFields((current) => ({ ...current, [name]: value })); }
   function changeMode(nextMode) {
@@ -169,7 +179,8 @@ export function AuthPanel({ onConnected, onPending }) {
         await RemoteAuth.request(config, 'otp', { email, create_user: false, gotrue_meta_security: { captcha_token: token } },
           { redirectTo: 'https://onframe.onblide.com/connect?verification=login' });
         update('email', email);
-        setPhase('code'); setCode(''); setCodeError(false); setResending(false); setCooldown(60);
+        setPhase('code'); setCode(''); setCodeError(false); setResending(false);
+        setCooldown(60); setCooldownUntil(Date.now() + 60_000);
         setCaptchaMounted(false);
       } catch (error) { challengeInstance.current?.reset(); throw error; }
     }, 'Não foi possível enviar o código. Aguarde e tente novamente.');

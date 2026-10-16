@@ -42,11 +42,13 @@ function installChromeMock(messages: Array<Record<string, unknown>>) {
 
 test('sessao de integracoes preserva os controles administrativos das contas', async () => {
   const messages: Array<Record<string, unknown>> = [];
+  const states: Array<{ mode: string }> = [];
   installChromeMock(messages);
   let renderer;
   await act(async () => {
     renderer = create(<IntegrationsSession
       connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+      onStateChange={(state) => states.push(state)}
       onBack={() => {}}
       onOpenOptions={() => {}}
     />);
@@ -63,6 +65,7 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   assert.equal(viewGroup.props.size, 'md');
   await act(async () => viewGroup.props.onChange('cards'));
   assert.equal(renderer.root.findByType(IntegrationAccount).props.mode, 'cards');
+  assert.deepEqual(states.at(-1), { mode: 'cards' });
   assert.equal(renderer.root.findAllByType(Card).length, 1);
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-popup-integration-grid' }).length, 1);
   const addIntegration = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Adicionar integração');
