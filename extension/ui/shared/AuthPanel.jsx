@@ -57,7 +57,6 @@ export function PasswordField({ label, labelAction, value, onChange, autoComplet
 export function AuthBrand({ src = '../../assets/onframe-stacked-primary.png' }) {
   return <header className="onframe-auth-brand">
     <img className="onframe-auth-logo" src={src} alt="OnFrame" width={192} height={96} />
-    <p className="onframe-help">by onblide</p>
   </header>;
 }
 

@@ -17,8 +17,7 @@ button, input { font: inherit; }
 .onframe-auth-content { display: flex; flex-direction: column; gap: var(--ob-s-5); min-width: 0; }
 .onframe-help { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-auth-brand, .onframe-auth-methods { display: flex; justify-content: center; }
-.onframe-auth-brand { width: min(100%, 192px); align-self: center; flex-direction: column; align-items: flex-end; gap: var(--ob-s-2); }
-.onframe-auth-brand .onframe-help { flex-shrink: 0; white-space: nowrap; }
+.onframe-auth-brand { width: min(100%, 192px); align-self: center; }
 .onframe-auth-logo { display: block; width: 192px; min-width: 0; max-width: 100%; height: auto; aspect-ratio: 2 / 1; object-fit: cover; object-position: center 52%; }
 .onframe-auth-title { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-lg); font-weight: var(--ob-w-semibold); line-height: var(--ob-lh-snug); letter-spacing: 0; text-align: left; overflow-wrap: anywhere; }
 .onframe-auth-footer { display: flex; flex-direction: column; align-items: center; gap: var(--ob-s-3); text-align: center; }

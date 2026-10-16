@@ -323,7 +323,7 @@ test('login usa Tabs pill para Email e senha e Magic Link sem aba de cadastro ne
       const brand = h.renderer.root.findByType('header');
       assert.equal(brand.findByType('img').props.alt, 'OnFrame');
       assert.equal(brand.findByType('img').props.src, '../../assets/onframe-stacked-primary.png');
-      assert.equal(brand.findByType('p').props.children, 'by onblide');
+      assert.equal(brand.findAllByType('p').length, 0);
       assert.equal(h.renderer.root.findAllByType('input').some((node) => node.props.type === 'password'), false);
     } finally { await h.close(); }
   }
