@@ -338,10 +338,11 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*min\(100%, 192px\);[^}]*align-self:\s*center/);
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
+  assert.match(optionsCss, /\.onframe-auth-panel\s*\{[^}]*width:\s*min\(100%, 448px\);[^}]*margin-inline:\s*auto/);
+  assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-s-1\)/);
   assert.match(optionsCss, /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/);
   assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-s-5\);[^}]*min-width:\s*0/);
   assert.match(optionsCss, /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-s-2\)/);
-  assert.doesNotMatch(optionsCss, /\.onframe-auth-intro/);
   assert.match(optionsCss, /\.onframe-auth-code-scroll\s*\{[^}]*display:\s*flex/);
   assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
   const loginLogo = fs.readFileSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png'));

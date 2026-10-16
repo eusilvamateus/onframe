@@ -315,10 +315,14 @@ test('login usa Tabs pill para Email e senha e Magic Link sem aba de cadastro ne
       assert.equal(rendered.includes('Entrar com chave de acesso'), false);
       const methods = h.renderer.root.findByType(Tabs);
       assert.equal(methods.props.variant, 'pill');
+      assert.equal(methods.props.size, 'md');
       assert.equal(methods.props.active, 'signin');
       assert.deepEqual(methods.props.tabs.map((tab) => ({ id: tab.id, label: tab.label })), [
-        { id: 'signin', label: 'Email e senha' }, { id: 'magic', label: 'Magic Link' }
+        { id: 'signin', label: 'E-mail e senha' }, { id: 'magic', label: 'Magic Link' }
       ]);
+      const content = h.renderer.root.findByProps({ className: 'onframe-auth-content' });
+      assert.equal(content.children[0].props.className, 'onframe-auth-methods');
+      assert.equal(h.renderer.root.findByProps({ className: 'onframe-auth-subtitle' }).props.children, 'Entre com seu e-mail e senha para continuar.');
       assert.equal(rendered.includes('Código por e-mail'), false);
       const brand = h.renderer.root.findByType('header');
       assert.equal(brand.findByType('img').props.alt, 'OnFrame');
@@ -388,17 +392,18 @@ async function fillCode(renderer: ReturnType<typeof create>, value = '123456') {
   });
 }
 
-test('login cadastro e recuperacao usam chamadas principais sem legendas introdutorias', async () => {
+test('login apresenta chamada por metodo e preserva os demais estados de autenticacao', async () => {
   const h = await harness(() => <AuthPanel />);
   try {
-    function expectTitle(title: string) {
+    function expectTitle(title: string, description?: string) {
       const content = h.renderer.root.findByProps({ className: 'onframe-auth-content' });
       assert.equal(content.findByType('h1').props.children, title);
-      assert.equal(content.children[0].type, 'h1');
-      assert.equal(content.children.some((child) => typeof child !== 'string' && child.type === 'p'), false);
-      assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-intro' }).length, 0);
+      const intro = content.findByProps({ className: 'onframe-auth-intro' });
+      const subtitles = intro.findAllByProps({ className: 'onframe-auth-subtitle' });
+      assert.equal(subtitles.length, description ? 1 : 0);
+      if (description) assert.equal(subtitles[0].props.children, description);
     }
-    expectTitle('Bem-vindo de volta');
+    expectTitle('Bem-vindo de volta', 'Entre com seu e-mail e senha para continuar.');
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Criar conta').props.onClick({ preventDefault() {} }));
     expectTitle('Crie sua conta no OnFrame');
     await continueEmail(h.renderer);
@@ -415,7 +420,7 @@ test('login cadastro e recuperacao usam chamadas principais sem legendas introdu
     assert.match(JSON.stringify(h.renderer.toJSON()), /Confira seu e-mail para confirmar o cadastro/);
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para entrar').props.onClick({ preventDefault() {} }));
     await continueEmail(h.renderer);
-    expectTitle('Bem-vindo de volta');
+    expectTitle('Bem-vindo de volta', 'Entre com seu e-mail e senha para continuar.');
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Esqueci minha senha').props.onClick({ preventDefault() {} }));
     expectTitle('Recupere seu acesso');
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
@@ -423,7 +428,7 @@ test('login cadastro e recuperacao usam chamadas principais sem legendas introdu
     assert.match(JSON.stringify(h.renderer.toJSON()), /receberá um link para redefinir a senha/);
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para entrar').props.onClick({ preventDefault() {} }));
     await selectCode(h.renderer);
-    expectTitle('Bem-vindo de volta');
+    expectTitle('Acesse o OnFrame', 'Enviaremos um código de acesso para o seu e-mail.');
     await continueEmail(h.renderer);
     expectTitle('Verifique seu e-mail');
     assert.match(JSON.stringify(h.renderer.toJSON()), /código de.*6.*dígitos/);

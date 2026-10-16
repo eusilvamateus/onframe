@@ -5,9 +5,9 @@ import { sendRemoteMessage } from './runtime';
 import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 
 const AUTH_MODES = {
-  signin: { title: 'Bem-vindo de volta' },
+  signin: { title: 'Bem-vindo de volta', description: 'Entre com seu e-mail e senha para continuar.' },
   signup: { title: 'Crie sua conta no OnFrame' },
-  magic: { title: 'Bem-vindo de volta' },
+  magic: { title: 'Acesse o OnFrame', description: 'Enviaremos um código de acesso para o seu e-mail.' },
   recovery: { title: 'Recupere seu acesso' }
 };
 
@@ -240,19 +240,23 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   function linkTo(nextMode) { return (event) => { event.preventDefault(); changeMode(nextMode); }; }
   const verifying = Boolean(secondFactor) || phase === 'code';
   const title = secondFactor ? 'Verificação em duas etapas' : phase === 'code' ? 'Verifique seu e-mail' : phase === 'sent' ? 'Confira seu e-mail' : AUTH_MODES[mode].title;
+  const description = !secondFactor && ['email', 'password'].includes(phase) ? AUTH_MODES[mode].description : null;
   const buttonLabel = phase === 'email' ? mode === 'magic' ? 'Enviar código' : mode === 'recovery' ? 'Enviar link de recuperação' : 'Continuar' : mode === 'signup' ? 'Criar conta' : verifying ? 'Verificar e entrar' : 'Entrar';
 
   return <div className="onframe-auth-panel">
     <AuthBrand />
-    <Card padding={24}>
+    <Card padding={32}>
       <div className="onframe-auth-content">
-        <h1 className="onframe-auth-title">{title}</h1>
         {!secondFactor && ['signin', 'magic'].includes(mode) && phase !== 'sent' && <nav className="onframe-auth-methods" aria-label="Método de acesso">
-          <Tabs variant="pill" size="sm" active={mode} onChange={changeMode} tabs={[
-            { id: 'signin', label: 'Email e senha', disabled: busy },
+          <Tabs variant="pill" size="md" active={mode} onChange={changeMode} tabs={[
+            { id: 'signin', label: 'E-mail e senha', disabled: busy },
             { id: 'magic', label: 'Magic Link', disabled: busy }
           ]} />
         </nav>}
+        <div className="onframe-auth-intro">
+          <h1 className="onframe-auth-title">{title}</h1>
+          {description && <p className="onframe-auth-subtitle">{description}</p>}
+        </div>
         <form className="onframe-auth-fields" onSubmit={submit} noValidate aria-busy={busy}>
           {phase !== 'email' && <VerificationEmailField email={fields.email} onEdit={() => { if (!pending.current) editEmail(); }} />}
           {!verifying && phase === 'email' && <Input label="E-mail" type="email" inputMode="email" autoComplete="username" value={fields.email} disabled={busy} onChange={(event) => update('email', event.target.value)} />}
