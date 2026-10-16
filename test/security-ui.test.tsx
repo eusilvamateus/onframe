@@ -423,7 +423,7 @@ test('login cadastro e recuperacao usam chamadas principais sem legendas introdu
     assert.match(JSON.stringify(h.renderer.toJSON()), /receberá um link para redefinir a senha/);
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para entrar').props.onClick({ preventDefault() {} }));
     await selectCode(h.renderer);
-    expectTitle('Acesse o OnFrame');
+    expectTitle('Bem-vindo de volta');
     await continueEmail(h.renderer);
     expectTitle('Verifique seu e-mail');
     assert.match(JSON.stringify(h.renderer.toJSON()), /código de.*6.*dígitos/);

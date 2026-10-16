@@ -7,7 +7,7 @@ import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 const AUTH_MODES = {
   signin: { title: 'Bem-vindo de volta' },
   signup: { title: 'Crie sua conta no OnFrame' },
-  magic: { title: 'Acesse o OnFrame' },
+  magic: { title: 'Bem-vindo de volta' },
   recovery: { title: 'Recupere seu acesso' }
 };
 
