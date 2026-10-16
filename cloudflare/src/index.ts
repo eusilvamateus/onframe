@@ -952,6 +952,18 @@ async function auditRemoteApiRequest(input: {
   ).run();
 }
 
+async function completeRemoteApiAudit(
+  ctx: ExecutionContext | undefined,
+  task: Promise<void>
+): Promise<void> {
+  const safeTask = task.catch(() => undefined);
+  if (ctx) {
+    ctx.waitUntil(safeTask);
+    return;
+  }
+  await safeTask;
+}
+
 function parseRequestObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new RequestError('invalid_json', 400);
   return value as Record<string, unknown>;
@@ -1610,7 +1622,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
 }
 
 export default {
-  async fetch(request, env: RuntimeEnv): Promise<Response> {
+  async fetch(request, env: RuntimeEnv, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const requestId = crypto.randomUUID();
 
@@ -1855,7 +1867,7 @@ export default {
         const actor = await authenticateExtensionSession(request, env);
         try {
           const payload = await handleRemoteApiRequest({ actor, env, request, requestId, url });
-          await auditRemoteApiRequest({
+          await completeRemoteApiAudit(ctx, auditRemoteApiRequest({
             actor,
             env,
             method: request.method,
@@ -1863,11 +1875,11 @@ export default {
             requestId,
             statusCode: 200,
             outcome: 'success'
-          }).catch(() => undefined);
+          }));
           return json(payload);
         } catch (error) {
           const failure = remoteApiErrorPayload(error, requestId);
-          await auditRemoteApiRequest({
+          await completeRemoteApiAudit(ctx, auditRemoteApiRequest({
             actor,
             env,
             method: request.method,
@@ -1875,7 +1887,7 @@ export default {
             requestId,
             statusCode: failure.status,
             outcome: 'failure'
-          }).catch(() => undefined);
+          }));
           return json(failure.payload, failure.status);
         }
       }

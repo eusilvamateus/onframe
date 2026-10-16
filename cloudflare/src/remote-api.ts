@@ -734,28 +734,24 @@ function reconciliationOutcome(row: PromotionReconciliationRow): ReconciliationO
 
 async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiActor): Promise<RemoteApiContext> {
   assertRemoteMeliConfigured(env);
-  const membership = await env.ONFRAME_DB.prepare(`
-    SELECT role
-    FROM workspace_members
-    WHERE workspace_id = ? AND user_id = ?
-  `).bind(actor.workspaceId, actor.userId).first<{ role: 'admin' | 'collaborator' }>();
-  if (!membership) throw new RemoteApiError('workspace_access_forbidden', 403, 'Você não faz mais parte deste workspace.');
-
   const records = await env.ONFRAME_DB.prepare(`
-    SELECT id, meli_user_id, nickname, site_id, profile_url, enabled
-    FROM seller_accounts
-    WHERE workspace_id = ?
+    SELECT accounts.id, accounts.meli_user_id, accounts.nickname, accounts.site_id,
+           accounts.profile_url, accounts.enabled
+    FROM seller_accounts AS accounts
+    INNER JOIN workspace_members AS members
+      ON members.workspace_id = accounts.workspace_id AND members.user_id = ?
+    WHERE accounts.workspace_id = ?
       AND (
-        ? = 'admin'
+        members.role = 'admin'
         OR EXISTS (
           SELECT 1
           FROM account_members
-          WHERE account_members.seller_account_id = seller_accounts.id
+          WHERE account_members.seller_account_id = accounts.id
             AND account_members.user_id = ?
         )
       )
-    ORDER BY created_at ASC
-  `).bind(actor.workspaceId, membership.role, actor.userId).all<{
+    ORDER BY accounts.created_at ASC
+  `).bind(actor.userId, actor.workspaceId, actor.userId).all<{
     id: string;
     meli_user_id: string;
     nickname: string | null;
@@ -763,6 +759,14 @@ async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiAct
     profile_url: string | null;
     enabled: number;
   }>();
+  if (!records.results?.length) {
+    const membership = await env.ONFRAME_DB.prepare(`
+      SELECT role
+      FROM workspace_members
+      WHERE workspace_id = ? AND user_id = ?
+    `).bind(actor.workspaceId, actor.userId).first<{ role: 'admin' | 'collaborator' }>();
+    if (!membership) throw new RemoteApiError('workspace_access_forbidden', 403, 'Você não faz mais parte deste workspace.');
+  }
   const accounts = (records.results ?? []).map((record) => ({
     id: record.id,
     meliUserId: String(record.meli_user_id),
@@ -875,6 +879,8 @@ class RemoteMeliClient {
   private readonly latestItemSnapshots = new Map<string, Record<string, unknown>>();
   private readonly firstPromotionSnapshots = new Map<string, unknown>();
   private readonly latestPromotionSnapshots = new Map<string, unknown>();
+  private accessTokenPromise: Promise<string> | null = null;
+  private refreshAccessTokenPromise: Promise<string> | null = null;
 
   constructor(
     private readonly env: RemoteRuntimeEnv,
@@ -1001,6 +1007,16 @@ class RemoteMeliClient {
     return { mimeType: normalizeImageMimeType(response.headers.get('content-type')), base64: encodeBase64(bytes) };
   }
 
+  async readImageHeader(url: string, maxBytes = 4 * 1024): Promise<Uint8Array> {
+    assertAllowedImageUrl(url);
+    const limit = Math.max(1024, Math.min(256 * 1024, Math.trunc(maxBytes)));
+    const response = await fetch(String(url), {
+      headers: { accept: 'image/*', range: `bytes=0-${limit - 1}` }
+    });
+    if (!response.ok) throw new RemoteApiError('image_download_failed', response.status, `Nao consegui ler a imagem. HTTP ${response.status}`);
+    return readResponsePrefix(response, limit);
+  }
+
   private async request(path: string, options: RequestInit = {}, retried = false): Promise<unknown> {
     const accessToken = await this.getAccessToken();
     const headers = new Headers(options.headers || {});
@@ -1010,17 +1026,53 @@ class RemoteMeliClient {
 
     const response = await fetch(`${MELI_API_BASE}${path}`, { ...options, headers });
     if (response.status === 401 && !retried) {
-      await refreshSellerCredential(this.env, this.account, accessToken);
+      await this.refreshAccessToken(accessToken);
       return this.request(path, options, true);
     }
     return parseMeliResponse(response);
   }
 
-  private async getAccessToken(): Promise<string> {
+  private getAccessToken(): Promise<string> {
+    if (!this.accessTokenPromise) this.accessTokenPromise = this.loadAccessToken();
+    return this.accessTokenPromise;
+  }
+
+  private async loadAccessToken(): Promise<string> {
     const credential = await readSellerCredential(this.env, this.account);
     if (credential.expiresAt > Date.now() + TOKEN_REFRESH_SKEW_MS) return credential.token.access_token;
     return (await refreshSellerCredential(this.env, this.account)).access_token;
   }
+
+  private async refreshAccessToken(failedAccessToken: string): Promise<string> {
+    if (!this.refreshAccessTokenPromise) {
+      this.refreshAccessTokenPromise = refreshSellerCredential(this.env, this.account, failedAccessToken)
+        .then((token) => token.access_token);
+    }
+    const accessToken = await this.refreshAccessTokenPromise;
+    this.accessTokenPromise = Promise.resolve(accessToken);
+    return accessToken;
+  }
+}
+
+async function readResponsePrefix(response: Response, maxBytes: number): Promise<Uint8Array> {
+  if (!response.body) throw new RemoteApiError('invalid_picture', 400, 'Imagem vazia.');
+  const reader = response.body.getReader();
+  const bytes = new Uint8Array(maxBytes);
+  let length = 0;
+  try {
+    while (length < maxBytes) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      const available = Math.min(chunk.value.byteLength, maxBytes - length);
+      bytes.set(chunk.value.subarray(0, available), length);
+      length += available;
+      if (available < chunk.value.byteLength) break;
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+  if (!length) throw new RemoteApiError('invalid_picture', 400, 'Imagem vazia.');
+  return bytes.slice(0, length);
 }
 
 async function readSellerCredential(env: RemoteRuntimeEnv, account: SellerAccount): Promise<SellerCredential> {

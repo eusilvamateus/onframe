@@ -95,7 +95,7 @@ export async function requireIdentitySession(env: IdentityRuntimeEnv, subject: s
     `).bind(Date.now(), subject).run();
     throw new IdentitySecurityError('identity_session_invalid', 401);
   }
-  await synchronizeIdentity(env, state);
+  if (state.version !== version) await synchronizeIdentity(env, state);
   if (!state.sessionActive || state.version !== version) {
     await env.ONFRAME_DB.prepare(`
       UPDATE extension_sessions SET revoked_at = ?

@@ -35,6 +35,21 @@ async function resolvePictureDimensions(client, picture) {
 }
 
 async function resolveMeasuredPictureDimensions(client, picture) {
+  if (client && typeof client.readImageHeader === 'function') {
+    let best = null;
+    for (const url of buildPictureDownloadCandidates(picture)) {
+      const header = await safeCall(() => client.readImageHeader(url, 4 * 1024), null);
+      let measured = header ? extractImageDimensions(Buffer.from(header)) : null;
+      if (!measured && header) {
+        const extendedHeader = await safeCall(() => client.readImageHeader(url, 64 * 1024), null);
+        measured = extendedHeader ? extractImageDimensions(Buffer.from(extendedHeader)) : null;
+      }
+      if (!measured) continue;
+      if (!best || compareDimensions(measured, best) > 0) best = measured;
+      if (Math.max(measured.width, measured.height) >= OFFICIAL_TARGET_SIZE) break;
+    }
+    return best;
+  }
   const best = await downloadBestPictureImage(client, picture);
   return best && best.dimensions ? best.dimensions : null;
 }

@@ -411,6 +411,52 @@ test('picture quality prefere imagem mlstatic 2x ao max_size declarado', async (
   });
 });
 
+test('picture quality le apenas o cabecalho quando o cliente oferece leitura parcial', async () => {
+  let fullDownloadRequested = false;
+  const headers = [];
+  const report = await buildPictureQualityReport({
+    readImageHeader: async (url) => {
+      headers.push(url);
+      return fakeWebpVp8x(1200, 1200);
+    },
+    downloadImage: async () => {
+      fullDownloadRequested = true;
+      throw new Error('download completo nao deveria ser usado');
+    }
+  }, {
+    id: 'MLB1234567890',
+    pictures: [{
+      id: '679212-MLB114811470619_072026',
+      secure_url: 'https://http2.mlstatic.com/D_679212-MLB114811470619_072026-O.jpg'
+    }]
+  });
+
+  assert.strictEqual(headers.length, 1);
+  assert.strictEqual(fullDownloadRequested, false);
+  assert.strictEqual(report.summary.status, 'ok');
+  assert.strictEqual(report.pictures[0].resolution.source, 'measured');
+});
+
+test('picture quality amplia a leitura apenas quando o cabecalho curto nao traz dimensoes', async () => {
+  const limits = [];
+  const report = await buildPictureQualityReport({
+    readImageHeader: async (_url, maxBytes) => {
+      limits.push(maxBytes);
+      return maxBytes === 4 * 1024 ? Buffer.alloc(64) : fakeWebpVp8x(1200, 1200);
+    }
+  }, {
+    id: 'MLB1234567890',
+    pictures: [{
+      id: '679212-MLB114811470619_072026',
+      secure_url: 'https://http2.mlstatic.com/D_679212-MLB114811470619_072026-O.jpg'
+    }]
+  });
+
+  assert.deepStrictEqual(limits, [4 * 1024, 64 * 1024]);
+  assert.strictEqual(report.summary.status, 'ok');
+  assert.strictEqual(report.pictures[0].resolution.source, 'measured');
+});
+
 test('picture quality usa apenas dimensoes e ignora diagnostico oficial', async () => {
   let diagnosticRequested = false;
   const report = await buildPictureQualityReport({
