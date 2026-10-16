@@ -71,6 +71,9 @@ test('estado retomavel do popup persiste somente dados nao sensiveis na sessao',
     assert.equal(restored.integrations.mode, 'cards');
     assert.doesNotMatch(JSON.stringify(stored), /segredo|654321|secreto/);
 
+    const legacySignup = normalizePopupSessionState({ auth: { mode: 'signup', phase: 'details', email: 'mateus@example.com' } });
+    assert.equal(legacySignup.auth?.phase, 'email');
+
     await clearPopupSessionState();
     assert.equal(stored, null);
   } finally {

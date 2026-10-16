@@ -405,28 +405,30 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
     }
     expectTitle('Bem-vindo de volta', 'Entre com seu e-mail e senha para continuar.');
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Criar conta').props.onClick({ preventDefault() {} }));
-    expectTitle('Crie sua conta no OnFrame');
-    await continueEmail(h.renderer);
-    expectTitle('Crie sua conta no OnFrame');
+    expectTitle('Criar conta', 'Escolha um e-mail e uma senha para começar.');
     const signupFields = h.renderer.root.findAllByType('input');
     const passwords = signupFields.filter((field) => field.props.autoComplete === 'new-password');
     assert.equal(new Set(passwords.map((field) => field.props.id)).size, 2);
+    assert.equal(h.renderer.root.findAllByType(Button).find((button) => button.props.type === 'submit').props.children, 'Criar conta');
+    assert.equal(h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Entrar'), true);
     await act(async () => {
+      signupFields.find((field) => field.props.type === 'email').props.onChange({ target: { value: ' Pessoa@Example.com ' } });
       signupFields.find((field) => field.props.autoComplete === 'name').props.onChange({ target: { value: 'Pessoa' } });
       passwords.forEach((field) => field.props.onChange({ target: { value: 'valid-new-password' } }));
     });
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     expectTitle('Confira seu e-mail');
     assert.match(JSON.stringify(h.renderer.toJSON()), /Confira seu e-mail para confirmar o cadastro/);
-    await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para entrar').props.onClick({ preventDefault() {} }));
+    await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Entrar').props.onClick({ preventDefault() {} }));
     await continueEmail(h.renderer);
     expectTitle('Bem-vindo de volta', 'Entre com seu e-mail e senha para continuar.');
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Esqueci minha senha').props.onClick({ preventDefault() {} }));
-    expectTitle('Recupere seu acesso');
+    expectTitle('Redefinir senha', 'Informe seu e-mail para receber o link de redefinição.');
+    assert.equal(h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Voltar para o login'), true);
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     expectTitle('Confira seu e-mail');
     assert.match(JSON.stringify(h.renderer.toJSON()), /receberá um link para redefinir a senha/);
-    await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para entrar').props.onClick({ preventDefault() {} }));
+    await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para o login').props.onClick({ preventDefault() {} }));
     await selectCode(h.renderer);
     expectTitle('Acesse o OnFrame', 'Enviaremos um código de acesso para o seu e-mail.');
     await continueEmail(h.renderer);
@@ -449,7 +451,9 @@ test('recuperacao aparece ao lado do rotulo da senha sem duplicar a acao no roda
     assert.equal(h.renderer.root.findByProps({ className: 'onframe-auth-footer' }).findAllByType(Link).length, 1);
     assert.equal(heading.findByType('label').findAllByType('a').length, 0);
     await act(async () => recovery.props.onClick({ preventDefault() {} }));
-    assert.equal(h.renderer.root.findByType('h1').props.children, 'Recupere seu acesso');
+    assert.equal(h.renderer.root.findByType('h1').props.children, 'Redefinir senha');
+    assert.equal(h.renderer.root.findByProps({ className: 'onframe-auth-subtitle' }).props.children, 'Informe seu e-mail para receber o link de redefinição.');
+    assert.equal(h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Voltar para o login'), true);
     assert.equal(h.renderer.root.findByType('input').props.value, user.email);
     assert.equal(h.requests.length, 0);
   } finally { await h.close(); }
@@ -550,9 +554,8 @@ test('cadastro e recuperacao sao links e preservam os callbacks nativos', async 
     await act(async () => recovery.props.onClick({ preventDefault() {} }));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.ok(h.requests.find((request) => request.path === 'recover')?.redirectTo);
-    await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para entrar').props.onClick({ preventDefault() {} }));
+    await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Voltar para o login').props.onClick({ preventDefault() {} }));
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Criar conta').props.onClick({ preventDefault() {} }));
-    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     const fields = h.renderer.root.findAllByType('input');
     await act(async () => {
       fields.find((field) => field.props.autoComplete === 'name').props.onChange({ target: { value: 'Pessoa' } });

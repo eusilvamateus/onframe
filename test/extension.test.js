@@ -339,6 +339,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
   assert.match(optionsCss, /\.onframe-auth-panel\s*\{[^}]*width:\s*min\(100%, 448px\);[^}]*margin-inline:\s*auto/);
+  assert.match(optionsCss, /\.onframe-auth-methods, \.onframe-auth-methods > div, \.onframe-auth-methods > div > div\s*\{[^}]*width:\s*100%/);
+  assert.match(optionsCss, /\.onframe-auth-methods button\s*\{[^}]*flex:\s*1;[^}]*justify-content:\s*center/);
   assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-s-1\)/);
   assert.match(optionsCss, /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/);
   assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-s-5\);[^}]*min-width:\s*0/);

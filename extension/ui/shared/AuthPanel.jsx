@@ -6,9 +6,9 @@ import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 
 const AUTH_MODES = {
   signin: { title: 'Bem-vindo de volta', description: 'Entre com seu e-mail e senha para continuar.' },
-  signup: { title: 'Crie sua conta no OnFrame' },
+  signup: { title: 'Criar conta', description: 'Escolha um e-mail e uma senha para começar.' },
   magic: { title: 'Acesse o OnFrame', description: 'Enviaremos um código de acesso para o seu e-mail.' },
-  recovery: { title: 'Recupere seu acesso' }
+  recovery: { title: 'Redefinir senha', description: 'Informe seu e-mail para receber o link de redefinição.' }
 };
 
 export function PasswordField({ label, labelAction, value, onChange, autoComplete, placeholder, disabled }) {
@@ -108,7 +108,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   const [resending, setResending] = useState(false);
   const [captchaMounted, setCaptchaMounted] = useState(false);
   const codeLength = secondFactor ? 6 : config?.emailOtpLength || 6;
-  const needsCaptcha = !secondFactor && (phase === 'password' || phase === 'details' || (phase === 'email' && ['magic', 'recovery'].includes(mode)) || resending);
+  const needsCaptcha = !secondFactor && (phase === 'password' || (phase === 'email' && ['signup', 'magic', 'recovery'].includes(mode)) || resending);
 
   useEffect(() => { if (needsCaptcha) setCaptchaMounted(true); }, [needsCaptcha]);
 
@@ -206,8 +206,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
     if (secondFactor || phase === 'code') { await verifyCode(code); return; }
     const email = RemoteAuth.normalizeEmail(fields.email);
     if (!email) { setFeedback({ tone: 'warning', message: 'Informe um e-mail válido.' }); return; }
-    if (phase === 'email' && ['signin', 'signup'].includes(mode)) {
-      update('email', email); setFeedback(null); setPhase(mode === 'signin' ? 'password' : 'details'); return;
+    if (phase === 'email' && mode === 'signin') {
+      update('email', email); setFeedback(null); setPhase('password'); return;
     }
     if (mode === 'magic') { await sendCode(); return; }
     if (mode === 'signup' && !fields.name.trim()) { setFeedback({ tone: 'warning', message: 'Informe seu nome.' }); return; }
@@ -240,8 +240,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   function linkTo(nextMode) { return (event) => { event.preventDefault(); changeMode(nextMode); }; }
   const verifying = Boolean(secondFactor) || phase === 'code';
   const title = secondFactor ? 'Verificação em duas etapas' : phase === 'code' ? 'Verifique seu e-mail' : phase === 'sent' ? 'Confira seu e-mail' : AUTH_MODES[mode].title;
-  const description = !secondFactor && ['email', 'password'].includes(phase) ? AUTH_MODES[mode].description : null;
-  const buttonLabel = phase === 'email' ? mode === 'magic' ? 'Enviar código' : mode === 'recovery' ? 'Enviar link de recuperação' : 'Continuar' : mode === 'signup' ? 'Criar conta' : verifying ? 'Verificar e entrar' : 'Entrar';
+  const description = !secondFactor && !['code', 'sent'].includes(phase) ? AUTH_MODES[mode].description : null;
+  const buttonLabel = verifying ? 'Verificar e entrar' : mode === 'signup' ? 'Criar conta' : mode === 'magic' ? 'Enviar código' : mode === 'recovery' ? 'Enviar link de redefinição' : phase === 'email' ? 'Continuar' : 'Entrar';
 
   return <div className="onframe-auth-panel">
     <AuthBrand />
@@ -260,9 +260,9 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
         <form className="onframe-auth-fields" onSubmit={submit} noValidate aria-busy={busy}>
           {phase !== 'email' && <VerificationEmailField email={fields.email} onEdit={() => { if (!pending.current) editEmail(); }} />}
           {!verifying && phase === 'email' && <Input label="E-mail" type="email" inputMode="email" autoComplete="username" value={fields.email} disabled={busy} onChange={(event) => update('email', event.target.value)} />}
-          {!verifying && phase === 'details' && <Input label="Nome" autoComplete="name" value={fields.name} disabled={busy} onChange={(event) => update('name', event.target.value)} />}
-          {!verifying && ['password', 'details'].includes(phase) && <PasswordField label="Senha" labelAction={mode === 'signin' ? <Link href="#recuperar-senha" onClick={linkTo('recovery')}>Esqueci minha senha</Link> : undefined} value={fields.password} onChange={(value) => update('password', value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} disabled={busy} />}
-          {!verifying && phase === 'details' && <PasswordField label="Confirme a senha" value={fields.confirmation} onChange={(value) => update('confirmation', value)} autoComplete="new-password" disabled={busy} />}
+          {!verifying && mode === 'signup' && phase === 'email' && <Input label="Nome" autoComplete="name" value={fields.name} disabled={busy} onChange={(event) => update('name', event.target.value)} />}
+          {!verifying && (phase === 'password' || (mode === 'signup' && phase === 'email')) && <PasswordField label="Senha" labelAction={mode === 'signin' ? <Link href="#recuperar-senha" onClick={linkTo('recovery')}>Esqueci minha senha</Link> : undefined} value={fields.password} onChange={(value) => update('password', value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} disabled={busy} />}
+          {!verifying && mode === 'signup' && phase === 'email' && <PasswordField label="Confirme a senha" value={fields.confirmation} onChange={(value) => update('confirmation', value)} autoComplete="new-password" disabled={busy} />}
           {verifying && <>
             {secondFactor?.factors.length > 1 && <Tabs tabs={secondFactor.factors.map((factor, index) => ({ id: factor.id, label: factor.friendly_name || `Autenticador ${index + 1}` }))} active={secondFactor.id} onChange={(id) => { setSecondFactor((current) => ({ ...current, id })); setCode(''); setCodeError(false); }} size="sm" />}
             <VerificationCodeField label={secondFactor ? 'Código do aplicativo autenticador' : 'Insira o código de verificação'} length={codeLength} value={code} onChange={changeCode} error={codeError} disabled={busy} />
@@ -279,7 +279,9 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
         {mode === 'signin' && !secondFactor && phase !== 'sent' && <div className="onframe-auth-footer">
           <p className="onframe-muted">Não tem uma conta? <Link href="#criar-conta" onClick={linkTo('signup')}>Criar conta</Link></p>
         </div>}
-        {(secondFactor || ['signup', 'recovery'].includes(mode)) && <div className="onframe-auth-footer"><Link href="#entrar" onClick={linkTo('signin')}>Voltar para entrar</Link></div>}
+        {mode === 'signup' && !secondFactor && <div className="onframe-auth-footer"><p className="onframe-muted">Já tem uma conta? <Link href="#entrar" onClick={linkTo('signin')}>Entrar</Link></p></div>}
+        {mode === 'recovery' && !secondFactor && <div className="onframe-auth-footer"><Link href="#entrar" onClick={linkTo('signin')}>Voltar para o login</Link></div>}
+        {secondFactor && <div className="onframe-auth-footer"><Link href="#entrar" onClick={linkTo('signin')}>Voltar para entrar</Link></div>}
       </div>
     </Card>
   </div>;

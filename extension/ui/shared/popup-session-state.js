@@ -3,7 +3,7 @@ const POPUP_VIEWS = new Set(['home', 'workspace', 'integrations', 'history']);
 const AUTH_MODES = new Set(['signin', 'signup', 'magic', 'recovery']);
 const AUTH_PHASES = {
   signin: new Set(['email', 'password']),
-  signup: new Set(['email', 'details', 'sent']),
+  signup: new Set(['email', 'sent']),
   magic: new Set(['email', 'code']),
   recovery: new Set(['email', 'sent'])
 };

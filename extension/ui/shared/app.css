@@ -18,6 +18,8 @@ button, input { font: inherit; }
 .onframe-auth-content { display: flex; flex-direction: column; gap: var(--ob-s-5); min-width: 0; }
 .onframe-help { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-auth-brand, .onframe-auth-methods { display: flex; justify-content: center; }
+.onframe-auth-methods, .onframe-auth-methods > div, .onframe-auth-methods > div > div { width: 100%; }
+.onframe-auth-methods button { flex: 1; justify-content: center; }
 .onframe-auth-brand { width: min(100%, 192px); align-self: center; }
 .onframe-auth-logo { display: block; width: 192px; min-width: 0; max-width: 100%; height: auto; aspect-ratio: 2 / 1; object-fit: cover; object-position: center 52%; }
 .onframe-auth-intro { display: flex; flex-direction: column; gap: var(--ob-s-1); }
