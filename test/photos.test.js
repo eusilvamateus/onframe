@@ -343,10 +343,11 @@ test('picture quality extrai dimensoes oficiais do Mercado Livre', () => {
   assert.deepStrictEqual(
     extractOfficialDimensions({
       id: 'P1',
+      size: '500x500',
+      max_size: '1200x1200',
       variations: [
         { size: '90x90' },
-        { size: '1200x1200' },
-        { size: '500x500' }
+        { size: '800x800' }
       ]
     }),
     { width: 1200, height: 1200, source: 'official' }
@@ -367,6 +368,17 @@ test('picture quality mede dimensoes reais de PNG e calcula score', () => {
 test('picture quality mede dimensoes reais de WebP', () => {
   assert.deepStrictEqual(
     extractImageDimensions(fakeWebpVp8x(1200, 1200)),
+    { width: 1200, height: 1200, source: 'measured' }
+  );
+});
+
+test('picture quality mede WebP por cabecalho parcial de arquivo grande', () => {
+  const header = fakeWebpVp8x(1200, 1200);
+  header.writeUInt32LE(200000, 4);
+  header.writeUInt32LE(199988, 16);
+
+  assert.deepStrictEqual(
+    extractImageDimensions(header),
     { width: 1200, height: 1200, source: 'measured' }
   );
 });
@@ -417,7 +429,10 @@ test('picture quality le apenas o cabecalho quando o cliente oferece leitura par
   const report = await buildPictureQualityReport({
     readImageHeader: async (url) => {
       headers.push(url);
-      return fakeWebpVp8x(1200, 1200);
+      const header = fakeWebpVp8x(1200, 1200);
+      header.writeUInt32LE(200000, 4);
+      header.writeUInt32LE(199988, 16);
+      return header;
     },
     downloadImage: async () => {
       fullDownloadRequested = true;

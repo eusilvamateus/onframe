@@ -216,17 +216,16 @@ function qualityOkMessage(resolution) {
 }
 
 function extractOfficialDimensions(picture) {
-  const direct = parseSize(picture && (picture.size || picture.max_size));
-  if (direct) return direct;
-
+  const candidates = [
+    parseSize(picture && picture.size),
+    parseSize(picture && picture.max_size)
+  ].filter(Boolean);
   const variations = picture && Array.isArray(picture.variations) ? picture.variations : [];
-  let best = null;
   for (const variation of variations) {
     const parsed = parseSize(variation && variation.size);
-    if (!parsed) continue;
-    if (!best || parsed.width * parsed.height > best.width * best.height) best = parsed;
+    if (parsed) candidates.push(parsed);
   }
-  return best;
+  return candidates.sort(compareDimensions).pop() || null;
 }
 
 function parseSize(value) {
@@ -311,9 +310,8 @@ function extractWebpDimensions(buffer) {
     const chunkType = buffer.toString('ascii', offset, offset + 4);
     const chunkSize = buffer.readUInt32LE(offset + 4);
     const dataOffset = offset + 8;
-    if (dataOffset + chunkSize > buffer.length) return null;
 
-    if (chunkType === 'VP8X' && chunkSize >= 10) {
+    if (chunkType === 'VP8X' && chunkSize >= 10 && dataOffset + 10 <= buffer.length) {
       return {
         width: buffer.readUIntLE(dataOffset + 4, 3) + 1,
         height: buffer.readUIntLE(dataOffset + 7, 3) + 1,
@@ -321,7 +319,7 @@ function extractWebpDimensions(buffer) {
       };
     }
 
-    if (chunkType === 'VP8L' && chunkSize >= 5 && buffer[dataOffset] === 0x2f) {
+    if (chunkType === 'VP8L' && chunkSize >= 5 && dataOffset + 5 <= buffer.length && buffer[dataOffset] === 0x2f) {
       const b0 = buffer[dataOffset + 1];
       const b1 = buffer[dataOffset + 2];
       const b2 = buffer[dataOffset + 3];
@@ -334,6 +332,7 @@ function extractWebpDimensions(buffer) {
     }
 
     if (chunkType === 'VP8 ' && chunkSize >= 10 &&
+      dataOffset + 10 <= buffer.length &&
       buffer[dataOffset + 3] === 0x9d &&
       buffer[dataOffset + 4] === 0x01 &&
       buffer[dataOffset + 5] === 0x2a) {
@@ -344,6 +343,7 @@ function extractWebpDimensions(buffer) {
       };
     }
 
+    if (dataOffset + chunkSize > buffer.length) return null;
     offset = dataOffset + chunkSize + (chunkSize % 2);
   }
 
