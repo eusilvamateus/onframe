@@ -11,6 +11,12 @@ e acionáveis. Este arquivo deve permanecer na raiz do repositório e ser versio
 Faça commit e push de suas atualizações seguindo o fluxo de trabalho do projeto.
 Escreva todas as diretrizes textuais deste arquivo em português.
 
+Sempre que o usuário declarar uma nova regra permanente de trabalho ou corrigir,
+substituir ou ampliar uma regra anterior, atualize este arquivo na mesma tarefa,
+sem exigir que ele peça o registro separadamente. Antes de adicionar uma diretriz,
+verifique se o assunto já está documentado; nesse caso, atualize a regra existente
+em vez de criar versões duplicadas ou conflitantes.
+
 ## Contexto do Projeto
 
 Antes de alterar fronteiras, responsabilidades ou contratos entre componentes,
@@ -92,10 +98,15 @@ informe expressamente o bloqueio e não use busca externa sem autorização
 explícita do usuário. Use o conector `$mercado-livre` para informações do
 Mercado Livre.
 
-## Verificação no Navegador
+## Controle do Navegador e do Computador
 
-Não use o navegador para validar aparência, layout, posição ou animações: essa
-verificação é responsabilidade do usuário. Abra-o somente quando for necessário
-confirmar a estrutura, os seletores ou o ciclo de vida do DOM real do Mercado
-Livre. Antes de qualquer acesso, informe qual hipótese precisa ser verificada e
-por que a inspeção do DOM é necessária.
+Não assuma o controle do navegador ou do computador para validação visual, teste
+de uso, conferência de layout, inspeção de implementação ou tarefas ordinárias de
+QA. Essas verificações são responsabilidade do usuário.
+
+Quando esse controle puder melhorar materialmente a solução, simplificar a
+implementação ou for requisito para resolver a tarefa, solicite autorização
+explícita antes de qualquer acesso. Explique exatamente o que será acessado, qual
+hipótese ou requisito será verificado e por que o controle é necessário. Só
+prossiga depois da resposta afirmativa do usuário. A autorização vale apenas para
+o acesso e o escopo descritos; um novo uso exige nova autorização.
