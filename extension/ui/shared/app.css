@@ -118,7 +118,7 @@ button, input { font: inherit; }
 .onframe-auth-page-theme { position: fixed; top: var(--ob-s-4); right: var(--ob-s-4); z-index: var(--ob-z-popover); }
 .onframe-auth-surface { width: min(100%, 560px); }
 .onframe-popup-window, .onframe-popup-document { background: transparent; border-radius: var(--ob-r-surface); overflow: hidden; }
-.onframe-popup-document { width: 480px; min-width: 480px; clip-path: inset(0 round var(--ob-r-surface)); }
+.onframe-popup-document { width: 460px; min-width: 460px; clip-path: inset(0 round var(--ob-r-surface)); }
 .onframe-popup-document #root { width: 100%; background: var(--ob-surface); border-radius: inherit; overflow: hidden; }
 .onframe-popup { width: 100%; padding: var(--ob-s-3); display: flex; flex-direction: column; gap: var(--ob-s-3); }
 .onframe-popup-auth { position: relative; }

@@ -355,7 +355,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popup, /writePopupSessionState\(next\)/);
   assert.match(popupHtml, /<html lang="pt-BR" class="onframe-popup-window">/);
   assert.match(popupHtml, /<body class="onframe-popup-document">/);
-  assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*480px;[^}]*min-width:\s*480px/);
+  assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*460px;[^}]*min-width:\s*460px/);
   assert.match(optionsCss, /\.onframe-history-product-media \.onframe-history-type-icon\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/);
   assert.match(optionsCss, /\.onframe-history-period-picker\s*\{[^}]*justify-content:\s*center/);
   assert.match(optionsCss, /\.onframe-history-period-picker > div\s*\{[^}]*width:\s*276px;[^}]*max-width:\s*100%/);
