@@ -11,13 +11,9 @@
   const toast = services.toast;
   const root = services.root;
   const requestPageContextReload = services.requestPageContextReload || (() => Promise.resolve(null));
-  const escapeHtml = Shared.escapeHtml;
-  const escapeAttribute = Shared.escapeAttribute;
   const isProductPageUrl = Detection.isProductPageUrl;
-  const DesignSystemButton = rootScope.OnFrameButton;
+  const PhotosView = rootScope.OnFramePhotosView;
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
-  const EDITOR_MORPH_OPEN_DURATION = 900;
-  const EDITOR_MORPH_CLOSE_DURATION = 950;
 
   const state = {
     context: null,
@@ -37,14 +33,8 @@
     loaded: false,
     editorVisible: true,
     dockExpanded: false,
-    editorTransition: null,
-    editorTransitionTimer: null,
-    editorTransitionResolve: null,
-    editorTransitionAnimations: [],
     renderTimer: null,
     renderAfterDrag: false,
-    lastTrayMarkup: '',
-    lastDialogMarkup: '',
     message: '',
     error: '',
     pageSignature: '',
@@ -80,12 +70,9 @@
     state.busy = false;
     state.loaded = false;
     state.editorVisible = true;
-    clearEditorTransition();
     if (state.renderTimer) clearTimeout(state.renderTimer);
     state.renderTimer = null;
     state.renderAfterDrag = false;
-    state.lastTrayMarkup = '';
-    state.lastDialogMarkup = '';
     state.message = '';
     state.error = '';
     state.pageSignature = readPageSignature();
@@ -254,9 +241,8 @@
     }
 
     if (state.tray && !state.tray.isConnected) {
-      clearEditorTransition();
+      if (PhotosView) PhotosView.unmount(state.tray);
       state.tray = null;
-      state.lastTrayMarkup = '';
     }
 
     if (!state.tray) {
@@ -267,7 +253,7 @@
     }
 
     renderTray();
-    if (!state.editorTransition) renderQualityDialogRoot();
+    renderQualityDialogRoot();
   }
 
   function getEditorStatus() {
@@ -308,7 +294,6 @@
   function hideEditor() {
     state.editorVisible = false;
     state.qualityDialog = null;
-    clearEditorTransition();
     removeTray();
     removeQualityDialog();
     return getEditorStatus();
@@ -333,134 +318,126 @@
   }
 
   function renderTray() {
-    if (!state.tray) return;
-
-    const markup = buildTrayMarkup();
-    if (markup === state.lastTrayMarkup) return;
-    state.lastTrayMarkup = markup;
-    unmountButtons(state.tray);
-    state.tray.innerHTML = markup;
-    bindTrayEvents();
-    mountButtons(state.tray);
+    if (!state.tray || !PhotosView) return;
+    PhotosView.renderTray(state.tray, buildPhotoViewModel(), getPhotoViewActions());
   }
 
-  function buildTrayMarkup() {
-    if (!state.loaded && !state.context && !state.error) return '';
-
-    const expanded = state.dockExpanded;
-
-    return `
-      <div class="onblide-ml-dock-shell">
-        <svg class="onblide-ml-dock-silhouette" viewBox="0 0 1000 28" preserveAspectRatio="none" focusable="false">
-          <path class="onblide-ml-dock-silhouette-fill" d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984Z"></path>
-        </svg>
-        <button class="onblide-ml-dock-tab" data-action="toggle-dock" type="button" title="${expanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos'}">
-          <span class="onblide-ml-dock-tab-icon${expanded ? ' is-expanded' : ''}">${icon('caretUp', 16)}</span>
-        </button>
-        <div class="onblide-ml-dock-panel${expanded ? ' is-expanded' : ''}">
-          <div class="onblide-ml-dock-content">
-            ${buildTrayContent()}
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function buildTrayContent() {
-    if (!state.context) {
-      return `
-        <div class="onblide-ml-tray-bar">
-          ${renderStatus()}
-          <button class="onblide-ml-btn primary" data-action="connect" type="button">Conectar</button>
-          <button class="onblide-ml-btn" data-action="reload" type="button">Recarregar</button>
-        </div>
-      `;
-    }
-
-    if (isPictureEditingBlocked()) {
-      if (isCatalogListing()) return renderCatalogPhotoNotice();
-      return `
-        <div class="onblide-ml-tray-bar">
-          ${renderStatus()}
-          <button class="onblide-ml-btn" data-action="reload" type="button">Recarregar</button>
-        </div>
-      `;
-    }
-
-    const limitState = getPictureLimitState();
-
-    return `
-      <div class="onblide-ml-dock-main">
-        ${renderDockIdentity(limitState)}
-        <div class="onblide-ml-strip" aria-label="Editor de fotos do anuncio">
-          ${state.draftPictures.map(renderPictureTile).join('')}
-          ${renderUploadTile()}
-        </div>
-        <div class="onblide-ml-dock-command-stack">
-          <button class="onblide-ml-btn primary compact onblide-ml-dock-open-editor" data-action="open-editor" type="button" ${state.busy ? 'disabled' : ''}>${icon('arrowSquareOut', 14)}Abrir editor</button>
-          ${renderTrayActions(limitState)}
-        </div>
-      </div>
-      ${renderTrayFeedback(limitState)}
-    `;
-  }
-
-  function renderDockIdentity(limitState) {
-    const counter = limitState.counterText || `${state.draftPictures.length} fotos`;
-
-    return `
-      <div class="onblide-ml-dock-identity">
-        <span class="onblide-ml-dock-identity-icon">${icon('image', 16)}</span>
-        <span class="onblide-ml-dock-identity-copy">
-          <strong>Editor de fotos</strong>
-          <small>${escapeHtml(counter)}</small>
-        </span>
-      </div>
-    `;
-  }
-
-  function renderCatalogPhotoNotice() {
-    return `
-      <div class="onblide-ml-dock-catalog-notice">
-        ${icon('info', 16)}
-        <span class="onblide-ml-dock-catalog-copy">
-          <strong>Este é um anúncio de catálogo</strong>
-          <small>As fotos são definidas pelo catálogo. Para gerenciá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.</small>
-        </span>
-      </div>
-    `;
-  }
-
-  function renderStatus() {
-    if (state.error) return `<div class="onblide-ml-status error">${escapeHtml(state.error)}</div>`;
+  function buildPhotoViewModel() {
+    const limit = getPictureLimitState();
+    const qualityCounts = getCurrentQualityCounts();
     const blockedMessage = getPictureEditingBlockedMessage();
-    if (blockedMessage) return `<div class="onblide-ml-status muted">${escapeHtml(blockedMessage)}</div>`;
-    const limitState = getPictureLimitState();
-    if (limitState.message) return `<div class="onblide-ml-status error">${escapeHtml(limitState.message)}</div>`;
-    if (state.message) return `<div class="onblide-ml-status">${escapeHtml(state.message)}</div>`;
-    if (state.context && state.selectedVariationId) return '<div class="onblide-ml-status muted">Variação selecionada</div>';
-    if (state.context) return '<div class="onblide-ml-status muted">Fotos do anúncio</div>';
-    return '';
+    const pictures = state.draftPictures.map((picture, index) => toPictureViewModel(picture, index));
+    return {
+      visible: Boolean(state.loaded || state.context || state.error),
+      connected: Boolean(state.context),
+      busy: state.busy,
+      dirty: state.dirty,
+      blocked: Boolean(blockedMessage),
+      catalog: isCatalogListing(),
+      variation: Boolean(state.selectedVariationId),
+      error: state.error || '',
+      status: buildStatusViewModel(blockedMessage, limit),
+      feedback: state.error || (state.dirty && limit.message ? limit.message : ''),
+      limit,
+      dock: { expanded: state.dockExpanded },
+      pictures,
+      quality: {
+        loading: state.qualityLoading,
+        error: state.qualityError,
+        belowIdeal: qualityCounts.belowIdeal,
+        optimizable: qualityCounts.optimizable,
+        summaryLabel: formatQualityCountLabel(qualityCounts),
+        items: pictures.map((picture, index) => toDiagnosticViewModel(picture, state.draftPictures[index]))
+      },
+      dialog: buildDialogViewModel()
+    };
   }
 
-  function renderTrayFeedback(limitState) {
-    if (state.error) return `<div class="onblide-ml-tray-feedback error">${escapeHtml(state.error)}</div>`;
-    if (state.dirty && limitState && limitState.message) {
-      return `<div class="onblide-ml-tray-feedback error">${escapeHtml(limitState.message)}</div>`;
+  function buildStatusViewModel(blockedMessage, limit) {
+    if (state.error) return { tone: 'error', text: state.error };
+    if (blockedMessage) return { tone: 'muted', text: blockedMessage };
+    if (limit.message) return { tone: 'error', text: limit.message };
+    if (state.message) return { tone: '', text: state.message };
+    if (state.context && state.selectedVariationId) return { tone: 'muted', text: 'Variação selecionada' };
+    if (state.context) return { tone: 'muted', text: 'Fotos do anúncio' };
+    return { tone: '', text: '' };
+  }
+
+  function toPictureViewModel(picture, index) {
+    const quality = getPictureQuality(picture);
+    const resolution = quality && quality.resolution ? quality.resolution : null;
+    return {
+      localId: picture.localId,
+      position: index + 1,
+      url: picture.previewUrl || picture.secure_url || picture.url || picture.source || '',
+      quality: quality ? {
+        tone: getQualityTone(quality),
+        label: resolution && resolution.available && resolution.score ? `${resolution.score}%` : '!',
+        message: formatPictureQualityMessage(quality)
+      } : null
+    };
+  }
+
+  function toDiagnosticViewModel(pictureView, picture) {
+    const quality = getPictureQuality(picture);
+    const resolution = quality && quality.resolution ? quality.resolution : null;
+    return Object.assign({}, pictureView, {
+      tone: quality ? getQualityTone(quality) : 'muted',
+      dimensions: formatPictureDimensions(picture, resolution),
+      score: formatScore(resolution),
+      state: formatQualityStateLabel(quality)
+    });
+  }
+
+  function buildDialogViewModel() {
+    const dialog = state.qualityDialog;
+    if (!dialog) return null;
+    if (dialog.mode === 'review') {
+      return Object.assign({}, dialog, {
+        items: (dialog.items || []).map((item, index) => Object.assign({}, item, {
+          position: index + 1,
+          dimensions: formatDimensions(item.resolution),
+          optimizedDimensions: formatOptimizedDimensions(item.resolution),
+          score: formatScore(item.resolution),
+          tone: getResolutionTone(item.resolution)
+        }))
+      });
     }
-    return '';
+    if (dialog.mode === 'result') {
+      return Object.assign({}, dialog, {
+        results: (dialog.results || []).map((result, index) => Object.assign({}, result, {
+          position: index + 1,
+          originalDimensions: formatDimensions(result.originalDimensions),
+          optimizedDimensions: formatDimensions(result.optimizedDimensions),
+          beforeScore: result.beforeScore ? `${result.beforeScore}%` : ''
+        }))
+      });
+    }
+    return Object.assign({}, dialog);
   }
 
-  function renderTrayActions(limitState) {
-    if (!state.dirty) return '';
-    return `
-      <div class="onblide-ml-tray-actions">
-        ${state.dirty ? `
-          <button class="onblide-ml-btn compact onblide-ml-dock-save" data-action="commit" type="button" ${state.busy || limitState.message ? 'disabled' : ''}>Salvar</button>
-          <button class="onblide-ml-btn compact onblide-ml-dock-discard" data-action="discard" type="button" ${state.busy ? 'disabled' : ''}>${icon('trash', 13)}Descartar</button>
-        ` : ''}
-      </div>
-    `;
+  function getPhotoViewActions() {
+    return {
+      toggleDock,
+      connect: () => void startAuth(),
+      reload: () => void reloadEditor(),
+      commit: () => void commit(),
+      discard: discardDraft,
+      reloadQuality: () => void loadPictureQuality(),
+      openOptimize: openOptimizeDialog,
+      openEditor: openEditorDialog,
+      closeDialog: closeQualityDialog,
+      selectAllOptimize: () => setAllOptimizeSelection(true),
+      clearOptimize: () => setAllOptimizeSelection(false),
+      toggleOptimize: toggleOptimizeSelection,
+      confirmOptimize: () => void confirmOptimizeDialog(),
+      removePicture,
+      showQuality: showPictureQuality,
+      selectFiles: () => state.fileInput && state.fileInput.click(),
+      addFiles: (files) => void addPendingFiles(files),
+      beginPictureDrag,
+      movePicture: movePictureByKeyboard
+    };
   }
 
   function getPictureLimitState() {
@@ -476,432 +453,36 @@
 
   function toggleDock() {
     state.dockExpanded = !state.dockExpanded;
-    const panel = state.tray && state.tray.querySelector('.onblide-ml-dock-panel');
-    const iconElement = state.tray && state.tray.querySelector('.onblide-ml-dock-tab-icon');
-    const tab = state.tray && state.tray.querySelector('.onblide-ml-dock-tab');
-
-    if (!panel || !iconElement || !tab) {
-      rerenderTray();
-      return;
-    }
-
-    panel.classList.toggle('is-expanded', state.dockExpanded);
-    iconElement.classList.toggle('is-expanded', state.dockExpanded);
-    tab.title = state.dockExpanded ? 'Recolher editor de fotos' : 'Expandir editor de fotos';
-    state.lastTrayMarkup = buildTrayMarkup();
-  }
-
-  function renderPictureTile(picture, index) {
-    const url = picture.previewUrl || picture.secure_url || picture.url || picture.source || '';
-    const quality = getPictureQuality(picture);
-    const qualityClass = quality ? ` has-quality-${escapeAttribute(getQualityTone(quality))}` : '';
-    return `
-      <div class="onblide-ml-tile${qualityClass}" data-picture-id="${escapeAttribute(picture.localId)}" tabindex="0" role="button" aria-label="Foto ${index + 1}. Arraste para reordenar.">
-        <img src="${escapeAttribute(url)}" alt="" draggable="false">
-        <span class="onblide-ml-order">${index + 1}</span>
-        ${renderPictureQualityBadge(picture, quality)}
-        <span
-          class="onblide-ml-remove-action"
-          data-onframe-button-root
-          data-action="remove"
-          data-picture-id="${escapeAttribute(picture.localId)}"
-          data-button-label="Remover foto"
-          data-button-icon="trash"
-          data-button-tone="danger"
-          data-button-placement="left"
-        ></span>
-      </div>
-    `;
-  }
-
-  function renderPictureQualityBadge(picture, quality) {
-    if (!quality) return '';
-    const resolution = quality.resolution || null;
-    const tone = getQualityTone(quality);
-    const label = resolution && resolution.available && resolution.score
-      ? `${resolution.score}%`
-      : '!';
-    return `<button class="onblide-ml-quality-badge ${tone}" data-action="quality" data-picture-id="${escapeAttribute(picture.localId)}" title="${escapeAttribute(formatPictureQualityMessage(quality))}" type="button">${escapeHtml(label)}</button>`;
-  }
-
-  function renderUploadTile() {
-    return `
-      <div class="onblide-ml-upload" data-action="upload" tabindex="0" role="button">
-        ${icon('upload', 18)}
-        <span>Selecionar<br>ou arrastar</span>
-      </div>
-    `;
-  }
-
-  function renderQualityDialog() {
-    const dialog = state.qualityDialog;
-    if (!dialog) return '';
-    if (dialog.mode === 'editor') return renderEditorDialog(dialog);
-    if (dialog.mode === 'processing') return renderProcessingDialog(dialog);
-    if (dialog.mode === 'result') return renderResultDialog(dialog);
-    return renderReviewDialog(dialog);
+    rerenderTray();
   }
 
   function renderQualityDialogRoot() {
-    const markup = renderQualityDialog();
-    if (!markup) {
-      if (!state.editorTransition) restoreTrayAfterDialog();
+    if (!state.qualityDialog) {
+      restoreTrayAfterDialog();
       removeQualityDialog();
       return;
     }
     if (state.dialogRoot && !state.dialogRoot.isConnected) {
+      if (PhotosView) PhotosView.unmount(state.dialogRoot);
       state.dialogRoot = null;
-      state.lastDialogMarkup = '';
     }
     if (!state.dialogRoot) {
       state.dialogRoot = document.createElement('div');
       state.dialogRoot.className = 'onblide-ml-dialog-root';
       document.body.appendChild(state.dialogRoot);
     }
-    if (markup === state.lastDialogMarkup) return;
-    state.lastDialogMarkup = markup;
-    unmountButtons(state.dialogRoot);
-    state.dialogRoot.innerHTML = markup;
-    bindQualityDialogEvents();
-    mountButtons(state.dialogRoot);
-    syncProcessingProgress();
+    if (!PhotosView) return;
+    PhotosView.renderDialog(state.dialogRoot, buildPhotoViewModel(), getPhotoViewActions());
   }
 
-  function syncProcessingProgress() {
-    if (!state.dialogRoot) return;
-    state.dialogRoot.querySelectorAll('[data-progress-percent]').forEach((bar) => {
-      const percent = Math.max(0, Math.min(100, Number(bar.dataset.progressPercent || 0)));
-      bar.style.width = `${percent}%`;
-    });
+  function hideTrayForEditor() {
+    if (!state.tray) return;
+    state.tray.classList.add('is-editor-hidden');
   }
 
-  function renderEditorDialog(dialog) {
-    const limitState = getPictureLimitState();
-    const counts = getCurrentQualityCounts();
-    return `
-      <div class="onblide-ml-modal-backdrop">
-        <section class="onblide-ml-modal editor" role="dialog" aria-modal="true" aria-label="Editor completo de fotos">
-          <div class="onblide-ml-modal-head">
-            <div>
-              <div class="onblide-ml-modal-brand">OnFrame</div>
-              <h2>Editor de fotos</h2>
-            </div>
-            <button class="onblide-ml-icon-btn" data-action="close-quality-dialog" type="button" aria-label="Fechar">${icon('x', 18)}</button>
-          </div>
-          ${renderEditorAlerts(dialog, limitState)}
-          <div class="onblide-ml-editor-top">
-            <div class="onblide-ml-editor-stats">
-              <span class="onblide-ml-editor-stat">
-                <small>Escopo</small>
-                <strong>${state.selectedVariationId ? 'Variação' : 'Anúncio'}</strong>
-              </span>
-              <span class="onblide-ml-editor-stat${limitState.message ? ' error' : ''}">
-                <small>Fotos</small>
-                <strong>${escapeHtml(limitState.counterText || `${state.draftPictures.length} fotos`)}</strong>
-              </span>
-              <span class="onblide-ml-editor-stat${counts.belowIdeal ? ' warn' : ''}">
-                <small>Dimensão</small>
-                <strong>${escapeHtml(formatQualityCountLabel(counts))}</strong>
-              </span>
-            </div>
-            <div class="onblide-ml-editor-actions">
-              <button class="onblide-ml-btn primary compact" data-action="open-optimize" type="button" ${state.busy || limitState.message || !counts.optimizable ? 'disabled' : ''}>${icon('upload', 14)}Otimizar fotos</button>
-              <button class="onblide-ml-btn primary compact" data-action="commit" type="button" ${state.busy || !state.dirty || limitState.message ? 'disabled' : ''}>Salvar</button>
-              <button class="onblide-ml-btn compact" data-action="discard" type="button" ${state.busy || !state.dirty ? 'disabled' : ''}>Descartar</button>
-            </div>
-          </div>
-          <div class="onblide-ml-editor-strip-shell">
-            <div class="onblide-ml-strip onblide-ml-modal-strip" aria-label="Editor completo de fotos do anuncio">
-              ${state.draftPictures.map(renderPictureTile).join('')}
-              ${renderUploadTile()}
-            </div>
-          </div>
-          <div class="onblide-ml-editor-diagnostics-head">
-            <strong>Dimensões</strong>
-            <button class="onblide-ml-link-btn" data-action="reload-quality" type="button" ${state.qualityLoading ? 'disabled' : ''}>Atualizar análise</button>
-          </div>
-          <div class="onblide-ml-editor-diagnostics">
-            ${renderEditorDiagnostics()}
-          </div>
-          <div class="onblide-ml-modal-foot">
-            <button class="onblide-ml-btn" data-action="close-quality-dialog" type="button">Fechar</button>
-          </div>
-        </section>
-      </div>
-    `;
-  }
-
-  function renderEditorAlerts(dialog, limitState) {
-    if (dialog && dialog.error) return `<div class="onblide-ml-dialog-error">${escapeHtml(dialog.error)}</div>`;
-    if (state.error) return `<div class="onblide-ml-dialog-error">${escapeHtml(state.error)}</div>`;
-    if (limitState && limitState.message) return `<div class="onblide-ml-dialog-error">${escapeHtml(limitState.message)}</div>`;
-    if (dialog && dialog.notice) return `<div class="onblide-ml-dialog-note">${escapeHtml(dialog.notice)}</div>`;
-    return '';
-  }
-
-  function renderEditorDiagnostics() {
-    if (state.qualityLoading) return '<div class="onblide-ml-editor-empty">Analisando...</div>';
-    if (state.qualityError) return `<div class="onblide-ml-editor-empty">${escapeHtml(state.qualityError)}</div>`;
-    if (!state.draftPictures.length) return '<div class="onblide-ml-editor-empty">Nenhuma foto no rascunho.</div>';
-    return state.draftPictures.map(renderEditorDiagnosticItem).join('');
-  }
-
-  function renderEditorDiagnosticItem(picture, index) {
-    const url = picture.previewUrl || picture.secure_url || picture.url || picture.source || '';
-    const quality = getPictureQuality(picture);
-    const resolution = quality && quality.resolution ? quality.resolution : null;
-    const tone = quality ? getQualityTone(quality) : 'muted';
-    return `
-      <article class="onblide-ml-diagnostic-card ${tone}">
-        <img src="${escapeAttribute(url)}" alt="">
-        <div class="onblide-ml-diagnostic-main">
-          <strong>Imagem ${index + 1}</strong>
-          <span>${escapeHtml(formatPictureDimensions(picture, resolution))}</span>
-        </div>
-        <span class="onblide-ml-score ${getResolutionTone(resolution)}">${escapeHtml(formatScore(resolution))}</span>
-        <span class="onblide-ml-diagnostic-state">${escapeHtml(formatQualityStateLabel(quality))}</span>
-      </article>
-    `;
-  }
-
-  function formatQualityCountLabel(counts) {
-    if (state.qualityLoading) return 'Analisando';
-    if (counts.belowIdeal) return `${counts.belowIdeal} abaixo`;
-    if (counts.unknown) return `${counts.unknown} sem leitura`;
-    if (!state.quality && !Object.keys(state.qualityOverrides).length) return 'Sem leitura';
-    return 'OK';
-  }
-
-  function renderReviewDialog(dialog) {
-    const items = Array.isArray(dialog.items) ? dialog.items : [];
-    const selectedCount = items.filter((item) => item.selected).length;
-    return `
-      <div class="onblide-ml-modal-backdrop">
-        <section class="onblide-ml-modal" role="dialog" aria-modal="true" aria-label="Otimizar imagens">
-          <div class="onblide-ml-modal-head">
-            <div>
-              <div class="onblide-ml-modal-brand">OnFrame</div>
-              <h2>Otimizar imagens?</h2>
-            </div>
-            <button class="onblide-ml-icon-btn" data-action="close-quality-dialog" type="button" aria-label="Fechar">${icon('x', 18)}</button>
-          </div>
-          <p class="onblide-ml-modal-copy">Redimensiona para 1200px no lado maior e envia ao Mercado Livre.</p>
-          ${dialog.error ? `<div class="onblide-ml-dialog-error">${escapeHtml(dialog.error)}</div>` : ''}
-          <div class="onblide-ml-selection-bar">
-            <strong>${selectedCount}</strong> de ${items.length} selecionadas
-            <button data-action="${selectedCount === items.length ? 'clear-optimize' : 'select-all-optimize'}" type="button">${selectedCount === items.length ? 'Desmarcar todas' : 'Selecionar todas'}</button>
-          </div>
-          <div class="onblide-ml-review-list">
-            ${items.map(renderOptimizeReviewItem).join('')}
-          </div>
-          <div class="onblide-ml-modal-foot">
-            <button class="onblide-ml-btn" data-action="close-quality-dialog" type="button">Cancelar</button>
-            <button class="onblide-ml-btn success" data-action="confirm-optimize" type="button" ${selectedCount ? '' : 'disabled'}>${icon('checkCircle', 14)}Confirmar e salvar (${selectedCount})</button>
-          </div>
-        </section>
-      </div>
-    `;
-  }
-
-  function renderOptimizeReviewItem(item, index) {
-    const resolution = item.resolution || {};
-    return `
-      <label class="onblide-ml-review-item">
-        <input data-action="toggle-optimize" data-picture-id="${escapeAttribute(item.localId)}" type="checkbox" ${item.selected ? 'checked' : ''}>
-        <div class="onblide-ml-review-info">
-          <strong>Imagem ${index + 1}</strong>
-          <span>${escapeHtml(formatDimensions(resolution))} -> ${escapeHtml(formatOptimizedDimensions(resolution))}</span>
-        </div>
-        <div class="onblide-ml-review-preview">
-          <img src="${escapeAttribute(item.url)}" alt="">
-          <span>${icon('refresh', 14)}</span>
-          <img src="${escapeAttribute(item.url)}" alt="">
-        </div>
-        <span class="onblide-ml-score ${getResolutionTone(resolution)}">${escapeHtml(formatScore(resolution))}</span>
-      </label>
-    `;
-  }
-
-  function renderProcessingDialog(dialog) {
-    const total = Number(dialog.total || 0);
-    const processed = Number(dialog.processed || 0);
-    const percent = total ? Math.round((processed / total) * 100) : 0;
-    return `
-      <div class="onblide-ml-modal-backdrop">
-        <section class="onblide-ml-modal small" role="dialog" aria-modal="true" aria-label="Otimizando imagens">
-          <div class="onblide-ml-processing">
-            <div class="onblide-ml-spinner"></div>
-            <div>
-              <h2>Otimizando imagens...</h2>
-              <p>${escapeHtml(dialog.progressText || 'Aguarde alguns instantes')}</p>
-            </div>
-          </div>
-          <div class="onblide-ml-progress"><span data-progress-percent="${escapeAttribute(percent)}"></span></div>
-        </section>
-      </div>
-    `;
-  }
-
-  function renderResultDialog(dialog) {
-    const results = Array.isArray(dialog.results) ? dialog.results : [];
-    return `
-      <div class="onblide-ml-modal-backdrop">
-        <section class="onblide-ml-modal result" role="dialog" aria-modal="true" aria-label="Imagens otimizadas">
-          <div class="onblide-ml-modal-head">
-            <div>
-              <div class="onblide-ml-modal-brand">OnFrame</div>
-              <h2>Imagens otimizadas</h2>
-            </div>
-            <button class="onblide-ml-icon-btn" data-action="close-quality-dialog" type="button" aria-label="Fechar">${icon('x', 18)}</button>
-          </div>
-          <p class="onblide-ml-modal-copy">Fotos enviadas. O Mercado Livre pode levar alguns minutos para exibir.</p>
-          <div class="onblide-ml-result-list">
-            ${results.map(renderOptimizeResultItem).join('')}
-          </div>
-          <div class="onblide-ml-modal-foot">
-            <button class="onblide-ml-btn" data-action="close-quality-dialog" type="button">Fechar</button>
-          </div>
-        </section>
-      </div>
-    `;
-  }
-
-  function renderOptimizeResultItem(result, index) {
-    return `
-      <div class="onblide-ml-result-item">
-        <strong>Imagem ${index + 1}</strong>
-        <div class="onblide-ml-result-grid">
-          <figure>
-            <img src="${escapeAttribute(result.beforeUrl)}" alt="">
-            <figcaption>Original · ${escapeHtml(formatDimensions(result.originalDimensions))}</figcaption>
-            <span class="onblide-ml-score warn">${escapeHtml(result.beforeScore ? `${result.beforeScore}%` : '')}</span>
-          </figure>
-          <figure class="ok">
-            <img src="${escapeAttribute(result.afterUrl)}" alt="">
-            <figcaption>Otimizada · ${escapeHtml(formatDimensions(result.optimizedDimensions))}</figcaption>
-            <span class="onblide-ml-score ok">100%</span>
-          </figure>
-        </div>
-      </div>
-    `;
-  }
-
-  function bindTrayEvents() {
-    bindCommonActionEvents(state.tray);
-    bindPictureEditorEvents(state.tray);
-  }
-
-  function mountButtons(container) {
-    if (!container || !DesignSystemButton || typeof DesignSystemButton.mount !== 'function') return;
-    container.querySelectorAll('[data-onframe-button-root]').forEach((host) => {
-      DesignSystemButton.mount(host, {
-        kind: 'quiet',
-        tone: host.dataset.buttonTone || 'neutral',
-        size: 'sm',
-        iconOnly: true,
-        label: host.dataset.buttonLabel || 'Ação',
-        tooltip: host.dataset.buttonLabel || 'Ação',
-        placement: host.dataset.buttonPlacement || 'top',
-        icon: host.dataset.buttonIcon || 'circle',
-        disabled: host.dataset.buttonDisabled === 'true'
-      });
-    });
-  }
-
-  function unmountButtons(container) {
-    if (!container || !DesignSystemButton || typeof DesignSystemButton.unmountWithin !== 'function') return;
-    DesignSystemButton.unmountWithin(container);
-  }
-
-  function bindQualityDialogEvents() {
-    if (!state.dialogRoot) return;
-    bindCommonActionEvents(state.dialogRoot);
-    bindPictureEditorEvents(state.dialogRoot);
-    state.dialogRoot.querySelectorAll('[data-action="close-quality-dialog"]').forEach((button) => {
-      button.addEventListener('click', closeQualityDialog);
-    });
-    state.dialogRoot.querySelectorAll('[data-action="select-all-optimize"]').forEach((button) => {
-      button.addEventListener('click', () => setAllOptimizeSelection(true));
-    });
-    state.dialogRoot.querySelectorAll('[data-action="clear-optimize"]').forEach((button) => {
-      button.addEventListener('click', () => setAllOptimizeSelection(false));
-    });
-    state.dialogRoot.querySelectorAll('[data-action="toggle-optimize"]').forEach((input) => {
-      input.addEventListener('change', () => toggleOptimizeSelection(input.dataset.pictureId, input.checked));
-    });
-    state.dialogRoot.querySelectorAll('[data-action="confirm-optimize"]').forEach((button) => {
-      button.addEventListener('click', () => void confirmOptimizeDialog());
-    });
-  }
-
-  function bindCommonActionEvents(container) {
-    container.querySelectorAll('[data-action="toggle-dock"]').forEach((button) => {
-      button.addEventListener('click', toggleDock);
-    });
-    container.querySelectorAll('[data-action="connect"]').forEach((button) => {
-      button.addEventListener('click', () => void startAuth());
-    });
-    container.querySelectorAll('[data-action="reload"]').forEach((button) => {
-      button.addEventListener('click', () => void reloadEditor());
-    });
-    container.querySelectorAll('[data-action="commit"]').forEach((button) => {
-      button.addEventListener('click', () => void commit());
-    });
-    container.querySelectorAll('[data-action="discard"]').forEach((button) => {
-      button.addEventListener('click', discardDraft);
-    });
-    container.querySelectorAll('[data-action="reload-quality"]').forEach((button) => {
-      button.addEventListener('click', () => void loadPictureQuality());
-    });
-    container.querySelectorAll('[data-action="open-optimize"]').forEach((button) => {
-      button.addEventListener('click', openOptimizeDialog);
-    });
-    container.querySelectorAll('[data-action="open-editor"]').forEach((button) => {
-      button.addEventListener('click', openEditorDialog);
-    });
-  }
-
-  function bindPictureEditorEvents(container) {
-    container.querySelectorAll('[data-action="remove"]').forEach((button) => {
-      button.addEventListener('click', () => removePicture(button.dataset.pictureId));
-    });
-    container.querySelectorAll('[data-action="quality"]').forEach((button) => {
-      button.addEventListener('click', () => showPictureQuality(button.dataset.pictureId));
-    });
-    container.querySelectorAll('[data-action="upload"]').forEach((upload) => {
-      upload.addEventListener('click', () => state.fileInput.click());
-      upload.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          state.fileInput.click();
-        }
-      });
-      upload.addEventListener('dragover', (event) => {
-        event.preventDefault();
-        upload.classList.add('is-dragover');
-      });
-      upload.addEventListener('dragleave', () => upload.classList.remove('is-dragover'));
-      upload.addEventListener('drop', (event) => {
-        event.preventDefault();
-        upload.classList.remove('is-dragover');
-        void addPendingFiles(event.dataTransfer.files);
-      });
-    });
-
-    container.querySelectorAll('.onblide-ml-tile').forEach((tile) => {
-      tile.addEventListener('dragstart', (event) => event.preventDefault());
-      tile.addEventListener('pointerdown', (event) => beginPictureDrag(event, tile));
-      tile.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          movePictureByKeyboard(tile.dataset.pictureId, -1);
-        }
-        if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          movePictureByKeyboard(tile.dataset.pictureId, 1);
-        }
-      });
-    });
+  function restoreTrayAfterDialog() {
+    if (!state.tray) return;
+    state.tray.classList.remove('is-editor-hidden');
   }
 
   function beginPictureDrag(event, tile) {
@@ -1209,18 +790,13 @@
   function openEditorDialog() {
     if (!state.context || isPictureEditingBlocked()) return;
     if (state.qualityDialog && state.qualityDialog.mode === 'editor') return;
-    clearEditorTransition();
-    state.editorTransition = {
-      direction: 'open',
-      dockRect: readDockRect()
-    };
     state.qualityDialog = {
       mode: 'editor',
       error: '',
       notice: ''
     };
-    renderQualityDialogRoot();
-    beginEditorOpenTransition();
+    hideTrayForEditor();
+    rerenderTray();
   }
 
   function openOptimizeDialog() {
@@ -1248,251 +824,9 @@
 
   function closeQualityDialog() {
     if (state.busy && state.qualityDialog && state.qualityDialog.mode === 'processing') return;
-    if (state.qualityDialog && state.qualityDialog.mode === 'editor') {
-      beginEditorCloseTransition();
-      return;
-    }
     state.qualityDialog = null;
     restoreTrayAfterDialog();
     rerenderTray();
-  }
-
-  async function beginEditorOpenTransition() {
-    const modal = getEditorDialogElement();
-    const backdrop = getEditorBackdropElement();
-    const tray = state.tray;
-    const dockRect = state.editorTransition && state.editorTransition.dockRect;
-
-    if (!modal || !backdrop) {
-      state.qualityDialog = null;
-      restoreTrayAfterDialog();
-      state.editorTransition = null;
-      renderQualityDialogRoot();
-      return;
-    }
-
-    if (!tray || !dockRect) {
-      if (tray) hideTrayForEditor();
-      state.editorTransition = null;
-      return;
-    }
-
-    const transition = state.editorTransition;
-    const transform = getEditorMorphTransform(modal, dockRect);
-    const modalStyle = getComputedStyle(modal);
-    const backdropStyle = getComputedStyle(backdrop);
-    const targetRadius = modalStyle.borderRadius;
-    const targetShadow = modalStyle.boxShadow;
-    const targetScrim = backdropStyle.backgroundColor;
-    modal.classList.add('is-editor-morphing', 'is-editor-opening');
-    backdrop.classList.add('is-editor-morphing', 'is-editor-opening');
-    tray.classList.add('is-editor-leaving');
-
-    const animations = [
-      animateEditorElement(modal, [
-        { transform, borderRadius: '8px', boxShadow: 'none' },
-        { transform: 'none', borderRadius: targetRadius, boxShadow: targetShadow }
-      ], {
-        duration: EDITOR_MORPH_OPEN_DURATION,
-        easing: 'cubic-bezier(0.22, 0.78, 0.18, 1)',
-        fill: 'both'
-      }),
-      animateEditorElement(backdrop, [
-        { backgroundColor: 'transparent' },
-        { backgroundColor: targetScrim }
-      ], {
-        duration: 620,
-        easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
-        fill: 'both'
-      }),
-      animateEditorElement(tray, [
-        { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
-        { opacity: 0, transform: 'translateX(-50%) translateY(10px)' }
-      ], {
-        duration: 180,
-        easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
-        fill: 'both'
-      }),
-      ...animateEditorChildren(modal, 'open')
-    ].filter(Boolean);
-
-    await waitForEditorAnimations(animations, EDITOR_MORPH_OPEN_DURATION);
-    if (state.editorTransition !== transition) return;
-    hideTrayForEditor();
-    modal.classList.remove('is-editor-morphing', 'is-editor-opening');
-    backdrop.classList.remove('is-editor-morphing', 'is-editor-opening');
-    finishEditorAnimations();
-    state.editorTransition = null;
-    renderQualityDialogRoot();
-  }
-
-  async function beginEditorCloseTransition() {
-    if (state.editorTransition) return;
-
-    const modal = getEditorDialogElement();
-    const backdrop = getEditorBackdropElement();
-    const tray = state.tray;
-
-    if (!modal || !backdrop || !tray) {
-      state.qualityDialog = null;
-      rerenderTray();
-      return;
-    }
-
-    const dockRect = readDockRect();
-    if (!dockRect) {
-      state.qualityDialog = null;
-      rerenderTray();
-      return;
-    }
-
-    const transition = { direction: 'close', dockRect };
-    state.editorTransition = transition;
-    const modalStyle = getComputedStyle(modal);
-    const backdropStyle = getComputedStyle(backdrop);
-    const targetTransform = getEditorMorphTransform(modal, dockRect);
-    modal.classList.add('is-editor-morphing', 'is-editor-closing');
-    backdrop.classList.add('is-editor-morphing', 'is-editor-closing');
-
-    const animations = [
-      animateEditorElement(modal, [
-        { transform: 'none', borderRadius: modalStyle.borderRadius, boxShadow: modalStyle.boxShadow },
-        { transform: targetTransform, borderRadius: '8px', boxShadow: 'none' }
-      ], {
-        duration: 800,
-        delay: 100,
-        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-        fill: 'both'
-      }),
-      animateEditorElement(backdrop, [
-        { backgroundColor: backdropStyle.backgroundColor },
-        { backgroundColor: 'transparent' }
-      ], {
-        duration: 760,
-        easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-        fill: 'both'
-      }),
-      ...animateEditorChildren(modal, 'close')
-    ].filter(Boolean);
-
-    await waitForEditorAnimations(animations, EDITOR_MORPH_CLOSE_DURATION);
-    if (state.editorTransition !== transition) return;
-    state.qualityDialog = null;
-    restoreTrayAfterDialog();
-    renderQualityDialogRoot();
-    finishEditorAnimations();
-    state.editorTransition = null;
-  }
-
-  function animateEditorChildren(modal, direction) {
-    return Array.from(modal.children).map((child, index, children) => {
-      const opening = direction === 'open';
-      const sequenceIndex = opening ? index : children.length - index - 1;
-      return animateEditorElement(child, opening ? [
-        { opacity: 0, transform: 'translateY(20px)' },
-        { opacity: 1, transform: 'translateY(0)' }
-      ] : [
-        { opacity: 1, transform: 'translateY(0)' },
-        { opacity: 0, transform: 'translateY(14px)' }
-      ], {
-        duration: opening ? 360 : 200,
-        delay: opening ? 220 + sequenceIndex * 55 : sequenceIndex * 18,
-        easing: opening ? 'cubic-bezier(0.16, 1, 0.3, 1)' : 'cubic-bezier(0.4, 0, 0.7, 0.2)',
-        fill: 'both'
-      });
-    }).filter(Boolean);
-  }
-
-  function animateEditorElement(element, keyframes, options) {
-    if (!element || typeof element.animate !== 'function') return null;
-    try {
-      const animation = element.animate(keyframes, options);
-      state.editorTransitionAnimations.push(animation);
-      return animation;
-    } catch (_err) {
-      return null;
-    }
-  }
-
-  function waitForEditorAnimations(animations, fallbackDuration) {
-    return new Promise((resolve) => {
-      let settled = false;
-      const complete = () => {
-        if (settled) return;
-        settled = true;
-        if (state.editorTransitionTimer) clearTimeout(state.editorTransitionTimer);
-        state.editorTransitionTimer = null;
-        state.editorTransitionResolve = null;
-        resolve();
-      };
-
-      state.editorTransitionResolve = complete;
-      state.editorTransitionTimer = setTimeout(complete, fallbackDuration + 250);
-      if (animations.length) {
-        Promise.all(animations.map((animation) => animation.finished.catch(() => null))).then(complete);
-      }
-    });
-  }
-
-  function finishEditorAnimations() {
-    const resolveTransition = state.editorTransitionResolve;
-    state.editorTransitionResolve = null;
-    state.editorTransitionAnimations.forEach((animation) => animation.cancel());
-    state.editorTransitionAnimations = [];
-    if (state.editorTransitionTimer) clearTimeout(state.editorTransitionTimer);
-    state.editorTransitionTimer = null;
-    if (resolveTransition) resolveTransition();
-  }
-
-  function getEditorDialogElement() {
-    return state.dialogRoot && state.dialogRoot.querySelector('.onblide-ml-modal.editor');
-  }
-
-  function getEditorBackdropElement() {
-    return state.dialogRoot && state.dialogRoot.querySelector('.onblide-ml-modal-backdrop');
-  }
-
-  function readDockRect() {
-    if (!state.tray || typeof state.tray.getBoundingClientRect !== 'function') return null;
-    const rect = state.tray.getBoundingClientRect();
-    if (!rect || !rect.width || !rect.height) return null;
-    return {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height
-    };
-  }
-
-  function getEditorMorphTransform(modal, dockRect) {
-    const modalRect = modal.getBoundingClientRect();
-    const translateX = dockRect.left + dockRect.width / 2 - (modalRect.left + modalRect.width / 2);
-    const translateY = dockRect.top + dockRect.height / 2 - (modalRect.top + modalRect.height / 2);
-    const scaleX = dockRect.width / modalRect.width;
-    const scaleY = dockRect.height / modalRect.height;
-    return `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px) scale(${scaleX}, ${scaleY})`;
-  }
-
-  function hideTrayForEditor() {
-    if (!state.tray) return;
-    state.tray.classList.remove('is-editor-leaving', 'is-editor-returning', 'is-editor-returned');
-    state.tray.classList.add('is-editor-hidden');
-  }
-
-  function restoreTrayAfterDialog() {
-    if (!state.tray) return;
-    state.tray.classList.remove('is-editor-hidden', 'is-editor-leaving');
-  }
-
-  function clearEditorTransition() {
-    finishEditorAnimations();
-    const modal = getEditorDialogElement();
-    const backdrop = getEditorBackdropElement();
-    if (modal) modal.classList.remove('is-editor-morphing', 'is-editor-opening', 'is-editor-closing');
-    if (backdrop) backdrop.classList.remove('is-editor-morphing', 'is-editor-opening', 'is-editor-closing');
-    state.editorTransition = null;
-    if (state.qualityDialog) hideTrayForEditor();
-    else restoreTrayAfterDialog();
   }
 
   function setAllOptimizeSelection(selected) {
@@ -1846,7 +1180,6 @@
   }
 
   function rerenderTray() {
-    state.lastTrayMarkup = '';
     mountEditorTray();
   }
 
@@ -1888,6 +1221,14 @@
     }
 
     return counts;
+  }
+
+  function formatQualityCountLabel(counts) {
+    if (state.qualityLoading) return 'Analisando';
+    if (counts.belowIdeal) return `${counts.belowIdeal} abaixo`;
+    if (counts.unknown) return `${counts.unknown} sem leitura`;
+    if (!state.quality && !Object.keys(state.qualityOverrides).length) return 'Sem leitura';
+    return 'OK';
   }
 
   function getOptimizablePictures() {
@@ -2130,17 +1471,15 @@
   }
 
   function removeTray() {
-    unmountButtons(state.tray);
+    if (PhotosView && state.tray) PhotosView.unmount(state.tray);
     if (state.tray) state.tray.remove();
     state.tray = null;
-    state.lastTrayMarkup = '';
   }
 
   function removeQualityDialog() {
-    unmountButtons(state.dialogRoot);
+    if (PhotosView && state.dialogRoot) PhotosView.unmount(state.dialogRoot);
     if (state.dialogRoot) state.dialogRoot.remove();
     state.dialogRoot = null;
-    state.lastDialogMarkup = '';
   }
 
   function readFileAsDataUrl(file) {
@@ -2154,10 +1493,6 @@
 
   function makeLocalId() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }
-
-  function icon(name, size) {
-    return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
   }
 
   return {
