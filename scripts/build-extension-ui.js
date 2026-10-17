@@ -90,22 +90,6 @@ builds.push(esbuild.build({
   metafile: true
 }).then(assertSingleReact));
 
-fs.rmSync(path.join(root, 'extension', 'core', 'photos-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'photos-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'photos-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
-
 Promise.all(builds).catch(() => process.exit(1));
 
 function assertSingleReact(result) {
