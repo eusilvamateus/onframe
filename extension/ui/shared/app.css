@@ -15,6 +15,7 @@ button, input { font: inherit; }
 .onframe-auth-panel, .onframe-auth-fields { display: flex; flex-direction: column; gap: var(--ob-s-4); }
 .onframe-auth-panel { width: min(100%, 448px); margin-inline: auto; }
 .onframe-security-verification { width: min(100%, 448px); margin-inline: auto; }
+.onframe-auth-theme-control { display: flex; justify-content: flex-end; }
 .onframe-auth-content { display: flex; flex-direction: column; gap: var(--ob-s-5); min-width: 0; }
 .onframe-help { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-auth-brand, .onframe-auth-methods { display: flex; justify-content: center; }
@@ -22,6 +23,7 @@ button, input { font: inherit; }
 .onframe-auth-methods button { flex: 1; justify-content: center; }
 .onframe-auth-brand { width: min(100%, 192px); align-self: center; }
 .onframe-auth-logo { display: block; width: 192px; min-width: 0; max-width: 100%; height: auto; aspect-ratio: 2 / 1; object-fit: cover; object-position: center 52%; }
+[data-theme="dark"] .onframe-auth-logo { filter: brightness(0) invert(1); }
 .onframe-auth-intro { display: flex; flex-direction: column; gap: var(--ob-s-1); }
 .onframe-auth-title { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-lg); font-weight: var(--ob-w-semibold); line-height: var(--ob-lh-snug); letter-spacing: 0; text-align: left; overflow-wrap: anywhere; }
 .onframe-auth-subtitle { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); line-height: var(--ob-lh-relaxed); }
@@ -47,6 +49,8 @@ button, input { font: inherit; }
 .onframe-grow { flex: 1; min-width: 0; }
 .onframe-actions { display: flex; flex-wrap: wrap; gap: var(--ob-s-2); }
 .onframe-settings-form { padding-bottom: var(--ob-s-9); }
+.onframe-appearance-settings > .onframe-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ob-s-6); }
+.onframe-theme-chips { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ob-s-2); }
 .onframe-profile-layout { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 480px); gap: var(--ob-s-7); align-items: start; }
 .onframe-profile-fields { display: flex; flex-direction: column; gap: var(--ob-s-5); min-width: 0; }
 .onframe-settings-action-bar {
@@ -111,11 +115,14 @@ button, input { font: inherit; }
 .onframe-check-list { display: grid; gap: var(--ob-s-3); }
 .onframe-empty { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); text-align: center; padding: var(--ob-s-6) var(--ob-s-4); }
 .onframe-auth-page { display: grid; min-height: 100vh; place-items: center; padding: var(--ob-s-5); background: var(--ob-bg-alt); }
+.onframe-auth-page-theme { position: fixed; top: var(--ob-s-4); right: var(--ob-s-4); z-index: var(--ob-z-popover); }
 .onframe-auth-surface { width: min(100%, 560px); }
 .onframe-popup-window, .onframe-popup-document { background: transparent; border-radius: var(--ob-r-surface); overflow: hidden; }
 .onframe-popup-document { width: 480px; min-width: 480px; clip-path: inset(0 round var(--ob-r-surface)); }
 .onframe-popup-document #root { width: 100%; background: var(--ob-surface); border-radius: inherit; overflow: hidden; }
 .onframe-popup { width: 100%; padding: var(--ob-s-3); display: flex; flex-direction: column; gap: var(--ob-s-3); }
+.onframe-popup-auth { position: relative; }
+.onframe-popup-auth > .onframe-auth-theme-control { position: absolute; top: var(--ob-s-3); right: var(--ob-s-3); z-index: var(--ob-z-popover); }
 .onframe-popup-home { height: 600px; }
 .onframe-popup-home--loading { justify-content: flex-start; }
 .onframe-popup-userbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ob-s-3); padding: var(--ob-s-1); }
@@ -269,6 +276,8 @@ button, input { font: inherit; }
   .onframe-options-main { padding: var(--ob-s-4); }
   .onframe-page-context-spacer { display: none; }
   .onframe-profile-layout { grid-template-columns: 1fr; gap: var(--ob-s-5); }
+  .onframe-appearance-settings > .onframe-row { grid-template-columns: 1fr; }
+  .onframe-theme-chips { justify-content: flex-start; }
   .onframe-settings-action-bar { left: 0; padding: 0 var(--ob-s-4); }
   .onframe-history-toolbar { grid-template-columns: 1fr; }
   .onframe-history-toolbar-actions { justify-content: flex-start; }

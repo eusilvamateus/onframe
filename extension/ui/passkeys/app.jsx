@@ -4,6 +4,7 @@ import '@onblide/ui/styles.css';
 import { Alert, Button, Input, List, ListItem, LogoMark, Ph, Tabs } from '@onblide/ui';
 import '../shared/app.css';
 import { VerificationCodeField, VerificationEmailField, VerificationFrame } from '../shared/AuthPanel';
+import { ThemeMenuButton } from '../shared/ThemeControl';
 import { providerClient, verifySecondFactor } from '../shared/provider-auth';
 import { formatDate } from '../shared/runtime';
 
@@ -99,6 +100,7 @@ function PasskeyPage() {
   }
 
   if (ready && factor && !complete) return <main className="onframe-auth-page">
+    <div className="onframe-auth-page-theme"><ThemeMenuButton /></div>
     <VerificationFrame title="Confirme no aplicativo" headingLevel={1}>
       <form className="onframe-auth-fields" onSubmit={(event) => { event.preventDefault(); void run(async () => finishLogin(await verifySecondFactor(client, factor.id, code))); }} aria-busy={busy}>
         <VerificationEmailField email={email} />
@@ -110,7 +112,9 @@ function PasskeyPage() {
     </VerificationFrame>
   </main>;
 
-  return <main className="onframe-auth-page"><section className="onframe-auth-surface onframe-stack" aria-label="Chaves de acesso">
+  return <main className="onframe-auth-page">
+    <div className="onframe-auth-page-theme"><ThemeMenuButton /></div>
+    <section className="onframe-auth-surface onframe-stack" aria-label="Chaves de acesso">
     {!managing && <div className="onframe-brand"><LogoMark size={28} /><p className="onframe-eyebrow">ONFRAME</p></div>}
     <h1 className="onframe-page-title">{verifying ? 'Verificação em duas etapas' : managing ? 'Chaves de acesso' : 'Entrar com chave de acesso'}</h1>
     {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
@@ -158,7 +162,8 @@ function PasskeyPage() {
         setRemoval(null); await refreshKeys();
       })}>Remover chave de acesso</Button></div></div>}
     </>}
-  </section></main>;
+    </section>
+  </main>;
 }
 
 createRoot(document.getElementById('root')).render(<PasskeyPage />);

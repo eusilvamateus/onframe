@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, Tabs, ToastStack, ToggleButton, Tooltip, toast } from '@onblide/ui';
+import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, ToastStack, ToggleButton, Tooltip, toast } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
@@ -9,6 +9,7 @@ import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
+import { ThemeMenuButton, ThemeSelector, ThemeTabs } from '../shared/ThemeControl';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName, trustedLogo } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
@@ -28,6 +29,7 @@ const SETTINGS_OPTIONS = [
   { tab: 'account', page: 'security', category: 'Conta', label: 'Segurança e login', description: 'Senha, e-mail de acesso e sessões.', icon: 'shield-check', keywords: 'senha email login credenciais seguranca' },
   { tab: 'workspace', page: 'general', category: 'Workspace', label: 'Geral', description: 'Nome e informações do workspace.', icon: 'buildings', keywords: 'nome informacoes empresa' },
   { tab: 'workspace', page: 'people', category: 'Workspace', label: 'Pessoas', description: 'Acessos, permissões e convites.', icon: 'users-three', keywords: 'membros colaboradores administradores convite permissao' },
+  { tab: 'application', page: 'appearance', category: 'Aplicativo', label: 'Aparência', description: 'Tema claro, escuro ou definido pelo sistema.', icon: 'circle-half', keywords: 'aparencia tema claro escuro sistema' },
   { tab: 'application', page: 'updates', category: 'Aplicativo', label: 'Atualizações', description: 'Versão instalada e atualizador da extensão.', icon: 'arrow-clockwise', keywords: 'versao atualizar atualizador extensao' }
 ];
 
@@ -52,6 +54,7 @@ const SETTINGS_PAGE_META = {
     people: { title: 'Pessoas', icon: 'users-three' }
   },
   application: {
+    appearance: { title: 'Aparência', icon: 'circle-half' },
     updates: { title: 'Atualizações', icon: 'arrow-clockwise' }
   }
 };
@@ -408,6 +411,18 @@ function ApplicationUpdatesSettings() {
   );
 }
 
+function AppearanceSettings() {
+  return (
+    <section className="onframe-stack onframe-settings-form onframe-appearance-settings" aria-label="Aparência">
+      <SectionHeader
+        title="Tema da interface"
+        copy="Escolha um tema fixo ou acompanhe automaticamente a aparência do seu dispositivo."
+        actions={<ThemeSelector />}
+      />
+    </section>
+  );
+}
+
 function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, securityOverview, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onCredentialChanged, onRemoveSession, onRemoveAllSessions, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke, onLeave }) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter((option) => option.tab !== 'workspace' || admin);
@@ -439,6 +454,7 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
       {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && <PasskeySettings profile={profile} securityOverview={securityOverview} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && <WorkspacePeople members={members} invitations={invitations} currentUserId={profile?.user?.id} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} onLeave={onLeave} />}
+      {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
     </div>
   );
@@ -761,6 +777,7 @@ function OptionsApp() {
     return (
       <FeedbackRoot>
       <main className="onframe-auth-page" aria-busy="true">
+        <div className="onframe-auth-page-theme"><ThemeMenuButton /></div>
         <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
           <AuthBrand />
           <Card padding={24}>
@@ -782,6 +799,7 @@ function OptionsApp() {
     return (
       <FeedbackRoot>
       <main className="onframe-auth-page">
+        <div className="onframe-auth-page-theme"><ThemeMenuButton /></div>
         <div className="onframe-auth-surface onframe-stack">
           {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
           <AuthPanel onConnected={reload} />
@@ -850,6 +868,8 @@ function OptionsApp() {
   const accountMenu = [
     { label: 'Conta', icon: 'user-circle', onSelect: () => { setSettingsTab('account'); setSettingsPage('profile'); setView('settings'); } },
     ...(admin ? [{ label: 'Workspace', icon: 'gear-six', onSelect: () => { setSettingsTab('workspace'); setSettingsPage('general'); setView('settings'); } }] : []),
+    { type: 'label', label: 'Aparência' },
+    { type: 'custom', ariaLabel: 'Tema da interface', content: <ThemeTabs /> },
     { type: 'separator' },
     { label: 'Sair', icon: 'sign-out', tone: 'danger', onSelect: () => void disconnect() }
   ];

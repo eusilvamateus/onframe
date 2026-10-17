@@ -24,6 +24,49 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
   assert.match(source.slice(source.indexOf('async function updateAccount'), source.indexOf('async function renameAccount')), /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/);
 });
 
+test('tema usa o contrato do design system nas interfaces da extensao', () => {
+  const control = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'ThemeControl.jsx'), 'utf8');
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
+  const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
+  const extensionBuild = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const securityBuild = fs.readFileSync(path.join(root, 'scripts', 'build-security-ui.js'), 'utf8');
+
+  assert.match(control, /useTheme/);
+  assert.match(control, /value: 'light'/);
+  assert.match(control, /value: 'dark'/);
+  assert.match(control, /value: 'system'/);
+  assert.match(control, /<Chip[\s\S]*selected=\{preference === option\.value\}/);
+  assert.match(control, /<Tabs[\s\S]*variant="pill"[\s\S]*active=\{preference\}/);
+  assert.match(control, /tabs=\{THEME_OPTIONS\.map\(\(option\) => \(\{ id: option\.value, label: option\.label, icon: option\.icon \}\)\)\}/);
+  assert.match(control, /<Button[\s\S]*kind="quiet"[\s\S]*onClick=\{\(\) => setTheme\(next\.value\)\}/);
+  assert.match(control, /const accessibleLabel = selected\.label;/);
+  assert.doesNotMatch(control, /Tema:|Tema atual|Alterar para/);
+  assert.match(control, /type: 'radio'/);
+  assert.match(options, /page: 'appearance'/);
+  assert.match(options, /actions=\{<ThemeSelector \/>\}/);
+  assert.match(options, /type: 'custom'[\s\S]*content: <ThemeTabs \/>/);
+  assert.match(popup, /<ThemeCycleButton \/>/);
+  assert.doesNotMatch(control, /showLabel|onframe-theme-cycle-label/);
+  assert.doesNotMatch(popup, /ThemeMenuButton/);
+  assert.match(passkeys, /<ThemeMenuButton \/>/);
+  assert.match(extensionBuild, /@onblide\/ui\/theme-init/);
+  assert.match(securityBuild, /@onblide\/ui\/theme-init/);
+
+  const cycleHelpers = control
+    .slice(control.indexOf('export const THEME_OPTIONS'), control.indexOf('export function themeMenuItems'))
+    .replaceAll('export ', '');
+  const nextThemePreference = vm.runInNewContext(`${cycleHelpers}\nnextThemePreference`);
+  assert.equal(nextThemePreference('system'), 'light');
+  assert.equal(nextThemePreference('light'), 'dark');
+  assert.equal(nextThemePreference('dark'), 'system');
+
+  for (const relative of ['ui/options/index.html', 'ui/popup/index.html', 'ui/passkeys/index.html']) {
+    const html = fs.readFileSync(path.join(extensionRoot, relative), 'utf8');
+    assert.ok(html.indexOf('theme-init.js') < html.indexOf('app.css'));
+  }
+});
+
 test('integracoes alternam visualizacao e permitem renomear sem perder controles da conta', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const accountSource = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'IntegrationAccount.jsx'), 'utf8');

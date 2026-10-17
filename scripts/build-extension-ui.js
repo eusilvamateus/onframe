@@ -16,6 +16,11 @@ const entries = [
   path.join(root, 'extension', 'ui', 'popup')
 ];
 
+fs.copyFileSync(
+  require.resolve('@onblide/ui/theme-init'),
+  path.join(root, 'extension', 'core', 'theme-init.js')
+);
+
 const builds = entries.map((directory) => {
   fs.rmSync(path.join(directory, 'assets'), { recursive: true, force: true });
   fs.rmSync(path.join(directory, 'app.js'), { force: true });

@@ -4,6 +4,7 @@ import '@onblide/ui/styles.css';
 import { Alert, Avatar, Button, List, ListItem, Ph, Switch, ToastStack, Tooltip } from '@onblide/ui';
 import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
+import { ThemeCycleButton } from '../shared/ThemeControl';
 import { clearPopupSessionState, emptyPopupSessionState, normalizePopupSessionState, readPopupSessionState, writePopupSessionState } from '../shared/popup-session-state';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
@@ -26,6 +27,7 @@ function PopupUserHeader({ connection, resourcesEnabled, busy, onToggleResources
       </div>
     </div>
     <div className="onframe-popup-actions">
+      <ThemeCycleButton />
       <Tooltip label={resourcesEnabled ? 'Desativar recursos da extensão' : 'Ativar recursos da extensão'} placement="bottom">
         <span className="onframe-popup-resource-switch">
           <Switch checked={resourcesEnabled} disabled={busy} onChange={onToggleResources} label="Recursos da extensão" size="md" />
@@ -171,6 +173,7 @@ function Popup() {
 
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
   if (!connected) return <main className="onframe-popup onframe-popup-auth">
+    <div className="onframe-auth-theme-control"><ThemeCycleButton /></div>
     {feedback && <Alert tone="danger">{feedback}</Alert>}
     <AuthPanel initialState={popupSession?.auth} onStateChange={persistAuthState} onConnected={() => load({ resetUi: true })} />
   </main>;
