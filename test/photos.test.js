@@ -246,6 +246,7 @@ test('modulo de fotos consome contexto resolvido pelo shell', () => {
 
 test('remocao de foto usa a acao destrutiva do Button do design system', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
 
   assert.match(source, /const DesignSystemButton = rootScope\.OnFrameButton/);
@@ -253,6 +254,9 @@ test('remocao de foto usa a acao destrutiva do Button do design system', () => {
   assert.match(source, /data-button-icon="trash"/);
   assert.match(source, /data-button-tone="danger"/);
   assert.match(source, /tooltip: host\.dataset\.buttonLabel \|\| 'Ação'/);
+  assert.match(view, /<Tooltip label="Remover foto" placement="left">/);
+  assert.match(view, /kind="quiet"[\s\S]*tone="danger"[\s\S]*data-action="remove"/);
+  assert.match(view, /onClick=\{\(\) => actions\.onRemove\(picture\.localId\)\}/);
   assert.doesNotMatch(source, /<button class="onblide-ml-remove"/);
   assert.doesNotMatch(styles, /\.onblide-ml-remove:hover/);
 });
@@ -276,10 +280,16 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /fill=\{false\}/);
   assert.match(view, /pressed=\{model\.expanded\}/);
   assert.match(view, /style=\{\{ position: 'absolute', width: 160, height: 32, borderRadius: 0 \}\}/);
+  assert.match(view, /function DockContent\(/);
+  assert.match(view, /function PictureTile\(/);
+  assert.match(view, /function UploadTile\(/);
+  assert.doesNotMatch(view, /model\.contentMarkup/);
   assert.match(controller, /viewMode: hasPhotosView \? 'react' : 'legacy'/);
   assert.match(controller, /PhotosView\.renderTray/);
   assert.match(controller, /PhotosView\.renderTray\(state\.tray, buildTrayViewModel\(\)/);
   assert.match(controller, /onToggle: toggleDock/);
+  assert.match(controller, /onUploadFiles: \(files\) => void addPendingFiles\(files\)/);
+  assert.match(controller, /pictures: state\.draftPictures\.map\(buildTrayPictureViewModel\)/);
   assert.match(controller, /PhotosView\.renderDialog/);
   assert.match(controller, /function renderLegacyTray\(markup\)/);
   assert.match(controller, /function renderLegacyQualityDialog\(markup\)/);
@@ -302,6 +312,7 @@ test('etapa de fidelidade preserva a composicao e as transicoes atuais de fotos'
 
 test('dock de fotos separa recolhimento da abertura do editor', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
 
   assert.match(source, /dockExpanded: false/);
@@ -310,6 +321,8 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /if \(state\.viewMode === 'react'\) \{\s+rerenderTray\(\);\s+return;/);
   assert.match(source, /panel\.classList\.toggle\('is-expanded', state\.dockExpanded\)/);
   assert.match(source, /data-action="open-editor"[^>]*>\$\{icon\('arrowSquareOut', 14\)\}Abrir editor/);
+  assert.match(view, /onClick=\{actions\.onOpenEditor\}/);
+  assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*Abrir editor/);
   assert.match(source, /function beginEditorOpenTransition\(\)/);
   assert.match(source, /function beginEditorCloseTransition\(\)/);
   assert.match(source, /EDITOR_MORPH_OPEN_DURATION = 900/);
@@ -358,7 +371,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-save:hover:not\(:disabled\) \{/);
   assert.match(styles, /\.onblide-ml-dock-discard:hover:not\(:disabled\) \{/);
   assert.match(styles, /\.onblide-ml-upload \{[\s\S]*border: 0\.5px dashed var\(--ob-ink-mute\);[\s\S]*color: var\(--ob-ink\);/);
-  assert.match(styles, /\.onblide-ml-upload > \.ob-icon \{[\s\S]*color: var\(--ob-blue\);/);
+  assert.match(styles, /\.onblide-ml-upload > \.ph \{[\s\S]*color: var\(--ob-blue\);/);
   assert.match(styles, /\.onblide-ml-upload:hover \{[\s\S]*background: var\(--ob-surface\);/);
   assert.match(styles, /\.onblide-ml-tray\.is-editor-hidden \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);

@@ -352,11 +352,17 @@
       try {
         PhotosView.renderTray(state.tray, buildTrayViewModel(), {
           onToggle: toggleDock,
-          onRendered: () => {
-            if (state.viewMode !== 'react' || !state.tray) return;
-            bindTrayEvents();
-            mountButtons(state.tray);
-          },
+          onConnect: () => void startAuth(),
+          onReload: () => void reloadEditor(),
+          onOpenEditor: openEditorDialog,
+          onCommit: () => void commit(),
+          onDiscard: discardDraft,
+          onRemove: removePicture,
+          onQuality: showPictureQuality,
+          onUpload: () => state.fileInput.click(),
+          onUploadFiles: (files) => void addPendingFiles(files),
+          onPicturePointerDown: beginPictureDrag,
+          onMovePicture: movePictureByKeyboard,
           onError: handlePhotosViewFailure
         });
         return;
@@ -370,11 +376,60 @@
 
   function buildTrayViewModel() {
     const visible = Boolean(state.loaded || state.context || state.error);
+    const hasContext = Boolean(state.context);
+    const blocked = hasContext && isPictureEditingBlocked();
+    const catalog = blocked && isCatalogListing();
+    const limitState = hasContext ? getPictureLimitState() : null;
     return {
       visible,
       expanded: state.dockExpanded,
-      contentMarkup: visible ? buildTrayContent() : ''
+      hasContext,
+      blocked,
+      catalog,
+      busy: state.busy,
+      dirty: state.dirty,
+      saveDisabled: Boolean(state.busy || (limitState && limitState.message)),
+      status: buildTrayStatusViewModel(limitState),
+      counter: limitState && limitState.counterText
+        ? limitState.counterText
+        : `${state.draftPictures.length} fotos`,
+      pictures: state.draftPictures.map(buildTrayPictureViewModel),
+      feedback: buildTrayFeedbackViewModel(limitState)
     };
+  }
+
+  function buildTrayStatusViewModel(limitState) {
+    if (state.error) return { text: state.error, tone: 'error' };
+    const blockedMessage = getPictureEditingBlockedMessage();
+    if (blockedMessage) return { text: blockedMessage, tone: 'muted' };
+    if (limitState && limitState.message) return { text: limitState.message, tone: 'error' };
+    if (state.message) return { text: state.message, tone: '' };
+    if (state.context && state.selectedVariationId) return { text: 'Variação selecionada', tone: 'muted' };
+    if (state.context) return { text: 'Fotos do anúncio', tone: 'muted' };
+    return null;
+  }
+
+  function buildTrayPictureViewModel(picture, index) {
+    const quality = getPictureQuality(picture);
+    const resolution = quality ? quality.resolution || null : null;
+    return {
+      localId: picture.localId,
+      index,
+      url: picture.previewUrl || picture.secure_url || picture.url || picture.source || '',
+      quality: quality ? {
+        tone: getQualityTone(quality),
+        label: resolution && resolution.available && resolution.score ? `${resolution.score}%` : '!',
+        title: formatPictureQualityMessage(quality)
+      } : null
+    };
+  }
+
+  function buildTrayFeedbackViewModel(limitState) {
+    if (state.error) return { text: state.error, tone: 'error' };
+    if (state.dirty && limitState && limitState.message) {
+      return { text: limitState.message, tone: 'error' };
+    }
+    return null;
   }
 
   function renderLegacyTray(markup) {
