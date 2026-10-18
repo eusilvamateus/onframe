@@ -257,6 +257,49 @@ test('remocao de foto usa a acao destrutiva do Button do design system', () => {
   assert.doesNotMatch(styles, /\.onblide-ml-remove:hover/);
 });
 
+test('nova view de fotos e a rota padrao com fallback legado automatico', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+  const scripts = manifest.content_scripts[0].js;
+  const controller = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+
+  assert.ok(scripts.indexOf('core/photos-view.js') < scripts.indexOf('modules/photos/module.js'));
+  assert.match(build, /ui', 'content', 'photos-view\.jsx'/);
+  assert.match(view, /createRoot/);
+  assert.match(view, /PhotosViewBoundary/);
+  assert.match(view, /data-onframe-photos-view="react"/);
+  assert.match(view, /function PhotoDock\(/);
+  assert.match(view, /<Button/);
+  assert.match(view, /kind="quiet"/);
+  assert.match(view, /tone="primary"/);
+  assert.match(view, /fill=\{false\}/);
+  assert.match(view, /pressed=\{model\.expanded\}/);
+  assert.match(view, /style=\{\{ position: 'absolute', width: 160, height: 32, borderRadius: 0 \}\}/);
+  assert.match(controller, /viewMode: hasPhotosView \? 'react' : 'legacy'/);
+  assert.match(controller, /PhotosView\.renderTray/);
+  assert.match(controller, /PhotosView\.renderTray\(state\.tray, buildTrayViewModel\(\)/);
+  assert.match(controller, /onToggle: toggleDock/);
+  assert.match(controller, /PhotosView\.renderDialog/);
+  assert.match(controller, /function renderLegacyTray\(markup\)/);
+  assert.match(controller, /function renderLegacyQualityDialog\(markup\)/);
+  assert.match(controller, /function switchToLegacyPhotosView\(error\)/);
+});
+
+test('etapa de fidelidade preserva a composicao e as transicoes atuais de fotos', () => {
+  const controller = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
+
+  assert.match(controller, /function buildTrayMarkup\(\)/);
+  assert.match(controller, /function renderEditorDialog\(dialog\)/);
+  assert.match(controller, /function beginEditorOpenTransition\(\)/);
+  assert.match(controller, /function beginEditorCloseTransition\(\)/);
+  assert.match(styles, /\.onblide-ml-dock-silhouette \{/);
+  assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
+  assert.match(styles, /\.onblide-ml-diagnostic-card \{/);
+  assert.match(styles, /\.onblide-ml-review-item \{/);
+});
+
 test('dock de fotos separa recolhimento da abertura do editor', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
@@ -264,6 +307,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /dockExpanded: false/);
   assert.match(source, /data-action="toggle-dock"/);
   assert.match(source, /function toggleDock\(\)/);
+  assert.match(source, /if \(state\.viewMode === 'react'\) \{\s+rerenderTray\(\);\s+return;/);
   assert.match(source, /panel\.classList\.toggle\('is-expanded', state\.dockExpanded\)/);
   assert.match(source, /data-action="open-editor"[^>]*>\$\{icon\('arrowSquareOut', 14\)\}Abrir editor/);
   assert.match(source, /function beginEditorOpenTransition\(\)/);

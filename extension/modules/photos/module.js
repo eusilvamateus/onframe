@@ -15,6 +15,13 @@
   const escapeAttribute = Shared.escapeAttribute;
   const isProductPageUrl = Detection.isProductPageUrl;
   const DesignSystemButton = rootScope.OnFrameButton;
+  const PhotosView = rootScope.OnFramePhotosView;
+  const hasPhotosView = Boolean(
+    PhotosView &&
+    typeof PhotosView.renderTray === 'function' &&
+    typeof PhotosView.renderDialog === 'function' &&
+    typeof PhotosView.unmount === 'function'
+  );
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const EDITOR_MORPH_OPEN_DURATION = 900;
   const EDITOR_MORPH_CLOSE_DURATION = 950;
@@ -45,6 +52,7 @@
     renderAfterDrag: false,
     lastTrayMarkup: '',
     lastDialogMarkup: '',
+    viewMode: hasPhotosView ? 'react' : 'legacy',
     message: '',
     error: '',
     pageSignature: '',
@@ -255,6 +263,7 @@
 
     if (state.tray && !state.tray.isConnected) {
       clearEditorTransition();
+      unmountPhotoView(state.tray);
       state.tray = null;
       state.lastTrayMarkup = '';
     }
@@ -339,9 +348,59 @@
     if (markup === state.lastTrayMarkup) return;
     state.lastTrayMarkup = markup;
     unmountButtons(state.tray);
+    if (state.viewMode === 'react') {
+      try {
+        PhotosView.renderTray(state.tray, buildTrayViewModel(), {
+          onToggle: toggleDock,
+          onRendered: () => {
+            if (state.viewMode !== 'react' || !state.tray) return;
+            bindTrayEvents();
+            mountButtons(state.tray);
+          },
+          onError: handlePhotosViewFailure
+        });
+        return;
+      } catch (error) {
+        switchToLegacyPhotosView(error);
+        return;
+      }
+    }
+    renderLegacyTray(markup);
+  }
+
+  function buildTrayViewModel() {
+    const visible = Boolean(state.loaded || state.context || state.error);
+    return {
+      visible,
+      expanded: state.dockExpanded,
+      contentMarkup: visible ? buildTrayContent() : ''
+    };
+  }
+
+  function renderLegacyTray(markup) {
+    unmountPhotoView(state.tray);
     state.tray.innerHTML = markup;
     bindTrayEvents();
     mountButtons(state.tray);
+  }
+
+  function handlePhotosViewFailure(error) {
+    if (state.viewMode !== 'react') return;
+    switchToLegacyPhotosView(error);
+  }
+
+  function switchToLegacyPhotosView(error) {
+    state.viewMode = 'legacy';
+    if (rootScope.console && typeof rootScope.console.warn === 'function') {
+      rootScope.console.warn('[OnFrame] A interface React de fotos falhou; usando a interface legada.', error);
+    }
+    unmountButtons(state.tray);
+    unmountButtons(state.dialogRoot);
+    unmountPhotoView(state.tray);
+    unmountPhotoView(state.dialogRoot);
+    state.lastTrayMarkup = '';
+    state.lastDialogMarkup = '';
+    mountEditorTray();
   }
 
   function buildTrayMarkup() {
@@ -476,6 +535,10 @@
 
   function toggleDock() {
     state.dockExpanded = !state.dockExpanded;
+    if (state.viewMode === 'react') {
+      rerenderTray();
+      return;
+    }
     const panel = state.tray && state.tray.querySelector('.onblide-ml-dock-panel');
     const iconElement = state.tray && state.tray.querySelector('.onblide-ml-dock-tab-icon');
     const tab = state.tray && state.tray.querySelector('.onblide-ml-dock-tab');
@@ -550,6 +613,7 @@
       return;
     }
     if (state.dialogRoot && !state.dialogRoot.isConnected) {
+      unmountPhotoView(state.dialogRoot);
       state.dialogRoot = null;
       state.lastDialogMarkup = '';
     }
@@ -561,6 +625,28 @@
     if (markup === state.lastDialogMarkup) return;
     state.lastDialogMarkup = markup;
     unmountButtons(state.dialogRoot);
+    if (state.viewMode === 'react') {
+      try {
+        PhotosView.renderDialog(state.dialogRoot, markup, {
+          onRendered: () => {
+            if (state.viewMode !== 'react' || !state.dialogRoot) return;
+            bindQualityDialogEvents();
+            mountButtons(state.dialogRoot);
+            syncProcessingProgress();
+          },
+          onError: handlePhotosViewFailure
+        });
+        return;
+      } catch (error) {
+        switchToLegacyPhotosView(error);
+        return;
+      }
+    }
+    renderLegacyQualityDialog(markup);
+  }
+
+  function renderLegacyQualityDialog(markup) {
+    unmountPhotoView(state.dialogRoot);
     state.dialogRoot.innerHTML = markup;
     bindQualityDialogEvents();
     mountButtons(state.dialogRoot);
@@ -2131,6 +2217,7 @@
 
   function removeTray() {
     unmountButtons(state.tray);
+    unmountPhotoView(state.tray);
     if (state.tray) state.tray.remove();
     state.tray = null;
     state.lastTrayMarkup = '';
@@ -2138,6 +2225,7 @@
 
   function removeQualityDialog() {
     unmountButtons(state.dialogRoot);
+    unmountPhotoView(state.dialogRoot);
     if (state.dialogRoot) state.dialogRoot.remove();
     state.dialogRoot = null;
     state.lastDialogMarkup = '';
@@ -2158,6 +2246,11 @@
 
   function icon(name, size) {
     return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
+  }
+
+  function unmountPhotoView(host) {
+    if (!host || !hasPhotosView) return;
+    PhotosView.unmount(host);
   }
 
   return {
