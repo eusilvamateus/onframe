@@ -463,11 +463,12 @@
   z-index: 3;
 }
 
-.onblide-ml-quality-chip {
+.onblide-ml-quality-indicator {
   position: absolute;
   right: 5px;
   bottom: 5px;
   z-index: 4;
+  pointer-events: none;
 }
 
 .onblide-ml-quality-badge {
@@ -481,11 +482,10 @@
   height: 20px;
   border: 0;
   border-radius: var(--ob-r-pill);
-  cursor: pointer;
   padding: 0 7px;
   font: 800 10px/1 var(--ob-font-mono);
+  pointer-events: none;
   text-align: center;
-  transition: transform var(--ob-dur-fast) var(--ob-ease), background var(--ob-dur-fast) var(--ob-ease), color var(--ob-dur-fast) var(--ob-ease);
 }
 
 .onblide-ml-quality-badge.error {
@@ -506,10 +506,6 @@
 .onblide-ml-quality-badge.ok {
   background: var(--ob-green);
   color: var(--ob-surface);
-}
-
-.onblide-ml-quality-badge:hover {
-  transform: translateY(-1px);
 }
 
 .onblide-ml-modal {

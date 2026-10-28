@@ -358,7 +358,6 @@
           onCommit: () => void commit(),
           onDiscard: discardDraft,
           onRemove: removePicture,
-          onQuality: showPictureQuality,
           onUpload: () => state.fileInput.click(),
           onUploadFiles: (files) => void addPendingFiles(files),
           onPicturePointerDown: beginPictureDrag,
@@ -411,16 +410,14 @@
 
   function buildTrayPictureViewModel(picture, index) {
     const quality = getPictureQuality(picture);
-    const resolution = quality ? quality.resolution || null : null;
     return {
       localId: picture.localId,
       index,
       url: picture.previewUrl || picture.secure_url || picture.url || picture.source || '',
       quality: quality ? {
         tone: getQualityTone(quality),
-        actionTone: getQualityActionTone(quality),
-        label: resolution && resolution.available && resolution.score ? `${resolution.score}%` : '!',
-        title: formatPictureQualityMessage(quality)
+        badgeTone: getQualityBadgeTone(quality),
+        label: formatPictureQualityScore(quality)
       } : null
     };
   }
@@ -614,11 +611,12 @@
     const url = picture.previewUrl || picture.secure_url || picture.url || picture.source || '';
     const quality = getPictureQuality(picture);
     const qualityClass = quality ? ` has-quality-${escapeAttribute(getQualityTone(quality))}` : '';
+    const qualityLabel = quality ? ` Qualidade ${formatPictureQualityScore(quality)}.` : '';
     return `
-      <div class="onblide-ml-tile${qualityClass}" data-picture-id="${escapeAttribute(picture.localId)}" tabindex="0" role="button" aria-label="Foto ${index + 1}. Arraste para reordenar.">
+      <div class="onblide-ml-tile${qualityClass}" data-picture-id="${escapeAttribute(picture.localId)}" tabindex="0" role="button" aria-label="Foto ${index + 1}.${qualityLabel} Arraste para reordenar.">
         <img src="${escapeAttribute(url)}" alt="" draggable="false">
         <span class="onblide-ml-order">${index + 1}</span>
-        ${renderPictureQualityBadge(picture, quality)}
+        ${renderPictureQualityBadge(quality)}
         <span
           class="onblide-ml-remove-action"
           data-onframe-button-root
@@ -633,14 +631,10 @@
     `;
   }
 
-  function renderPictureQualityBadge(picture, quality) {
+  function renderPictureQualityBadge(quality) {
     if (!quality) return '';
-    const resolution = quality.resolution || null;
     const tone = getQualityTone(quality);
-    const label = resolution && resolution.available && resolution.score
-      ? `${resolution.score}%`
-      : '!';
-    return `<button class="onblide-ml-quality-badge ${tone}" data-action="quality" data-picture-id="${escapeAttribute(picture.localId)}" title="${escapeAttribute(formatPictureQualityMessage(quality))}" type="button">${escapeHtml(label)}</button>`;
+    return `<span class="onblide-ml-quality-badge ${tone}" aria-hidden="true">${escapeHtml(formatPictureQualityScore(quality))}</span>`;
   }
 
   function renderUploadTile() {
@@ -1007,9 +1001,6 @@
     container.querySelectorAll('[data-action="remove"]').forEach((button) => {
       button.addEventListener('click', () => removePicture(button.dataset.pictureId));
     });
-    container.querySelectorAll('[data-action="quality"]').forEach((button) => {
-      button.addEventListener('click', () => showPictureQuality(button.dataset.pictureId));
-    });
     container.querySelectorAll('[data-action="upload"]').forEach((upload) => {
       upload.addEventListener('click', () => state.fileInput.click());
       upload.addEventListener('keydown', (event) => {
@@ -1251,22 +1242,6 @@
       && state.context.item
       && String(state.context.item.id || '') === String(itemId || '')
       && String(state.selectedVariationId || '') === String(variationId || '');
-  }
-
-  function showPictureQuality(localId) {
-    const picture = state.draftPictures.find((candidate) => candidate.localId === localId);
-    const quality = picture ? getPictureQuality(picture) : null;
-    if (!quality) return;
-    if (state.qualityDialog && state.qualityDialog.mode === 'editor') {
-      state.qualityDialog = Object.assign({}, state.qualityDialog, {
-        notice: formatPictureQualityMessage(quality),
-        error: ''
-      });
-    } else {
-      state.message = formatPictureQualityMessage(quality);
-    }
-    state.error = '';
-    rerenderTray();
   }
 
   async function startAuth() {
@@ -2147,12 +2122,17 @@
     return 'ok';
   }
 
-  function getQualityActionTone(quality) {
+  function getQualityBadgeTone(quality) {
     const tone = getQualityTone(quality);
-    if (tone === 'ok') return 'success';
-    if (tone === 'warn') return 'warning';
-    if (tone === 'error') return 'danger';
-    return 'neutral';
+    if (tone === 'ok') return 'green';
+    if (tone === 'warn') return 'orange';
+    if (tone === 'error') return 'red';
+    return 'grey';
+  }
+
+  function formatPictureQualityScore(quality) {
+    const resolution = quality && quality.resolution ? quality.resolution : null;
+    return resolution && resolution.available && resolution.score ? `${resolution.score}%` : '!';
   }
 
   function getResolutionTone(resolution) {

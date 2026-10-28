@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Button, Chip, Ph, Tooltip } from '@onblide/ui';
+import { Badge, Button, Ph, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -89,13 +89,14 @@ function DockIdentity({ counter }) {
 
 function PictureTile({ picture, actions }) {
   const qualityClass = picture.quality ? ` has-quality-${picture.quality.tone}` : '';
+  const qualityLabel = picture.quality ? ` Qualidade ${picture.quality.label}.` : '';
   return (
     <div
       className={`onblide-ml-tile${qualityClass}`}
       data-picture-id={picture.localId}
       tabIndex={0}
       role="button"
-      aria-label={`Foto ${picture.index + 1}. Arraste para reordenar.`}
+      aria-label={`Foto ${picture.index + 1}.${qualityLabel} Arraste para reordenar.`}
       onDragStart={(event) => event.preventDefault()}
       onPointerDown={(event) => actions.onPicturePointerDown(event.nativeEvent, event.currentTarget)}
       onKeyDown={(event) => {
@@ -112,15 +113,11 @@ function PictureTile({ picture, actions }) {
       <img src={picture.url} alt="" draggable={false} />
       <span className="onblide-ml-order">{picture.index + 1}</span>
       {picture.quality && (
-        <Chip
-          className="onblide-ml-quality-chip"
-          data-action="quality"
-          label={picture.quality.label}
-          tone={picture.quality.actionTone}
-          size="sm"
-          title={picture.quality.title}
-          onClick={() => actions.onQuality(picture.localId)}
-        />
+        <span className="onblide-ml-quality-indicator" aria-hidden="true">
+          <Badge tone={picture.quality.badgeTone} variant="solid" dot={false} size="sm">
+            {picture.quality.label}
+          </Badge>
+        </span>
       )}
       <span className="onblide-ml-remove-action">
         <Tooltip label="Remover foto" placement="left">
@@ -307,7 +304,6 @@ function renderTray(host, model, callbacks = {}) {
     onCommit: typeof callbacks.onCommit === 'function' ? callbacks.onCommit : () => {},
     onDiscard: typeof callbacks.onDiscard === 'function' ? callbacks.onDiscard : () => {},
     onRemove: typeof callbacks.onRemove === 'function' ? callbacks.onRemove : () => {},
-    onQuality: typeof callbacks.onQuality === 'function' ? callbacks.onQuality : () => {},
     onUpload: typeof callbacks.onUpload === 'function' ? callbacks.onUpload : () => {},
     onUploadFiles: typeof callbacks.onUploadFiles === 'function' ? callbacks.onUploadFiles : () => {},
     onPicturePointerDown: typeof callbacks.onPicturePointerDown === 'function'
