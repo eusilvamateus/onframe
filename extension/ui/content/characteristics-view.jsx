@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Alert, Button, Ph, Tooltip } from '@onblide/ui';
+import { Accordion, Alert, Button, Card, Checkbox, Ph, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -69,6 +69,88 @@ function CatalogNotice() {
   );
 }
 
+function EditorStatus({ status }) {
+  if (!status) return null;
+  return (
+    <span className="onframe-characteristics-state">
+      <Spinner size="xs" label={status} />
+      {status}
+    </span>
+  );
+}
+
+function FailureList({ failures }) {
+  if (!failures.length) return null;
+  const count = failures.length;
+  return (
+    <Accordion
+      ariaLabel="Variações não alteradas"
+      items={[{
+        id: 'failures',
+        icon: 'warning-circle',
+        title: `${count} variação${count === 1 ? '' : 'ões'} não alterada${count === 1 ? '' : 's'}`,
+        content: (
+          <ul className="onframe-characteristics-failure-list">
+            {failures.map((failure) => (
+              <li key={`${failure.itemId}:${failure.message}`}>
+                <strong>{failure.itemId}</strong>: {failure.message}
+              </li>
+            ))}
+          </ul>
+        )
+      }]}
+    />
+  );
+}
+
+function EditorFooter({ model, actions }) {
+  return (
+    <section className="onframe-characteristics-footer" aria-label="Ações da edição de características">
+      <Card padding="var(--ob-s-3)">
+        <div className="onframe-characteristics-footer-content">
+          <div className="onframe-characteristics-footer-head">
+            <strong>Editando características</strong>
+            <EditorStatus status={model.status} />
+          </div>
+
+          {model.notice && <Alert tone="info">{model.notice}</Alert>}
+
+          {model.canBulk && (
+            <div className="onframe-characteristics-bulk-switch">
+              <Checkbox
+                checked={model.bulkEnabled}
+                disabled={model.disabled}
+                onChange={actions.onBulkChange}
+                label="Aplicar a todas as variações"
+                description="Salva direto nas variações ativas deste user_product."
+              />
+            </div>
+          )}
+
+          {model.error && <Alert tone="danger">{model.error}</Alert>}
+
+          <FailureList failures={model.failures} />
+
+          <div className="onframe-characteristics-actions">
+            <Button
+              kind="primary"
+              size="sm"
+              disabled={model.disabled}
+              onClick={actions.onSave}
+              icon={<Ph n="check-circle" size={14} />}
+            >
+              Salvar
+            </Button>
+            <Button kind="secondary" size="sm" disabled={model.saving} onClick={actions.onCancel}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </section>
+  );
+}
+
 function getRoot(host) {
   if (!host) throw new Error('Host da interface de características indisponível.');
   let root = roots.get(host);
@@ -98,6 +180,14 @@ function renderCatalogNotice(host, options = {}) {
   render(host, <CatalogNotice />, options.onError || (() => {}));
 }
 
+function renderFooter(host, model, actions = {}) {
+  render(host, <EditorFooter model={model} actions={{
+    onBulkChange: actions.onBulkChange || (() => {}),
+    onSave: actions.onSave || (() => {}),
+    onCancel: actions.onCancel || (() => {})
+  }} />, actions.onError || (() => {}));
+}
+
 function unmount(host) {
   const root = host && roots.get(host);
   if (!root) return;
@@ -105,4 +195,4 @@ function unmount(host) {
   roots.delete(host);
 }
 
-globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, unmount });
+globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, unmount });

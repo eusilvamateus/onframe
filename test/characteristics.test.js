@@ -14,17 +14,22 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;
 
-  assert.match(view, /import \{ Alert, Button, Ph, Tooltip \} from '@onblide\/ui'/);
+  assert.match(view, /import \{ Accordion, Alert, Button, Card, Checkbox, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
   assert.match(view, /<Button[\s\S]*Editar características/);
   assert.match(view, /<Tooltip label="Expanda esta seção para editar as características\."/);
   assert.match(view, /<Alert tone="info" title="Este é um anúncio de catálogo">/);
-  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, unmount \}\)/);
+  assert.match(view, /<Card padding="var\(--ob-s-3\)"/);
+  assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
+  assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
+  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, unmount \}\)/);
 
   assert.match(controller, /const CharacteristicsView = rootScope\.OnFrameCharacteristicsView/);
   assert.match(controller, /CharacteristicsView\.renderAction/);
   assert.match(controller, /CharacteristicsView\.renderCatalogNotice/);
+  assert.match(controller, /CharacteristicsView\.renderFooter/);
   assert.match(controller, /CharacteristicsView\.unmount/);
   assert.doesNotMatch(controller, /setDisabledButtonTooltip\(action|removeDisabledButtonTooltip\(wrapper/);
+  assert.doesNotMatch(controller, /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/);
 
   assert.match(build, /characteristics-view\.jsx/);
   assert.ok(scripts.indexOf('core/characteristics-view.js') < scripts.indexOf('modules/characteristics/module.js'));

@@ -17,6 +17,7 @@
       CharacteristicsView &&
       typeof CharacteristicsView.renderAction === 'function' &&
       typeof CharacteristicsView.renderCatalogNotice === 'function' &&
+      typeof CharacteristicsView.renderFooter === 'function' &&
       typeof CharacteristicsView.unmount === 'function'
     );
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
@@ -277,7 +278,32 @@
         anchor.insertAdjacentElement('afterend', state.editorRoot);
       }
 
-      state.editorRoot.innerHTML = `${renderPackageDimensionsCard(disabled)}${renderFooterMarkup()}`;
+      let packageRoot = state.editorRoot.querySelector('.onframe-characteristics-package-root');
+      if (!packageRoot) {
+        packageRoot = document.createElement('div');
+        packageRoot.className = 'onframe-characteristics-package-root';
+        state.editorRoot.appendChild(packageRoot);
+      }
+      packageRoot.innerHTML = renderPackageDimensionsCard(disabled);
+
+      let footerRoot = state.editorRoot.querySelector('.onframe-characteristics-footer-root');
+      if (!footerRoot) {
+        footerRoot = document.createElement('div');
+        footerRoot.className = 'onframe-characteristics-footer-root';
+        state.editorRoot.appendChild(footerRoot);
+      }
+      CharacteristicsView.renderFooter(footerRoot, buildFooterViewModel(), {
+        onBulkChange: (checked) => {
+          if (state.saving || state.loading) return;
+          state.bulkEnabled = checked;
+          state.bulkResult = null;
+          state.error = '';
+          mountCharacteristics();
+        },
+        onSave: () => void saveCharacteristics(),
+        onCancel: cancelEditor,
+        onError: handleCharacteristicsViewFailure
+      });
       bindEditorEvents();
     }
 
@@ -291,27 +317,27 @@
         elements.title;
     }
 
-    function renderFooterMarkup() {
+    function buildFooterViewModel() {
       const disabled = state.loading || state.saving;
       const canBulk = CharacteristicsModel.canBulkEditCharacteristics(state.context);
       if (!canBulk) state.bulkEnabled = false;
-      return `
-        <section class="onframe-characteristics-footer" aria-label="Ações da edição de características">
-          <div class="onframe-characteristics-footer-head">
-            <strong>Editando características</strong>
-            ${state.loading ? `<span class="onframe-characteristics-state">${spinner()}Carregando ficha...</span>` : ''}
-            ${state.saving ? `<span class="onframe-characteristics-state">${spinner()}Salvando...</span>` : ''}
-          </div>
-          ${renderInlineNotice()}
-          ${canBulk ? renderBulkSwitch(disabled) : ''}
-          ${state.error ? `<div class="onframe-characteristics-alert error">${escapeHtml(state.error)}</div>` : ''}
-          ${renderBulkFailures()}
-          <div class="onframe-characteristics-actions">
-            <button class="ob-button primary" data-action="save-characteristics" type="button" ${disabled ? 'disabled' : ''}>${icon('checkCircle', 14)}Salvar</button>
-            <button class="ob-button" data-action="cancel-characteristics" type="button" ${state.saving ? 'disabled' : ''}>Cancelar</button>
-          </div>
-        </section>
-      `;
+      const result = state.bulkResult;
+      const failures = result && Array.isArray(result.targets)
+        ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
+        : [];
+      return {
+        disabled,
+        saving: state.saving,
+        status: state.loading ? 'Carregando ficha...' : state.saving ? 'Salvando...' : '',
+        notice: getInlineNoticeMessage(),
+        canBulk,
+        bulkEnabled: state.bulkEnabled,
+        error: state.error,
+        failures: failures.map((failure) => ({
+          itemId: String(failure.itemId || 'Variação'),
+          message: String(failure.message || 'Falha ao salvar.')
+        }))
+      };
     }
 
     function renderPackageDimensionsCard(disabled) {
@@ -379,17 +405,17 @@
       `;
     }
 
-    function renderInlineNotice() {
-      if (state.loading) return '<div class="onframe-characteristics-note">Carregando os campos editáveis.</div>';
+    function getInlineNoticeMessage() {
+      if (state.loading) return 'Carregando os campos editáveis.';
       const groups = state.snapshot && Array.isArray(state.snapshot.groups) ? state.snapshot.groups : [];
       const packageFields = getPackageDimensionFields();
       const hasEditableGroupField = groups.some((group) => (group.attributes || []).some((field) => field.editable));
       const hasEditablePackageField = packageFields.some((field) => field.editable);
-      if (!groups.length && !packageFields.length) return '<div class="onframe-characteristics-note">Nenhuma característica encontrada neste anúncio.</div>';
+      if (!groups.length && !packageFields.length) return 'Nenhuma característica encontrada neste anúncio.';
       if (!hasEditableGroupField && !hasEditablePackageField) {
-        return '<div class="onframe-characteristics-note">O Mercado Livre não expôs campos editáveis para este anúncio.</div>';
+        return 'O Mercado Livre não expôs campos editáveis para este anúncio.';
       }
-      if (!state.inlineEditableCount && !state.inlineMissingCount && !hasEditablePackageField) return '<div class="onframe-characteristics-note">Nenhuma característica editável está visível nesta ficha.</div>';
+      if (!state.inlineEditableCount && !state.inlineMissingCount && !hasEditablePackageField) return 'Nenhuma característica editável está visível nesta ficha.';
       return '';
     }
 
@@ -908,32 +934,6 @@
       return Boolean(active && typeof active.closest === 'function' && active.closest('.onframe-characteristics-inline-control'));
     }
 
-    function renderBulkSwitch(disabled) {
-      return `
-        <button class="ob-checkbox onframe-characteristics-bulk-switch ${state.bulkEnabled ? 'is-checked' : ''}" data-action="toggle-characteristics-bulk" type="button" role="checkbox" aria-checked="${state.bulkEnabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
-          <span class="ob-checkbox-box" aria-hidden="true"></span>
-          <span>
-            <span class="ob-checkbox-label">Aplicar a todas as variações</span>
-            <span class="ob-checkbox-description">Salva direto nas variações ativas deste user_product.</span>
-          </span>
-        </button>
-      `;
-    }
-
-    function renderBulkFailures() {
-      const result = state.bulkResult;
-      const failures = result && Array.isArray(result.targets)
-        ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
-        : [];
-      if (!failures.length) return '';
-      return `
-        <details class="onframe-characteristics-failures">
-          <summary>${failures.length} variação${failures.length === 1 ? '' : 'ões'} não alterada${failures.length === 1 ? '' : 's'}</summary>
-          <ul>${failures.map((failure) => `<li>${escapeHtml(failure.itemId)}: ${escapeHtml(failure.message || 'Falha ao salvar.')}</li>`).join('')}</ul>
-        </details>
-      `;
-    }
-
     function bindEditorEvents() {
       if (!state.editorRoot) return;
       [state.sectionElement, state.editorRoot].filter(Boolean).forEach((fieldContainer) => {
@@ -972,20 +972,6 @@
           });
         });
       });
-      const save = state.editorRoot.querySelector('[data-action="save-characteristics"]');
-      if (save) save.addEventListener('click', () => void saveCharacteristics());
-      const cancel = state.editorRoot.querySelector('[data-action="cancel-characteristics"]');
-      if (cancel) cancel.addEventListener('click', () => cancelEditor());
-      const bulk = state.editorRoot.querySelector('[data-action="toggle-characteristics-bulk"]');
-      if (bulk) {
-        bulk.addEventListener('click', () => {
-          if (state.saving || state.loading) return;
-          state.bulkEnabled = !state.bulkEnabled;
-          state.bulkResult = null;
-          state.error = '';
-          mountCharacteristics();
-        });
-      }
     }
 
     function ensureDocumentEvents() {
@@ -1224,6 +1210,8 @@
 
     function closeEditor() {
       restoreInlineCells();
+      const footerRoot = state.editorRoot && state.editorRoot.querySelector('.onframe-characteristics-footer-root');
+      if (footerRoot) CharacteristicsView.unmount(footerRoot);
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
       if (state.sectionElement) state.sectionElement.classList.remove('onframe-characteristics-is-editing');
@@ -1249,6 +1237,8 @@
         CharacteristicsView.unmount(node);
         node.remove();
       });
+      const footerRoot = state.editorRoot && state.editorRoot.querySelector('.onframe-characteristics-footer-root');
+      if (footerRoot) CharacteristicsView.unmount(footerRoot);
       document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
@@ -1406,10 +1396,6 @@
 
     function icon(name, size) {
       return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
-    }
-
-    function spinner() {
-      return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
     }
 
     return {
