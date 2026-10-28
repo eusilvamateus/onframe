@@ -396,23 +396,21 @@
   height: 3px;
 }
 
-.onframe-characteristics-package-card {
+.onframe-characteristics-package {
+  color: var(--ob-fg);
+  font-family: var(--ob-font);
+}
+
+.onframe-characteristics-package-content {
   display: grid;
   gap: var(--ob-gap-md);
-  padding: var(--ob-s-4);
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-surface);
-  background: var(--ob-surface);
-  box-shadow: var(--ob-shadow-sm);
 }
 
 .onframe-characteristics-package-head {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ob-gap-sm);
-  padding-bottom: var(--ob-s-3);
-  border-bottom: 1px solid var(--ob-border);
 }
 
 .onframe-characteristics-package-title strong,
@@ -433,42 +431,13 @@
   line-height: var(--ob-lh-normal);
 }
 
-.onframe-characteristics-package-icon {
-  display: inline-grid;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--ob-r-control);
-  background: var(--ob-fg-strong);
-  color: var(--ob-surface);
-  line-height: 0;
-}
-
-.onframe-characteristics-package-badge {
-  display: inline-flex;
-  align-self: center;
-  justify-self: end;
-}
-
 .onframe-characteristics-package-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--ob-gap-md);
 }
 
-.onframe-characteristics-package-field {
-  position: relative;
-  display: grid;
-  gap: var(--ob-gap-xs);
-  min-width: 0;
-}
-
-.onframe-characteristics-package-field:has(.onframe-characteristics-select.is-open) {
-  z-index: 50;
-}
-
-.onframe-characteristics-package-label {
+.onframe-characteristics-package-field-label {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
@@ -481,58 +450,20 @@
 
 .onframe-characteristics-package-control {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 0.65fr);
+  align-items: end;
   gap: var(--ob-gap-sm);
   min-width: 0;
 }
 
-.onframe-characteristics-package-number-shell,
-.onframe-characteristics-package-unit-shell {
-  height: 36px;
-  min-height: 36px;
-}
-
-.onframe-characteristics-package-number-shell {
-  width: 100%;
-}
-
-.onframe-characteristics-package-unit-shell {
-  width: 72px;
-  padding-right: 24px;
-}
-
-.onframe-characteristics-package-input,
-.onframe-characteristics-package-control .onframe-characteristics-select-trigger {
-  height: 34px;
-  min-height: 0;
-  padding: 0;
+.onframe-characteristics-package-control input,
+.onframe-characteristics-package-control input:hover,
+.onframe-characteristics-package-control input:focus,
+.onframe-characteristics-package-control input:focus-visible {
   border: 0 !important;
-  outline: none !important;
+  outline: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: var(--ob-fg-strong);
-  font: var(--ob-w-medium) 13px/1.2 var(--ob-font);
-}
-
-.onframe-characteristics-package-input:focus,
-.onframe-characteristics-package-input:focus-visible,
-.onframe-characteristics-package-control .onframe-characteristics-select-trigger:focus,
-.onframe-characteristics-package-control .onframe-characteristics-select-trigger:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-.onframe-characteristics-package-readonly {
-  display: flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 var(--ob-s-3);
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-control);
-  background: var(--ob-bg);
-  color: var(--ob-fg-soft);
-  font-size: 13px;
-  font-weight: var(--ob-w-medium);
 }
 
 .onframe-characteristics-package-note {
@@ -597,18 +528,12 @@
   flex-wrap: wrap;
 }
 
-@media (max-width: 720px) {
-  .onframe-characteristics-package-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 460px) {
   .onframe-characteristics-package-head {
     grid-template-columns: auto 1fr;
   }
 
-  .onframe-characteristics-package-badge {
+  .onframe-characteristics-package-head > :last-child {
     grid-column: 2;
     justify-self: start;
   }

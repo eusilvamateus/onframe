@@ -18,6 +18,7 @@
       typeof CharacteristicsView.renderAction === 'function' &&
       typeof CharacteristicsView.renderCatalogNotice === 'function' &&
       typeof CharacteristicsView.renderFooter === 'function' &&
+      typeof CharacteristicsView.renderPackageDimensions === 'function' &&
       typeof CharacteristicsView.unmount === 'function'
     );
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
@@ -284,7 +285,10 @@
         packageRoot.className = 'onframe-characteristics-package-root';
         state.editorRoot.appendChild(packageRoot);
       }
-      packageRoot.innerHTML = renderPackageDimensionsCard(disabled);
+      CharacteristicsView.renderPackageDimensions(packageRoot, buildPackageDimensionsViewModel(disabled), {
+        onFieldChange: updateDraftField,
+        onError: handleCharacteristicsViewFailure
+      });
 
       let footerRoot = state.editorRoot.querySelector('.onframe-characteristics-footer-root');
       if (!footerRoot) {
@@ -340,69 +344,32 @@
       };
     }
 
-    function renderPackageDimensionsCard(disabled) {
+    function buildPackageDimensionsViewModel(disabled) {
       const packageDimensions = state.snapshot && state.snapshot.packageDimensions ? state.snapshot.packageDimensions : null;
       const fields = getPackageDimensionFields();
-      if (!fields.length) return '';
-      return `
-        <section class="onframe-characteristics-package-card" aria-label="Dimensões do pacote">
-          <div class="onframe-characteristics-package-head">
-            <span class="onframe-characteristics-package-icon" aria-hidden="true">${icon('package', 18)}</span>
-            <div class="onframe-characteristics-package-title">
-              <strong>${escapeHtml(packageDimensions.label || 'Dimensões do pacote')}</strong>
-              <span>Medidas de envio, tratadas à parte dos atributos do produto.</span>
-            </div>
-            <span class="ob-badge grey onframe-characteristics-package-badge">${escapeHtml(packageDimensions.badge || 'LOGÍSTICA')}</span>
-          </div>
-          <div class="onframe-characteristics-package-grid">
-            ${fields.map((field) => renderPackageDimensionField(field, disabled)).join('')}
-          </div>
-          <div class="onframe-characteristics-package-note">${icon('info', 12)}Peso e medidas afetam o cálculo do frete. Confira antes de salvar.</div>
-        </section>
-      `;
-    }
-
-    function renderPackageDimensionField(field, disabled) {
-      if (!field) return '';
-      const locked = disabled || !field.editable;
-      return `
-        <label class="onframe-characteristics-package-field">
-          <span class="onframe-characteristics-package-label">
-            ${escapeHtml(field.label)}
-            ${!field.editable ? renderCharacteristicStatusBadge(field) : ''}
-          </span>
-          ${field.editable ? renderPackageNumberUnitControl(field, locked) : renderPackageReadOnlyValue(field)}
-        </label>
-      `;
-    }
-
-    function renderPackageNumberUnitControl(field, disabled) {
-      const draft = state.draft[field.id] || {};
-      const units = collectUnits(field, draft.unit);
-      return `
-        <span class="onframe-characteristics-package-control">
-          <span class="ob-field-shell onframe-characteristics-field-shell onframe-characteristics-package-number-shell ${disabled ? 'is-disabled' : ''}">
-            <input class="ob-field-input onframe-characteristics-package-input" data-field-id="${escapeAttribute(field.id)}" data-field-part="number" aria-label="${escapeAttribute(field.label)}" type="text" inputmode="decimal" autocomplete="off" value="${escapeAttribute(draft.number || '')}" ${disabled ? 'disabled' : ''}>
-          </span>
-          ${renderCustomSelectControl({
-            field,
-            part: 'unit',
-            label: `Unidade de ${field.label}`,
-            options: units.map((unit) => ({ value: unit, label: unit })),
-            value: draft.unit,
-            disabled,
-            shellClass: 'onframe-characteristics-package-unit-shell'
-          })}
-        </span>
-      `;
-    }
-
-    function renderPackageReadOnlyValue(field) {
-      return `
-        <span class="onframe-characteristics-package-readonly">
-          ${escapeHtml(field.displayValue || field.valueName || '-')}
-        </span>
-      `;
+      return {
+        label: packageDimensions && packageDimensions.label ? String(packageDimensions.label) : 'Dimensões do pacote',
+        badge: packageDimensions && packageDimensions.badge ? String(packageDimensions.badge) : 'LOGÍSTICA',
+        fields: fields.map((field) => {
+          const draft = state.draft[field.id] || {};
+          const status = getCharacteristicStatus(field);
+          return {
+            id: field.id,
+            label: field.label,
+            editable: Boolean(field.editable),
+            disabled: disabled || !field.editable,
+            number: String(draft.number || ''),
+            unit: String(draft.unit || ''),
+            units: collectUnits(field, draft.unit),
+            displayValue: String(field.displayValue || field.valueName || '-'),
+            status: status ? {
+              label: status.label,
+              title: status.title,
+              tone: status.tone
+            } : null
+          };
+        })
+      };
     }
 
     function getInlineNoticeMessage() {
@@ -1045,6 +1012,17 @@
       });
     }
 
+    function updateDraftField(id, part, value) {
+      const fieldId = String(id || '');
+      const fieldPart = String(part || '');
+      if (!fieldId || !fieldPart || !state.draft[fieldId]) return;
+      state.draft[fieldId] = Object.assign({}, state.draft[fieldId], {
+        [fieldPart]: value
+      });
+      state.bulkResult = null;
+      state.error = '';
+    }
+
     async function saveCharacteristics() {
       if (!state.itemId || state.saving || state.loading || !CharacteristicsModel.canEditCharacteristics(state.context)) return;
       const updates = buildChangedUpdates();
@@ -1210,8 +1188,7 @@
 
     function closeEditor() {
       restoreInlineCells();
-      const footerRoot = state.editorRoot && state.editorRoot.querySelector('.onframe-characteristics-footer-root');
-      if (footerRoot) CharacteristicsView.unmount(footerRoot);
+      unmountEditorViews();
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
       if (state.sectionElement) state.sectionElement.classList.remove('onframe-characteristics-is-editing');
@@ -1237,11 +1214,16 @@
         CharacteristicsView.unmount(node);
         node.remove();
       });
-      const footerRoot = state.editorRoot && state.editorRoot.querySelector('.onframe-characteristics-footer-root');
-      if (footerRoot) CharacteristicsView.unmount(footerRoot);
+      unmountEditorViews();
       document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
+    }
+
+    function unmountEditorViews() {
+      if (!state.editorRoot) return;
+      state.editorRoot.querySelectorAll('.onframe-characteristics-package-root, .onframe-characteristics-footer-root')
+        .forEach((node) => CharacteristicsView.unmount(node));
     }
 
     function isCatalogListing() {
