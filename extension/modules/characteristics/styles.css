@@ -6,7 +6,16 @@
   font-family: var(--ob-font);
 }
 
-.onframe-characteristics-is-editing .onframe-characteristics-action {
+.onframe-characteristics-action-root {
+  display: block;
+}
+
+.onframe-characteristics-catalog-notice {
+  max-width: min(560px, 100%);
+  margin-top: var(--ob-s-2);
+}
+
+.onframe-characteristics-is-editing .onframe-characteristics-action-root {
   display: none;
 }
 

@@ -12,6 +12,14 @@
     const escapeHtml = Shared.escapeHtml;
     const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
+    const CharacteristicsView = rootScope.OnFrameCharacteristicsView;
+    const hasCharacteristicsView = Boolean(
+      CharacteristicsView &&
+      typeof CharacteristicsView.renderAction === 'function' &&
+      typeof CharacteristicsView.renderCatalogNotice === 'function' &&
+      typeof CharacteristicsView.unmount === 'function'
+    );
+    if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
     const toUserError = (err) => CharacteristicsModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame características] detalhe tecnico:' }));
 
     const state = {
@@ -186,37 +194,29 @@
 
     function injectEditAction(elements, disabled) {
       if (!elements.title) return;
-      let action = elements.section.querySelector('.onframe-characteristics-action');
-      if (!action) {
+      let actionRoot = elements.section.querySelector('.onframe-characteristics-action-root');
+      if (!actionRoot) {
         const anchor = elements.titleRow || elements.title;
-        action = document.createElement('button');
-        action.className = 'ob-button ghost compact onframe-section-edit-action onframe-characteristics-action';
-        action.type = 'button';
-        action.innerHTML = `${icon('pencil', 14)}Editar características`;
-        action.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          void openEditor();
-        });
-        anchor.insertAdjacentElement('afterend', action);
+        actionRoot = document.createElement('span');
+        actionRoot.className = 'onframe-characteristics-action-root';
+        anchor.insertAdjacentElement('afterend', actionRoot);
       }
-      Shared.setDisabledButtonTooltip(action, {
-        disabled,
-        label: 'Editar características',
-        tooltipId: 'onframe-characteristics-edit-disabled-tooltip',
-        tooltipText: 'Expanda esta seção para editar as características.'
+      CharacteristicsView.renderAction(actionRoot, { disabled }, {
+        onEdit: () => void openEditor(),
+        onError: handleCharacteristicsViewFailure
       });
     }
 
     function injectCatalogNotice(elements) {
       if (!elements.title || !elements.section) return;
-      let notice = elements.section.querySelector('.onframe-characteristics-catalog-notice');
-      if (notice) return;
-      notice = document.createElement('div');
-      notice.className = 'onframe-catalog-notice onframe-characteristics-catalog-notice';
-      notice.innerHTML = `${icon('info', 14)}<span class="onframe-catalog-notice-copy"><strong>Este é um anúncio de catálogo</strong><small>As características são definidas pelo catálogo. Para editá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.</small></span>`;
-      const anchor = elements.titleRow || elements.title;
-      anchor.insertAdjacentElement('afterend', notice);
+      let noticeRoot = elements.section.querySelector('.onframe-characteristics-catalog-notice');
+      if (!noticeRoot) {
+        const anchor = elements.titleRow || elements.title;
+        noticeRoot = document.createElement('div');
+        noticeRoot.className = 'onframe-characteristics-catalog-notice';
+        anchor.insertAdjacentElement('afterend', noticeRoot);
+      }
+      CharacteristicsView.renderCatalogNotice(noticeRoot, { onError: handleCharacteristicsViewFailure });
     }
 
     function isCharacteristicsCollapsed(section) {
@@ -1245,12 +1245,10 @@
 
     function removeInjectedActions() {
       restoreInlineCells();
-      document.querySelectorAll('.onframe-characteristics-action').forEach((node) => {
-        const wrapper = node.closest('.onframe-section-edit-tooltip');
-        if (wrapper) Shared.removeDisabledButtonTooltip(wrapper);
-        (wrapper || node).remove();
+      document.querySelectorAll('.onframe-characteristics-action-root, .onframe-characteristics-catalog-notice').forEach((node) => {
+        CharacteristicsView.unmount(node);
+        node.remove();
       });
-      document.querySelectorAll('.onframe-characteristics-catalog-notice').forEach((node) => node.remove());
       document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
@@ -1398,6 +1396,12 @@
 
     function readPageSignature() {
       return Detection.createPageSignature(document, location.href);
+    }
+
+    function handleCharacteristicsViewFailure(error) {
+      if (rootScope.console && typeof rootScope.console.error === 'function') {
+        rootScope.console.error('[OnFrame] A interface de características falhou.', error);
+      }
     }
 
     function icon(name, size) {

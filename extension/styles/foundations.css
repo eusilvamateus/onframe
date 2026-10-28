@@ -110,7 +110,7 @@
   color-scheme: light;
 }
 
-body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root) [aria-describedby]) > [role='tooltip'] {
+body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'] {
   --ob-z-tooltip: var(--ob-z-extension-toast);
 }
 
@@ -121,7 +121,7 @@ body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-act
   [class^='onframe-'],
   [class*=' onframe-'],
   [data-ob-popover-id],
-  body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root) [aria-describedby]) > [role='tooltip']
+  body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip']
 ) {
   --ob-blue: #4d7fef;
   --ob-blue-700: #6e96f1;

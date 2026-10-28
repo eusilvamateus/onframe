@@ -64,6 +64,7 @@
         "core/button.js",
         "core/photos-view.js",
         "core/description-view.js",
+        "core/characteristics-view.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",
