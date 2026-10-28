@@ -283,37 +283,6 @@
   margin: 0;
 }
 
-.onblide-ml-tray-actions .onblide-ml-btn {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 6px;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.onblide-ml-dock-save {
-  border-color: var(--ob-green);
-  background: var(--ob-green);
-  color: var(--ob-fg-on-color);
-}
-
-.onblide-ml-dock-save:hover:not(:disabled) {
-  border-color: var(--ob-green-700);
-  background: var(--ob-green-700);
-}
-
-.onblide-ml-dock-discard {
-  border-color: var(--ob-red-100);
-  background: var(--ob-red-100);
-  color: var(--ob-red);
-}
-
-.onblide-ml-dock-discard:hover:not(:disabled) {
-  border-color: var(--ob-red);
-  background: var(--ob-red);
-  color: var(--ob-surface);
-}
-
 .onblide-ml-strip {
   display: flex;
   align-items: stretch;
@@ -350,7 +319,7 @@
 
 .onblide-ml-tile {
   border: 1px solid var(--ob-border);
-  background: var(--ob-surface);
+  background: #fff;
   overflow: hidden;
   cursor: grab;
   touch-action: none;
@@ -394,22 +363,25 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: var(--ob-surface);
+  background: #fff;
   -webkit-user-drag: none;
   pointer-events: none;
   user-select: none;
 }
 
 .onblide-ml-upload {
+  appearance: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 5px;
+  margin: 0;
   border: 0.5px dashed var(--ob-ink-mute);
   background: var(--ob-surface-2);
   color: var(--ob-ink);
   cursor: pointer;
+  padding: 0;
   font: var(--ob-w-semibold) 11px/1.2 var(--ob-font);
   text-align: center;
   transition: background var(--ob-dur-fast) var(--ob-ease), border-color var(--ob-dur-fast) var(--ob-ease), box-shadow var(--ob-dur-fast) var(--ob-ease), color var(--ob-dur-fast) var(--ob-ease);
@@ -471,57 +443,9 @@
   pointer-events: none;
 }
 
-.onblide-ml-quality-badge {
-  position: absolute;
-  right: 5px;
-  bottom: 5px;
-  z-index: 4;
-  display: inline-grid;
-  place-items: center;
-  min-width: 38px;
-  height: 20px;
-  border: 0;
-  border-radius: var(--ob-r-pill);
-  padding: 0 7px;
-  font: 800 10px/1 var(--ob-font-mono);
-  pointer-events: none;
-  text-align: center;
-}
-
-.onblide-ml-quality-badge.error {
-  background: var(--ob-red);
-  color: var(--ob-surface);
-}
-
-.onblide-ml-quality-badge.warn {
-  background: var(--ob-orange);
-  color: var(--ob-surface);
-}
-
-.onblide-ml-quality-badge.muted {
-  background: var(--ob-ink-soft);
-  color: var(--ob-surface);
-}
-
-.onblide-ml-quality-badge.ok {
-  background: var(--ob-green);
-  color: var(--ob-surface);
-}
-
-.onblide-ml-modal {
-  border-radius: var(--ob-r-overlay);
-}
-
-.onblide-ml-modal.small {
-  width: min(420px, calc(100vw - 36px));
-}
-
-.onblide-ml-modal.result {
-  width: min(640px, calc(100vw - 36px));
-}
-
-.onblide-ml-modal.editor {
-  width: min(920px, calc(100vw - 36px));
+.onblide-ml-modal-host {
+  display: contents;
+  --ob-z-overlay: var(--ob-z-extension-modal);
 }
 
 .onblide-ml-modal-backdrop.is-editor-morphing {
@@ -539,14 +463,6 @@
   transform: translateY(20px);
 }
 
-.onblide-ml-modal-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
 .onblide-ml-modal-brand {
   margin-bottom: 4px;
   color: var(--ob-blue);
@@ -554,10 +470,13 @@
   text-transform: uppercase;
 }
 
-.onblide-ml-modal h2 {
+.onblide-ml-modal-title {
+  display: grid;
+  gap: 4px;
+}
+
+.onblide-ml-modal-title .onblide-ml-modal-brand {
   margin: 0;
-  color: var(--ob-ink-strong);
-  font: 700 18px/1.25 var(--ob-font);
 }
 
 .onblide-ml-modal-copy {
@@ -566,70 +485,12 @@
   font: 400 12px/1.55 var(--ob-font);
 }
 
-.onblide-ml-dialog-note {
-  margin-bottom: 12px;
-  border-radius: var(--ob-r-sm);
-  background: var(--ob-green-100);
-  color: var(--ob-green-700);
-  padding: 10px 12px;
-  font: 700 12px/1.4 var(--ob-font);
-}
-
-.onblide-ml-editor-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  margin-bottom: 14px;
+.onblide-ml-editor-modal-content {
+  min-width: 0;
 }
 
 .onblide-ml-editor-alert {
   margin-bottom: 12px;
-}
-
-.onblide-ml-editor-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.onblide-ml-editor-stat {
-  display: grid;
-  gap: 3px;
-  min-width: 118px;
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-sm);
-  background: var(--ob-surface-2);
-  padding: 9px 10px;
-}
-
-.onblide-ml-editor-stat small {
-  color: var(--ob-ink-mute);
-  font: 700 9px/1 var(--ob-font-mono);
-  text-transform: uppercase;
-}
-
-.onblide-ml-editor-stat strong {
-  color: var(--ob-ink-strong);
-  font: 700 12px/1.2 var(--ob-font);
-}
-
-.onblide-ml-editor-stat.warn {
-  border-color: var(--ob-orange-100);
-  background: var(--ob-orange-100);
-}
-
-.onblide-ml-editor-stat.warn strong {
-  color: var(--ob-orange-700);
-}
-
-.onblide-ml-editor-stat.error {
-  border-color: var(--ob-red-100);
-  background: var(--ob-red-100);
-}
-
-.onblide-ml-editor-stat.error strong {
-  color: var(--ob-red);
 }
 
 .onblide-ml-editor-actions {
@@ -638,6 +499,12 @@
   justify-content: flex-end;
   gap: 8px;
   max-width: 360px;
+  margin: 0 0 14px auto;
+}
+
+.onblide-ml-editor-action {
+  box-sizing: border-box;
+  height: 32px;
 }
 
 .onblide-ml-editor-strip-shell {
@@ -666,20 +533,6 @@
 .onblide-ml-editor-diagnostics-head strong {
   color: var(--ob-ink-strong);
   font: 700 13px/1.2 var(--ob-font);
-}
-
-.onblide-ml-link-btn {
-  border: 0;
-  background: transparent;
-  color: var(--ob-blue);
-  cursor: pointer;
-  padding: 0;
-  font: 700 11px/1 var(--ob-font);
-}
-
-.onblide-ml-link-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .onblide-ml-editor-diagnostics {
@@ -718,7 +571,7 @@
   object-fit: contain;
   border: 1px solid var(--ob-border);
   border-radius: var(--ob-r-sm);
-  background: var(--ob-surface-2);
+  background: #fff;
 }
 
 .onblide-ml-diagnostic-main {
@@ -813,15 +666,6 @@
   margin-left: auto;
 }
 
-.onblide-ml-selection-bar button:not(.onblide-ml-selection-action) {
-  margin-left: auto;
-  border: 0;
-  background: transparent;
-  color: var(--ob-blue);
-  cursor: pointer;
-  font: 700 12px/1 var(--ob-font);
-}
-
 .onblide-ml-review-list,
 .onblide-ml-result-list {
   display: grid;
@@ -874,47 +718,10 @@
   background: var(--ob-surface);
 }
 
-.onblide-ml-score {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 24px;
-  border-radius: var(--ob-r-pill);
-  padding: 0 8px;
-  font: 800 10px/1 var(--ob-font-mono);
-}
-
-.onblide-ml-score.warn {
-  background: var(--ob-orange-100);
-  color: var(--ob-orange-700);
-}
-
-.onblide-ml-score.ok {
-  background: var(--ob-green-100);
-  color: var(--ob-green-700);
-}
-
-.onblide-ml-score.muted {
-  background: var(--ob-cream);
-  color: var(--ob-ink-soft);
-}
-
-.onblide-ml-modal-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 16px;
-}
-
 .onblide-ml-processing {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.onblide-ml-processing-modal-host {
-  --ob-z-overlay: var(--ob-z-extension-modal);
 }
 
 .onblide-ml-processing-progress {
@@ -925,31 +732,6 @@
   margin: 4px 0 0;
   color: var(--ob-ink-soft);
   font: 500 12px/1.4 var(--ob-font);
-}
-
-.onblide-ml-spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--ob-blue-100);
-  border-top-color: var(--ob-blue);
-  border-radius: var(--ob-r-pill);
-  animation: onblide-spin 700ms linear infinite;
-}
-
-.onblide-ml-progress {
-  height: 6px;
-  margin-top: 16px;
-  overflow: hidden;
-  border-radius: var(--ob-r-pill);
-  background: var(--ob-blue-100);
-}
-
-.onblide-ml-progress span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ob-blue);
-  transition: width 180ms var(--ob-ease);
 }
 
 .onblide-ml-result-item {
@@ -994,10 +776,6 @@
   top: 8px;
 }
 
-@keyframes onblide-spin {
-  to { transform: rotate(360deg); }
-}
-
 @media (max-width: 640px) {
   .onblide-ml-dock-content {
     width: min(100%, calc(100vw - 36px));
@@ -1025,13 +803,10 @@
     width: auto;
   }
 
-  .onblide-ml-editor-top {
-    grid-template-columns: 1fr;
-  }
-
   .onblide-ml-editor-actions {
     justify-content: flex-start;
     max-width: none;
+    margin-left: 0;
   }
 
   .onblide-ml-review-item {

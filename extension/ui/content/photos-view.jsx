@@ -25,28 +25,40 @@ class PhotosViewBoundary extends Component {
   }
 }
 
-function LegacyMarkup({ markup, onRendered }) {
+function ModalTitle({ children }) {
   return (
-    <div
-      data-onframe-photos-view="react"
-      style={{ display: 'contents' }}
-      ref={(node) => {
-        if (node) onRendered(node);
-      }}
-      dangerouslySetInnerHTML={{ __html: markup }}
-    />
+    <span className="onblide-ml-modal-title">
+      <span className="onblide-ml-modal-brand">OnFrame</span>
+      <span>{children}</span>
+    </span>
   );
 }
 
-function ProcessingDialog({ model, onRendered }) {
+function ModalHost({ children, onRendered }) {
   return (
     <div
-      className="onblide-ml-processing-modal-host"
+      className="onblide-ml-modal-host"
       data-onframe-photos-view="react"
       ref={(node) => {
         if (node) onRendered(node);
       }}
     >
+      {children}
+    </div>
+  );
+}
+
+function attachEditorBackdrop(node) {
+  if (node) node.classList.add('onblide-ml-modal-backdrop');
+}
+
+function attachEditorContent(node) {
+  if (node) node.classList.add('onblide-ml-modal', 'editor');
+}
+
+function ProcessingDialog({ model, onRendered }) {
+  return (
+    <ModalHost onRendered={onRendered}>
       <Modal open size="sm" title="Otimizando imagens..." closeButton={false}>
         <div className="onblide-ml-processing">
           <Spinner size="lg" label="Otimizando imagens" />
@@ -56,16 +68,7 @@ function ProcessingDialog({ model, onRendered }) {
           <ProgressBar value={model.percent} size="sm" />
         </div>
       </Modal>
-    </div>
-  );
-}
-
-function EditorStat({ stat }) {
-  return (
-    <span className={`onblide-ml-editor-stat${stat.tone ? ` ${stat.tone}` : ''}`}>
-      <small>{stat.label}</small>
-      <strong>{stat.value}</strong>
-    </span>
+    </ModalHost>
   );
 }
 
@@ -99,42 +102,32 @@ function EditorDiagnostics({ diagnostics }) {
 }
 
 function EditorDialog({ model, actions, onRendered }) {
+  const footer = <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>;
   return (
-    <div
-      className="onblide-ml-modal-backdrop"
-      data-onframe-photos-view="react"
-      ref={(node) => {
-        if (node) onRendered(node);
-      }}
-    >
-      <section className="onblide-ml-modal editor" role="dialog" aria-modal="true" aria-label="Editor completo de fotos">
-        <div className="onblide-ml-modal-head">
-          <div>
-            <div className="onblide-ml-modal-brand">OnFrame</div>
-            <h2>Editor de fotos</h2>
-          </div>
-          <Button
-            kind="quiet"
-            tone="neutral"
-            size="sm"
-            iconOnly
-            aria-label="Fechar"
-            onClick={actions.onClose}
-            icon={<Ph n="x" size={18} />}
-          />
-        </div>
-        {model.alert && (
-          <div className="onblide-ml-editor-alert">
-            <Alert tone={model.alert.tone}>{model.alert.message}</Alert>
-          </div>
-        )}
-        <div className="onblide-ml-editor-top">
-          <div className="onblide-ml-editor-stats">
-            {model.stats.map((stat) => <EditorStat key={stat.label} stat={stat} />)}
-          </div>
+    <ModalHost onRendered={onRendered}>
+      <Modal
+        open
+        title={<ModalTitle>Editor de fotos</ModalTitle>}
+        width={920}
+        maxHeight="calc(100vh - 48px)"
+        motion="none"
+        backdropRef={attachEditorBackdrop}
+        contentRef={attachEditorContent}
+        onClose={actions.onClose}
+        footer={footer}
+      >
+        <div className="onblide-ml-editor-modal-content">
+          {model.alert && (
+            <div className="onblide-ml-editor-alert">
+              <Alert tone={model.alert.tone}>{model.alert.message}</Alert>
+            </div>
+          )}
           <div className="onblide-ml-editor-actions">
             <Button
-              kind="secondary"
+              className="onblide-ml-editor-action"
+              kind="quiet"
+              tone="primary"
+              fill={false}
               size="sm"
               disabled={model.optimizeDisabled}
               onClick={actions.onOpenOptimize}
@@ -142,12 +135,20 @@ function EditorDialog({ model, actions, onRendered }) {
             >
               Otimizar fotos
             </Button>
-            <Button kind="primary" size="sm" disabled={model.saveDisabled} onClick={actions.onCommit}>
+            <Button
+              className="onblide-ml-editor-action"
+              kind="primary"
+              size="sm"
+              disabled={model.saveDisabled}
+              onClick={actions.onCommit}
+            >
               Salvar
             </Button>
             <Button
+              className="onblide-ml-editor-action"
               kind="quiet"
               tone="danger"
+              fill={false}
               size="sm"
               disabled={model.discardDisabled}
               onClick={actions.onDiscard}
@@ -155,37 +156,34 @@ function EditorDialog({ model, actions, onRendered }) {
               Descartar
             </Button>
           </div>
-        </div>
-        <div className="onblide-ml-editor-strip-shell">
-          <div className="onblide-ml-strip onblide-ml-modal-strip" aria-label="Editor completo de fotos do anúncio">
-            {model.pictures.map((picture) => (
-              <PictureTile key={picture.localId} picture={picture} actions={actions} />
-            ))}
-            <UploadTile actions={actions} />
+          <div className="onblide-ml-editor-strip-shell">
+            <div className="onblide-ml-strip onblide-ml-modal-strip" aria-label="Editor completo de fotos do anúncio">
+              {model.pictures.map((picture) => (
+                <PictureTile key={picture.localId} picture={picture} actions={actions} />
+              ))}
+              <UploadTile actions={actions} />
+            </div>
+          </div>
+          <div className="onblide-ml-editor-diagnostics-head">
+            <strong>Dimensões</strong>
+            <Button
+              kind="quiet"
+              tone="primary"
+              fill={false}
+              size="sm"
+              disabled={model.qualityLoading}
+              onClick={actions.onReloadQuality}
+              icon={<Ph n="arrows-clockwise" size={14} />}
+            >
+              Atualizar análise
+            </Button>
+          </div>
+          <div className="onblide-ml-editor-diagnostics">
+            <EditorDiagnostics diagnostics={model.diagnostics} />
           </div>
         </div>
-        <div className="onblide-ml-editor-diagnostics-head">
-          <strong>Dimensões</strong>
-          <Button
-            kind="quiet"
-            tone="primary"
-            fill={false}
-            size="sm"
-            disabled={model.qualityLoading}
-            onClick={actions.onReloadQuality}
-            icon={<Ph n="arrows-clockwise" size={14} />}
-          >
-            Atualizar análise
-          </Button>
-        </div>
-        <div className="onblide-ml-editor-diagnostics">
-          <EditorDiagnostics diagnostics={model.diagnostics} />
-        </div>
-        <div className="onblide-ml-modal-foot">
-          <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>
-        </div>
-      </section>
-    </div>
+      </Modal>
+    </ModalHost>
   );
 }
 
@@ -214,30 +212,29 @@ function OptimizeReviewItem({ item, onToggle }) {
 }
 
 function ReviewDialog({ model, actions, onRendered }) {
+  const footer = (
+    <>
+      <Button kind="secondary" onClick={actions.onClose}>Cancelar</Button>
+      <Button
+        kind="primary"
+        disabled={!model.selectedCount}
+        onClick={actions.onConfirm}
+        icon={<Ph n="check-circle" size={16} />}
+      >
+        Confirmar e salvar ({model.selectedCount})
+      </Button>
+    </>
+  );
   return (
-    <div
-      className="onblide-ml-modal-backdrop"
-      data-onframe-photos-view="react"
-      ref={(node) => {
-        if (node) onRendered(node);
-      }}
-    >
-      <section className="onblide-ml-modal" role="dialog" aria-modal="true" aria-label="Otimizar imagens">
-        <div className="onblide-ml-modal-head">
-          <div>
-            <div className="onblide-ml-modal-brand">OnFrame</div>
-            <h2>Otimizar imagens?</h2>
-          </div>
-          <Button
-            kind="quiet"
-            tone="neutral"
-            size="sm"
-            iconOnly
-            aria-label="Fechar"
-            onClick={actions.onClose}
-            icon={<Ph n="x" size={18} />}
-          />
-        </div>
+    <ModalHost onRendered={onRendered}>
+      <Modal
+        open
+        size="lg"
+        maxHeight="calc(100vh - 48px)"
+        title={<ModalTitle>Otimizar imagens?</ModalTitle>}
+        onClose={actions.onClose}
+        footer={footer}
+      >
         <p className="onblide-ml-modal-copy">
           Redimensiona para 1200px no lado maior e envia ao Mercado Livre.
         </p>
@@ -260,19 +257,8 @@ function ReviewDialog({ model, actions, onRendered }) {
             <OptimizeReviewItem key={item.localId} item={item} onToggle={actions.onToggle} />
           ))}
         </div>
-        <div className="onblide-ml-modal-foot">
-          <Button kind="secondary" onClick={actions.onClose}>Cancelar</Button>
-          <Button
-            kind="primary"
-            disabled={!model.selectedCount}
-            onClick={actions.onConfirm}
-            icon={<Ph n="check-circle" size={16} />}
-          >
-            Confirmar e salvar ({model.selectedCount})
-          </Button>
-        </div>
-      </section>
-    </div>
+      </Modal>
+    </ModalHost>
   );
 }
 
@@ -305,41 +291,25 @@ function OptimizeResultItem({ item }) {
 }
 
 function ResultDialog({ model, actions, onRendered }) {
+  const footer = <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>;
   return (
-    <div
-      className="onblide-ml-modal-backdrop"
-      data-onframe-photos-view="react"
-      ref={(node) => {
-        if (node) onRendered(node);
-      }}
-    >
-      <section className="onblide-ml-modal result" role="dialog" aria-modal="true" aria-label="Imagens otimizadas">
-        <div className="onblide-ml-modal-head">
-          <div>
-            <div className="onblide-ml-modal-brand">OnFrame</div>
-            <h2>Imagens otimizadas</h2>
-          </div>
-          <Button
-            kind="quiet"
-            tone="neutral"
-            size="sm"
-            iconOnly
-            aria-label="Fechar"
-            onClick={actions.onClose}
-            icon={<Ph n="x" size={18} />}
-          />
-        </div>
+    <ModalHost onRendered={onRendered}>
+      <Modal
+        open
+        width={640}
+        maxHeight="calc(100vh - 48px)"
+        title={<ModalTitle>Imagens otimizadas</ModalTitle>}
+        onClose={actions.onClose}
+        footer={footer}
+      >
         <p className="onblide-ml-modal-copy">
           Fotos enviadas. O Mercado Livre pode levar alguns minutos para exibir.
         </p>
         <div className="onblide-ml-result-list">
           {model.items.map((item) => <OptimizeResultItem key={item.localId} item={item} />)}
         </div>
-        <div className="onblide-ml-modal-foot">
-          <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>
-        </div>
-      </section>
-    </div>
+      </Modal>
+    </ModalHost>
   );
 }
 
@@ -356,7 +326,7 @@ function PhotoDialog({ model, actions, onRendered }) {
   if (model.mode === 'result') {
     return <ResultDialog model={model} actions={actions} onRendered={onRendered} />;
   }
-  return <LegacyMarkup markup={model.markup} onRendered={onRendered} />;
+  throw new Error(`Modo do diálogo de fotos desconhecido: ${model.mode || 'ausente'}.`);
 }
 
 function Status({ status }) {
@@ -441,7 +411,7 @@ function PictureTile({ picture, actions }) {
         </span>
       )}
       <span className="onblide-ml-remove-action">
-        <Tooltip label="Remover foto" placement="left">
+        <Tooltip label="Remover foto" placement="top">
           <Button
             kind="quiet"
             tone="danger"
@@ -460,23 +430,20 @@ function PictureTile({ picture, actions }) {
 
 function UploadTile({ actions }) {
   return (
-    <div
+    <button
+      type="button"
       className="onblide-ml-upload"
       data-action="upload"
-      tabIndex={0}
-      role="button"
       onClick={actions.onUpload}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          actions.onUpload();
-        }
-      }}
       onDragOver={(event) => {
         event.preventDefault();
         event.currentTarget.classList.add('is-dragover');
       }}
-      onDragLeave={(event) => event.currentTarget.classList.remove('is-dragover')}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          event.currentTarget.classList.remove('is-dragover');
+        }
+      }}
       onDrop={(event) => {
         event.preventDefault();
         event.currentTarget.classList.remove('is-dragover');
@@ -485,7 +452,7 @@ function UploadTile({ actions }) {
     >
       <Ph n="upload" size={18} />
       <span>Selecionar<br />ou arrastar</span>
-    </div>
+    </button>
   );
 }
 

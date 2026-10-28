@@ -245,23 +245,17 @@ test('modulo de fotos consome contexto resolvido pelo shell', () => {
 });
 
 test('remocao de foto usa a acao destrutiva do Button do design system', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
 
-  assert.match(source, /const DesignSystemButton = rootScope\.OnFrameButton/);
-  assert.match(source, /data-button-label="Remover foto"/);
-  assert.match(source, /data-button-icon="trash"/);
-  assert.match(source, /data-button-tone="danger"/);
-  assert.match(source, /tooltip: host\.dataset\.buttonLabel \|\| 'Ação'/);
-  assert.match(view, /<Tooltip label="Remover foto" placement="left">/);
+  assert.match(view, /<Tooltip label="Remover foto" placement="top">/);
   assert.match(view, /kind="quiet"[\s\S]*tone="danger"[\s\S]*data-action="remove"/);
   assert.match(view, /onClick=\{\(\) => actions\.onRemove\(picture\.localId\)\}/);
-  assert.doesNotMatch(source, /<button class="onblide-ml-remove"/);
   assert.doesNotMatch(styles, /\.onblide-ml-remove:hover/);
+  assert.match(styles, /\.onblide-ml-tile \{[\s\S]*overflow: hidden;/);
 });
 
-test('nova view de fotos e a rota padrao com fallback legado automatico', () => {
+test('view React e a unica rota da interface de fotos', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;
   const controller = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
@@ -273,6 +267,7 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /createRoot/);
   assert.match(view, /PhotosViewBoundary/);
   assert.match(view, /data-onframe-photos-view="react"/);
+  assert.doesNotMatch(view, /LegacyMarkup|dangerouslySetInnerHTML/);
   assert.match(view, /function PhotoDock\(/);
   assert.match(view, /<Button/);
   assert.match(view, /kind="quiet"/);
@@ -288,10 +283,20 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /<Spinner size="lg" label="Otimizando imagens" \/>/);
   assert.match(view, /<ProgressBar value=\{model\.percent\} size="sm" \/>/);
   assert.match(view, /function EditorDialog\(/);
+  assert.doesNotMatch(view, /EditorStat|model\.stats|onblide-ml-editor-stat/);
+  assert.match(view, /title=\{<ModalTitle>Editor de fotos<\/ModalTitle>\}/);
+  assert.match(view, /maxHeight="calc\(100vh - 48px\)"/);
+  assert.match(view, /motion="none"/);
+  assert.match(view, /backdropRef=\{attachEditorBackdrop\}/);
+  assert.match(view, /contentRef=\{attachEditorContent\}/);
+  assert.match(view, /footer=\{footer\}/);
   assert.match(view, /function EditorDiagnostics\(/);
   assert.match(view, /className="onblide-ml-editor-alert"[\s\S]*<Alert tone=\{model\.alert\.tone\}>\{model\.alert\.message\}<\/Alert>/);
   assert.match(view, /<Spinner size="sm" label="Analisando dimensões" \/>/);
   assert.match(view, /onClick=\{actions\.onOpenOptimize\}/);
+  assert.match(view, /className="onblide-ml-editor-action"[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*fill=\{false\}[\s\S]*Otimizar fotos/);
+  assert.match(view, /className="onblide-ml-editor-action"[\s\S]*kind="primary"[\s\S]*Salvar/);
+  assert.match(view, /className="onblide-ml-editor-action"[\s\S]*kind="quiet"[\s\S]*tone="danger"[\s\S]*fill=\{false\}[\s\S]*Descartar/);
   assert.match(view, /onClick=\{actions\.onReloadQuality\}/);
   assert.match(view, /function ReviewDialog\(/);
   assert.match(view, /function OptimizeReviewItem\(/);
@@ -303,12 +308,13 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /<Badge tone="orange" variant="subtle" dot=\{false\} size="sm">/);
   assert.match(view, /<Badge tone="green" variant="subtle" dot=\{false\} size="sm">100%<\/Badge>/);
   assert.match(view, /alt=\{`Imagem \$\{item\.index \+ 1\} otimizada`\}/);
+  assert.doesNotMatch(view, /<section className="onblide-ml-modal/);
   assert.match(view, /<Badge[\s\S]*tone=\{picture\.quality\.badgeTone\}[\s\S]*variant="solid"[\s\S]*dot=\{false\}/);
   assert.match(view, /className="onblide-ml-quality-indicator" aria-hidden="true"/);
   assert.match(view, /Qualidade \$\{picture\.quality\.label\}/);
   assert.doesNotMatch(view, /model\.contentMarkup/);
   assert.doesNotMatch(view, /onQuality|data-action="quality"|<Chip/);
-  assert.match(controller, /viewMode: hasPhotosView \? 'react' : 'legacy'/);
+  assert.match(controller, /if \(!hasPhotosView\) throw new Error\('Interface de fotos indisponível\.'\)/);
   assert.match(controller, /PhotosView\.renderTray/);
   assert.match(controller, /PhotosView\.renderTray\(state\.tray, buildTrayViewModel\(\)/);
   assert.match(controller, /onToggle: toggleDock/);
@@ -317,10 +323,11 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(controller, /badgeTone: getQualityBadgeTone\(quality\)/);
   assert.doesNotMatch(controller, /showPictureQuality|data-action="quality"/);
   assert.match(controller, /PhotosView\.renderDialog/);
-  assert.match(controller, /PhotosView\.renderDialog\(state\.dialogRoot, buildQualityDialogViewModel\(markup\)/);
+  assert.match(controller, /PhotosView\.renderDialog\(state\.dialogRoot, buildQualityDialogViewModel\(\)/);
   assert.match(controller, /function buildProcessingDialogViewModel\(dialog\)/);
   assert.match(controller, /mode: 'processing'/);
   assert.match(controller, /function buildEditorDialogViewModel\(dialog\)/);
+  assert.doesNotMatch(controller, /stats: \[|formatQualityCountLabel/);
   assert.match(controller, /function buildEditorDiagnosticsViewModel\(\)/);
   assert.match(controller, /if \(dialog\.mode === 'editor'\) return buildEditorDialogViewModel\(dialog\)/);
   assert.match(controller, /function buildReviewDialogViewModel\(dialog\)/);
@@ -328,22 +335,24 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(controller, /function buildResultDialogViewModel\(dialog\)/);
   assert.match(controller, /if \(dialog\.mode === 'result'\) return buildResultDialogViewModel\(dialog\)/);
   assert.match(controller, /onToggle: toggleOptimizeSelection/);
-  assert.match(controller, /\['editor', 'processing', 'review', 'result'\]\.includes\(state\.qualityDialog\.mode\)/);
-  assert.match(controller, /function renderLegacyTray\(markup\)/);
-  assert.match(controller, /function renderLegacyQualityDialog\(markup\)/);
-  assert.match(controller, /function switchToLegacyPhotosView\(error\)/);
+  assert.doesNotMatch(controller, /viewMode|renderLegacy|switchToLegacy|data-onframe-legacy-modal/);
+  assert.doesNotMatch(controller, /innerHTML\s*=|data-onframe-button-root|bindQualityDialogEvents/);
 });
 
 test('etapa de fidelidade preserva a composicao e as transicoes atuais de fotos', () => {
   const controller = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
 
-  assert.match(controller, /function buildTrayMarkup\(\)/);
-  assert.match(controller, /function renderEditorDialog\(dialog\)/);
   assert.match(controller, /function beginEditorOpenTransition\(\)/);
   assert.match(controller, /function beginEditorCloseTransition\(\)/);
   assert.match(styles, /\.onblide-ml-dock-silhouette \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
+  assert.doesNotMatch(styles, /data-onframe-legacy-modal|\.onblide-ml-quality-badge/);
+  assert.doesNotMatch(styles, /@keyframes onblide-spin|\.onblide-ml-selection-bar button:not/);
+  assert.doesNotMatch(components, /\.onblide-ml-result-item/);
+  assert.doesNotMatch(view, /onblide-ml-processing-modal-host/);
   assert.match(styles, /\.onblide-ml-diagnostic-card \{/);
   assert.match(styles, /\.onblide-ml-review-item \{/);
 });
@@ -352,15 +361,17 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
+  const uploadTile = view.slice(view.indexOf('function UploadTile'), view.indexOf('function EditorDockContent'));
 
   assert.match(source, /dockExpanded: false/);
-  assert.match(source, /data-action="toggle-dock"/);
   assert.match(source, /function toggleDock\(\)/);
-  assert.match(source, /if \(state\.viewMode === 'react'\) \{\s+rerenderTray\(\);\s+return;/);
-  assert.match(source, /panel\.classList\.toggle\('is-expanded', state\.dockExpanded\)/);
-  assert.match(source, /data-action="open-editor"[^>]*>\$\{icon\('arrowSquareOut', 14\)\}Abrir editor/);
+  assert.match(source, /state\.dockExpanded = !state\.dockExpanded;\s+rerenderTray\(\);/);
+  assert.match(view, /onClick=\{actions\.onToggle\}/);
   assert.match(view, /onClick=\{actions\.onOpenEditor\}/);
   assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*Abrir editor/);
+  assert.match(uploadTile, /<button[\s\S]*type="button"[\s\S]*onDrop=/);
+  assert.doesNotMatch(uploadTile, /role="button"|tabIndex=|onKeyDown=/);
+  assert.doesNotMatch(view, /import \{[^}]*FileUpload/);
   assert.match(source, /function beginEditorOpenTransition\(\)/);
   assert.match(source, /function beginEditorCloseTransition\(\)/);
   assert.match(source, /EDITOR_MORPH_OPEN_DURATION = 900/);
@@ -380,16 +391,13 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /restoreTrayAfterDialog\(\);\s+renderQualityDialogRoot\(\);/);
   assert.doesNotMatch(source, /revealTrayForEditorReturn/);
   assert.match(source, /getEditorMorphTransform\(modal, dockRect\)/);
-  assert.match(source, /if \(!state\.loaded && !state\.context && !state\.error\) return '';/);
-  assert.match(source, /class="onblide-ml-dock-command-stack"/);
-  assert.match(source, /onblide-ml-dock-save/);
-  assert.match(source, /onblide-ml-dock-discard/);
-  assert.match(source, /class="onblide-ml-dock-identity"/);
-  assert.match(source, /class="onblide-ml-dock-shell"/);
-  assert.match(source, /class="onblide-ml-dock-silhouette"/);
-  assert.match(source, /function renderCatalogPhotoNotice\(\)/);
-  assert.match(source, /Este é um anúncio de catálogo/);
-  assert.match(source, /if \(isCatalogListing\(\)\) return renderCatalogPhotoNotice\(\);/);
+  assert.match(view, /className="onblide-ml-dock-command-stack"/);
+  assert.match(view, /className="onblide-ml-dock-identity"/);
+  assert.match(view, /className="onblide-ml-dock-shell"/);
+  assert.match(view, /className="onblide-ml-dock-silhouette"/);
+  assert.match(view, /function CatalogNotice\(\)/);
+  assert.match(view, /Este é um anúncio de catálogo/);
+  assert.match(view, /model\.catalog \? <CatalogNotice \/> : <TrayBar/);
   assert.match(source, /if \(isCatalogListing\(\)\) return 'Fotos definidas pelo catálogo\.';/);
   assert.match(source, /sendRemoteMessage\('oauth-start'\)/);
   assert.doesNotMatch(source, /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/);
@@ -405,12 +413,14 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-command-stack \{/);
   assert.match(styles, /flex: 0 0 150px;/);
   assert.match(styles, /grid-template-columns: 56px minmax\(0, 1fr\);/);
-  assert.match(styles, /\.onblide-ml-tray-actions \.onblide-ml-btn \{[\s\S]*white-space: nowrap;/);
-  assert.match(styles, /\.onblide-ml-dock-save:hover:not\(:disabled\) \{/);
-  assert.match(styles, /\.onblide-ml-dock-discard:hover:not\(:disabled\) \{/);
+  assert.match(view, /style=\{\{ width: '100%', minWidth: 0, paddingInline: 6 \}\}/);
   assert.match(styles, /\.onblide-ml-upload \{[\s\S]*border: 0\.5px dashed var\(--ob-ink-mute\);[\s\S]*color: var\(--ob-ink\);/);
   assert.match(styles, /\.onblide-ml-upload > \.ph \{[\s\S]*color: var\(--ob-blue\);/);
   assert.match(styles, /\.onblide-ml-upload:hover \{[\s\S]*background: var\(--ob-surface\);/);
+  assert.match(styles, /\.onblide-ml-tile \{[\s\S]*background: #fff;/);
+  assert.match(styles, /\.onblide-ml-tile img \{[\s\S]*background: #fff;/);
+  assert.match(styles, /\.onblide-ml-diagnostic-card img \{[\s\S]*background: #fff;/);
+  assert.match(styles, /\.onblide-ml-editor-action \{[\s\S]*height: 32px;/);
   assert.match(styles, /\.onblide-ml-tray\.is-editor-hidden \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-opening > \* \{/);

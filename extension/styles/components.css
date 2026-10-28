@@ -136,8 +136,7 @@
 
 .ob-card,
 .account-card,
-.onframe-commerce-card,
-.onblide-ml-result-item {
+.onframe-commerce-card {
   background: var(--ob-surface);
   border: 1px solid var(--ob-border);
   border-radius: var(--ob-r-surface);
@@ -217,7 +216,6 @@
 }
 
 .ob-button,
-.onblide-ml-btn,
 .onframe-commerce-btn {
   display: inline-flex;
   align-items: center;
@@ -239,13 +237,11 @@
 }
 
 .ob-button:hover,
-.onblide-ml-btn:hover,
 .onframe-commerce-btn:hover {
   border-color: var(--ob-fg-soft);
 }
 
 .ob-button.primary,
-.onblide-ml-btn.primary,
 .onframe-commerce-btn.primary {
   border-color: var(--ob-blue);
   background: var(--ob-blue);
@@ -253,7 +249,6 @@
 }
 
 .ob-button.primary:hover,
-.onblide-ml-btn.primary:hover,
 .onframe-commerce-btn.primary:hover {
   background: var(--ob-blue-700);
   box-shadow: var(--ob-shadow-pop);
@@ -282,14 +277,7 @@
   color: var(--ob-danger);
 }
 
-.onblide-ml-btn.success {
-  border-color: var(--ob-green);
-  background: var(--ob-green);
-  color: var(--ob-fg-on-color);
-}
-
 .ob-button.compact,
-.onblide-ml-btn.compact,
 .onframe-commerce-btn.compact {
   min-height: 28px;
   padding: 6px 10px;
@@ -371,7 +359,6 @@
 }
 
 .ob-button:disabled,
-.onblide-ml-btn:disabled,
 .onframe-commerce-btn:disabled,
 .onframe-commerce-link:disabled {
   opacity: 0.45;
@@ -449,7 +436,6 @@
 }
 
 .ob-icon-button,
-.onblide-ml-icon-btn,
 .onframe-commerce-icon-btn {
   display: inline-flex;
   align-items: center;
@@ -1254,7 +1240,6 @@
 }
 
 .ob-modal,
-.onblide-ml-modal,
 .onframe-commerce-modal {
   width: min(760px, calc(100vw - 36px));
   max-height: min(780px, calc(100vh - 36px));
