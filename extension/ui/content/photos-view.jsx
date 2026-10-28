@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Badge, Button, Ph, Tooltip } from '@onblide/ui';
+import { Badge, Button, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -36,6 +36,35 @@ function LegacyMarkup({ markup, onRendered }) {
       dangerouslySetInnerHTML={{ __html: markup }}
     />
   );
+}
+
+function ProcessingDialog({ model, onRendered }) {
+  return (
+    <div
+      className="onblide-ml-processing-modal-host"
+      data-onframe-photos-view="react"
+      ref={(node) => {
+        if (node) onRendered(node);
+      }}
+    >
+      <Modal open size="sm" title="Otimizando imagens..." closeButton={false}>
+        <div className="onblide-ml-processing">
+          <Spinner size="lg" label="Otimizando imagens" />
+          <p>{model.progressText}</p>
+        </div>
+        <div className="onblide-ml-processing-progress">
+          <ProgressBar value={model.percent} size="sm" />
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+function PhotoDialog({ model, onRendered }) {
+  if (model.mode === 'processing') {
+    return <ProcessingDialog model={model} onRendered={onRendered} />;
+  }
+  return <LegacyMarkup markup={model.markup} onRendered={onRendered} />;
 }
 
 function Status({ status }) {
@@ -320,14 +349,14 @@ function renderTray(host, model, callbacks = {}) {
   });
 }
 
-function renderDialog(host, markup, callbacks = {}) {
+function renderDialog(host, model, callbacks = {}) {
   const root = getRoot(host);
   const onError = typeof callbacks.onError === 'function' ? callbacks.onError : () => {};
   const onRendered = typeof callbacks.onRendered === 'function' ? callbacks.onRendered : () => {};
   flushSync(() => {
     root.render(
       <PhotosViewBoundary onError={onError}>
-        <LegacyMarkup markup={markup} onRendered={onRendered} />
+        <PhotoDialog model={model} onRendered={onRendered} />
       </PhotosViewBoundary>
     );
   });

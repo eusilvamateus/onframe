@@ -897,6 +897,14 @@
   gap: 14px;
 }
 
+.onblide-ml-processing-modal-host {
+  --ob-z-overlay: var(--ob-z-extension-modal);
+}
+
+.onblide-ml-processing-progress {
+  margin-top: 16px;
+}
+
 .onblide-ml-processing p {
   margin: 4px 0 0;
   color: var(--ob-ink-soft);

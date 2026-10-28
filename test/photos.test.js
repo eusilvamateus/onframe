@@ -283,6 +283,10 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /function DockContent\(/);
   assert.match(view, /function PictureTile\(/);
   assert.match(view, /function UploadTile\(/);
+  assert.match(view, /function ProcessingDialog\(/);
+  assert.match(view, /<Modal open size="sm" title="Otimizando imagens\.\.\." closeButton=\{false\}>/);
+  assert.match(view, /<Spinner size="lg" label="Otimizando imagens" \/>/);
+  assert.match(view, /<ProgressBar value=\{model\.percent\} size="sm" \/>/);
   assert.match(view, /<Badge[\s\S]*tone=\{picture\.quality\.badgeTone\}[\s\S]*variant="solid"[\s\S]*dot=\{false\}/);
   assert.match(view, /className="onblide-ml-quality-indicator" aria-hidden="true"/);
   assert.match(view, /Qualidade \$\{picture\.quality\.label\}/);
@@ -297,6 +301,9 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(controller, /badgeTone: getQualityBadgeTone\(quality\)/);
   assert.doesNotMatch(controller, /showPictureQuality|data-action="quality"/);
   assert.match(controller, /PhotosView\.renderDialog/);
+  assert.match(controller, /PhotosView\.renderDialog\(state\.dialogRoot, buildQualityDialogViewModel\(markup\)/);
+  assert.match(controller, /function buildProcessingDialogViewModel\(dialog\)/);
+  assert.match(controller, /mode: 'processing'/);
   assert.match(controller, /function renderLegacyTray\(markup\)/);
   assert.match(controller, /function renderLegacyQualityDialog\(markup\)/);
   assert.match(controller, /function switchToLegacyPhotosView\(error\)/);

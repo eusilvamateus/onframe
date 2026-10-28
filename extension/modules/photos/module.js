@@ -677,9 +677,10 @@
     unmountButtons(state.dialogRoot);
     if (state.viewMode === 'react') {
       try {
-        PhotosView.renderDialog(state.dialogRoot, markup, {
+        PhotosView.renderDialog(state.dialogRoot, buildQualityDialogViewModel(markup), {
           onRendered: () => {
             if (state.viewMode !== 'react' || !state.dialogRoot) return;
+            if (state.qualityDialog && state.qualityDialog.mode === 'processing') return;
             bindQualityDialogEvents();
             mountButtons(state.dialogRoot);
             syncProcessingProgress();
@@ -693,6 +694,21 @@
       }
     }
     renderLegacyQualityDialog(markup);
+  }
+
+  function buildQualityDialogViewModel(markup) {
+    const dialog = state.qualityDialog;
+    if (!dialog || dialog.mode !== 'processing') return { mode: 'legacy', markup };
+    return Object.assign({ mode: 'processing' }, buildProcessingDialogViewModel(dialog));
+  }
+
+  function buildProcessingDialogViewModel(dialog) {
+    const total = Number(dialog.total || 0);
+    const processed = Number(dialog.processed || 0);
+    return {
+      percent: total ? Math.round((processed / total) * 100) : 0,
+      progressText: dialog.progressText || 'Aguarde alguns instantes'
+    };
   }
 
   function renderLegacyQualityDialog(markup) {
@@ -859,9 +875,7 @@
   }
 
   function renderProcessingDialog(dialog) {
-    const total = Number(dialog.total || 0);
-    const processed = Number(dialog.processed || 0);
-    const percent = total ? Math.round((processed / total) * 100) : 0;
+    const model = buildProcessingDialogViewModel(dialog);
     return `
       <div class="onblide-ml-modal-backdrop">
         <section class="onblide-ml-modal small" role="dialog" aria-modal="true" aria-label="Otimizando imagens">
@@ -869,10 +883,10 @@
             <div class="onblide-ml-spinner"></div>
             <div>
               <h2>Otimizando imagens...</h2>
-              <p>${escapeHtml(dialog.progressText || 'Aguarde alguns instantes')}</p>
+              <p>${escapeHtml(model.progressText)}</p>
             </div>
           </div>
-          <div class="onblide-ml-progress"><span data-progress-percent="${escapeAttribute(percent)}"></span></div>
+          <div class="onblide-ml-progress"><span data-progress-percent="${escapeAttribute(model.percent)}"></span></div>
         </section>
       </div>
     `;
