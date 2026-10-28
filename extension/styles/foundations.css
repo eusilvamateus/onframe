@@ -109,3 +109,66 @@
   --ob-dur-base: 200ms;
   color-scheme: light;
 }
+
+:root[data-onframe-theme='dark'] :where(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+) {
+  --ob-blue: #4d7fef;
+  --ob-blue-700: #6e96f1;
+  --ob-blue-100: #1a2a52;
+  --ob-blue-050: #14223f;
+  --ob-green: #9bbf60;
+  --ob-green-700: #b3d17f;
+  --ob-green-100: #1f2a13;
+  --ob-orange: #f59554;
+  --ob-orange-700: #ffa86d;
+  --ob-orange-100: #3a1f0c;
+  --ob-cream: #2a2620;
+  --ob-cream-soft: #1f1c17;
+  --ob-ink: #c8c8c8;
+  --ob-ink-strong: #f5f5f5;
+  --ob-ink-soft: #969696;
+  --ob-ink-mute: #686868;
+  --ob-line: #2a2a2a;
+  --ob-line-soft: #1f1f1f;
+  --ob-surface: #121212;
+  --ob-surface-2: #1a1a1a;
+  --ob-fg: var(--ob-ink);
+  --ob-fg-strong: var(--ob-ink-strong);
+  --ob-fg-soft: var(--ob-ink-soft);
+  --ob-fg-mute: var(--ob-ink-mute);
+  --ob-fg-accent: var(--ob-blue);
+  --ob-fg-on-color: #ffffff;
+  --ob-bg: var(--ob-surface);
+  --ob-bg-alt: var(--ob-surface-2);
+  --ob-bg-warm: var(--ob-cream);
+  --ob-border: var(--ob-line);
+  --ob-focus-ring: rgba(77, 127, 239, 0.4);
+  --ob-success: var(--ob-green);
+  --ob-success-bg: var(--ob-green-100);
+  --ob-warning: var(--ob-orange);
+  --ob-warning-bg: var(--ob-orange-100);
+  --ob-danger: #f06a6a;
+  --ob-danger-bg: #3a1818;
+  --ob-red: var(--ob-danger);
+  --ob-red-700: var(--ob-danger);
+  --ob-red-100: var(--ob-danger-bg);
+  --ob-red-050: var(--ob-danger-bg);
+  --ob-green-050: var(--ob-success-bg);
+  --ob-orange-050: var(--ob-warning-bg);
+  --ob-fg-disabled: var(--ob-fg-mute);
+  --ob-bg-disabled: var(--ob-bg-warm);
+  --ob-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ob-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --ob-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --ob-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.55), 0 4px 8px rgba(0, 0, 0, 0.4);
+  --ob-shadow-pop: 0 8px 24px rgba(77, 127, 239, 0.32);
+  --ob-scrim: rgba(0, 0, 0, 0.55);
+  --ob-scrim-light: rgba(0, 0, 0, 0.12);
+  color-scheme: dark;
+}

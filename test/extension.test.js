@@ -31,8 +31,13 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
   const extensionBuild = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
   const securityBuild = fs.readFileSync(path.join(root, 'scripts', 'build-security-ui.js'), 'utf8');
+  const themeSync = fs.readFileSync(path.join(extensionRoot, 'core', 'theme-sync.js'), 'utf8');
+  const foundations = fs.readFileSync(path.join(extensionRoot, 'styles', 'foundations.css'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
 
   assert.match(control, /useTheme/);
+  assert.match(control, /CONTENT_THEME_STORAGE_KEY = 'onframeThemePreference'/);
+  assert.match(control, /chrome\.storage\.local\.set/);
   assert.match(control, /value: 'light'/);
   assert.match(control, /value: 'dark'/);
   assert.match(control, /value: 'system'/);
@@ -52,6 +57,13 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(passkeys, /<ThemeMenuButton \/>/);
   assert.match(extensionBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /@onblide\/ui\/theme-init/);
+  assert.equal(manifest.content_scripts[0].js[0], 'core/theme-sync.js');
+  assert.match(themeSync, /data-onframe-theme/);
+  assert.match(themeSync, /prefers-color-scheme: dark/);
+  assert.match(themeSync, /chrome\.storage\.onChanged/);
+  assert.match(foundations, /:root\[data-onframe-theme='dark'\]/);
+  assert.match(foundations, /\[class\^='onframe-'\]/);
+  assert.doesNotMatch(themeSync, /setAttribute\(['"]data-theme/);
 
   const cycleHelpers = control
     .slice(control.indexOf('export const THEME_OPTIONS'), control.indexOf('export function themeMenuItems'))
@@ -65,6 +77,60 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
     const html = fs.readFileSync(path.join(extensionRoot, relative), 'utf8');
     assert.ok(html.indexOf('theme-init.js') < html.indexOf('app.css'));
   }
+});
+
+test('tema do content script acompanha a preferência compartilhada e o sistema', () => {
+  const source = fs.readFileSync(path.join(extensionRoot, 'core', 'theme-sync.js'), 'utf8');
+  const attributes = new Map();
+  let storageListener = null;
+  let mediaListener = null;
+  const mediaQuery = {
+    matches: false,
+    addEventListener: (_event, listener) => { mediaListener = listener; },
+    removeEventListener: (_event, listener) => {
+      if (mediaListener === listener) mediaListener = null;
+    }
+  };
+  const context = {
+    document: {
+      documentElement: {
+        setAttribute: (name, value) => attributes.set(name, value),
+        removeAttribute: (name) => attributes.delete(name)
+      }
+    },
+    matchMedia: () => mediaQuery,
+    chrome: {
+      storage: {
+        local: {
+          get: (_defaults, callback) => callback({ onframeThemePreference: 'dark' })
+        },
+        onChanged: {
+          addListener: (listener) => { storageListener = listener; },
+          removeListener: (listener) => {
+            if (storageListener === listener) storageListener = null;
+          }
+        }
+      }
+    },
+    module: { exports: {} }
+  };
+
+  vm.runInNewContext(source, context);
+  const themeSync = context.module.exports;
+  assert.equal(attributes.get('data-onframe-theme'), 'dark');
+  assert.equal(themeSync.getState().preference, 'dark');
+  assert.equal(themeSync.getState().resolved, 'dark');
+
+  storageListener({ onframeThemePreference: { newValue: 'system' } }, 'local');
+  assert.equal(attributes.get('data-onframe-theme'), 'light');
+  mediaQuery.matches = true;
+  mediaListener();
+  assert.equal(attributes.get('data-onframe-theme'), 'dark');
+
+  themeSync.stop();
+  assert.equal(attributes.has('data-onframe-theme'), false);
+  assert.equal(storageListener, null);
+  assert.equal(mediaListener, null);
 });
 
 test('integracoes alternam visualizacao e permitem renomear sem perder controles da conta', async () => {
