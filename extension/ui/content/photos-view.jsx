@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Badge, Button, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
+import { Badge, Button, Checkbox, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -60,9 +60,99 @@ function ProcessingDialog({ model, onRendered }) {
   );
 }
 
-function PhotoDialog({ model, onRendered }) {
+function OptimizeReviewItem({ item, onToggle }) {
+  return (
+    <div className="onblide-ml-review-item">
+      <Checkbox
+        checked={item.selected}
+        ariaLabel={`Selecionar imagem ${item.index + 1}`}
+        onChange={(selected) => onToggle(item.localId, selected)}
+      />
+      <div className="onblide-ml-review-info">
+        <strong>Imagem {item.index + 1}</strong>
+        <span>{item.dimensions} {'->'} {item.optimizedDimensions}</span>
+      </div>
+      <div className="onblide-ml-review-preview" aria-hidden="true">
+        <img src={item.url} alt="" />
+        <span><Ph n="arrows-clockwise" size={14} /></span>
+        <img src={item.url} alt="" />
+      </div>
+      <Badge tone={item.badgeTone} variant="subtle" dot={false} size="sm">
+        {item.score}
+      </Badge>
+    </div>
+  );
+}
+
+function ReviewDialog({ model, actions, onRendered }) {
+  return (
+    <div
+      className="onblide-ml-modal-backdrop"
+      data-onframe-photos-view="react"
+      ref={(node) => {
+        if (node) onRendered(node);
+      }}
+    >
+      <section className="onblide-ml-modal" role="dialog" aria-modal="true" aria-label="Otimizar imagens">
+        <div className="onblide-ml-modal-head">
+          <div>
+            <div className="onblide-ml-modal-brand">OnFrame</div>
+            <h2>Otimizar imagens?</h2>
+          </div>
+          <Button
+            kind="quiet"
+            tone="neutral"
+            size="sm"
+            iconOnly
+            aria-label="Fechar"
+            onClick={actions.onClose}
+            icon={<Ph n="x" size={18} />}
+          />
+        </div>
+        <p className="onblide-ml-modal-copy">
+          Redimensiona para 1200px no lado maior e envia ao Mercado Livre.
+        </p>
+        {model.error && <div className="onblide-ml-dialog-error">{model.error}</div>}
+        <div className="onblide-ml-selection-bar">
+          <span><strong>{model.selectedCount}</strong> de {model.items.length} selecionadas</span>
+          <Button
+            className="onblide-ml-selection-action"
+            kind="quiet"
+            tone="primary"
+            fill={false}
+            size="sm"
+            onClick={model.allSelected ? actions.onClear : actions.onSelectAll}
+          >
+            {model.allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
+          </Button>
+        </div>
+        <div className="onblide-ml-review-list">
+          {model.items.map((item) => (
+            <OptimizeReviewItem key={item.localId} item={item} onToggle={actions.onToggle} />
+          ))}
+        </div>
+        <div className="onblide-ml-modal-foot">
+          <Button kind="secondary" onClick={actions.onClose}>Cancelar</Button>
+          <Button
+            kind="primary"
+            disabled={!model.selectedCount}
+            onClick={actions.onConfirm}
+            icon={<Ph n="check-circle" size={16} />}
+          >
+            Confirmar e salvar ({model.selectedCount})
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PhotoDialog({ model, actions, onRendered }) {
   if (model.mode === 'processing') {
     return <ProcessingDialog model={model} onRendered={onRendered} />;
+  }
+  if (model.mode === 'review') {
+    return <ReviewDialog model={model} actions={actions} onRendered={onRendered} />;
   }
   return <LegacyMarkup markup={model.markup} onRendered={onRendered} />;
 }
@@ -353,10 +443,17 @@ function renderDialog(host, model, callbacks = {}) {
   const root = getRoot(host);
   const onError = typeof callbacks.onError === 'function' ? callbacks.onError : () => {};
   const onRendered = typeof callbacks.onRendered === 'function' ? callbacks.onRendered : () => {};
+  const actions = {
+    onClose: typeof callbacks.onClose === 'function' ? callbacks.onClose : () => {},
+    onSelectAll: typeof callbacks.onSelectAll === 'function' ? callbacks.onSelectAll : () => {},
+    onClear: typeof callbacks.onClear === 'function' ? callbacks.onClear : () => {},
+    onToggle: typeof callbacks.onToggle === 'function' ? callbacks.onToggle : () => {},
+    onConfirm: typeof callbacks.onConfirm === 'function' ? callbacks.onConfirm : () => {}
+  };
   flushSync(() => {
     root.render(
       <PhotosViewBoundary onError={onError}>
-        <PhotoDialog model={model} onRendered={onRendered} />
+        <PhotoDialog model={model} actions={actions} onRendered={onRendered} />
       </PhotosViewBoundary>
     );
   });

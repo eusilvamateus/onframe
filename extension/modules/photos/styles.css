@@ -791,7 +791,15 @@
   font-weight: 700;
 }
 
-.onblide-ml-selection-bar button {
+.onblide-ml-selection-bar > span {
+  min-width: 0;
+}
+
+.onblide-ml-selection-action {
+  margin-left: auto;
+}
+
+.onblide-ml-selection-bar button:not(.onblide-ml-selection-action) {
   margin-left: auto;
   border: 0;
   background: transparent;
@@ -815,12 +823,6 @@
   border-radius: var(--ob-r-sm);
   background: var(--ob-surface-2);
   padding: 10px;
-}
-
-.onblide-ml-review-item input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--ob-blue);
 }
 
 .onblide-ml-review-info {

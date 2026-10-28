@@ -680,11 +680,16 @@
         PhotosView.renderDialog(state.dialogRoot, buildQualityDialogViewModel(markup), {
           onRendered: () => {
             if (state.viewMode !== 'react' || !state.dialogRoot) return;
-            if (state.qualityDialog && state.qualityDialog.mode === 'processing') return;
+            if (state.qualityDialog && ['processing', 'review'].includes(state.qualityDialog.mode)) return;
             bindQualityDialogEvents();
             mountButtons(state.dialogRoot);
             syncProcessingProgress();
           },
+          onClose: closeQualityDialog,
+          onSelectAll: () => setAllOptimizeSelection(true),
+          onClear: () => setAllOptimizeSelection(false),
+          onToggle: toggleOptimizeSelection,
+          onConfirm: () => void confirmOptimizeDialog(),
           onError: handlePhotosViewFailure
         });
         return;
@@ -698,8 +703,36 @@
 
   function buildQualityDialogViewModel(markup) {
     const dialog = state.qualityDialog;
-    if (!dialog || dialog.mode !== 'processing') return { mode: 'legacy', markup };
-    return Object.assign({ mode: 'processing' }, buildProcessingDialogViewModel(dialog));
+    if (!dialog) return { mode: 'legacy', markup };
+    if (dialog.mode === 'processing') {
+      return Object.assign({ mode: 'processing' }, buildProcessingDialogViewModel(dialog));
+    }
+    if (dialog.mode === 'review') return buildReviewDialogViewModel(dialog);
+    return { mode: 'legacy', markup };
+  }
+
+  function buildReviewDialogViewModel(dialog) {
+    const items = Array.isArray(dialog.items) ? dialog.items : [];
+    const selectedCount = items.filter((item) => item.selected).length;
+    return {
+      mode: 'review',
+      error: dialog.error || '',
+      selectedCount,
+      allSelected: items.length > 0 && selectedCount === items.length,
+      items: items.map((item, index) => {
+        const resolution = item.resolution || {};
+        return {
+          localId: item.localId,
+          index,
+          url: item.url,
+          selected: Boolean(item.selected),
+          dimensions: formatDimensions(resolution),
+          optimizedDimensions: formatOptimizedDimensions(resolution),
+          score: formatScore(resolution),
+          badgeTone: getResolutionBadgeTone(resolution)
+        };
+      })
+    };
   }
 
   function buildProcessingDialogViewModel(dialog) {
@@ -2153,6 +2186,13 @@
     if (!resolution || !resolution.available) return 'muted';
     if (resolution.belowIdeal) return 'warn';
     return 'ok';
+  }
+
+  function getResolutionBadgeTone(resolution) {
+    const tone = getResolutionTone(resolution);
+    if (tone === 'ok') return 'green';
+    if (tone === 'warn') return 'orange';
+    return 'grey';
   }
 
   function formatDimensions(value) {
