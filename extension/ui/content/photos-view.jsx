@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Badge, Button, Checkbox, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
+import { Alert, Badge, Button, Checkbox, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -56,6 +56,135 @@ function ProcessingDialog({ model, onRendered }) {
           <ProgressBar value={model.percent} size="sm" />
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function EditorStat({ stat }) {
+  return (
+    <span className={`onblide-ml-editor-stat${stat.tone ? ` ${stat.tone}` : ''}`}>
+      <small>{stat.label}</small>
+      <strong>{stat.value}</strong>
+    </span>
+  );
+}
+
+function EditorDiagnostics({ diagnostics }) {
+  if (diagnostics.mode === 'loading') {
+    return (
+      <div className="onblide-ml-editor-empty onblide-ml-editor-empty-loading">
+        <Spinner size="sm" label="Analisando dimensões" />
+        <span>Analisando...</span>
+      </div>
+    );
+  }
+  if (diagnostics.mode !== 'items') {
+    return <div className="onblide-ml-editor-empty">{diagnostics.message}</div>;
+  }
+  return diagnostics.items.map((item) => (
+    <article key={item.localId} className={`onblide-ml-diagnostic-card ${item.tone}`}>
+      <img src={item.url} alt={`Imagem ${item.index + 1}`} />
+      <div className="onblide-ml-diagnostic-main">
+        <strong>Imagem {item.index + 1}</strong>
+        <span>{item.dimensions}</span>
+      </div>
+      <span className="onblide-ml-diagnostic-score">
+        <Badge tone={item.badgeTone} variant="subtle" dot={false} size="sm">
+          {item.score}
+        </Badge>
+      </span>
+      <span className="onblide-ml-diagnostic-state">{item.stateLabel}</span>
+    </article>
+  ));
+}
+
+function EditorDialog({ model, actions, onRendered }) {
+  return (
+    <div
+      className="onblide-ml-modal-backdrop"
+      data-onframe-photos-view="react"
+      ref={(node) => {
+        if (node) onRendered(node);
+      }}
+    >
+      <section className="onblide-ml-modal editor" role="dialog" aria-modal="true" aria-label="Editor completo de fotos">
+        <div className="onblide-ml-modal-head">
+          <div>
+            <div className="onblide-ml-modal-brand">OnFrame</div>
+            <h2>Editor de fotos</h2>
+          </div>
+          <Button
+            kind="quiet"
+            tone="neutral"
+            size="sm"
+            iconOnly
+            aria-label="Fechar"
+            onClick={actions.onClose}
+            icon={<Ph n="x" size={18} />}
+          />
+        </div>
+        {model.alert && (
+          <div className="onblide-ml-editor-alert">
+            <Alert tone={model.alert.tone}>{model.alert.message}</Alert>
+          </div>
+        )}
+        <div className="onblide-ml-editor-top">
+          <div className="onblide-ml-editor-stats">
+            {model.stats.map((stat) => <EditorStat key={stat.label} stat={stat} />)}
+          </div>
+          <div className="onblide-ml-editor-actions">
+            <Button
+              kind="secondary"
+              size="sm"
+              disabled={model.optimizeDisabled}
+              onClick={actions.onOpenOptimize}
+              icon={<Ph n="upload" size={14} />}
+            >
+              Otimizar fotos
+            </Button>
+            <Button kind="primary" size="sm" disabled={model.saveDisabled} onClick={actions.onCommit}>
+              Salvar
+            </Button>
+            <Button
+              kind="quiet"
+              tone="danger"
+              size="sm"
+              disabled={model.discardDisabled}
+              onClick={actions.onDiscard}
+            >
+              Descartar
+            </Button>
+          </div>
+        </div>
+        <div className="onblide-ml-editor-strip-shell">
+          <div className="onblide-ml-strip onblide-ml-modal-strip" aria-label="Editor completo de fotos do anúncio">
+            {model.pictures.map((picture) => (
+              <PictureTile key={picture.localId} picture={picture} actions={actions} />
+            ))}
+            <UploadTile actions={actions} />
+          </div>
+        </div>
+        <div className="onblide-ml-editor-diagnostics-head">
+          <strong>Dimensões</strong>
+          <Button
+            kind="quiet"
+            tone="primary"
+            fill={false}
+            size="sm"
+            disabled={model.qualityLoading}
+            onClick={actions.onReloadQuality}
+            icon={<Ph n="arrows-clockwise" size={14} />}
+          >
+            Atualizar análise
+          </Button>
+        </div>
+        <div className="onblide-ml-editor-diagnostics">
+          <EditorDiagnostics diagnostics={model.diagnostics} />
+        </div>
+        <div className="onblide-ml-modal-foot">
+          <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -215,6 +344,9 @@ function ResultDialog({ model, actions, onRendered }) {
 }
 
 function PhotoDialog({ model, actions, onRendered }) {
+  if (model.mode === 'editor') {
+    return <EditorDialog model={model} actions={actions} onRendered={onRendered} />;
+  }
   if (model.mode === 'processing') {
     return <ProcessingDialog model={model} onRendered={onRendered} />;
   }
@@ -515,6 +647,17 @@ function renderDialog(host, model, callbacks = {}) {
   const onRendered = typeof callbacks.onRendered === 'function' ? callbacks.onRendered : () => {};
   const actions = {
     onClose: typeof callbacks.onClose === 'function' ? callbacks.onClose : () => {},
+    onOpenOptimize: typeof callbacks.onOpenOptimize === 'function' ? callbacks.onOpenOptimize : () => {},
+    onCommit: typeof callbacks.onCommit === 'function' ? callbacks.onCommit : () => {},
+    onDiscard: typeof callbacks.onDiscard === 'function' ? callbacks.onDiscard : () => {},
+    onReloadQuality: typeof callbacks.onReloadQuality === 'function' ? callbacks.onReloadQuality : () => {},
+    onRemove: typeof callbacks.onRemove === 'function' ? callbacks.onRemove : () => {},
+    onUpload: typeof callbacks.onUpload === 'function' ? callbacks.onUpload : () => {},
+    onUploadFiles: typeof callbacks.onUploadFiles === 'function' ? callbacks.onUploadFiles : () => {},
+    onPicturePointerDown: typeof callbacks.onPicturePointerDown === 'function'
+      ? callbacks.onPicturePointerDown
+      : () => {},
+    onMovePicture: typeof callbacks.onMovePicture === 'function' ? callbacks.onMovePicture : () => {},
     onSelectAll: typeof callbacks.onSelectAll === 'function' ? callbacks.onSelectAll : () => {},
     onClear: typeof callbacks.onClear === 'function' ? callbacks.onClear : () => {},
     onToggle: typeof callbacks.onToggle === 'function' ? callbacks.onToggle : () => {},

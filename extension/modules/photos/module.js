@@ -680,12 +680,21 @@
         PhotosView.renderDialog(state.dialogRoot, buildQualityDialogViewModel(markup), {
           onRendered: () => {
             if (state.viewMode !== 'react' || !state.dialogRoot) return;
-            if (state.qualityDialog && ['processing', 'review', 'result'].includes(state.qualityDialog.mode)) return;
+            if (state.qualityDialog && ['editor', 'processing', 'review', 'result'].includes(state.qualityDialog.mode)) return;
             bindQualityDialogEvents();
             mountButtons(state.dialogRoot);
             syncProcessingProgress();
           },
           onClose: closeQualityDialog,
+          onOpenOptimize: openOptimizeDialog,
+          onCommit: () => void commit(),
+          onDiscard: discardDraft,
+          onReloadQuality: () => void loadPictureQuality(),
+          onRemove: removePicture,
+          onUpload: () => state.fileInput.click(),
+          onUploadFiles: (files) => void addPendingFiles(files),
+          onPicturePointerDown: beginPictureDrag,
+          onMovePicture: movePictureByKeyboard,
           onSelectAll: () => setAllOptimizeSelection(true),
           onClear: () => setAllOptimizeSelection(false),
           onToggle: toggleOptimizeSelection,
@@ -704,12 +713,63 @@
   function buildQualityDialogViewModel(markup) {
     const dialog = state.qualityDialog;
     if (!dialog) return { mode: 'legacy', markup };
+    if (dialog.mode === 'editor') return buildEditorDialogViewModel(dialog);
     if (dialog.mode === 'processing') {
       return Object.assign({ mode: 'processing' }, buildProcessingDialogViewModel(dialog));
     }
     if (dialog.mode === 'review') return buildReviewDialogViewModel(dialog);
     if (dialog.mode === 'result') return buildResultDialogViewModel(dialog);
     return { mode: 'legacy', markup };
+  }
+
+  function buildEditorDialogViewModel(dialog) {
+    const limitState = getPictureLimitState();
+    const counts = getCurrentQualityCounts();
+    return {
+      mode: 'editor',
+      alert: buildEditorAlertViewModel(dialog, limitState),
+      stats: [
+        { label: 'Escopo', value: state.selectedVariationId ? 'Variação' : 'Anúncio', tone: '' },
+        { label: 'Fotos', value: limitState.counterText || `${state.draftPictures.length} fotos`, tone: limitState.message ? 'error' : '' },
+        { label: 'Dimensão', value: formatQualityCountLabel(counts), tone: counts.belowIdeal ? 'warn' : '' }
+      ],
+      optimizeDisabled: Boolean(state.busy || limitState.message || !counts.optimizable),
+      saveDisabled: Boolean(state.busy || !state.dirty || limitState.message),
+      discardDisabled: Boolean(state.busy || !state.dirty),
+      qualityLoading: state.qualityLoading,
+      pictures: state.draftPictures.map(buildTrayPictureViewModel),
+      diagnostics: buildEditorDiagnosticsViewModel()
+    };
+  }
+
+  function buildEditorAlertViewModel(dialog, limitState) {
+    const error = (dialog && dialog.error) || state.error || (limitState && limitState.message);
+    if (error) return { tone: 'danger', message: error };
+    if (dialog && dialog.notice) return { tone: 'success', message: dialog.notice };
+    return null;
+  }
+
+  function buildEditorDiagnosticsViewModel() {
+    if (state.qualityLoading) return { mode: 'loading', message: 'Analisando...' };
+    if (state.qualityError) return { mode: 'error', message: state.qualityError };
+    if (!state.draftPictures.length) return { mode: 'empty', message: 'Nenhuma foto no rascunho.' };
+    return {
+      mode: 'items',
+      items: state.draftPictures.map((picture, index) => {
+        const quality = getPictureQuality(picture);
+        const resolution = quality && quality.resolution ? quality.resolution : null;
+        return {
+          localId: picture.localId,
+          index,
+          url: picture.previewUrl || picture.secure_url || picture.url || picture.source || '',
+          tone: quality ? getQualityTone(quality) : 'muted',
+          dimensions: formatPictureDimensions(picture, resolution),
+          score: formatScore(resolution),
+          badgeTone: getResolutionBadgeTone(resolution),
+          stateLabel: formatQualityStateLabel(quality)
+        };
+      })
+    };
   }
 
   function buildReviewDialogViewModel(dialog) {

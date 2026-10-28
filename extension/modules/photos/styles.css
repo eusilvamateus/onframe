@@ -583,6 +583,10 @@
   margin-bottom: 14px;
 }
 
+.onblide-ml-editor-alert {
+  margin-bottom: 12px;
+}
+
 .onblide-ml-editor-stats {
   display: flex;
   flex-wrap: wrap;
@@ -763,6 +767,16 @@
   color: var(--ob-ink-soft);
   padding: 14px;
   font: 600 12px/1.4 var(--ob-font);
+}
+
+.onblide-ml-editor-empty-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onblide-ml-diagnostic-score {
+  justify-self: end;
 }
 
 .onblide-ml-dialog-error {
