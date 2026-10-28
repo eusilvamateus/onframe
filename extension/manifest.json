@@ -63,6 +63,7 @@
         "core/datepicker.js",
         "core/button.js",
         "core/photos-view.js",
+        "core/description-view.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",

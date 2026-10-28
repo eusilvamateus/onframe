@@ -10,6 +10,12 @@
     return String(value === undefined || value === null ? '' : value).replace(/\r\n/g, '\n').trim();
   }
 
+  function resolveDescriptionText(description, fallback = '') {
+    const source = description && typeof description === 'object' ? description : {};
+    const remoteText = source.plainText ?? source.plain_text ?? source.text;
+    return normalizeText(remoteText) || normalizeText(fallback);
+  }
+
   function isUserProductContext(context) {
     return Boolean(context && context.mode === 'user_product' && context.item && context.item.user_product_id);
   }
@@ -80,6 +86,7 @@
     canEditDescription,
     friendlyError,
     isUserProductContext,
-    normalizeText
+    normalizeText,
+    resolveDescriptionText
   };
 });

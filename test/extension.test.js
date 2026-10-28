@@ -63,7 +63,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(themeSync, /chrome\.storage\.onChanged/);
   assert.match(foundations, /:root\[data-onframe-theme='dark'\]/);
   assert.match(foundations, /\[class\^='onframe-'\]/);
-  assert.match(foundations, /body:has\(:is\(\.onblide-ml-tray, \.onblide-ml-dialog-root\) \[aria-describedby\]\) > \[role='tooltip'\]/);
+  assert.match(foundations, /body:has\(:is\(\.onblide-ml-tray, \.onblide-ml-dialog-root, \.onframe-description-action-root\) \[aria-describedby\]\) > \[role='tooltip'\]/);
   assert.match(foundations, /--ob-z-tooltip: var\(--ob-z-extension-toast\)/);
   assert.doesNotMatch(themeSync, /setAttribute\(['"]data-theme/);
 

@@ -9,9 +9,16 @@
     const DescriptionModel = services.DescriptionModel;
     const api = services.api;
     const toast = services.toast;
-    const escapeHtml = Shared.escapeHtml;
-    const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
+    const DescriptionView = rootScope.OnFrameDescriptionView;
+    const hasDescriptionView = Boolean(
+      DescriptionView &&
+      typeof DescriptionView.renderAction === 'function' &&
+      typeof DescriptionView.renderCatalogNotice === 'function' &&
+      typeof DescriptionView.renderEditor === 'function' &&
+      typeof DescriptionView.unmount === 'function'
+    );
+    if (!hasDescriptionView) throw new Error('Interface de descrição indisponível.');
     const toUserError = (err) => DescriptionModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame descrição] detalhe tecnico:' }));
 
     const state = {
@@ -200,36 +207,28 @@
     function injectEditAction(elements, disabled) {
       const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);
       if (!elements.title || !scope) return;
-      let action = scope.querySelector('.onframe-description-action');
-      if (!action) {
-        action = document.createElement('button');
-        action.className = 'ob-button ghost compact onframe-section-edit-action onframe-description-action';
-        action.type = 'button';
-        action.innerHTML = `${icon('pencil', 14)}Editar descrição`;
-        action.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          void openEditor();
-        });
-        elements.title.insertAdjacentElement('afterend', action);
+      let actionRoot = scope.querySelector('.onframe-description-action-root');
+      if (!actionRoot) {
+        actionRoot = document.createElement('span');
+        actionRoot.className = 'onframe-description-action-root';
+        elements.title.insertAdjacentElement('afterend', actionRoot);
       }
-      Shared.setDisabledButtonTooltip(action, {
-        disabled,
-        label: 'Editar descrição',
-        tooltipId: 'onframe-description-edit-disabled-tooltip',
-        tooltipText: 'Expanda esta seção para editar a descrição.'
+      DescriptionView.renderAction(actionRoot, { disabled }, {
+        onEdit: () => void openEditor(),
+        onError: handleDescriptionViewFailure
       });
     }
 
     function injectCatalogNotice(elements) {
       const scope = elements.section || elements.description || (elements.title && elements.title.parentElement);
       if (!elements.title || !scope) return;
-      let notice = scope.querySelector('.onframe-description-catalog-notice');
-      if (notice) return;
-      notice = document.createElement('div');
-      notice.className = 'onframe-catalog-notice onframe-description-catalog-notice';
-      notice.innerHTML = `${icon('info', 14)}<span class="onframe-catalog-notice-copy"><strong>Este é um anúncio de catálogo</strong><small>A descrição é definida pelo catálogo. Para editá-la, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.</small></span>`;
-      elements.title.insertAdjacentElement('afterend', notice);
+      let noticeRoot = scope.querySelector('.onframe-description-catalog-notice');
+      if (!noticeRoot) {
+        noticeRoot = document.createElement('div');
+        noticeRoot.className = 'onframe-description-catalog-notice';
+        elements.title.insertAdjacentElement('afterend', noticeRoot);
+      }
+      DescriptionView.renderCatalogNotice(noticeRoot, { onError: handleDescriptionViewFailure });
     }
 
     function bindContentClick(content) {
@@ -244,8 +243,12 @@
       if (!state.visible || !state.itemId || state.loading || state.saving || !DescriptionModel.canEditDescription(state.context)) return;
       const elements = getDescriptionElements();
       if (!elements.content || !elements.description || isDescriptionCollapsed(elements)) return;
+      const visibleText = DescriptionModel.normalizeText(elements.content.innerText) ||
+        DescriptionModel.normalizeText(elements.content.textContent);
       state.editing = true;
       state.loading = true;
+      state.text = visibleText;
+      state.originalText = visibleText;
       state.error = '';
       state.bulkEnabled = false;
       const requestId = ++state.requestId;
@@ -255,7 +258,7 @@
         const description = await api(itemApiPath('/description'));
         if (requestId !== state.requestId) return;
         state.exists = Boolean(description.exists);
-        state.text = DescriptionModel.normalizeText(description.plainText);
+        state.text = DescriptionModel.resolveDescriptionText(description, visibleText);
         state.originalText = state.text;
         state.loading = false;
         mountDescription();
@@ -278,8 +281,19 @@
         content.insertAdjacentElement('afterend', state.editorRoot);
       }
 
-      state.editorRoot.innerHTML = renderEditorMarkup();
-      bindEditorEvents();
+      DescriptionView.renderEditor(state.editorRoot, buildEditorViewModel(), {
+        onTextChange: (value) => {
+          state.text = value;
+        },
+        onBulkChange: (checked) => {
+          if (state.saving) return;
+          state.bulkEnabled = checked;
+          mountDescription();
+        },
+        onSave: () => void saveDescription(),
+        onCancel: cancelEditor,
+        onError: handleDescriptionViewFailure
+      });
     }
 
     function ensureEditingLayout(elements) {
@@ -312,77 +326,34 @@
       state.editorTextareaMinHeight = Math.max(260, state.editorShellMinHeight - 150);
     }
 
-    function renderEditorMarkup() {
+    function buildEditorViewModel() {
       const disabled = state.loading || state.saving;
       const canBulk = DescriptionModel.canBulkEditDescription(state.context);
       if (!canBulk) state.bulkEnabled = false;
-      const editorStyle = state.editorShellMinHeight ? ` style="min-height:${escapeAttribute(state.editorShellMinHeight)}px"` : '';
-      const textareaStyle = state.editorTextareaMinHeight ? ` style="min-height:${escapeAttribute(state.editorTextareaMinHeight)}px"` : '';
-      return `
-        <section class="onframe-description-editor" aria-label="Editar descrição"${editorStyle}>
-          <div class="onframe-description-editor-head">
-            <strong>Editar descrição</strong>
-            ${state.loading ? `<span class="onframe-description-state">${spinner()}Carregando descrição completa...</span>` : ''}
-            ${state.saving ? `<span class="onframe-description-state">${spinner()}Salvando...</span>` : ''}
-          </div>
-          <textarea class="onframe-description-textarea" data-action="description-input"${textareaStyle} ${disabled ? 'disabled' : ''}>${escapeHtml(state.text)}</textarea>
-          ${canBulk ? renderBulkSwitch() : ''}
-          ${state.error ? `<div class="onframe-description-alert error">${escapeHtml(state.error)}</div>` : ''}
-          ${renderBulkFailures()}
-          <div class="onframe-description-actions">
-            <button class="ob-button primary" data-action="save-description" type="button" ${disabled ? 'disabled' : ''}>${icon('checkCircle', 14)}Salvar</button>
-            <button class="ob-button" data-action="cancel-description" type="button" ${state.saving ? 'disabled' : ''}>Cancelar</button>
-          </div>
-        </section>
-      `;
-    }
-
-    function renderBulkSwitch() {
-      return `
-        <button class="ob-checkbox onframe-description-bulk-switch ${state.bulkEnabled ? 'is-checked' : ''}" data-action="toggle-description-bulk" type="button" role="checkbox" aria-checked="${state.bulkEnabled ? 'true' : 'false'}" ${state.saving ? 'disabled' : ''}>
-          <span class="ob-checkbox-box" aria-hidden="true"></span>
-          <span>
-            <strong>Aplicar a todas as variações</strong>
-            <small>Salva direto nas variações ativas deste user_product.</small>
-          </span>
-        </button>
-      `;
-    }
-
-    function renderBulkFailures() {
       const result = state.bulkResult;
       const failures = result && Array.isArray(result.targets)
         ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
         : [];
-      if (!failures.length) return '';
-      return `
-        <details class="onframe-description-failures">
-          <summary>${failures.length} variação${failures.length === 1 ? '' : 'ões'} não alterada${failures.length === 1 ? '' : 's'}</summary>
-          <ul>${failures.map((failure) => `<li>${escapeHtml(failure.itemId)}: ${escapeHtml(failure.message || 'Falha ao salvar.')}</li>`).join('')}</ul>
-        </details>
-      `;
-    }
-
-    function bindEditorEvents() {
-      if (!state.editorRoot) return;
-      const textarea = state.editorRoot.querySelector('[data-action="description-input"]');
-      if (textarea) {
-        textarea.addEventListener('input', () => {
-          state.text = textarea.value;
-        });
-      }
-      const save = state.editorRoot.querySelector('[data-action="save-description"]');
-      if (save) save.addEventListener('click', () => void saveDescription());
-      const cancel = state.editorRoot.querySelector('[data-action="cancel-description"]');
-      if (cancel) cancel.addEventListener('click', () => cancelEditor());
-      const bulk = state.editorRoot.querySelector('[data-action="toggle-description-bulk"]');
-      if (bulk) {
-        bulk.addEventListener('click', () => {
-          if (state.saving) return;
-          state.bulkEnabled = !state.bulkEnabled;
-          mountDescription();
-        });
-      }
+      return {
+        inputKey: `${state.requestId}:${state.loading ? 'loading' : 'ready'}`,
+        text: state.text,
+        rows: Math.max(3, Math.ceil((Math.max(60, state.editorTextareaMinHeight || 260) - 20) / 20)),
+        minHeight: state.editorShellMinHeight || undefined,
+        disabled,
+        saving: state.saving,
+        status: state.loading
+          ? 'Carregando descrição completa...'
+          : state.saving
+            ? 'Salvando...'
+            : '',
+        canBulk,
+        bulkEnabled: state.bulkEnabled,
+        error: state.error,
+        failures: failures.map((failure) => ({
+          itemId: String(failure.itemId || 'Variação'),
+          message: String(failure.message || 'Falha ao salvar.')
+        }))
+      };
     }
 
     async function saveDescription() {
@@ -436,7 +407,11 @@
     }
 
     function closeEditor(options = {}) {
-      if (state.editorRoot) state.editorRoot.remove();
+      state.requestId += 1;
+      if (state.editorRoot) {
+        DescriptionView.unmount(state.editorRoot);
+        state.editorRoot.remove();
+      }
       state.editorRoot = null;
 
       if (state.contentElement) {
@@ -484,12 +459,10 @@
     }
 
     function removeInjectedActions() {
-      document.querySelectorAll('.onframe-description-action').forEach((node) => {
-        const wrapper = node.closest('.onframe-section-edit-tooltip');
-        if (wrapper) Shared.removeDisabledButtonTooltip(wrapper);
-        (wrapper || node).remove();
+      document.querySelectorAll('.onframe-description-action-root, .onframe-description-catalog-notice').forEach((node) => {
+        DescriptionView.unmount(node);
+        node.remove();
       });
-      document.querySelectorAll('.onframe-description-catalog-notice').forEach((node) => node.remove());
     }
 
     function isCatalogListing() {
@@ -546,12 +519,10 @@
       return Detection.createPageSignature(document, location.href);
     }
 
-    function icon(name, size) {
-      return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
-    }
-
-    function spinner() {
-      return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
+    function handleDescriptionViewFailure(error) {
+      if (rootScope.console && typeof rootScope.console.error === 'function') {
+        rootScope.console.error('[OnFrame] A interface de descrição falhou.', error);
+      }
     }
 
     return {
