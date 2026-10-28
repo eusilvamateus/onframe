@@ -147,12 +147,82 @@ function ReviewDialog({ model, actions, onRendered }) {
   );
 }
 
+function OptimizeResultItem({ item }) {
+  return (
+    <div className="onblide-ml-result-item">
+      <strong>Imagem {item.index + 1}</strong>
+      <div className="onblide-ml-result-grid">
+        <figure>
+          <img src={item.beforeUrl} alt={`Imagem ${item.index + 1} original`} />
+          <figcaption>Original · {item.originalDimensions}</figcaption>
+          {item.beforeScore && (
+            <span className="onblide-ml-result-score">
+              <Badge tone="orange" variant="subtle" dot={false} size="sm">
+                {item.beforeScore}
+              </Badge>
+            </span>
+          )}
+        </figure>
+        <figure className="ok">
+          <img src={item.afterUrl} alt={`Imagem ${item.index + 1} otimizada`} />
+          <figcaption>Otimizada · {item.optimizedDimensions}</figcaption>
+          <span className="onblide-ml-result-score">
+            <Badge tone="green" variant="subtle" dot={false} size="sm">100%</Badge>
+          </span>
+        </figure>
+      </div>
+    </div>
+  );
+}
+
+function ResultDialog({ model, actions, onRendered }) {
+  return (
+    <div
+      className="onblide-ml-modal-backdrop"
+      data-onframe-photos-view="react"
+      ref={(node) => {
+        if (node) onRendered(node);
+      }}
+    >
+      <section className="onblide-ml-modal result" role="dialog" aria-modal="true" aria-label="Imagens otimizadas">
+        <div className="onblide-ml-modal-head">
+          <div>
+            <div className="onblide-ml-modal-brand">OnFrame</div>
+            <h2>Imagens otimizadas</h2>
+          </div>
+          <Button
+            kind="quiet"
+            tone="neutral"
+            size="sm"
+            iconOnly
+            aria-label="Fechar"
+            onClick={actions.onClose}
+            icon={<Ph n="x" size={18} />}
+          />
+        </div>
+        <p className="onblide-ml-modal-copy">
+          Fotos enviadas. O Mercado Livre pode levar alguns minutos para exibir.
+        </p>
+        <div className="onblide-ml-result-list">
+          {model.items.map((item) => <OptimizeResultItem key={item.localId} item={item} />)}
+        </div>
+        <div className="onblide-ml-modal-foot">
+          <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function PhotoDialog({ model, actions, onRendered }) {
   if (model.mode === 'processing') {
     return <ProcessingDialog model={model} onRendered={onRendered} />;
   }
   if (model.mode === 'review') {
     return <ReviewDialog model={model} actions={actions} onRendered={onRendered} />;
+  }
+  if (model.mode === 'result') {
+    return <ResultDialog model={model} actions={actions} onRendered={onRendered} />;
   }
   return <LegacyMarkup markup={model.markup} onRendered={onRendered} />;
 }

@@ -680,7 +680,7 @@
         PhotosView.renderDialog(state.dialogRoot, buildQualityDialogViewModel(markup), {
           onRendered: () => {
             if (state.viewMode !== 'react' || !state.dialogRoot) return;
-            if (state.qualityDialog && ['processing', 'review'].includes(state.qualityDialog.mode)) return;
+            if (state.qualityDialog && ['processing', 'review', 'result'].includes(state.qualityDialog.mode)) return;
             bindQualityDialogEvents();
             mountButtons(state.dialogRoot);
             syncProcessingProgress();
@@ -708,6 +708,7 @@
       return Object.assign({ mode: 'processing' }, buildProcessingDialogViewModel(dialog));
     }
     if (dialog.mode === 'review') return buildReviewDialogViewModel(dialog);
+    if (dialog.mode === 'result') return buildResultDialogViewModel(dialog);
     return { mode: 'legacy', markup };
   }
 
@@ -741,6 +742,22 @@
     return {
       percent: total ? Math.round((processed / total) * 100) : 0,
       progressText: dialog.progressText || 'Aguarde alguns instantes'
+    };
+  }
+
+  function buildResultDialogViewModel(dialog) {
+    const results = Array.isArray(dialog.results) ? dialog.results : [];
+    return {
+      mode: 'result',
+      items: results.map((result, index) => ({
+        localId: result.localId || `result-${index}`,
+        index,
+        beforeUrl: result.beforeUrl || '',
+        afterUrl: result.afterUrl || '',
+        originalDimensions: formatDimensions(result.originalDimensions),
+        optimizedDimensions: formatDimensions(result.optimizedDimensions),
+        beforeScore: result.beforeScore ? `${result.beforeScore}%` : ''
+      }))
     };
   }
 

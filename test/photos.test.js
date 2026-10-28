@@ -292,6 +292,11 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /<Checkbox[\s\S]*checked=\{item\.selected\}[\s\S]*onChange=\{\(selected\) => onToggle\(item\.localId, selected\)\}/);
   assert.match(view, /<Badge tone=\{item\.badgeTone\} variant="subtle" dot=\{false\} size="sm">/);
   assert.match(view, /Confirmar e salvar \(\{model\.selectedCount\}\)/);
+  assert.match(view, /function ResultDialog\(/);
+  assert.match(view, /function OptimizeResultItem\(/);
+  assert.match(view, /<Badge tone="orange" variant="subtle" dot=\{false\} size="sm">/);
+  assert.match(view, /<Badge tone="green" variant="subtle" dot=\{false\} size="sm">100%<\/Badge>/);
+  assert.match(view, /alt=\{`Imagem \$\{item\.index \+ 1\} otimizada`\}/);
   assert.match(view, /<Badge[\s\S]*tone=\{picture\.quality\.badgeTone\}[\s\S]*variant="solid"[\s\S]*dot=\{false\}/);
   assert.match(view, /className="onblide-ml-quality-indicator" aria-hidden="true"/);
   assert.match(view, /Qualidade \$\{picture\.quality\.label\}/);
@@ -311,8 +316,10 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(controller, /mode: 'processing'/);
   assert.match(controller, /function buildReviewDialogViewModel\(dialog\)/);
   assert.match(controller, /if \(dialog\.mode === 'review'\) return buildReviewDialogViewModel\(dialog\)/);
+  assert.match(controller, /function buildResultDialogViewModel\(dialog\)/);
+  assert.match(controller, /if \(dialog\.mode === 'result'\) return buildResultDialogViewModel\(dialog\)/);
   assert.match(controller, /onToggle: toggleOptimizeSelection/);
-  assert.match(controller, /\['processing', 'review'\]\.includes\(state\.qualityDialog\.mode\)/);
+  assert.match(controller, /\['processing', 'review', 'result'\]\.includes\(state\.qualityDialog\.mode\)/);
   assert.match(controller, /function renderLegacyTray\(markup\)/);
   assert.match(controller, /function renderLegacyQualityDialog\(markup\)/);
   assert.match(controller, /function switchToLegacyPhotosView\(error\)/);

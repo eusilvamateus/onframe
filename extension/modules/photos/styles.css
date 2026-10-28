@@ -974,7 +974,7 @@
   height: 90px;
 }
 
-.onblide-ml-result-item figure .onblide-ml-score {
+.onblide-ml-result-score {
   position: absolute;
   right: 8px;
   top: 8px;
