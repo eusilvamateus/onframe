@@ -463,6 +463,13 @@
   z-index: 3;
 }
 
+.onblide-ml-quality-chip {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  z-index: 4;
+}
+
 .onblide-ml-quality-badge {
   position: absolute;
   right: 5px;

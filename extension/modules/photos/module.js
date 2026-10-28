@@ -418,6 +418,7 @@
       url: picture.previewUrl || picture.secure_url || picture.url || picture.source || '',
       quality: quality ? {
         tone: getQualityTone(quality),
+        actionTone: getQualityActionTone(quality),
         label: resolution && resolution.available && resolution.score ? `${resolution.score}%` : '!',
         title: formatPictureQualityMessage(quality)
       } : null
@@ -2144,6 +2145,14 @@
     if (resolution && resolution.belowIdeal) return 'warn';
     if (quality && quality.status === 'unknown') return 'muted';
     return 'ok';
+  }
+
+  function getQualityActionTone(quality) {
+    const tone = getQualityTone(quality);
+    if (tone === 'ok') return 'success';
+    if (tone === 'warn') return 'warning';
+    if (tone === 'error') return 'danger';
+    return 'neutral';
   }
 
   function getResolutionTone(resolution) {

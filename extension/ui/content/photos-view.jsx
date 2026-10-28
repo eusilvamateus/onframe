@@ -1,7 +1,7 @@
 import { Component } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Button, Ph, Tooltip } from '@onblide/ui';
+import { Button, Chip, Ph, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -112,15 +112,15 @@ function PictureTile({ picture, actions }) {
       <img src={picture.url} alt="" draggable={false} />
       <span className="onblide-ml-order">{picture.index + 1}</span>
       {picture.quality && (
-        <button
-          className={`onblide-ml-quality-badge ${picture.quality.tone}`}
+        <Chip
+          className="onblide-ml-quality-chip"
           data-action="quality"
-          type="button"
+          label={picture.quality.label}
+          tone={picture.quality.actionTone}
+          size="sm"
           title={picture.quality.title}
           onClick={() => actions.onQuality(picture.localId)}
-        >
-          {picture.quality.label}
-        </button>
+        />
       )}
       <span className="onblide-ml-remove-action">
         <Tooltip label="Remover foto" placement="left">

@@ -283,13 +283,18 @@ test('nova view de fotos e a rota padrao com fallback legado automatico', () => 
   assert.match(view, /function DockContent\(/);
   assert.match(view, /function PictureTile\(/);
   assert.match(view, /function UploadTile\(/);
+  assert.match(view, /<Chip[\s\S]*className="onblide-ml-quality-chip"/);
+  assert.match(view, /tone=\{picture\.quality\.actionTone\}/);
+  assert.match(view, /onClick=\{\(\) => actions\.onQuality\(picture\.localId\)\}/);
   assert.doesNotMatch(view, /model\.contentMarkup/);
+  assert.doesNotMatch(view, /<button[\s\S]*onblide-ml-quality-badge/);
   assert.match(controller, /viewMode: hasPhotosView \? 'react' : 'legacy'/);
   assert.match(controller, /PhotosView\.renderTray/);
   assert.match(controller, /PhotosView\.renderTray\(state\.tray, buildTrayViewModel\(\)/);
   assert.match(controller, /onToggle: toggleDock/);
   assert.match(controller, /onUploadFiles: \(files\) => void addPendingFiles\(files\)/);
   assert.match(controller, /pictures: state\.draftPictures\.map\(buildTrayPictureViewModel\)/);
+  assert.match(controller, /actionTone: getQualityActionTone\(quality\)/);
   assert.match(controller, /PhotosView\.renderDialog/);
   assert.match(controller, /function renderLegacyTray\(markup\)/);
   assert.match(controller, /function renderLegacyQualityDialog\(markup\)/);
