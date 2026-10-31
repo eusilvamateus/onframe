@@ -17,7 +17,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
 
   assert.match(view, /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Divider, Input, Ph, Select, Spinner, Tooltip \} from '@onblide\/ui'/);
   assert.match(view, /<Button[\s\S]*Editar características/);
-  assert.match(view, /<Tooltip label="Expanda esta seção para editar as características\."/);
+  assert.match(view, /<Tooltip label="Expanda a seção\."/);
   assert.match(view, /<Alert tone="info" title="Este é um anúncio de catálogo">/);
   assert.match(view, /<Card padding="var\(--ob-s-3\)"/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);

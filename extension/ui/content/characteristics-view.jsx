@@ -47,7 +47,7 @@ function EditAction({ model, actions }) {
 
   if (!model.disabled) return button;
   return (
-    <Tooltip label="Expanda esta seção para editar as características." placement="top">
+    <Tooltip label="Expanda a seção." placement="top">
       <span
         className="onframe-section-edit-tooltip"
         tabIndex={0}
