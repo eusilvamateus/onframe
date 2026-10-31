@@ -36,6 +36,8 @@
   --ob-bg-warm: var(--ob-cream);
   --ob-border: var(--ob-line);
   --ob-focus-ring: rgba(10, 78, 228, 0.32);
+  --ob-selection-bg: var(--ob-blue-100);
+  --ob-selection-fg: var(--ob-ink-strong);
   --ob-success: var(--ob-green);
   --ob-success-bg: var(--ob-green-100);
   --ob-warning: var(--ob-orange);
@@ -154,6 +156,8 @@ body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-act
   --ob-bg-warm: var(--ob-cream);
   --ob-border: var(--ob-line);
   --ob-focus-ring: rgba(77, 127, 239, 0.4);
+  --ob-selection-bg: #3a6ee0;
+  --ob-selection-fg: #ffffff;
   --ob-success: var(--ob-green);
   --ob-success-bg: var(--ob-green-100);
   --ob-warning: var(--ob-orange);
@@ -176,4 +180,26 @@ body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-act
   --ob-scrim: rgba(0, 0, 0, 0.55);
   --ob-scrim-light: rgba(0, 0, 0, 0.12);
   color-scheme: dark;
+}
+
+:is(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+)::selection,
+:is(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+) *::selection,
+body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip']::selection,
+body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'] *::selection {
+  color: var(--ob-selection-fg);
+  background: var(--ob-selection-bg);
 }

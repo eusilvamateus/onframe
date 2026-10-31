@@ -65,6 +65,11 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(foundations, /\[class\^='onframe-'\]/);
   assert.match(foundations, /body:has\(:is\(\.onblide-ml-tray, \.onblide-ml-dialog-root, \.onframe-description-action-root, \.onframe-characteristics-action-root\) \[aria-describedby\]\) > \[role='tooltip'\]/);
   assert.match(foundations, /--ob-z-tooltip: var\(--ob-z-extension-toast\)/);
+  assert.match(foundations, /--ob-selection-bg: var\(--ob-blue-100\)/);
+  assert.match(foundations, /--ob-selection-bg: #3a6ee0/);
+  assert.match(foundations, /--ob-selection-fg: #ffffff/);
+  assert.match(foundations, /\*::selection[\s\S]*background: var\(--ob-selection-bg\)/);
+  assert.match(foundations, /color: var\(--ob-selection-fg\)/);
   assert.doesNotMatch(themeSync, /setAttribute\(['"]data-theme/);
 
   const cycleHelpers = control
