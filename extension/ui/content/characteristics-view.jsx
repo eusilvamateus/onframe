@@ -245,6 +245,89 @@ function PackageDimensions({ model, actions }) {
   );
 }
 
+function InlineField({ model, actions }) {
+  const [value, setValue] = useState(model.value || '');
+  const [number, setNumber] = useState(model.number || '');
+  const [unit, setUnit] = useState(model.unit || '');
+
+  useEffect(() => setValue(model.value || ''), [model.value]);
+  useEffect(() => setNumber(model.number || ''), [model.number]);
+  useEffect(() => setUnit(model.unit || ''), [model.unit]);
+
+  if (model.type === 'select') {
+    const labels = model.options.map((option) => option.label);
+    return (
+      <div className="onframe-characteristics-inline-control onframe-characteristics-react-field">
+        <Select
+          ariaLabel={model.label}
+          options={labels}
+          value={value || null}
+          placeholder="Selecione"
+          disabled={model.disabled}
+          width="100%"
+          onChange={(nextLabel) => {
+            const option = model.options.find((candidate) => candidate.label === nextLabel);
+            setValue(nextLabel);
+            actions.onFieldChange(model.id, 'valueId', option ? option.value : '');
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (model.type === 'number_unit') {
+    return (
+      <div className="onframe-characteristics-inline-control onframe-characteristics-react-field">
+        <Input
+          aria-label={model.label}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          value={number}
+          disabled={model.disabled}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            setNumber(nextValue);
+            actions.onFieldChange(model.id, 'number', nextValue);
+          }}
+          endAddon={(
+            <Select
+              embedded
+              ariaLabel={`Unidade de ${model.label}`}
+              options={model.units}
+              value={unit || null}
+              disabled={model.disabled}
+              onChange={(nextValue) => {
+                setUnit(nextValue);
+                actions.onFieldChange(model.id, 'unit', nextValue);
+              }}
+            />
+          )}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="onframe-characteristics-inline-control onframe-characteristics-react-field">
+      <Input
+        aria-label={model.label}
+        type="text"
+        inputMode={model.inputMode}
+        autoComplete="off"
+        value={value}
+        placeholder={model.placeholder}
+        disabled={model.disabled}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setValue(nextValue);
+          actions.onFieldChange(model.id, 'valueName', nextValue);
+        }}
+      />
+    </div>
+  );
+}
+
 function getRoot(host) {
   if (!host) throw new Error('Host da interface de características indisponível.');
   let root = roots.get(host);
@@ -288,6 +371,12 @@ function renderPackageDimensions(host, model, actions = {}) {
   }} />, actions.onError || (() => {}));
 }
 
+function renderInlineField(host, model, actions = {}) {
+  render(host, <InlineField model={model} actions={{
+    onFieldChange: actions.onFieldChange || (() => {})
+  }} />, actions.onError || (() => {}));
+}
+
 function unmount(host) {
   const root = host && roots.get(host);
   if (!root) return;
@@ -295,4 +384,4 @@ function unmount(host) {
   roots.delete(host);
 }
 
-globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, unmount });
+globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, unmount });

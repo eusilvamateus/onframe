@@ -19,6 +19,7 @@
       typeof CharacteristicsView.renderCatalogNotice === 'function' &&
       typeof CharacteristicsView.renderFooter === 'function' &&
       typeof CharacteristicsView.renderPackageDimensions === 'function' &&
+      typeof CharacteristicsView.renderInlineField === 'function' &&
       typeof CharacteristicsView.unmount === 'function'
     );
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
@@ -422,7 +423,12 @@
           ensureInlineCellRecord(field, target);
           target.row.classList.add('onframe-characteristics-row-editable');
           target.cell.classList.add('onframe-characteristics-inline-cell');
-          target.cell.innerHTML = renderFieldControl(field, disabled);
+          const record = state.inlineCellRecords.get(field.id);
+          if (record) record.react = true;
+          CharacteristicsView.renderInlineField(target.cell, buildInlineFieldViewModel(field, disabled), {
+            onFieldChange: updateDraftField,
+            onError: handleCharacteristicsViewFailure
+          });
         }
       }
 
@@ -715,6 +721,45 @@
       return null;
     }
 
+    function buildInlineFieldViewModel(field, disabled) {
+      const draft = state.draft[field.id] || {};
+      if (field.valueType === 'list' || field.valueType === 'boolean') {
+        const options = (Array.isArray(field.options) ? field.options : []).map((option) => ({
+          label: String(option.name || option.id || ''),
+          value: String(option.id || '')
+        }));
+        const selected = options.find((option) => option.value === String(draft.valueId || ''));
+        return {
+          id: field.id,
+          label: field.label,
+          type: 'select',
+          disabled,
+          value: selected ? selected.label : '',
+          options
+        };
+      }
+      if (field.valueType === 'number_unit') {
+        return {
+          id: field.id,
+          label: field.label,
+          type: 'number_unit',
+          disabled,
+          number: String(draft.number || ''),
+          unit: String(draft.unit || ''),
+          units: collectUnits(field, draft.unit)
+        };
+      }
+      return {
+        id: field.id,
+        label: field.label,
+        type: 'text',
+        disabled,
+        inputMode: field.valueType === 'number' ? 'decimal' : 'text',
+        placeholder: field.pending ? 'Digite o valor' : '',
+        value: String(draft.valueName || '')
+      };
+    }
+
     function isHiddenField(field) {
       return Boolean(field && Array.isArray(field.tags) && field.tags.includes('hidden') && !field.publicField);
     }
@@ -884,7 +929,9 @@
     }
 
     function restoreInlineCell(record, field) {
-      if (!record || !record.cell || !record.cell.isConnected) return;
+      if (!record || !record.cell) return;
+      if (record.react) CharacteristicsView.unmount(record.cell);
+      if (!record.cell.isConnected) return;
       record.cell.classList.remove('onframe-characteristics-inline-cell');
       record.cell.classList.remove('onframe-characteristics-composite-cell');
       if (record.row) record.row.classList.remove('onframe-characteristics-row-editable', 'onframe-characteristics-row-composite');
