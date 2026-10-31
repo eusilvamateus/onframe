@@ -24,6 +24,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
   assert.match(view, /function PackageDimensions/);
   assert.match(view, /function InlineField/);
+  assert.match(view, /function SyntheticFieldLabel/);
   assert.match(view, /<Input[\s\S]*inputMode="decimal"/);
   assert.match(view, /endAddon=\{\([\s\S]*<Select[\s\S]*embedded[\s\S]*ariaLabel="Unidade"/);
   assert.match(view, /onframe-characteristics-react-field/);
@@ -34,7 +35,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.doesNotMatch(view, /<Select[\s\S]*label="Unidade"/);
   assert.doesNotMatch(view, /model\.badge/);
   assert.doesNotMatch(controller, /LOGÍSTICA|packageDimensions\.badge/);
-  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, unmount \}\)/);
+  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, unmount \}\)/);
 
   assert.match(controller, /const CharacteristicsView = rootScope\.OnFrameCharacteristicsView/);
   assert.match(controller, /CharacteristicsView\.renderAction/);
@@ -42,15 +43,26 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(controller, /CharacteristicsView\.renderFooter/);
   assert.match(controller, /CharacteristicsView\.renderPackageDimensions/);
   assert.match(controller, /CharacteristicsView\.renderInlineField/);
+  assert.match(controller, /CharacteristicsView\.renderSyntheticFieldLabel/);
   assert.match(controller, /CharacteristicsView\.unmount/);
   assert.doesNotMatch(controller, /setDisabledButtonTooltip\(action|removeDisabledButtonTooltip\(wrapper/);
   assert.doesNotMatch(controller, /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/);
   assert.doesNotMatch(controller, /renderPackageDimensionsCard|renderPackageDimensionField|renderPackageNumberUnitControl|renderPackageReadOnlyValue/);
   assert.match(controller, /if \(!record \|\| !record\.cell\) return;\s+if \(record\.react\) CharacteristicsView\.unmount\(record\.cell\);\s+if \(!record\.cell\.isConnected\) return;/);
+  assert.doesNotMatch(controller, /function renderSyntheticFieldRow|function renderSyntheticFieldValue/);
+  assert.match(controller, /row\.querySelectorAll\('\[data-onframe-characteristics-root="true"\]'\)[\s\S]*?CharacteristicsView\.unmount\(host\)/);
   assert.match(styles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(styles, /grid-template-columns: minmax\(0, 1fr\) 112px/);
   assert.match(styles, /\.onframe-characteristics-package-control input:focus-visible/);
+  assert.match(styles, /\.onframe-characteristics-react-field input:focus-visible[\s\S]*?border: 0 !important;[\s\S]*?outline: 0 !important;[\s\S]*?box-shadow: none !important;/);
+  assert.doesNotMatch(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*display: flex !important;/);
+  assert.match(styles, /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;[^}]*padding-bottom: 8px !important;/);
+  assert.match(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;/);
+  assert.match(styles, /\.onframe-characteristics-inline-control \{[^}]*margin-block: auto;[^}]*align-self: center;/);
+  assert.match(styles, /\.onframe-characteristics-react-field > div > div \{[^}]*width: 100%;[^}]*min-height: 32px !important;/);
+  assert.match(styles, /\.onframe-characteristics-extra-label-text \{[\s\S]*?overflow-wrap: anywhere;/);
+  assert.match(styles, /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/);
 
   assert.match(build, /characteristics-view\.jsx/);
   assert.ok(scripts.indexOf('core/characteristics-view.js') < scripts.indexOf('modules/characteristics/module.js'));

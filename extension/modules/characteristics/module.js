@@ -20,6 +20,7 @@
       typeof CharacteristicsView.renderFooter === 'function' &&
       typeof CharacteristicsView.renderPackageDimensions === 'function' &&
       typeof CharacteristicsView.renderInlineField === 'function' &&
+      typeof CharacteristicsView.renderSyntheticFieldLabel === 'function' &&
       typeof CharacteristicsView.unmount === 'function'
     );
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
@@ -352,7 +353,6 @@
         label: packageDimensions && packageDimensions.label ? String(packageDimensions.label) : 'Dimensões do pacote',
         fields: fields.map((field) => {
           const draft = state.draft[field.id] || {};
-          const status = getCharacteristicStatus(field);
           return {
             id: field.id,
             label: field.label,
@@ -362,11 +362,7 @@
             unit: String(draft.unit || ''),
             units: collectUnits(field, draft.unit),
             displayValue: String(field.displayValue || field.valueName || '-'),
-            status: status ? {
-              label: status.label,
-              title: status.title,
-              tone: status.tone
-            } : null
+            status: buildCharacteristicStatusViewModel(field)
           };
         })
       };
@@ -576,39 +572,44 @@
       const row = document.createElement('tr');
       row.className = 'andes-table__row ui-vpp-striped-specs__row onframe-characteristics-extra-row';
       row.dataset.characteristicsExtraFieldId = field.id;
-      row.innerHTML = renderSyntheticFieldRow(field, disabled);
+
+      const header = document.createElement('th');
+      header.className = 'andes-table__header andes-table__header--left ui-vpp-striped-specs__row__column ui-vpp-striped-specs__row__column--id';
+      header.scope = 'row';
+      const labelRoot = document.createElement('div');
+      labelRoot.className = 'andes-table__header__container onframe-characteristics-extra-label';
+      labelRoot.dataset.onframeCharacteristicsRoot = 'true';
+      header.appendChild(labelRoot);
+
+      const cell = document.createElement('td');
+      cell.className = 'andes-table__column andes-table__column--left andes-table__column--vertical-align-center ui-vpp-striped-specs__row__column';
+      row.append(header, cell);
       target.body.appendChild(row);
       state.inlineSyntheticRows.push(row);
-      return true;
-    }
 
-    function renderSyntheticFieldRow(field, disabled) {
-      return `
-        <th class="andes-table__header andes-table__header--left ui-vpp-striped-specs__row__column ui-vpp-striped-specs__row__column--id" scope="row">
-          <div class="andes-table__header__container onframe-characteristics-extra-label">
-            <span class="onframe-characteristics-extra-label-text">${escapeHtml(field.label)}</span>
-            ${renderCharacteristicStatusBadge(field)}
-          </div>
-        </th>
-        <td class="andes-table__column andes-table__column--left andes-table__column--vertical-align-center ui-vpp-striped-specs__row__column onframe-characteristics-inline-cell">
-          ${renderSyntheticFieldValue(field, disabled)}
-        </td>
-      `;
-    }
+      CharacteristicsView.renderSyntheticFieldLabel(labelRoot, {
+        label: field.label,
+        status: buildCharacteristicStatusViewModel(field)
+      }, { onError: handleCharacteristicsViewFailure });
 
-    function renderSyntheticFieldValue(field, disabled) {
       if (field.editable) {
-        return `
-          <span class="onframe-characteristics-extra-value">
-            ${renderFieldControl(field, disabled)}
-          </span>
-        `;
+        cell.classList.add('onframe-characteristics-inline-cell');
+        cell.dataset.onframeCharacteristicsRoot = 'true';
+        CharacteristicsView.renderInlineField(cell, buildInlineFieldViewModel(field, disabled), {
+          onFieldChange: updateDraftField,
+          onError: handleCharacteristicsViewFailure
+        });
+        return true;
       }
-      return `
-        <span class="onframe-characteristics-extra-value">
-          <span class="andes-table__column--value">${escapeHtml(field.displayValue || field.valueName || '-')}</span>
-        </span>
-      `;
+
+      const value = document.createElement('span');
+      value.className = 'onframe-characteristics-extra-value';
+      const valueText = document.createElement('span');
+      valueText.className = 'andes-table__column--value';
+      valueText.textContent = field.displayValue || field.valueName || '-';
+      value.appendChild(valueText);
+      cell.appendChild(value);
+      return true;
     }
 
     function renderCompositeFieldControls(fields, disabled) {
@@ -719,6 +720,15 @@
         };
       }
       return null;
+    }
+
+    function buildCharacteristicStatusViewModel(field) {
+      const status = getCharacteristicStatus(field);
+      return status ? {
+        label: status.label,
+        title: status.title,
+        tone: status.tone
+      } : null;
     }
 
     function buildInlineFieldViewModel(field, disabled) {
@@ -923,6 +933,11 @@
 
     function removeSyntheticRows() {
       for (const row of state.inlineSyntheticRows || []) {
+        if (row) {
+          row.querySelectorAll('[data-onframe-characteristics-root="true"]').forEach((host) => {
+            CharacteristicsView.unmount(host);
+          });
+        }
         if (row && row.isConnected) row.remove();
       }
       state.inlineSyntheticRows = [];

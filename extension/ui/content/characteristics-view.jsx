@@ -151,18 +151,32 @@ function EditorFooter({ model, actions }) {
   );
 }
 
+function CharacteristicStatusBadge({ status }) {
+  if (!status) return null;
+  return (
+    <span title={status.title}>
+      <Badge tone={status.tone} variant="subtle" dot={false} size="sm">
+        {status.label}
+      </Badge>
+    </span>
+  );
+}
+
 function PackageFieldLabel({ field }) {
   return (
     <span className="onframe-characteristics-package-field-label">
       <span>{field.label}</span>
-      {field.status && (
-        <span title={field.status.title}>
-          <Badge tone={field.status.tone} variant="subtle" dot={false} size="sm">
-            {field.status.label}
-          </Badge>
-        </span>
-      )}
+      <CharacteristicStatusBadge status={field.status} />
     </span>
+  );
+}
+
+function SyntheticFieldLabel({ model }) {
+  return (
+    <>
+      <span className="onframe-characteristics-extra-label-text">{model.label}</span>
+      <CharacteristicStatusBadge status={model.status} />
+    </>
   );
 }
 
@@ -377,6 +391,10 @@ function renderInlineField(host, model, actions = {}) {
   }} />, actions.onError || (() => {}));
 }
 
+function renderSyntheticFieldLabel(host, model, options = {}) {
+  render(host, <SyntheticFieldLabel model={model} />, options.onError || (() => {}));
+}
+
 function unmount(host) {
   const root = host && roots.get(host);
   if (!root) return;
@@ -384,4 +402,4 @@ function unmount(host) {
   roots.delete(host);
 }
 
-globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, unmount });
+globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, unmount });

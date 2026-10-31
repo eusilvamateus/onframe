@@ -41,16 +41,23 @@
 }
 
 .onframe-characteristics-row-editable > .andes-table__header,
-.onframe-characteristics-row-editable > .andes-table__column,
+.onframe-characteristics-row-editable > .andes-table__column {
+  position: relative !important;
+  height: auto !important;
+  min-height: 48px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  vertical-align: middle !important;
+}
+
 .onframe-characteristics-extra-row > .andes-table__header,
 .onframe-characteristics-extra-row > .andes-table__column {
   position: relative !important;
-  display: flex !important;
-  align-items: center !important;
-  height: 48px !important;
+  height: auto !important;
   min-height: 48px !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  vertical-align: middle !important;
 }
 
 .onframe-characteristics-row-editable:has(.onframe-characteristics-select.is-open),
@@ -71,6 +78,8 @@
 }
 
 .onframe-characteristics-inline-cell {
+  box-sizing: border-box;
+  min-width: 0;
   overflow: visible !important;
   vertical-align: middle !important;
 }
@@ -82,13 +91,31 @@
 }
 
 .onframe-characteristics-inline-control {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--ob-gap-xs);
-  width: min(100%, 220px);
+  box-sizing: border-box;
+  width: 100%;
   min-height: 24px;
-  max-width: 100%;
+  min-width: 0;
+  max-width: 220px;
+  margin-block: auto;
+  align-self: center;
   vertical-align: middle;
+}
+
+.onframe-characteristics-react-field > div {
+  width: 100% !important;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.onframe-characteristics-react-field > div > div {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  min-width: 0;
+  min-height: 32px !important;
 }
 
 .onframe-characteristics-inline-control .ob-field-shell {
@@ -115,6 +142,23 @@
 .onframe-characteristics-inline-control .ob-field-input:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+}
+
+.onframe-characteristics-react-field input,
+.onframe-characteristics-react-field input:hover,
+.onframe-characteristics-react-field input:focus,
+.onframe-characteristics-react-field input:focus-visible {
+  height: 30px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
 }
 
 .onframe-characteristics-inline-control .ob-select-shell {
@@ -326,21 +370,18 @@
 }
 
 .onframe-characteristics-extra-row .andes-table__header__container {
-  color: var(--ob-fg-strong);
   text-align: left !important;
 }
 
 .onframe-characteristics-extra-row > .andes-table__header {
-  align-items: center !important;
-  justify-content: flex-start !important;
   text-align: left !important;
 }
 
 .onframe-characteristics-extra-label {
   display: flex !important;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 3px 5px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   width: 100%;
   max-width: 100%;
   margin: 0 !important;
@@ -349,8 +390,9 @@
 }
 
 .onframe-characteristics-extra-label-text {
-  flex: 0 1 auto;
+  width: 100%;
   min-width: 0;
+  overflow-wrap: anywhere;
   text-align: left !important;
 }
 
@@ -359,12 +401,17 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 4px;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
 }
 
 .onframe-characteristics-extra-value > .andes-table__column--value {
-  color: var(--ob-fg-strong);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   line-height: var(--ob-lh-normal);
+  white-space: normal;
 }
 
 .onframe-characteristics-status-badge {
