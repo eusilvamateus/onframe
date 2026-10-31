@@ -408,7 +408,7 @@
 
 .onframe-characteristics-package-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--ob-gap-sm);
 }
@@ -433,7 +433,7 @@
 
 .onframe-characteristics-package-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--ob-gap-md);
 }
 
@@ -449,10 +449,6 @@
 }
 
 .onframe-characteristics-package-control {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(112px, 0.65fr);
-  align-items: end;
-  gap: var(--ob-gap-sm);
   min-width: 0;
 }
 
@@ -528,14 +524,15 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 900px) {
+  .onframe-characteristics-package-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 460px) {
   .onframe-characteristics-package-head {
     grid-template-columns: auto 1fr;
-  }
-
-  .onframe-characteristics-package-head > :last-child {
-    grid-column: 2;
-    justify-self: start;
   }
 
   .onframe-characteristics-package-grid {

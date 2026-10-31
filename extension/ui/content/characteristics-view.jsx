@@ -198,16 +198,19 @@ function PackageDimensionField({ field, actions }) {
           setNumber(nextValue);
           actions.onFieldChange(field.id, 'number', nextValue);
         }}
-      />
-      <Select
-        label="Unidade"
-        options={field.units}
-        value={unit || null}
-        disabled={field.disabled}
-        onChange={(nextValue) => {
-          setUnit(nextValue);
-          actions.onFieldChange(field.id, 'unit', nextValue);
-        }}
+        endAddon={(
+          <Select
+            embedded
+            ariaLabel="Unidade"
+            options={field.units}
+            value={unit || null}
+            disabled={field.disabled}
+            onChange={(nextValue) => {
+              setUnit(nextValue);
+              actions.onFieldChange(field.id, 'unit', nextValue);
+            }}
+          />
+        )}
       />
     </div>
   );
@@ -225,7 +228,6 @@ function PackageDimensions({ model, actions }) {
               <strong>{model.label}</strong>
               <span>Medidas de envio, tratadas à parte dos atributos do produto.</span>
             </div>
-            <Badge tone="grey" variant="subtle" dot={false} size="sm">{model.badge}</Badge>
           </div>
           <Divider />
           <div className="onframe-characteristics-package-grid">

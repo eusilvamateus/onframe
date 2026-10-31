@@ -24,7 +24,10 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
   assert.match(view, /function PackageDimensions/);
   assert.match(view, /<Input[\s\S]*inputMode="decimal"/);
-  assert.match(view, /<Select[\s\S]*label="Unidade"/);
+  assert.match(view, /endAddon=\{\([\s\S]*<Select[\s\S]*embedded[\s\S]*ariaLabel="Unidade"/);
+  assert.doesNotMatch(view, /<Select[\s\S]*label="Unidade"/);
+  assert.doesNotMatch(view, /model\.badge/);
+  assert.doesNotMatch(controller, /LOGÍSTICA|packageDimensions\.badge/);
   assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, unmount \}\)/);
 
   assert.match(controller, /const CharacteristicsView = rootScope\.OnFrameCharacteristicsView/);
@@ -36,8 +39,9 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.doesNotMatch(controller, /setDisabledButtonTooltip\(action|removeDisabledButtonTooltip\(wrapper/);
   assert.doesNotMatch(controller, /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/);
   assert.doesNotMatch(controller, /renderPackageDimensionsCard|renderPackageDimensionField|renderPackageNumberUnitControl|renderPackageReadOnlyValue/);
-  assert.match(styles, /repeat\(auto-fit, minmax\(260px, 1fr\)\)/);
-  assert.match(styles, /minmax\(112px, 0\.65fr\)/);
+  assert.match(styles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.doesNotMatch(styles, /grid-template-columns: minmax\(0, 1fr\) 112px/);
   assert.match(styles, /\.onframe-characteristics-package-control input:focus-visible/);
 
   assert.match(build, /characteristics-view\.jsx/);

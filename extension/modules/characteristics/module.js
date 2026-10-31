@@ -349,7 +349,6 @@
       const fields = getPackageDimensionFields();
       return {
         label: packageDimensions && packageDimensions.label ? String(packageDimensions.label) : 'Dimensões do pacote',
-        badge: packageDimensions && packageDimensions.badge ? String(packageDimensions.badge) : 'LOGÍSTICA',
         fields: fields.map((field) => {
           const draft = state.draft[field.id] || {};
           const status = getCharacteristicStatus(field);
