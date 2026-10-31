@@ -33,9 +33,13 @@ Antes de alterar o Worker ou os scripts de bootstrap, leia
 ## Limites de Escopo
 
 O agente só tem permissão para alterar arquivos dentro deste repositório. Não
-altere nenhum outro projeto ou diretório, inclusive o design system, sem ordem ou
-autorização explícita do usuário para aquele local. Referenciar, consultar ou usar
-uma dependência externa não concede permissão para modificá-la.
+altere nenhum outro projeto ou diretório sem autorização explícita do usuário para
+aquele local. O projeto `C:\Users\Mateus\onblide-design-system` é uma exceção
+permanente e estritamente somente leitura: nunca altere seus arquivos, execute
+comandos que possam modificá-lo, crie commits ou mude seu histórico, mesmo que uma
+tarefa do OnFrame dependa de uma correção nele. Nesses casos, apenas descreva a
+lacuna para o usuário. Referenciar, consultar ou usar uma dependência externa não
+concede permissão para modificá-la.
 
 ## Comandos de Build, Teste e Desenvolvimento
 
