@@ -352,6 +352,7 @@ test('etapa de fidelidade preserva a composicao e as transicoes atuais de fotos'
   assert.doesNotMatch(styles, /data-onframe-legacy-modal|\.onblide-ml-quality-badge/);
   assert.doesNotMatch(styles, /@keyframes onblide-spin|\.onblide-ml-selection-bar button:not/);
   assert.doesNotMatch(components, /\.onblide-ml-result-item/);
+  assert.doesNotMatch(components, /\.onblide-ml-status/);
   assert.doesNotMatch(view, /onblide-ml-processing-modal-host/);
   assert.match(styles, /\.onblide-ml-diagnostic-card \{/);
   assert.match(styles, /\.onblide-ml-review-item \{/);
@@ -362,6 +363,8 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
   const uploadTile = view.slice(view.indexOf('function UploadTile'), view.indexOf('function EditorDockContent'));
+  const editorDock = view.slice(view.indexOf('function EditorDockContent'), view.indexOf('function DockContent'));
+  const trayBar = view.slice(view.indexOf('function TrayBar'), view.indexOf('function CatalogNotice'));
 
   assert.match(source, /dockExpanded: false/);
   assert.match(source, /function toggleDock\(\)/);
@@ -391,7 +394,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /restoreTrayAfterDialog\(\);\s+renderQualityDialogRoot\(\);/);
   assert.doesNotMatch(source, /revealTrayForEditorReturn/);
   assert.match(source, /getEditorMorphTransform\(modal, dockRect\)/);
-  assert.match(view, /className="onblide-ml-dock-command-stack"/);
+  assert.match(view, /className=\{`onblide-ml-dock-actions\$\{model\.dirty \? ' is-dirty' : ''\}`\}/);
   assert.match(view, /className="onblide-ml-dock-identity"/);
   assert.match(view, /className="onblide-ml-dock-shell"/);
   assert.match(view, /className="onblide-ml-dock-silhouette"/);
@@ -404,16 +407,27 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.doesNotMatch(source, /onblide-ml-expand/);
   assert.match(styles, /\.onblide-ml-dock-tab \{/);
   assert.match(styles, /width: 160px;/);
-  assert.match(styles, /\.onblide-ml-dock-silhouette \{/);
+  assert.match(styles, /\.onblide-ml-dock-silhouette \{[\s\S]*?left: 50%;[\s\S]*?width: 240px;[\s\S]*?transform: translateX\(-50%\);/);
+  assert.match(view, /viewBox="0 0 240 28"/);
+  assert.doesNotMatch(view, /preserveAspectRatio="none"/);
+  assert.match(source, /state\.error === AUTH_REQUIRED_MESSAGE[\s\S]*?title: 'Extensão desconectada'[\s\S]*?tone: 'muted'/);
+  assert.match(trayBar, /className=\{statusClassName\}[\s\S]*?onblide-ml-dock-state-icon[\s\S]*?onblide-ml-dock-state-copy/);
+  assert.match(trayBar, /kind="quiet" tone="primary" fill=\{false\}[\s\S]*?Recarregar/);
+  assert.doesNotMatch(trayBar, /<Alert/);
+  assert.match(styles, /\.onblide-ml-dock-state \{[\s\S]*?grid-template-columns: minmax\(280px, 1fr\) auto;/);
+  assert.doesNotMatch(view, /function Status\(|onblide-ml-status/);
   assert.doesNotMatch(styles, /\.onblide-ml-dock-silhouette-outline \{/);
   assert.match(styles, /\.onblide-ml-dock-catalog-notice \{/);
   assert.match(styles, /\.onblide-ml-dock-catalog-notice \{[\s\S]*?align-items: center;/);
   assert.match(styles, /bottom: calc\(100% - 1px\);/);
   assert.doesNotMatch(styles, /\.onblide-ml-start-service \{/);
-  assert.match(styles, /\.onblide-ml-dock-command-stack \{/);
-  assert.match(styles, /flex: 0 0 150px;/);
-  assert.match(styles, /grid-template-columns: 56px minmax\(0, 1fr\);/);
-  assert.match(view, /style=\{\{ width: '100%', minWidth: 0, paddingInline: 6 \}\}/);
+  assert.match(editorDock, /kind=\{model\.dirty \? 'secondary' : 'primary'\}/);
+  assert.match(editorDock, /className="onblide-ml-dock-action"[\s\S]*?kind="primary"[\s\S]*?Salvar/);
+  assert.match(editorDock, /<Tooltip label="Descartar alterações" placement="top">[\s\S]*?kind="quiet"[\s\S]*?tone="danger"[\s\S]*?fill=\{false\}[\s\S]*?iconOnly[\s\S]*?aria-label="Descartar alterações"/);
+  assert.match(styles, /\.onblide-ml-dock-actions \{[\s\S]*?flex: 0 0 150px;[\s\S]*?flex-direction: column;/);
+  assert.match(styles, /\.onblide-ml-dock-action \{[\s\S]*?width: 100%;[\s\S]*?height: 32px;/);
+  assert.match(styles, /\.onblide-ml-dock-secondary-actions \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 32px;/);
+  assert.doesNotMatch(editorDock, /onblide-ml-tray-actions|onblide-ml-dock-open-editor|paddingInline: 6/);
   assert.match(styles, /\.onblide-ml-upload \{[\s\S]*border: 0\.5px dashed var\(--ob-ink-mute\);[\s\S]*color: var\(--ob-ink\);/);
   assert.match(styles, /\.onblide-ml-upload > \.ph \{[\s\S]*color: var\(--ob-blue\);/);
   assert.match(styles, /\.onblide-ml-upload:hover \{[\s\S]*background: var\(--ob-surface\);/);

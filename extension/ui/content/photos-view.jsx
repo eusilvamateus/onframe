@@ -329,24 +329,33 @@ function PhotoDialog({ model, actions, onRendered }) {
   throw new Error(`Modo do diálogo de fotos desconhecido: ${model.mode || 'ausente'}.`);
 }
 
-function Status({ status }) {
-  if (!status) return null;
-  const className = `onblide-ml-status${status.tone ? ` ${status.tone}` : ''}`;
-  return <div className={className}>{status.text}</div>;
-}
-
 function TrayBar({ model, actions }) {
+  const status = model.status;
+  const statusClassName = `onblide-ml-dock-state-message${status?.tone === 'error' ? ' is-error' : ''}`;
+
   return (
-    <div className="onblide-ml-tray-bar">
-      <Status status={model.status} />
-      {!model.blocked && (
-        <Button kind="primary" size="sm" onClick={actions.onConnect}>
-          Conectar
-        </Button>
+    <div className="onblide-ml-dock-state">
+      {status && (
+        <div className={statusClassName}>
+          <span className="onblide-ml-dock-state-icon">
+            <Ph n={status.icon || 'info'} size={18} />
+          </span>
+          <span className="onblide-ml-dock-state-copy">
+            {status.title && <strong>{status.title}</strong>}
+            <small>{status.text}</small>
+          </span>
+        </div>
       )}
-      <Button kind="secondary" size="sm" onClick={actions.onReload}>
-        Recarregar
-      </Button>
+      <div className="onblide-ml-dock-state-actions">
+        {!model.blocked && (
+          <Button kind="primary" size="sm" onClick={actions.onConnect}>
+            Conectar
+          </Button>
+        )}
+        <Button kind="quiet" tone="primary" fill={false} size="sm" onClick={actions.onReload}>
+          Recarregar
+        </Button>
+      </div>
     </div>
   );
 }
@@ -467,10 +476,10 @@ function EditorDockContent({ model, actions }) {
           ))}
           <UploadTile actions={actions} />
         </div>
-        <div className="onblide-ml-dock-command-stack">
+        <div className={`onblide-ml-dock-actions${model.dirty ? ' is-dirty' : ''}`}>
           <Button
-            className="onblide-ml-dock-open-editor"
-            kind="primary"
+            className="onblide-ml-dock-action"
+            kind={model.dirty ? 'secondary' : 'primary'}
             size="sm"
             disabled={model.busy}
             onClick={actions.onOpenEditor}
@@ -479,27 +488,32 @@ function EditorDockContent({ model, actions }) {
             Abrir editor
           </Button>
           {model.dirty && (
-            <div className="onblide-ml-tray-actions">
+            <div className="onblide-ml-dock-secondary-actions">
               <Button
-                kind="secondary"
+                className="onblide-ml-dock-action"
+                kind="primary"
                 size="sm"
                 disabled={model.saveDisabled}
                 onClick={actions.onCommit}
-                style={{ width: '100%', minWidth: 0, paddingInline: 6 }}
               >
                 Salvar
               </Button>
-              <Button
-                kind="quiet"
-                tone="danger"
-                size="sm"
-                disabled={model.busy}
-                onClick={actions.onDiscard}
-                icon={<Ph n="trash" size={13} />}
-                style={{ width: '100%', minWidth: 0, paddingInline: 6, gap: 4 }}
-              >
-                Descartar
-              </Button>
+              <span className="onblide-ml-dock-discard-action">
+                <Tooltip label="Descartar alterações" placement="top">
+                  <Button
+                    className="onblide-ml-dock-action"
+                    kind="quiet"
+                    tone="danger"
+                    fill={false}
+                    size="sm"
+                    iconOnly
+                    disabled={model.busy}
+                    aria-label="Descartar alterações"
+                    onClick={actions.onDiscard}
+                    icon={<Ph n="trash" size={14} />}
+                  />
+                </Tooltip>
+              </span>
             </div>
           )}
         </div>
@@ -533,14 +547,13 @@ function PhotoDock({ model, onRendered, actions }) {
     >
       <svg
         className="onblide-ml-dock-silhouette"
-        viewBox="0 0 1000 28"
-        preserveAspectRatio="none"
+        viewBox="0 0 240 28"
         focusable="false"
         aria-hidden="true"
       >
         <path
           className="onblide-ml-dock-silhouette-fill"
-          d="M16 28H390C410 28 414 0 438 0H562C586 0 590 28 610 28H984Z"
+          d="M0 28H20C40 28 44 0 68 0H172C196 0 200 28 220 28H240Z"
         />
       </svg>
       <Button

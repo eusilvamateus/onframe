@@ -23,6 +23,7 @@
   const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
   const EDITOR_MORPH_OPEN_DURATION = 900;
   const EDITOR_MORPH_CLOSE_DURATION = 950;
+  const AUTH_REQUIRED_MESSAGE = 'Entre na extensão do OnFrame para editar anúncios.';
 
   const state = {
     context: null,
@@ -380,9 +381,31 @@
   }
 
   function buildTrayStatusViewModel(limitState) {
-    if (state.error) return { text: state.error, tone: 'error' };
+    if (state.error === AUTH_REQUIRED_MESSAGE) {
+      return {
+        title: 'Extensão desconectada',
+        text: 'Entre no OnFrame para editar anúncios.',
+        tone: 'muted',
+        icon: 'plug'
+      };
+    }
+    if (state.error) {
+      return {
+        title: 'Editor indisponível',
+        text: state.error,
+        tone: 'error',
+        icon: 'warning-circle'
+      };
+    }
     const blockedMessage = getPictureEditingBlockedMessage();
-    if (blockedMessage) return { text: blockedMessage, tone: 'muted' };
+    if (blockedMessage) {
+      return {
+        title: 'Edição de fotos indisponível',
+        text: blockedMessage,
+        tone: 'muted',
+        icon: 'info'
+      };
+    }
     if (limitState && limitState.message) return { text: limitState.message, tone: 'error' };
     if (state.message) return { text: state.message, tone: '' };
     if (state.context && state.selectedVariationId) return { text: 'Variação selecionada', tone: 'muted' };

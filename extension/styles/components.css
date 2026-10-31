@@ -1016,7 +1016,6 @@
 }
 
 .ob-status,
-.onblide-ml-status,
 .onblide-ml-tray-feedback {
   display: inline-flex;
   align-items: center;
@@ -1029,24 +1028,9 @@
   white-space: nowrap;
 }
 
-.onblide-ml-status::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  margin-right: 5px;
-  border-radius: var(--ob-r-pill);
-  background: currentColor;
-}
-
-.onblide-ml-status.error,
 .onblide-ml-tray-feedback.error {
   background: var(--ob-danger-bg);
   color: var(--ob-danger);
-}
-
-.onblide-ml-status.muted {
-  background: var(--ob-bg-warm);
-  color: var(--ob-fg-soft);
 }
 
 .onblide-ml-tray-feedback {

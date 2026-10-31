@@ -73,13 +73,14 @@
 .onblide-ml-dock-silhouette {
   position: absolute;
   bottom: calc(100% - 1px);
-  left: -1px;
+  left: 50%;
   z-index: 1;
   display: block;
-  width: calc(100% + 2px);
+  width: 240px;
   height: 28px;
   overflow: visible;
   pointer-events: none;
+  transform: translateX(-50%);
 }
 
 .onblide-ml-dock-silhouette-fill {
@@ -142,14 +143,60 @@
   transform: rotate(180deg);
 }
 
-.onblide-ml-tray-bar {
-  display: flex;
+.onblide-ml-dock-state {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 12px;
+  width: min(760px, calc(100vw - 64px));
+  min-height: 56px;
+}
+
+.onblide-ml-dock-state-message {
+  display: grid;
+  grid-column: 1;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
-  min-height: 40px;
-  max-width: calc(100vw - 64px);
-  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.onblide-ml-dock-state-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ob-r-control);
+  background: var(--ob-surface-2);
+  color: var(--ob-ink-soft);
+}
+
+.onblide-ml-dock-state-message.is-error .onblide-ml-dock-state-icon {
+  background: var(--ob-danger-bg);
+  color: var(--ob-danger);
+}
+
+.onblide-ml-dock-state-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.onblide-ml-dock-state-copy strong {
+  color: var(--ob-ink-strong);
+  font: var(--ob-w-semibold) 13px/1.2 var(--ob-font);
+}
+
+.onblide-ml-dock-state-copy small {
+  color: var(--ob-ink-soft);
+  font: var(--ob-w-regular) 12px/1.35 var(--ob-font);
+}
+
+.onblide-ml-dock-state-actions {
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  gap: 8px;
 }
 
 .onblide-ml-dock-main {
@@ -237,28 +284,32 @@
   min-width: 0;
 }
 
-.onblide-ml-dock-command-stack {
+.onblide-ml-dock-actions {
   display: flex;
   flex: 0 0 150px;
   flex-direction: column;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-end;
   gap: 8px;
-  min-height: 0;
+  min-height: 32px;
 }
 
-.onblide-ml-dock-open-editor {
-  width: 150px;
+.onblide-ml-dock-action {
   flex: none;
+  width: 100%;
+  height: 32px;
 }
 
-.onblide-ml-dock-open-editor:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 4px var(--ob-focus-ring);
+.onblide-ml-dock-secondary-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 8px;
 }
 
-.onblide-ml-dock-open-editor:active:not(:disabled) {
-  background: var(--ob-blue-700);
-  box-shadow: none;
+.onblide-ml-dock-discard-action {
+  display: flex;
+  width: 32px;
+  height: 32px;
 }
 
 .onblide-ml-tray-feedback {
@@ -274,13 +325,6 @@
 .onblide-ml-tray-feedback.error {
   background: var(--ob-red-100);
   color: var(--ob-red);
-}
-
-.onblide-ml-tray-actions {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  gap: 6px;
-  margin: 0;
 }
 
 .onblide-ml-strip {
@@ -782,6 +826,16 @@
     padding: 10px 12px;
   }
 
+  .onblide-ml-dock-state {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .onblide-ml-dock-state-actions {
+    grid-column: 1;
+    justify-content: flex-end;
+  }
+
   .onblide-ml-dock-main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -797,10 +851,6 @@
     grid-column: 1 / -1;
     width: 100%;
     max-width: none;
-  }
-
-  .onblide-ml-dock-open-editor {
-    width: auto;
   }
 
   .onblide-ml-editor-actions {
