@@ -9,8 +9,6 @@
     const CharacteristicsModel = services.CharacteristicsModel;
     const api = services.api;
     const toast = services.toast;
-    const escapeHtml = Shared.escapeHtml;
-    const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const CharacteristicsView = rootScope.OnFrameCharacteristicsView;
     const hasCharacteristicsView = Boolean(
@@ -48,9 +46,6 @@
       inlineSyntheticRows: [],
       inlineEditableCount: 0,
       inlineMissingCount: 0,
-      openSelectKey: '',
-      forceInlineRender: false,
-      documentEventsBound: false,
       renderTimer: null,
       requestId: 0,
       pageSignature: ''
@@ -58,7 +53,6 @@
 
     function startCharacteristics() {
       state.pageSignature = readPageSignature();
-      ensureDocumentEvents();
       if (state.visible) mountCharacteristics();
     }
 
@@ -84,8 +78,6 @@
       state.inlineSyntheticRows = [];
       state.inlineEditableCount = 0;
       state.inlineMissingCount = 0;
-      state.openSelectKey = '';
-      state.forceInlineRender = false;
       state.renderTimer = null;
       state.requestId += 1;
       state.pageSignature = readPageSignature();
@@ -268,8 +260,7 @@
       }
 
       const disabled = state.loading || state.saving;
-      if (!state.loading && state.snapshot && (state.forceInlineRender || !isInlineControlActive())) {
-        state.forceInlineRender = false;
+      if (!state.loading && state.snapshot && !isInlineControlActive()) {
         renderInlineFields(elements.section, disabled);
       }
 
@@ -310,7 +301,6 @@
         onCancel: cancelEditor,
         onError: handleCharacteristicsViewFailure
       });
-      bindEditorEvents();
     }
 
     function findFooterAnchor(elements) {
@@ -401,7 +391,7 @@
 
       for (const group of groups) {
         const fields = Array.isArray(group.attributes) ? group.attributes : [];
-        const compositeResult = renderCompositeFieldTargets(targets, usedTargets, group, fields, disabled, activeIds);
+        const compositeResult = splitCompositeFieldTargets(targets, usedTargets, groupTargets, group, fields, disabled);
         const handledCompositeIds = compositeResult.handledIds;
         editableCount += compositeResult.editableCount;
         for (const field of fields) {
@@ -433,7 +423,7 @@
       state.inlineMissingCount = missingCount;
     }
 
-    function renderCompositeFieldTargets(targets, usedTargets, group, fields, disabled, activeIds) {
+    function splitCompositeFieldTargets(targets, usedTargets, groupTargets, group, fields, disabled) {
       const handledIds = new Set();
       let editableCount = 0;
       for (const target of targets) {
@@ -450,15 +440,15 @@
           continue;
         }
         usedTargets.add(target.key);
-        target.row.classList.add('onframe-characteristics-row-editable', 'onframe-characteristics-row-composite');
-        target.cell.classList.add('onframe-characteristics-inline-cell', 'onframe-characteristics-composite-cell');
+        const body = target.row.parentElement;
+        if (!body) continue;
+        target.row.classList.add('onframe-characteristics-composite-source');
+        const beforeNode = target.row.nextSibling;
         matches.forEach((field) => {
           handledIds.add(field.id);
-          activeIds.add(field.id);
           if (field.editable) editableCount += 1;
-          ensureInlineCellRecord(field, target, { composite: true });
+          insertSyntheticFieldRow(groupTargets, group, field, disabled, { body, beforeNode });
         });
-        target.cell.innerHTML = renderCompositeFieldControls(matches, disabled);
       }
       return { handledIds, editableCount };
     }
@@ -566,8 +556,8 @@
       return partial || groupTargets[0] || null;
     }
 
-    function insertSyntheticFieldRow(groupTargets, group, field, disabled) {
-      const target = findRenderedGroupTarget(groupTargets, group, field);
+    function insertSyntheticFieldRow(groupTargets, group, field, disabled, placement = {}) {
+      const target = placement.body ? { body: placement.body } : findRenderedGroupTarget(groupTargets, group, field);
       if (!target || !target.body) return false;
       const row = document.createElement('tr');
       row.className = 'andes-table__row ui-vpp-striped-specs__row onframe-characteristics-extra-row';
@@ -584,7 +574,10 @@
       const cell = document.createElement('td');
       cell.className = 'andes-table__column andes-table__column--left andes-table__column--vertical-align-center ui-vpp-striped-specs__row__column';
       row.append(header, cell);
-      target.body.appendChild(row);
+      const beforeNode = placement.beforeNode && placement.beforeNode.parentElement === target.body
+        ? placement.beforeNode
+        : null;
+      target.body.insertBefore(row, beforeNode);
       state.inlineSyntheticRows.push(row);
 
       CharacteristicsView.renderSyntheticFieldLabel(labelRoot, {
@@ -610,82 +603,6 @@
       value.appendChild(valueText);
       cell.appendChild(value);
       return true;
-    }
-
-    function renderCompositeFieldControls(fields, disabled) {
-      if (canShareCompositeUnit(fields)) return renderSharedCompositeNumberUnitControls(fields, disabled);
-      return `
-        <span class="onframe-characteristics-composite-control">
-          ${fields.map((field, index) => `
-            ${index ? '<span class="onframe-characteristics-composite-separator" aria-hidden="true">x</span>' : ''}
-            <span class="onframe-characteristics-composite-field" title="${escapeAttribute(field.label)}">
-              ${field.editable ? renderFieldControl(field, disabled) : renderCompositeReadonlyValue(field)}
-            </span>
-          `).join('')}
-        </span>
-      `;
-    }
-
-    function canShareCompositeUnit(fields) {
-      if (!Array.isArray(fields) || fields.length < 2) return false;
-      if (!fields.every((field) => field && field.editable && field.valueType === 'number_unit')) return false;
-      const firstSignature = unitsSignature(fields[0]);
-      return Boolean(firstSignature) && fields.every((field) => unitsSignature(field) === firstSignature);
-    }
-
-    function renderSharedCompositeNumberUnitControls(fields, disabled) {
-      const sharedUnit = getSharedCompositeUnit(fields);
-      const units = collectUnits(fields[0], sharedUnit);
-      const compositeLabel = fields.map((field) => field.label).join(' x ');
-      return `
-        <span class="onframe-characteristics-composite-control is-shared-unit">
-          ${fields.map((field, index) => `
-            ${index ? '<span class="onframe-characteristics-composite-separator" aria-hidden="true">x</span>' : ''}
-            <span class="onframe-characteristics-composite-field" title="${escapeAttribute(field.label)}">
-              ${renderCompositeNumberControl(field, disabled)}
-            </span>
-          `).join('')}
-          ${renderCustomSelectControl({
-            field: {
-              id: `COMPOSITE_${fields.map((field) => field.id).join('_')}`,
-              label: `Unidade de ${compositeLabel}`
-            },
-            part: 'unit',
-            label: `Unidade de ${compositeLabel}`,
-            options: units.map((unit) => ({ value: unit, label: unit })),
-            value: sharedUnit,
-            disabled,
-            shellClass: 'onframe-characteristics-composite-unit-shell',
-            compositeFieldIds: fields.map((field) => field.id)
-          })}
-        </span>
-      `;
-    }
-
-    function renderCompositeNumberControl(field, disabled) {
-      const draft = state.draft[field.id] || {};
-      return `
-        <span class="onframe-characteristics-inline-control onframe-characteristics-composite-number-only">
-          <span class="ob-field-shell onframe-characteristics-field-shell onframe-characteristics-number-shell ${disabled ? 'is-disabled' : ''}">
-            <input class="ob-field-input onframe-characteristics-compact-field" data-field-id="${escapeAttribute(field.id)}" data-field-part="number" aria-label="${escapeAttribute(field.label)}" type="text" inputmode="decimal" autocomplete="off" value="${escapeAttribute(draft.number || '')}" ${disabled ? 'disabled' : ''}>
-          </span>
-        </span>
-      `;
-    }
-
-    function renderCompositeReadonlyValue(field) {
-      return `
-        <span class="onframe-characteristics-composite-readonly">
-          <span class="andes-table__column--value">${escapeHtml(field.displayValue || field.valueName || '-')}</span>
-          ${renderCharacteristicStatusBadge(field)}
-        </span>
-      `;
-    }
-
-    function renderCharacteristicStatusBadge(field) {
-      const status = getCharacteristicStatus(field);
-      if (!status) return '';
-      return `<span class="ob-badge ${status.tone} onframe-characteristics-status-badge ${status.kind}" title="${escapeAttribute(status.title)}">${escapeHtml(status.label)}</span>`;
     }
 
     function getCharacteristicStatus(field) {
@@ -774,141 +691,15 @@
       return Boolean(field && Array.isArray(field.tags) && field.tags.includes('hidden') && !field.publicField);
     }
 
-    function ensureInlineCellRecord(field, target, options = {}) {
+    function ensureInlineCellRecord(field, target) {
       const current = state.inlineCellRecords.get(field.id);
       if (current && current.cell === target.cell) return;
       if (current) restoreInlineCell(current, field);
       state.inlineCellRecords.set(field.id, {
         cell: target.cell,
         row: target.row,
-        composite: Boolean(options.composite),
         originalHtml: target.cell.innerHTML
       });
-    }
-
-    function renderFieldControl(field, disabled) {
-      if (field.multivalued) return renderTextControl(field, disabled);
-      if (field.valueType === 'list' || field.valueType === 'boolean') return renderSelectControl(field, disabled);
-      if (field.valueType === 'number_unit') return renderNumberUnitControl(field, disabled);
-      return renderTextControl(field, disabled);
-    }
-
-    function renderTextControl(field, disabled) {
-      const draft = state.draft[field.id] || {};
-      const inputMode = field.valueType === 'number' ? 'decimal' : 'text';
-      return `
-        <span class="onframe-characteristics-inline-control">
-          <span class="ob-field-shell onframe-characteristics-field-shell ${disabled ? 'is-disabled' : ''}">
-            <input class="ob-field-input onframe-characteristics-compact-field" data-field-id="${escapeAttribute(field.id)}" data-field-part="valueName" aria-label="${escapeAttribute(field.label)}" type="text" inputmode="${escapeAttribute(inputMode)}" autocomplete="off" value="${escapeAttribute(draft.valueName || '')}" placeholder="${field.pending ? 'Digite o valor' : ''}" ${disabled ? 'disabled' : ''}>
-          </span>
-        </span>
-      `;
-    }
-
-    function renderNumberUnitControl(field, disabled) {
-      const draft = state.draft[field.id] || {};
-      const units = collectUnits(field, draft.unit);
-      return `
-        <span class="onframe-characteristics-inline-control onframe-characteristics-unit-row">
-            <span class="ob-field-shell onframe-characteristics-field-shell onframe-characteristics-number-shell ${disabled ? 'is-disabled' : ''}">
-              <input class="ob-field-input onframe-characteristics-compact-field" data-field-id="${escapeAttribute(field.id)}" data-field-part="number" aria-label="${escapeAttribute(field.label)}" type="text" inputmode="decimal" autocomplete="off" value="${escapeAttribute(draft.number || '')}" ${disabled ? 'disabled' : ''}>
-            </span>
-            ${renderCustomSelectControl({
-              field,
-              part: 'unit',
-              label: `Unidade de ${field.label}`,
-              options: units.map((unit) => ({ value: unit, label: unit })),
-              value: draft.unit,
-              disabled,
-              shellClass: 'onframe-characteristics-unit-shell'
-            })}
-        </span>
-      `;
-    }
-
-    function renderSelectControl(field, disabled) {
-      const draft = state.draft[field.id] || {};
-      const options = Array.isArray(field.options) ? field.options : [];
-      return `
-        <span class="onframe-characteristics-inline-control">
-          ${renderCustomSelectControl({
-            field,
-            part: 'valueId',
-            label: field.label,
-            options: options.map((option) => ({ value: option.id, label: option.name })),
-            value: draft.valueId,
-            disabled
-          })}
-        </span>
-      `;
-    }
-
-    function renderCustomSelectControl(config) {
-      const field = config.field;
-      const part = config.part;
-      const options = Array.isArray(config.options) ? config.options : [];
-      const value = config.value || '';
-      const key = selectKey(field.id, part);
-      const open = !config.disabled && state.openSelectKey === key;
-      const selected = value ? options.find((option) => option.value === value) : null;
-      const display = selected || { value: '', label: 'Selecione' };
-      const shellClass = config.shellClass ? ` ${config.shellClass}` : '';
-      const compositeIds = Array.isArray(config.compositeFieldIds) ? config.compositeFieldIds.filter(Boolean) : [];
-      const compositeAttribute = compositeIds.length ? ` data-select-composite-ids="${escapeAttribute(compositeIds.join(','))}"` : '';
-      return `
-        <span class="ob-field-shell ob-select-shell onframe-characteristics-field-shell onframe-characteristics-select${shellClass} ${open ? 'is-open' : ''} ${config.disabled ? 'is-disabled' : ''}">
-          <button
-            class="ob-field-input onframe-characteristics-select-trigger onframe-characteristics-compact-field"
-            data-action="characteristics-select"
-            data-select-key="${escapeAttribute(key)}"
-            data-select-field-id="${escapeAttribute(field.id)}"
-            data-select-field-part="${escapeAttribute(part)}"
-            ${compositeAttribute}
-            type="button"
-            aria-label="${escapeAttribute(config.label)}"
-            aria-haspopup="listbox"
-            aria-expanded="${open ? 'true' : 'false'}"
-            ${config.disabled ? 'disabled' : ''}
-          >
-            <span class="onframe-characteristics-select-value">${escapeHtml(display.label || display.value || 'Selecione')}</span>
-          </button>
-          <span class="ob-select-caret" aria-hidden="true">${icon('caretDown', 12)}</span>
-          ${open ? renderCustomSelectMenu(field, part, key, options, value, compositeIds) : ''}
-        </span>
-      `;
-    }
-
-    function renderCustomSelectMenu(field, part, key, options, value, compositeFieldIds = []) {
-      if (!options.length) return '<span class="onframe-characteristics-select-menu empty">Nenhuma opção disponível.</span>';
-      const compositeAttribute = compositeFieldIds.length ? ` data-select-composite-ids="${escapeAttribute(compositeFieldIds.join(','))}"` : '';
-      return `
-        <span class="onframe-characteristics-select-menu" role="listbox" aria-label="${escapeAttribute(field.label)}">
-          ${options.map((option) => {
-            const selected = option.value === value;
-            return `
-              <button
-                class="onframe-characteristics-select-option ${selected ? 'is-selected' : ''}"
-                data-action="characteristics-select-option"
-                data-select-key="${escapeAttribute(key)}"
-                data-select-field-id="${escapeAttribute(field.id)}"
-                data-select-field-part="${escapeAttribute(part)}"
-                data-select-value="${escapeAttribute(option.value)}"
-                ${compositeAttribute}
-                type="button"
-                role="option"
-                aria-selected="${selected ? 'true' : 'false'}"
-              >
-                <span>${escapeHtml(option.label || option.value)}</span>
-                ${selected ? icon('check', 12) : ''}
-              </button>
-            `;
-          }).join('')}
-        </span>
-      `;
-    }
-
-    function selectKey(fieldId, part) {
-      return `${fieldId}:${part}`;
     }
 
     function restoreInactiveInlineCells(activeIds, fieldsById) {
@@ -941,6 +732,9 @@
         if (row && row.isConnected) row.remove();
       }
       state.inlineSyntheticRows = [];
+      document.querySelectorAll('.onframe-characteristics-composite-source').forEach((row) => {
+        row.classList.remove('onframe-characteristics-composite-source');
+      });
     }
 
     function restoreInlineCell(record, field) {
@@ -948,10 +742,8 @@
       if (record.react) CharacteristicsView.unmount(record.cell);
       if (!record.cell.isConnected) return;
       record.cell.classList.remove('onframe-characteristics-inline-cell');
-      record.cell.classList.remove('onframe-characteristics-composite-cell');
-      if (record.row) record.row.classList.remove('onframe-characteristics-row-editable', 'onframe-characteristics-row-composite');
+      if (record.row) record.row.classList.remove('onframe-characteristics-row-editable');
       record.cell.innerHTML = record.originalHtml;
-      if (record.composite) return;
       if (!field) return;
       const valueNode = record.cell.querySelector('.andes-table__column--value') || record.cell;
       valueNode.textContent = field.displayValue || field.valueName || '-';
@@ -960,117 +752,6 @@
     function isInlineControlActive() {
       const active = document.activeElement;
       return Boolean(active && typeof active.closest === 'function' && active.closest('.onframe-characteristics-inline-control'));
-    }
-
-    function bindEditorEvents() {
-      if (!state.editorRoot) return;
-      [state.sectionElement, state.editorRoot].filter(Boolean).forEach((fieldContainer) => {
-        fieldContainer.querySelectorAll('[data-field-id][data-field-part]').forEach((field) => {
-          if (field.dataset.characteristicsBound === 'true') return;
-          field.dataset.characteristicsBound = 'true';
-          field.addEventListener('input', () => updateDraftFromControl(field));
-          field.addEventListener('change', () => updateDraftFromControl(field));
-        });
-        fieldContainer.querySelectorAll('[data-action="characteristics-select"]').forEach((trigger) => {
-          if (trigger.dataset.characteristicsBound === 'true') return;
-          trigger.dataset.characteristicsBound = 'true';
-          trigger.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toggleCustomSelect(trigger.dataset.selectKey || '');
-          });
-          trigger.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              closeCustomSelect();
-            }
-            if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
-              event.preventDefault();
-              openCustomSelect(trigger.dataset.selectKey || '');
-            }
-          });
-        });
-        fieldContainer.querySelectorAll('[data-action="characteristics-select-option"]').forEach((option) => {
-          if (option.dataset.characteristicsBound === 'true') return;
-          option.dataset.characteristicsBound = 'true';
-          option.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            selectCustomOption(option);
-          });
-        });
-      });
-    }
-
-    function ensureDocumentEvents() {
-      if (state.documentEventsBound) return;
-      state.documentEventsBound = true;
-      document.addEventListener('click', (event) => {
-        if (!state.openSelectKey) return;
-        if (event.target && typeof event.target.closest === 'function' && event.target.closest('.onframe-characteristics-select')) return;
-        closeCustomSelect();
-      });
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && state.openSelectKey) closeCustomSelect();
-      });
-    }
-
-    function toggleCustomSelect(key) {
-      if (!key || state.loading || state.saving) return;
-      state.openSelectKey = state.openSelectKey === key ? '' : key;
-      state.forceInlineRender = true;
-      mountCharacteristics();
-    }
-
-    function openCustomSelect(key) {
-      if (!key || state.loading || state.saving) return;
-      state.openSelectKey = key;
-      state.forceInlineRender = true;
-      mountCharacteristics();
-    }
-
-    function closeCustomSelect() {
-      if (!state.openSelectKey) return;
-      state.openSelectKey = '';
-      state.forceInlineRender = true;
-      mountCharacteristics();
-    }
-
-    function selectCustomOption(option) {
-      const id = String(option.dataset.selectFieldId || '');
-      const part = String(option.dataset.selectFieldPart || 'valueId');
-      const compositeIds = String(option.dataset.selectCompositeIds || '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean);
-      if (compositeIds.length) {
-        compositeIds.forEach((fieldId) => {
-          if (!state.draft[fieldId]) return;
-          state.draft[fieldId] = Object.assign({}, state.draft[fieldId], {
-            [part]: option.dataset.selectValue || ''
-          });
-        });
-        state.openSelectKey = '';
-        state.forceInlineRender = true;
-        mountCharacteristics();
-        return;
-      }
-      if (!id || !state.draft[id]) return;
-      state.draft[id] = Object.assign({}, state.draft[id], {
-        [part]: option.dataset.selectValue || ''
-      });
-      state.openSelectKey = '';
-      state.forceInlineRender = true;
-      mountCharacteristics();
-    }
-
-    function updateDraftFromControl(control) {
-      const id = String(control.dataset.fieldId || '');
-      const part = String(control.dataset.fieldPart || 'valueName');
-      if (!id || !part || !state.draft[id] || !('value' in control)) return;
-      state.draft[id] = Object.assign({}, state.draft[id], {
-        [part]: control.value
-      });
     }
 
     function updateDraftField(id, part, value) {
@@ -1262,7 +943,6 @@
       state.bulkEnabled = false;
       state.bulkResult = null;
       state.error = '';
-      state.openSelectKey = '';
       state.inlineCellRecords = new Map();
       state.inlineSyntheticRows = [];
       state.inlineEditableCount = 0;
@@ -1375,20 +1055,6 @@
       return units;
     }
 
-    function unitsSignature(field) {
-      return collectUnits(field, state.draft[field.id] && state.draft[field.id].unit).join('|');
-    }
-
-    function getSharedCompositeUnit(fields) {
-      const units = fields
-        .map((field) => state.draft[field.id] && state.draft[field.id].unit)
-        .map(normalizeText)
-        .filter(Boolean);
-      const first = units[0] || '';
-      if (first && units.every((unit) => unit === first)) return first;
-      return collectUnits(fields[0], first)[0] || first;
-    }
-
     function addUnit(units, unit) {
       const value = normalizeText(unit);
       if (value && !units.includes(value)) units.push(value);
@@ -1435,10 +1101,6 @@
       if (rootScope.console && typeof rootScope.console.error === 'function') {
         rootScope.console.error('[OnFrame] A interface de características falhou.', error);
       }
-    }
-
-    function icon(name, size) {
-      return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
     }
 
     return {

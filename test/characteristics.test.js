@@ -51,6 +51,10 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(controller, /if \(!record \|\| !record\.cell\) return;\s+if \(record\.react\) CharacteristicsView\.unmount\(record\.cell\);\s+if \(!record\.cell\.isConnected\) return;/);
   assert.doesNotMatch(controller, /function renderSyntheticFieldRow|function renderSyntheticFieldValue/);
   assert.match(controller, /row\.querySelectorAll\('\[data-onframe-characteristics-root="true"\]'\)[\s\S]*?CharacteristicsView\.unmount\(host\)/);
+  assert.match(controller, /target\.row\.classList\.add\('onframe-characteristics-composite-source'\)/);
+  assert.match(controller, /function splitCompositeFieldTargets[\s\S]*?matches\.forEach\(\(field\) => \{[\s\S]*?insertSyntheticFieldRow\(groupTargets, group, field, disabled, \{ body, beforeNode \}\)/);
+  assert.match(controller, /document\.querySelectorAll\('\.onframe-characteristics-composite-source'\)[\s\S]*?classList\.remove\('onframe-characteristics-composite-source'\)/);
+  assert.doesNotMatch(controller, /function renderCompositeFieldControls|function renderCustomSelectControl|data-action="characteristics-select"/);
   assert.match(styles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(styles, /grid-template-columns: minmax\(0, 1fr\) 112px/);
@@ -63,6 +67,8 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(styles, /\.onframe-characteristics-react-field > div > div \{[^}]*width: 100%;[^}]*min-height: 32px !important;/);
   assert.match(styles, /\.onframe-characteristics-extra-label-text \{[\s\S]*?overflow-wrap: anywhere;/);
   assert.match(styles, /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/);
+  assert.match(styles, /\.onframe-characteristics-composite-source \{\s*display: none !important;/);
+  assert.doesNotMatch(styles, /\.onframe-characteristics-composite-control|\.onframe-characteristics-select-menu/);
 
   assert.match(build, /characteristics-view\.jsx/);
   assert.ok(scripts.indexOf('core/characteristics-view.js') < scripts.indexOf('modules/characteristics/module.js'));
