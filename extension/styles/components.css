@@ -946,8 +946,7 @@
   line-height: 1.35;
 }
 
-.ob-chip,
-.onframe-commerce-chip {
+.ob-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -965,54 +964,10 @@
   transition: border-color var(--ob-dur-fast) var(--ob-ease), box-shadow var(--ob-dur-fast) var(--ob-ease), transform var(--ob-dur-fast) var(--ob-ease);
 }
 
-.ob-chip:hover,
-.onframe-commerce-chip:hover {
+.ob-chip:hover {
   border-color: color-mix(in srgb, var(--ob-blue) 30%, var(--ob-border));
   box-shadow: var(--ob-shadow-md);
   transform: translateY(-1px);
-}
-
-.onframe-commerce-chip strong {
-  display: inline-flex;
-  align-items: center;
-  min-height: 16px;
-  max-width: 100px;
-  padding: 2px 6px;
-  border-radius: var(--ob-r-pill);
-  background: var(--ob-bg-warm);
-  color: var(--ob-fg-soft);
-  font: var(--ob-w-semibold) 10px/1 var(--ob-font);
-  white-space: nowrap;
-}
-
-.onframe-commerce-chip.green,
-.onframe-commerce-chip.green strong {
-  color: var(--ob-green-700);
-}
-
-.onframe-commerce-chip.green strong {
-  background: var(--ob-green-100);
-}
-
-.onframe-commerce-chip.orange,
-.onframe-commerce-chip.orange strong,
-.onframe-commerce-chip.warn,
-.onframe-commerce-chip.warn strong {
-  color: var(--ob-orange-700);
-}
-
-.onframe-commerce-chip.orange strong,
-.onframe-commerce-chip.warn strong {
-  background: var(--ob-orange-100);
-}
-
-.onframe-commerce-chip.blue,
-.onframe-commerce-chip.blue strong {
-  color: var(--ob-blue);
-}
-
-.onframe-commerce-chip.blue strong {
-  background: var(--ob-blue-100);
 }
 
 .ob-status,

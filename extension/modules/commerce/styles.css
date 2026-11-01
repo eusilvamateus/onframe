@@ -8,11 +8,10 @@
   z-index: 20;
 }
 
-.onframe-commerce-chipbar {
+.onframe-commerce-action-group {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  max-width: 100%;
 }
 
 .onframe-commerce-listing-controls {
@@ -26,7 +25,7 @@
   pointer-events: auto !important;
 }
 
-.onframe-commerce-listing-controls .onframe-commerce-chip {
+.onframe-commerce-listing-controls .onframe-commerce-action-group button {
   position: relative;
   z-index: 1;
   cursor: pointer !important;

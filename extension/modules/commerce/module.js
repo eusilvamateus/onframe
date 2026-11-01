@@ -16,8 +16,15 @@
     const formatarPeriodo = rootScope.OnFramePeriod && rootScope.OnFramePeriod.formatarPeriodo;
     const Datepicker = rootScope.OnFrameDatepicker;
     const DesignSystemButton = rootScope.OnFrameButton;
+    const CommerceActionsView = rootScope.OnFrameCommerceActionsView;
     const CommercePriceView = rootScope.OnFrameCommercePriceView;
     const CommercePromotionsView = rootScope.OnFrameCommercePromotionsView;
+    const hasCommerceActionsView = Boolean(
+      CommerceActionsView &&
+      typeof CommerceActionsView.render === 'function' &&
+      typeof CommerceActionsView.unmount === 'function'
+    );
+    if (!hasCommerceActionsView) throw new Error('Ações de comércio indisponíveis.');
     const hasCommercePriceView = Boolean(
       CommercePriceView &&
       typeof CommercePriceView.render === 'function' &&
@@ -118,7 +125,6 @@
       renderTimer: null,
       requestId: 0,
       pageSignature: '',
-      lastInlineMarkup: '',
       lastModalMarkup: '',
       lastDirectDiscountModalMarkup: '',
       viewportEventsReady: false,
@@ -184,7 +190,6 @@
       state.renderTimer = null;
       state.requestId += 1;
       state.pageSignature = readPageSignature();
-      state.lastInlineMarkup = '';
       state.lastModalMarkup = '';
       state.lastDirectDiscountModalMarkup = '';
       if (!preserveListing) resetListingState();
@@ -626,41 +631,42 @@
         const controls = document.createElement('div');
         controls.className = 'onframe-commerce-listing-controls';
         controls.setAttribute('aria-label', 'Ações OnFrame para este anúncio');
-        ['pointerdown', 'mousedown', 'touchstart'].forEach((eventName) => {
-          controls.addEventListener(eventName, (event) => {
-            if (!listingControlButton(event.target)) return;
-            event.stopPropagation();
-          });
-        });
-        controls.addEventListener('click', (event) => {
-          const button = listingControlButton(event.target);
-          if (!button) return;
-          event.preventDefault();
-          event.stopPropagation();
-          activateListingPopover(record, button.dataset.listingAction === 'open-price' ? 'price' : 'promotions', button);
-        });
         price.insertAdjacentElement('afterend', controls);
         record.controls = controls;
       }
       renderListingControls(record);
     }
 
-    function listingControlButton(target) {
-      return target && typeof target.closest === 'function'
-        ? target.closest('[data-listing-action]')
-        : null;
-    }
-
     function renderListingControls(record) {
       if (!record || !record.controls) return;
-      const markup = `
-        <div class="onframe-commerce-chipbar">
-          <button class="onframe-commerce-chip ${escapeAttribute(listingPriceTone(record))}" data-listing-action="open-price" type="button">${icon('price', 14)}<span>Preço</span></button>
-          <button class="onframe-commerce-chip ${escapeAttribute(listingPromotionTone(record))}" data-listing-action="open-promotions" type="button">${icon('tag', 14)}<span>Promoção</span></button>
-        </div>
-      `;
-      if (record.controls.innerHTML !== markup) record.controls.innerHTML = markup;
+      CommerceActionsView.render(record.controls, buildListingActionsViewModel(record), {
+        onChange: (type) => handleListingActionChange(record, type),
+        onReload: () => {},
+        onError: (error) => console.error('[OnFrame comércio] ações da listagem:', error)
+      });
       scheduleListingControlsLayout(record);
+    }
+
+    function buildListingActionsViewModel(record) {
+      return {
+        active: state.listingActiveRecord === record ? state.popover : null,
+        price: {
+          label: 'Preço',
+          tone: commerceActionTone(listingPriceTone(record))
+        },
+        promotions: {
+          label: 'Promoção',
+          tone: commerceActionTone(listingPromotionTone(record))
+        }
+      };
+    }
+
+    function handleListingActionChange(record, type) {
+      if (!type) {
+        if (state.listingActiveRecord === record) closePopover();
+        return;
+      }
+      activateListingPopover(record, type, record.controls);
     }
 
     function scheduleListingControlsLayout(record) {
@@ -719,7 +725,10 @@
     function removeListingDecorations(record) {
       if (!record) return;
       restoreListingControlsLayout(record);
-      if (record.controls) record.controls.remove();
+      if (record.controls) {
+        CommerceActionsView.unmount(record.controls);
+        record.controls.remove();
+      }
       if (record.badge) record.badge.remove();
       if (record.media) record.media.classList.remove('onframe-commerce-listing-media');
       record.controls = null;
@@ -742,6 +751,7 @@
 
     function activateListingPopover(record, type, anchor) {
       if (!record || !record.context) return;
+      const previousRecord = state.listingActiveRecord;
       state.requestId += 1;
       state.surface = 'listing';
       state.listingActiveRecord = record;
@@ -760,6 +770,7 @@
       state.actionError = '';
       state.priceEditing = false;
       state.detailsOpen = false;
+      if (previousRecord && previousRecord !== record) renderListingControls(previousRecord);
       openPopover(type);
 
       if (type === 'price' && !record.priceSummary && !record.priceLoading) void loadListingSummary(record, 'price');
@@ -910,41 +921,51 @@
 
     function renderInline() {
       if (!state.inline) return;
-      const markup = buildInlineMarkup();
-      if (markup === state.lastInlineMarkup) return;
-      state.lastInlineMarkup = markup;
-      state.inline.innerHTML = markup;
-      bindInlineEvents();
+      CommerceActionsView.render(state.inline, buildInlineActionsViewModel(), {
+        onChange: handleInlineActionChange,
+        onReload: () => void reloadCommerce(),
+        onError: (error) => console.error('[OnFrame comércio] ações do anúncio:', error)
+      });
     }
 
-    function buildInlineMarkup() {
+    function buildInlineActionsViewModel() {
       if (state.actionError && !state.context) {
-        return `
-          <div class="onframe-commerce-chipbar">
-            <button class="onframe-commerce-chip warn" data-action="reload-commerce" type="button">
-              ${icon('warning', 14)}<span>${escapeHtml(shortMessage(state.actionError))}</span>
-            </button>
-          </div>
-        `;
+        return { error: shortMessage(state.actionError) };
       }
 
       const priceState = state.priceSummary ? CommerceModel.getPriceState(state.priceSummary) : null;
       const promotionState = state.promotionSummary ? CommerceModel.getPromotionState(state.promotionSummary) : null;
       const priceTone = state.priceError ? 'warn' : priceState ? priceState.tone : 'muted';
       const promotionTone = state.promotionError ? 'warn' : promotionState ? promotionState.tone : 'muted';
-      const priceLabel = state.priceLoading ? 'Preço' : 'Preço';
       const promotionLabel = state.promotionLoading ? 'Promoção' : promotionState ? promotionState.label : 'Promoção';
 
-      return `
-        <div class="onframe-commerce-chipbar" aria-label="Ações OnFrame para preço e promoções">
-          <button class="onframe-commerce-chip ${escapeAttribute(priceTone)}" data-action="open-price" type="button">
-            ${icon('price', 14)}<span>${escapeHtml(priceLabel)}</span>
-          </button>
-          <button class="onframe-commerce-chip ${escapeAttribute(promotionTone)}" data-action="open-promotions" type="button">
-            ${icon('tag', 14)}<span>${escapeHtml(promotionLabel)}</span>
-          </button>
-        </div>
-      `;
+      return {
+        active: state.popover,
+        price: {
+          label: 'Preço',
+          tone: commerceActionTone(priceTone)
+        },
+        promotions: {
+          label: promotionLabel,
+          tone: commerceActionTone(promotionTone)
+        }
+      };
+    }
+
+    function handleInlineActionChange(type) {
+      if (!type) {
+        closePopover();
+        return;
+      }
+      state.popoverAnchor = state.inline;
+      openPopover(type);
+    }
+
+    function commerceActionTone(tone) {
+      if (tone === 'green') return 'success';
+      if (tone === 'orange') return 'warning';
+      if (tone === 'warn') return 'danger';
+      return 'primary';
     }
 
     function renderPopover() {
@@ -2992,13 +3013,6 @@
       `;
     }
 
-    function bindInlineEvents() {
-      if (!state.inline) return;
-      bindButton(state.inline, 'open-price', () => openPopover('price'));
-      bindButton(state.inline, 'open-promotions', () => openPopover('promotions'));
-      bindButton(state.inline, 'reload-commerce', () => void reloadCommerce());
-    }
-
     function bindModalEvents() {
       if (!state.modalRoot) return;
       bindButton(state.modalRoot, 'close-promotion-modal', closePromotionModal);
@@ -3689,6 +3703,7 @@
       state.actionError = '';
       state.detailsOpen = false;
       if (type !== 'price') state.priceEditing = false;
+      renderCurrentCommerceActions();
       rerenderPopover();
     }
 
@@ -3696,7 +3711,16 @@
       state.popover = null;
       state.popoverAnchor = null;
       state.priceEditing = false;
+      renderCurrentCommerceActions();
       removePopover();
+    }
+
+    function renderCurrentCommerceActions() {
+      if (state.surface === 'listing' && state.listingActiveRecord) {
+        renderListingControls(state.listingActiveRecord);
+        return;
+      }
+      renderInline();
     }
 
     function startPriceEdit() {
@@ -4282,12 +4306,12 @@
     }
 
     function popoverAnchor() {
-      let anchor = state.popoverAnchor && state.popoverAnchor.isConnected ? state.popoverAnchor : null;
-      if (!anchor && state.inline) {
-        const action = state.popover === 'price' ? 'open-price' : 'open-promotions';
-        anchor = state.inline.querySelector(`[data-action="${action}"]`);
-      }
-      const actionGroup = anchor && anchor.closest('.onframe-commerce-chipbar');
+      const anchor = state.popoverAnchor && state.popoverAnchor.isConnected ? state.popoverAnchor : state.inline;
+      const actionGroup = anchor && (
+        anchor.matches('[data-commerce-action-group]')
+          ? anchor
+          : anchor.querySelector('[data-commerce-action-group]')
+      );
       return actionGroup || anchor;
     }
 
@@ -4579,9 +4603,11 @@
     }
 
     function removeInline() {
-      if (state.inline) state.inline.remove();
+      if (state.inline) {
+        CommerceActionsView.unmount(state.inline);
+        state.inline.remove();
+      }
       state.inline = null;
-      state.lastInlineMarkup = '';
     }
 
     function removePopover() {

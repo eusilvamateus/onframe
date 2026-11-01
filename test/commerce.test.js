@@ -290,6 +290,31 @@ test('modulos legados montam o Button oficial com tom, tooltip e estado pression
   assert.match(bridge, /function update\(host, nextOptions\)/);
 });
 
+test('acoes de preco e promocao usam o grupo oficial do design system', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
+  const scripts = manifest.content_scripts[0].js;
+
+  assert.match(view, /import \{ Button, ButtonGroup, Ph, ToggleButton \} from '@onblide\/ui'/);
+  assert.match(view, /<ButtonGroup[\s\S]*attached=\{false\}[\s\S]*selection="single"[\s\S]*allowEmpty[\s\S]*size="sm"/);
+  assert.match(view, /<ToggleButton[\s\S]*value="price"[\s\S]*appearance="outline"/);
+  assert.match(view, /<ToggleButton[\s\S]*value="promotions"[\s\S]*appearance="outline"/);
+  assert.match(view, /data-commerce-action-group=""/);
+  assert.match(view, /function containClick\(event\) \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
+  assert.match(view, /globalThis\.OnFrameCommerceActionsView = Object\.freeze\(\{ render, unmount \}\)/);
+  assert.match(build, /commerce-actions-view\.jsx/);
+  assert.ok(scripts.indexOf('core/commerce-actions-view.js') < scripts.indexOf('modules/commerce/module.js'));
+  assert.match(source, /const CommerceActionsView = rootScope\.OnFrameCommerceActionsView/);
+  assert.match(source, /CommerceActionsView\.render\(state\.inline, buildInlineActionsViewModel\(\)/);
+  assert.match(source, /CommerceActionsView\.render\(record\.controls, buildListingActionsViewModel\(record\)/);
+  assert.doesNotMatch(source, /function buildInlineMarkup|function bindInlineEvents|function listingControlButton/);
+  assert.doesNotMatch(source, /onframe-commerce-chip|onframe-commerce-chipbar/);
+  assert.doesNotMatch(components, /\.onframe-commerce-chip/);
+});
+
 test('popover de preco resume valores e custos em um card horizontal', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
@@ -389,11 +414,9 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(source, /onManage: openPromotionModal/);
   assert.match(source, /function listingPriceTone/);
   assert.match(source, /function listingPromotionTone/);
-  assert.match(source, /\['pointerdown', 'mousedown', 'touchstart'\]/);
-  assert.match(source, /function listingControlButton/);
   assert.match(styles, /\.onframe-commerce-listing-controls\s*\{/);
   assert.match(styles, /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: 3;[\s\S]*pointer-events: auto !important;/);
-  assert.match(styles, /\.onframe-commerce-listing-controls \.onframe-commerce-chip\s*\{[\s\S]*cursor: pointer !important;/);
+  assert.match(styles, /\.onframe-commerce-listing-controls \.onframe-commerce-action-group button\s*\{[\s\S]*cursor: pointer !important;/);
   assert.match(styles, /\.onframe-commerce-listing-badge\s*\{[\s\S]*pointer-events: none;/);
   assert.match(components, /\.onframe-commerce-listing-controls/);
   assert.match(components, /\.onframe-commerce-listing-badge/);
@@ -590,7 +613,7 @@ test('popover de promocoes apresenta cupom do item como beneficio de checkout', 
   assert.match(source, /classList\.toggle\('price-summary', state\.popover === 'price'\)/);
   assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price';/);
   assert.match(source, /const preferredWidth = isSummaryPopover \? 560 : 340/);
-  assert.match(source, /const actionGroup = anchor && anchor\.closest\('\.onframe-commerce-chipbar'\)/);
+  assert.match(source, /anchor\.querySelector\('\[data-commerce-action-group\]'\)/);
   assert.match(source, /const centeredLeft = rect\.left \+ \(\(rect\.width - width\) \/ 2\)/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);
