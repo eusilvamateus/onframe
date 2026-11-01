@@ -168,12 +168,40 @@
         return;
       }
 
+      if (state.sectionElement && state.sectionElement !== elements.section) {
+        state.sectionElement.classList.remove('onframe-characteristics-is-editing');
+      }
       state.sectionElement = elements.section;
       injectEditAction(elements, isCharacteristicsCollapsed(elements.section));
       if (state.editing) renderEditor(elements);
     }
 
     function getCharacteristicsElements() {
+      const modalElements = getCharacteristicsModalElements();
+      if (modalElements) return modalElements;
+      return getCharacteristicsPageElements();
+    }
+
+    function getCharacteristicsModalElements() {
+      const dialogs = Array.from(document.querySelectorAll('.andes-modal[role="dialog"]')).reverse();
+      for (const dialog of dialogs) {
+        const title = Array.from(dialog.querySelectorAll('.andes-modal__title, [role="heading"]'))
+          .find((node) => normalizeHeading(node.textContent) === 'caracteristicas do produto');
+        const content = dialog.querySelector('.andes-modal__content');
+        if (!title || !content || !content.querySelector('.ui-vpp-highlighted-specs__striped-specs')) continue;
+        return {
+          actionAnchor: content,
+          actionPlacement: 'prepend',
+          section: dialog,
+          surface: 'modal',
+          title,
+          titleRow: title.closest('.andes-modal__header') || title.parentElement
+        };
+      }
+      return null;
+    }
+
+    function getCharacteristicsPageElements() {
       const title = Array.from(document.querySelectorAll('h2, h3'))
         .find((node) => normalizeHeading(node.textContent) === 'caracteristicas do produto');
       if (!title) return {};
@@ -183,6 +211,9 @@
         title.closest('.ui-pdp-container__row') ||
         title.parentElement;
       return {
+        actionAnchor: title.closest('.ui-pdp-container__row--highlighted-specs-title') || title.parentElement,
+        actionPlacement: 'after',
+        surface: 'page',
         title,
         titleRow: title.closest('.ui-pdp-container__row--highlighted-specs-title') || title.parentElement,
         section
@@ -193,11 +224,11 @@
       if (!elements.title) return;
       let actionRoot = elements.section.querySelector('.onframe-characteristics-action-root');
       if (!actionRoot) {
-        const anchor = elements.titleRow || elements.title;
         actionRoot = document.createElement('span');
         actionRoot.className = 'onframe-characteristics-action-root';
-        anchor.insertAdjacentElement('afterend', actionRoot);
       }
+      actionRoot.classList.toggle('onframe-characteristics-action-root--modal', elements.surface === 'modal');
+      placeSurfaceRoot(elements, actionRoot);
       CharacteristicsView.renderAction(actionRoot, { disabled }, {
         onEdit: () => void openEditor(),
         onError: handleCharacteristicsViewFailure
@@ -208,12 +239,24 @@
       if (!elements.title || !elements.section) return;
       let noticeRoot = elements.section.querySelector('.onframe-characteristics-catalog-notice');
       if (!noticeRoot) {
-        const anchor = elements.titleRow || elements.title;
         noticeRoot = document.createElement('div');
         noticeRoot.className = 'onframe-characteristics-catalog-notice';
-        anchor.insertAdjacentElement('afterend', noticeRoot);
       }
+      noticeRoot.classList.toggle('onframe-characteristics-catalog-notice--modal', elements.surface === 'modal');
+      placeSurfaceRoot(elements, noticeRoot);
       CharacteristicsView.renderCatalogNotice(noticeRoot, { onError: handleCharacteristicsViewFailure });
+    }
+
+    function placeSurfaceRoot(elements, root) {
+      const anchor = elements.actionAnchor || elements.titleRow || elements.title;
+      if (!anchor || !root) return;
+      if (elements.actionPlacement === 'prepend') {
+        if (root.parentElement !== anchor || root !== anchor.firstElementChild) {
+          anchor.insertBefore(root, anchor.firstChild);
+        }
+        return;
+      }
+      if (root.previousElementSibling !== anchor) anchor.insertAdjacentElement('afterend', root);
     }
 
     function isCharacteristicsCollapsed(section) {

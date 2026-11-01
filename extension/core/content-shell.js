@@ -374,6 +374,7 @@
         if (isOnFrameNode(mutation.target)) continue;
         const added = Array.from(mutation.addedNodes || []);
         const removed = Array.from(mutation.removedNodes || []);
+        if (isCharacteristicsModalNode(mutation.target) || added.concat(removed).some(isCharacteristicsModalNode)) return true;
         if (added.concat(removed).some((node) => !isOnFrameNode(node))) hasExternalMutation = true;
         if (mutation.type === 'attributes') hasExternalMutation = true;
       }
@@ -384,6 +385,13 @@
         page.signature !== currentSignature ||
         page.itemKey !== currentItemKey ||
         page.selectionKey !== currentSelectionKey;
+    }
+
+    function isCharacteristicsModalNode(node) {
+      if (!node || node.nodeType !== 1) return false;
+      const selector = '.ui-vpp-highlighted-specs__see-more__modal';
+      if (typeof node.matches === 'function' && node.matches(selector)) return true;
+      return Boolean(typeof node.querySelector === 'function' && node.querySelector(selector));
     }
 
     function isOnFrameNode(node) {

@@ -49,6 +49,10 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(controller, /CharacteristicsView\.renderSyntheticFieldLabel/);
   assert.match(controller, /CharacteristicsView\.renderSyntheticFieldValue/);
   assert.match(controller, /CharacteristicsView\.unmount/);
+  assert.match(controller, /function getCharacteristicsModalElements\(\)[\s\S]*?\.andes-modal\[role="dialog"\][\s\S]*?\.andes-modal__content[\s\S]*?surface: 'modal'/);
+  assert.match(controller, /const modalElements = getCharacteristicsModalElements\(\);\s+if \(modalElements\) return modalElements;/);
+  assert.match(controller, /actionPlacement: 'prepend'[\s\S]*?placeSurfaceRoot\(elements, actionRoot\)/);
+  assert.match(controller, /state\.sectionElement && state\.sectionElement !== elements\.section[\s\S]*?classList\.remove\('onframe-characteristics-is-editing'\)/);
   assert.doesNotMatch(controller, /setDisabledButtonTooltip\(action|removeDisabledButtonTooltip\(wrapper/);
   assert.doesNotMatch(controller, /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/);
   assert.doesNotMatch(controller, /renderPackageDimensionsCard|renderPackageDimensionField|renderPackageNumberUnitControl|renderPackageReadOnlyValue/);
@@ -74,6 +78,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(styles, /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/);
   assert.match(styles, /\.onframe-characteristics-extra-status \{[^}]*display: inline-flex;[^}]*position: absolute;[^}]*top: 0;[^}]*right: 12px;[^}]*transform: translateY\(-50%\);/);
   assert.doesNotMatch(styles, /\.onframe-characteristics-extra-status \{[^}]*padding/);
+  assert.match(styles, /\.onframe-characteristics-action-root--modal,[\s\S]*?margin-bottom: var\(--ob-s-3\);/);
   assert.match(styles, /\.onframe-characteristics-composite-source \{\s*display: none !important;/);
   assert.doesNotMatch(styles, /\.onframe-characteristics-composite-control|\.onframe-characteristics-select-menu/);
 
@@ -81,4 +86,6 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.ok(scripts.indexOf('core/characteristics-view.js') < scripts.indexOf('modules/characteristics/module.js'));
   assert.match(shell, /\.onframe-characteristics-action-root/);
   assert.match(shell, /\.onframe-characteristics-catalog-notice/);
+  assert.match(shell, /function isCharacteristicsModalNode\(node\)[\s\S]*?\.ui-vpp-highlighted-specs__see-more__modal/);
+  assert.match(shell, /isCharacteristicsModalNode\(mutation\.target\) \|\| added\.concat\(removed\)\.some\(isCharacteristicsModalNode\)/);
 });
