@@ -119,6 +119,13 @@
   box-shadow: none !important;
 }
 
+.onframe-commerce-price-view,
+.onframe-commerce-price-view :is(p, span, strong, b, small, label, button, input, summary, li),
+.onframe-commerce-promotions-view,
+.onframe-commerce-promotions-view :is(p, span, strong, b, small, label, button, input, summary, li) {
+  font-weight: 500 !important;
+}
+
 .onframe-commerce-promotions-view-head {
   display: flex;
   align-items: center;

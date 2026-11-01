@@ -351,6 +351,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.doesNotMatch(styles, /onframe-commerce-price-reference/);
   assert.doesNotMatch(styles, /span:last-child:nth-child\(odd\)/);
   assert.match(styles, /\.onframe-commerce-popover-root\.price-summary/);
+  assert.match(styles, /\.onframe-commerce-price-view,[\s\S]*\.onframe-commerce-promotions-view[\s\S]*font-weight: 500 !important;/);
   assert.match(styles, /\.onframe-commerce-popover-price-edit-card/);
   assert.match(styles, /\.onframe-commerce-popover-price-grid\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-price-transition s\s*{\s*color: var\(--ob-ink-strong\)/s);
