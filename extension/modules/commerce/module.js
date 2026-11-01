@@ -17,12 +17,19 @@
     const Datepicker = rootScope.OnFrameDatepicker;
     const DesignSystemButton = rootScope.OnFrameButton;
     const CommercePriceView = rootScope.OnFrameCommercePriceView;
+    const CommercePromotionsView = rootScope.OnFrameCommercePromotionsView;
     const hasCommercePriceView = Boolean(
       CommercePriceView &&
       typeof CommercePriceView.render === 'function' &&
       typeof CommercePriceView.unmount === 'function'
     );
     if (!hasCommercePriceView) throw new Error('Interface de preço indisponível.');
+    const hasCommercePromotionsView = Boolean(
+      CommercePromotionsView &&
+      typeof CommercePromotionsView.render === 'function' &&
+      typeof CommercePromotionsView.unmount === 'function'
+    );
+    if (!hasCommercePromotionsView) throw new Error('Interface de promoções indisponível.');
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -112,7 +119,6 @@
       requestId: 0,
       pageSignature: '',
       lastInlineMarkup: '',
-      lastPopoverMarkup: '',
       lastModalMarkup: '',
       lastDirectDiscountModalMarkup: '',
       viewportEventsReady: false,
@@ -179,7 +185,6 @@
       state.requestId += 1;
       state.pageSignature = readPageSignature();
       state.lastInlineMarkup = '';
-      state.lastPopoverMarkup = '';
       state.lastModalMarkup = '';
       state.lastDirectDiscountModalMarkup = '';
       if (!preserveListing) resetListingState();
@@ -871,7 +876,6 @@
       state.promotionError = record.promotionError;
       state.priceLoading = record.priceLoading;
       state.promotionLoading = record.promotionLoading;
-      state.lastPopoverMarkup = '';
       mountListingControls(record);
       mountCommerce();
     }
@@ -959,7 +963,7 @@
       state.popoverRoot.classList.toggle('price-summary', state.popover === 'price');
       state.popoverRoot.classList.toggle('listing', state.surface === 'listing');
       if (state.popover === 'price') {
-        state.lastPopoverMarkup = '';
+        CommercePromotionsView.unmount(state.popoverRoot);
         CommercePriceView.render(state.popoverRoot, buildPricePopoverViewModel(), {
           onClose: closePopover,
           onReload: () => void reloadCommerce(),
@@ -979,12 +983,12 @@
       }
 
       CommercePriceView.unmount(state.popoverRoot);
-      const markup = buildPromotionPopover();
-      if (markup !== state.lastPopoverMarkup) {
-        state.lastPopoverMarkup = markup;
-        state.popoverRoot.innerHTML = markup;
-        bindPopoverEvents();
-      }
+      CommercePromotionsView.render(state.popoverRoot, buildPromotionPopoverViewModel(), {
+        onClose: closePopover,
+        onReload: () => void reloadCommerce(),
+        onManage: openPromotionModal,
+        onError: handleCommercePromotionsViewFailure
+      });
       positionPopover();
     }
 
@@ -1038,44 +1042,37 @@
       };
     }
 
-    function buildPromotionPopover() {
+    function buildPromotionPopoverViewModel() {
       if (state.promotionLoading) {
-        return `
-          <section class="onframe-commerce-popover">
-            ${renderPopoverHead('Promoções', 'Carregando')}
-            <div class="onframe-commerce-muted">Lendo promoções do anúncio.</div>
-          </section>
-        `;
+        return {
+          mode: 'loading',
+          badge: { label: 'Carregando', tone: 'grey' },
+          error: ''
+        };
       }
 
       if (state.promotionError) {
-        return `
-          <section class="onframe-commerce-popover">
-            ${renderPopoverHead('Promoções', 'Aviso')}
-            ${renderNotice(state.promotionError, 'warn')}
-            <button class="onframe-commerce-btn primary" data-action="reload-commerce" type="button">${icon('refresh', 14)}Recarregar</button>
-          </section>
-        `;
+        return {
+          mode: 'error',
+          badge: { label: 'Aviso', tone: 'orange' },
+          error: shortMessage(state.promotionError)
+        };
       }
 
       const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
-      const campaign = promotionPopoverCampaignEntry(groups);
-      const coupons = promotionPopoverCouponEntries(groups);
-      const paymentBenefits = promotionPopoverPaymentEntries(groups);
-      const hasPromotionContent = Boolean(campaign) || coupons.length || paymentBenefits.length;
-      return `
-        <section class="onframe-commerce-popover">
-          ${renderPopoverHead('Promoções')}
-          ${renderNotice(state.actionError, 'warn')}
-          ${campaign ? renderPromotionPopoverCampaign(campaign) : ''}
-          ${renderPromotionPopoverCouponList(coupons)}
-          ${hasPromotionContent ? '' : renderPromotionPopoverEmptyState()}
-          ${renderPromotionPopoverPaymentList(paymentBenefits)}
-          <div class="onframe-commerce-actions">
-            <button class="onframe-commerce-btn primary" data-action="open-promotion-modal" type="button">${icon('tag', 14)}Gerenciar promoções</button>
-          </div>
-        </section>
-      `;
+      const campaignEntry = promotionPopoverCampaignEntry(groups);
+      const couponEntries = promotionPopoverCouponEntries(groups);
+      const paymentEntries = promotionPopoverPaymentEntries(groups);
+      return {
+        mode: 'summary',
+        badge: null,
+        error: shortMessage(state.actionError),
+        campaign: campaignEntry ? promotionPopoverCampaign(campaignEntry) : null,
+        coupons: couponEntries.map(promotionPopoverCoupon),
+        couponApplicationLabel: couponApplicationLabel(),
+        payments: paymentEntries.map(promotionPopoverPayment),
+        empty: !campaignEntry && !couponEntries.length && !paymentEntries.length
+      };
     }
 
     function renderModal() {
@@ -1953,38 +1950,22 @@
       return stackablePromotionEntries(groups).filter((entry) => promotionListType(entry) === 'payment');
     }
 
-    function renderPromotionPopoverCampaign(entry) {
+    function promotionPopoverCampaign(entry) {
       const originalPrice = promotionSummaryOriginalPrice(entry);
       const finalPrice = promotionSummaryDisplayPrice(entry);
       const discount = discountPercent(originalPrice, finalPrice);
       const period = formatPromotionPeriod(entry) || 'Sem vigência informada';
-      const status = promotionDisplayStatusLabel(entry);
-      const tone = promotionDisplayTone(entry);
-      const financialBenefit = renderPromotionPopoverFinancialBenefits(entry);
-      return `
-        <section class="ob-card onframe-commerce-popover-campaign">
-          <div class="onframe-commerce-popover-campaign-grid${financialBenefit ? ' with-benefit' : ''}">
-            <div class="onframe-commerce-popover-campaign-field name">
-              <small>Promoção</small>
-              <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
-            </div>
-            <div class="onframe-commerce-popover-campaign-field period">
-              <small>Estado e vigência</small>
-              ${renderCompactPopoverTooltip(period, period, 'campaign-period', true)}
-              <span class="ob-badge ${escapeAttribute(tone)}">${escapeHtml(status)}</span>
-            </div>
-            <div class="onframe-commerce-popover-campaign-field">
-              <small>Desconto</small>
-              <strong>${discount ? escapeHtml(`${discount}% OFF`) : '—'}</strong>
-            </div>
-            <div class="onframe-commerce-popover-campaign-field">
-              <small>Preço final</small>
-              <strong>${finalPrice ? escapeHtml(CommerceModel.formatMoney(finalPrice, itemCurrency())) : '—'}</strong>
-            </div>
-            ${financialBenefit}
-          </div>
-        </section>
-      `;
+      return {
+        label: entry.label || 'Promoção',
+        period,
+        status: {
+          label: promotionDisplayStatusLabel(entry),
+          tone: promotionBadgeTone(promotionDisplayTone(entry))
+        },
+        discount: discount ? `${discount}% OFF` : '—',
+        finalPrice: finalPrice ? CommerceModel.formatMoney(finalPrice, itemCurrency()) : '—',
+        financialBenefit: promotionPopoverFinancialBenefit(entry)
+      };
     }
 
     function promotionSummaryDisplayPrice(entry) {
@@ -2000,21 +1981,21 @@
       return moneyOrNull(state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.regular_amount);
     }
 
-    function renderPromotionPopoverFinancialBenefits(entry) {
+    function promotionPopoverFinancialBenefit(entry) {
       const benefits = promotionFinancialMetrics(entry, { originalPrice: promotionSummaryOriginalPrice(entry) })
         .filter((metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction');
-      if (!benefits.length) return '';
+      if (!benefits.length) return null;
       const primary = benefits[0];
       const description = benefits
         .map((metric) => promotionFinancialListText(metric))
         .filter(Boolean)
         .join(' ');
-      return `
-        <div class="onframe-commerce-popover-campaign-field financial ${escapeAttribute(primary.tone || '')}">
-          <small>${escapeHtml(compactPromotionBenefitLabel(primary))}</small>
-          ${renderCompactPopoverTooltip(primary.value, description, `campaign-benefit-${primary.kind}`)}
-        </div>
-      `;
+      return {
+        label: compactPromotionBenefitLabel(primary),
+        value: primary.value,
+        description,
+        tone: primary.tone || ''
+      };
     }
 
     function compactPromotionBenefitLabel(metric) {
@@ -2022,67 +2003,32 @@
       return metric.kind === 'fee-reduction' ? 'Bônus ML' : 'Redução de tarifa';
     }
 
-    function renderPromotionPopoverCouponList(entries) {
-      const list = Array.isArray(entries) ? entries : [];
-      if (!list.length) return '';
-      return `
-        <section class="ob-card onframe-commerce-popover-coupon-list" aria-label="Cupons do vendedor">
-          <div class="onframe-commerce-popover-coupon-list-head">
-            <small>Cupons do vendedor</small>
-            <span>${escapeHtml(couponApplicationLabel())}</span>
-          </div>
-          <div class="onframe-commerce-popover-coupon-list-rows">
-            ${list.map(renderPromotionPopoverCouponRow).join('')}
-          </div>
-        </section>
-      `;
+    function promotionBadgeTone(tone) {
+      return priceBadgeTone(tone);
     }
 
-    function renderPromotionPopoverCouponRow(entry) {
+    function promotionPopoverCoupon(entry) {
       const period = formatPromotionPeriod(entry) || 'Sem vigência informada';
-      const status = promotionDisplayStatusLabel(entry);
-      const tone = promotionDisplayTone(entry);
       const terms = couponCompactTerms(entry);
-      return `
-        <div class="onframe-commerce-popover-coupon-row">
-          <span class="onframe-commerce-popover-coupon-icon" aria-hidden="true">${icon('ticket', 14)}</span>
-          <strong class="onframe-commerce-popover-coupon-name">${escapeHtml(entry.label || 'Cupom')}</strong>
-          <span class="onframe-commerce-popover-coupon-period">${escapeHtml(period)}</span>
-          <strong class="onframe-commerce-popover-coupon-benefit">${escapeHtml(couponBenefitLabel(entry))}</strong>
-          <span class="onframe-commerce-popover-coupon-terms">${escapeHtml(terms.join(' · ') || 'Condições não informadas')}</span>
-          <span class="ob-badge ${escapeAttribute(tone)}">${escapeHtml(status)}</span>
-        </div>
-      `;
+      return {
+        label: entry.label || 'Cupom',
+        period,
+        benefit: couponBenefitLabel(entry),
+        terms: terms.join(' · ') || 'Condições não informadas',
+        status: {
+          label: promotionDisplayStatusLabel(entry),
+          tone: promotionBadgeTone(promotionDisplayTone(entry))
+        }
+      };
     }
 
-    function renderPromotionPopoverPaymentList(entries) {
-      const list = Array.isArray(entries) ? entries : [];
-      if (!list.length) return '';
-      return `
-        <section class="onframe-commerce-popover-conditions payment" aria-label="Descontos por pagamento">
-          <div class="onframe-commerce-popover-conditions-head">
-            <small>Descontos por pagamento</small>
-          </div>
-          <div class="onframe-commerce-popover-condition-list">
-            ${list.map(renderPromotionPopoverPayment).join('')}
-          </div>
-        </section>
-      `;
-    }
-
-    function renderPromotionPopoverPayment(entry) {
+    function promotionPopoverPayment(entry) {
       const payment = stackablePaymentLabel(entry);
-      const benefit = promotionPopoverConditionalBenefit(entry);
-      return `
-        <div class="ob-card onframe-commerce-popover-condition payment">
-          <span class="onframe-commerce-popover-condition-icon">${icon('creditCard', 14)}</span>
-          <div>
-            <strong>${escapeHtml(entry.label || (payment ? `Desconto no ${payment}` : 'Desconto por pagamento'))}</strong>
-            <span>${escapeHtml(payment ? `Válido em pagamentos no ${payment}` : 'Condição definida no pagamento')}</span>
-          </div>
-          ${benefit ? `<b>${escapeHtml(benefit)}</b>` : ''}
-        </div>
-      `;
+      return {
+        label: entry.label || (payment ? `Desconto no ${payment}` : 'Desconto por pagamento'),
+        description: payment ? `Válido em pagamentos no ${payment}` : 'Condição definida no pagamento',
+        benefit: promotionPopoverConditionalBenefit(entry)
+      };
     }
 
     function promotionPopoverConditionalBenefit(entry) {
@@ -2099,18 +2045,6 @@
       const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
       const amount = moneyOrNull(entry && entry.discount_amount || raw.discount_amount);
       return amount === null ? '' : `${CommerceModel.formatMoney(amount, itemCurrency())} OFF`;
-    }
-
-    function renderPromotionPopoverEmptyState() {
-      return `
-        <div class="ob-card onframe-commerce-popover-empty">
-          <div>
-            <small>Promoções</small>
-            <strong>Nenhuma promoção aplicada</strong>
-          </div>
-          <span>Gerencie campanhas e descontos deste anúncio.</span>
-        </div>
-      `;
     }
 
     function promotionFinancialFromEntry(entry, options = {}) {
@@ -2367,24 +2301,6 @@
         });
       }
       return { fields };
-    }
-
-    function renderCompactPopoverTooltip(value, description, key, force = false) {
-      const text = String(value || '—');
-      const tooltipText = String(description || '').trim();
-      if (!tooltipText || (!force && tooltipText === text)) return `<strong>${escapeHtml(text)}</strong>`;
-      const tooltipId = compactPopoverTooltipId(key);
-      return `
-        <span class="ob-tooltip onframe-commerce-compact-tooltip" data-placement="bottom" tabindex="0" aria-describedby="${escapeAttribute(tooltipId)}">
-          <strong>${escapeHtml(text)}</strong>
-          <span class="ob-tooltip-content" id="${escapeAttribute(tooltipId)}" role="tooltip">${escapeHtml(tooltipText)}<span class="ob-tooltip-arrow" aria-hidden="true"></span></span>
-        </span>
-      `;
-    }
-
-    function compactPopoverTooltipId(key) {
-      const safeKey = String(key || 'metric').toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
-      return `onframe-commerce-${safeKey}-tooltip`;
     }
 
     function priceStackableScenarios(summary) {
@@ -3066,16 +2982,6 @@
       return null;
     }
 
-    function renderPopoverHead(title, badge) {
-      return `
-        <header class="onframe-commerce-popover-head">
-          <strong>${escapeHtml(title)}</strong>
-          ${badge ? `<span>${escapeHtml(badge)}</span>` : ''}
-          <button class="onframe-commerce-icon-btn" data-action="close-popover" type="button" aria-label="Fechar">${icon('x', 14)}</button>
-        </header>
-      `;
-    }
-
     function renderNotice(message, tone) {
       if (!message) return '';
       return `
@@ -3091,21 +2997,6 @@
       bindButton(state.inline, 'open-price', () => openPopover('price'));
       bindButton(state.inline, 'open-promotions', () => openPopover('promotions'));
       bindButton(state.inline, 'reload-commerce', () => void reloadCommerce());
-    }
-
-    function bindPopoverEvents() {
-      if (!state.popoverRoot) return;
-      bindButton(state.popoverRoot, 'close-popover', closePopover);
-      bindButton(state.popoverRoot, 'toggle-details', () => {
-        state.detailsOpen = !state.detailsOpen;
-        rerenderPopover();
-      });
-      bindButton(state.popoverRoot, 'edit-price', startPriceEdit);
-      bindButton(state.popoverRoot, 'cancel-price', cancelPriceEdit);
-      bindButton(state.popoverRoot, 'save-price', () => void savePrice());
-      bindButton(state.popoverRoot, 'reload-commerce', () => void reloadCommerce());
-      bindButton(state.popoverRoot, 'open-promotion-modal', openPromotionModal);
-      bindBulkControls(state.popoverRoot);
     }
 
     function bindModalEvents() {
@@ -4673,7 +4564,6 @@
     }
 
     function rerenderPopover() {
-      state.lastPopoverMarkup = '';
       renderPopover();
     }
 
@@ -4693,10 +4583,10 @@
     function removePopover() {
       if (state.popoverRoot) {
         CommercePriceView.unmount(state.popoverRoot);
+        CommercePromotionsView.unmount(state.popoverRoot);
         state.popoverRoot.remove();
       }
       state.popoverRoot = null;
-      state.lastPopoverMarkup = '';
     }
 
     function removePromotionResultPopover() {
@@ -4854,6 +4744,12 @@
     function handleCommercePriceViewFailure(error) {
       if (rootScope.console && typeof rootScope.console.error === 'function') {
         rootScope.console.error('[OnFrame] A interface de preço falhou.', error);
+      }
+    }
+
+    function handleCommercePromotionsViewFailure(error) {
+      if (rootScope.console && typeof rootScope.console.error === 'function') {
+        rootScope.console.error('[OnFrame] A interface de promoções falhou.', error);
       }
     }
 

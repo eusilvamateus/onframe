@@ -51,7 +51,7 @@ function PriceField({ field }) {
   const value = field.description ? (
     <span className="onframe-commerce-price-view-tooltip">
       <Tooltip label={field.description} placement="bottom">
-        <strong>{field.value}</strong>
+        <strong tabIndex={0}>{field.value}</strong>
       </Tooltip>
     </span>
   ) : <strong>{field.value}</strong>;

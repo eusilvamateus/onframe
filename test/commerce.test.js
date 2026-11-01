@@ -311,7 +311,6 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /CommercePriceView\.unmount\(state\.popoverRoot\)/);
   assert.match(source, /function priceSnapshot/);
   assert.match(source, /function priceSummaryCosts/);
-  assert.match(source, /function renderCompactPopoverTooltip/);
   assert.match(view, /className="onframe-commerce-popover-price-card"/);
   assert.match(view, /onframe-commerce-popover-price-grid\$\{model\.fields\.length >= 5 \? ' with-benefit' : ''\}/);
   assert.match(view, /className="onframe-commerce-popover-price-edit-card"/);
@@ -386,7 +385,7 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.doesNotMatch(source, /listingReadonly/);
   assert.doesNotMatch(source, /if \(state\.surface === 'listing'\) return;/);
   assert.match(source, /onEdit: startPriceEdit/);
-  assert.match(source, /data-action="open-promotion-modal"/);
+  assert.match(source, /onManage: openPromotionModal/);
   assert.match(source, /function listingPriceTone/);
   assert.match(source, /function listingPromotionTone/);
   assert.match(source, /\['pointerdown', 'mousedown', 'touchstart'\]/);
@@ -567,14 +566,25 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
 
 test('popover de promocoes apresenta cupom do item como beneficio de checkout', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotions-view.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const popoverSource = source.slice(source.indexOf('function buildPromotionPopover'), source.indexOf('function renderModal'));
+  const popoverSource = source.slice(source.indexOf('function buildPromotionPopoverViewModel'), source.indexOf('function renderModal'));
+  const scripts = manifest.content_scripts[0].js;
 
-  assert.match(popoverSource, /renderPopoverHead\('Promoções'\)/);
-  assert.match(popoverSource, /const campaign = promotionPopoverCampaignEntry\(groups\)/);
-  assert.match(popoverSource, /const coupons = promotionPopoverCouponEntries\(groups\)/);
-  assert.match(popoverSource, /renderPromotionPopoverCouponList\(coupons\)/);
-  assert.match(popoverSource, /renderPromotionPopoverPaymentList\(paymentBenefits\)/);
+  assert.match(view, /import \{ Alert, Badge, Button, Card, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
+  assert.match(view, /globalThis\.OnFrameCommercePromotionsView = Object\.freeze\(\{ render, unmount \}\)/);
+  assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+  assert.match(build, /commerce-promotions-view\.jsx/);
+  assert.ok(scripts.indexOf('core/commerce-promotions-view.js') < scripts.indexOf('modules/commerce/module.js'));
+  assert.match(source, /const CommercePromotionsView = rootScope\.OnFrameCommercePromotionsView/);
+  assert.match(source, /CommercePromotionsView\.render\(state\.popoverRoot, buildPromotionPopoverViewModel\(\)/);
+  assert.match(source, /onManage: openPromotionModal/);
+  assert.match(popoverSource, /const campaignEntry = promotionPopoverCampaignEntry\(groups\)/);
+  assert.match(popoverSource, /const couponEntries = promotionPopoverCouponEntries\(groups\)/);
+  assert.match(popoverSource, /coupons: couponEntries\.map\(promotionPopoverCoupon\)/);
+  assert.match(popoverSource, /payments: paymentEntries\.map\(promotionPopoverPayment\)/);
   assert.match(source, /classList\.toggle\('promotions', state\.popover === 'promotions'\)/);
   assert.match(source, /classList\.toggle\('price-summary', state\.popover === 'price'\)/);
   assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price';/);
@@ -585,9 +595,8 @@ test('popover de promocoes apresenta cupom do item como beneficio de checkout', 
   assert.match(source, /if \(programmed\) return programmed;\s*return null;/s);
   assert.match(source, /function promotionStartTimestamp/);
   assert.match(source, /function formatPromotionPeriod/);
-  assert.match(source, /function renderPromotionPopoverCampaign/);
-  assert.match(source, /function renderPromotionPopoverCouponList/);
-  assert.match(source, /function renderPromotionPopoverCouponRow/);
+  assert.match(source, /function promotionPopoverCampaign/);
+  assert.match(source, /function promotionPopoverCoupon/);
   assert.match(source, /function couponCampaignData/);
   assert.match(source, /function couponPresentation/);
   assert.match(source, /function couponBenefitLabel/);
@@ -602,10 +611,10 @@ test('popover de promocoes apresenta cupom do item como beneficio de checkout', 
   assert.match(source, /function couponAmount\(value\) \{\s*if \(value === null \|\| value === undefined \|\| value === ''\) return null;/s);
   assert.match(source, /Aplicado sobre o total da compra/);
   assert.doesNotMatch(source, /function couponSubtypeLabel/);
-  assert.match(source, /class="ob-card onframe-commerce-popover-campaign"/);
-  assert.match(source, /class="ob-card onframe-commerce-popover-coupon-list"/);
-  assert.match(source, /class="ob-badge \$\{escapeAttribute\(tone\)\}"/);
-  assert.match(source, /function renderPromotionPopoverFinancialBenefits/);
+  assert.match(view, /className="onframe-commerce-popover-campaign"/);
+  assert.match(view, /className="onframe-commerce-popover-coupon-list"/);
+  assert.match(view, /<Badge tone=\{coupon\.status\.tone\}/);
+  assert.match(source, /function promotionPopoverFinancialBenefit/);
   assert.match(source, /Bônus do Mercado Livre/);
   assert.match(source, /function promotionPopoverCouponEntries/);
   assert.doesNotMatch(source, /isSellerWidePromotion/);
@@ -613,17 +622,17 @@ test('popover de promocoes apresenta cupom do item como beneficio de checkout', 
   assert.doesNotMatch(source, /Cupons de marketing/);
   assert.doesNotMatch(source, /Válidos para compradores elegíveis/);
   assert.doesNotMatch(source, /Elegibilidade depende do comprador/);
-  assert.match(source, /function renderPromotionPopoverPaymentList/);
+  assert.match(view, /function PaymentList/);
   assert.match(source, /function promotionPopoverConditionalBenefit/);
   assert.match(source, /sellerPercentage[^\n]+seller_percentage/);
   assert.match(source, /meliPercentage[^\n]+meli_percentage/);
   assert.match(source, /function promotionTypeIcon/);
   assert.match(source, /if \(type === 'coupon'\) return 'ticket';/);
-  assert.match(source, /icon\('creditCard', 14\)/);
+  assert.match(view, /<Ph n="credit-card" size=\{14\}/);
   assert.match(styles, /\.onframe-commerce-popover-root\.promotions,\s*\.onframe-commerce-popover-root\.price-summary\s*{\s*width: min\(560px/s);
   assert.match(styles, /\.onframe-commerce-popover-campaign-grid\.with-benefit\s*{\s*grid-template-columns: minmax\(0, 1\.45fr\)[\s\S]*minmax\(0, 1\.25fr\)/);
   assert.match(styles, /\.onframe-commerce-popover-price-grid\.with-benefit\s*{\s*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\) minmax\(0, 1\.28fr\)/s);
-  assert.match(styles, /\.onframe-commerce-compact-tooltip \.ob-tooltip-content\s*{[\s\S]*white-space: normal;/);
+  assert.match(styles, /\.onframe-commerce-promotions-view-tooltip\s*{[\s\S]*max-width: 100%;/);
   assert.match(styles, /\.onframe-commerce-popover-condition\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-condition-list\s*{\s*display: grid[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.onframe-commerce-popover-coupon-list\s*{\s*display: grid/s);
