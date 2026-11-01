@@ -292,39 +292,50 @@ test('modulos legados montam o Button oficial com tom, tooltip e estado pression
 
 test('popover de preco resume valores e custos em um card horizontal', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const pricePopoverSource = source.slice(source.indexOf('function buildPricePopover'), source.indexOf('function renderPriceEdit'));
+  const scripts = manifest.content_scripts[0].js;
 
-  assert.match(pricePopoverSource, /renderPopoverHead\('Preço'\)/);
-  assert.match(source, /function renderPriceSummary/);
+  assert.match(view, /import \{ Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
+  assert.match(view, /globalThis\.OnFrameCommercePriceView = Object\.freeze\(\{ render, unmount \}\)/);
+  assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+  assert.match(build, /commerce-price-view\.jsx/);
+  assert.ok(scripts.indexOf('core/commerce-price-view.js') < scripts.indexOf('modules/commerce/module.js'));
+  assert.match(source, /const CommercePriceView = rootScope\.OnFrameCommercePriceView/);
+  assert.match(source, /function buildPricePopoverViewModel/);
+  assert.match(source, /CommercePriceView\.render\(state\.popoverRoot, buildPricePopoverViewModel\(\)/);
+  assert.match(source, /onDraftChange: updatePriceDraft/);
+  assert.match(source, /onBulkChange: updatePriceBulkEnabled/);
+  assert.match(source, /CommercePriceView\.unmount\(state\.popoverRoot\)/);
   assert.match(source, /function priceSnapshot/);
   assert.match(source, /function priceSummaryCosts/);
   assert.match(source, /function renderCompactPopoverTooltip/);
-  assert.match(source, /class="ob-card onframe-commerce-popover-price-card"/);
-  assert.match(source, /class="onframe-commerce-popover-price-grid\$\{fields\.length >= 5 \? ' with-benefit' : ''\}"/);
-  assert.match(source, /function renderPriceEdit/);
-  assert.match(source, /class="ob-card onframe-commerce-popover-price-edit-card"/);
-  assert.match(source, /class="onframe-commerce-popover-price-edit-field"/);
-  assert.match(source, /class="onframe-commerce-popover-price-edit-bulk"/);
-  assert.match(source, /priceToggle\.addEventListener\('click', \(event\) => \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/s);
+  assert.match(view, /className="onframe-commerce-popover-price-card"/);
+  assert.match(view, /onframe-commerce-popover-price-grid\$\{model\.fields\.length >= 5 \? ' with-benefit' : ''\}/);
+  assert.match(view, /className="onframe-commerce-popover-price-edit-card"/);
+  assert.match(view, /className="onframe-commerce-popover-price-edit-field"/);
+  assert.match(view, /className="onframe-commerce-popover-price-edit-bulk"/);
+  assert.match(view, /<Input[\s\S]*label="Novo preço"/);
+  assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
   assert.doesNotMatch(source, /function renderPriceSnapshot/);
   assert.doesNotMatch(source, /function renderPriceCosts/);
   assert.doesNotMatch(source, /function priceCostMetrics/);
   assert.doesNotMatch(source, /function renderPriceReference/);
   assert.match(source, /Preço promocional/);
   assert.match(source, /originalPrice/);
-  assert.match(source, /De <s>\$\{escapeHtml\(field\.originalPrice\)\}<\/s><\/span>/);
-  assert.match(source, /onframe-commerce-popover-price-transition-prefix">por<\/span>/);
+  assert.match(view, /De <s>\{field\.originalPrice\}<\/s>/);
+  assert.match(view, /onframe-commerce-popover-price-transition-prefix">por<\/span>/);
   assert.doesNotMatch(source, /priceMeta/);
   assert.match(source, /Você recebe/);
   assert.match(source, /Comissão/);
   assert.match(source, /Frete/);
   assert.match(source, /Com redução de tarifas/);
   assert.match(source, /Bônus do Mercado Livre/);
-  assert.match(source, /function renderPriceStackableScenarios/);
-  assert.match(source, /Desconto acumulativo/);
-  assert.match(source, /function renderPriceScenarioField/);
-  assert.match(source, /onframe-commerce-popover-price-scenario/);
+  assert.match(source, /function priceStackableScenarios/);
+  assert.match(view, /Desconto acumulativo/);
+  assert.match(view, /onframe-commerce-popover-price-scenario/);
   assert.doesNotMatch(source, /formatBenefitValue/);
   assert.match(source, /join\(' · '\)/);
   assert.match(source, /function formatPromotionBenefitValue\(amountText, percentageText\)/);
@@ -345,10 +356,10 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(styles, /\.onframe-commerce-popover-price-grid\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-price-transition s\s*{\s*color: var\(--ob-ink-strong\)/s);
   assert.match(styles, /\.onframe-commerce-popover-price-field\.with-transition > strong\s*{\s*display: flex;[\s\S]*white-space: nowrap;/);
-  assert.match(styles, /\.onframe-commerce-popover-price-scenario\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-popover-price-scenario-grid\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-review-grid > span/);
   assert.doesNotMatch(styles, /\.onframe-commerce-(?:cost-grid|promo-metrics|estimate-grid|meta|review-grid) span\b/);
-  assert.match(source, /Editar preço base/);
+  assert.match(view, /Editar preço base/);
 });
 
 test('listagens reutilizam popovers apenas para anuncios da conta conectada', () => {
@@ -374,7 +385,7 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(source, /Seu anúncio/);
   assert.doesNotMatch(source, /listingReadonly/);
   assert.doesNotMatch(source, /if \(state\.surface === 'listing'\) return;/);
-  assert.match(source, /data-action="edit-price"/);
+  assert.match(source, /onEdit: startPriceEdit/);
   assert.match(source, /data-action="open-promotion-modal"/);
   assert.match(source, /function listingPriceTone/);
   assert.match(source, /function listingPromotionTone/);

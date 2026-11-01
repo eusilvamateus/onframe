@@ -16,6 +16,13 @@
     const formatarPeriodo = rootScope.OnFramePeriod && rootScope.OnFramePeriod.formatarPeriodo;
     const Datepicker = rootScope.OnFrameDatepicker;
     const DesignSystemButton = rootScope.OnFrameButton;
+    const CommercePriceView = rootScope.OnFrameCommercePriceView;
+    const hasCommercePriceView = Boolean(
+      CommercePriceView &&
+      typeof CommercePriceView.render === 'function' &&
+      typeof CommercePriceView.unmount === 'function'
+    );
+    if (!hasCommercePriceView) throw new Error('Interface de preço indisponível.');
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -951,7 +958,28 @@
       state.popoverRoot.classList.toggle('promotions', state.popover === 'promotions');
       state.popoverRoot.classList.toggle('price-summary', state.popover === 'price');
       state.popoverRoot.classList.toggle('listing', state.surface === 'listing');
-      const markup = state.popover === 'price' ? buildPricePopover() : buildPromotionPopover();
+      if (state.popover === 'price') {
+        state.lastPopoverMarkup = '';
+        CommercePriceView.render(state.popoverRoot, buildPricePopoverViewModel(), {
+          onClose: closePopover,
+          onReload: () => void reloadCommerce(),
+          onToggleDetails: () => {
+            state.detailsOpen = !state.detailsOpen;
+            rerenderPopover();
+          },
+          onEdit: startPriceEdit,
+          onDraftChange: updatePriceDraft,
+          onBulkChange: updatePriceBulkEnabled,
+          onSave: () => void savePrice(),
+          onCancel: cancelPriceEdit,
+          onError: handleCommercePriceViewFailure
+        });
+        positionPopover();
+        return;
+      }
+
+      CommercePriceView.unmount(state.popoverRoot);
+      const markup = buildPromotionPopover();
       if (markup !== state.lastPopoverMarkup) {
         state.lastPopoverMarkup = markup;
         state.popoverRoot.innerHTML = markup;
@@ -960,67 +988,54 @@
       positionPopover();
     }
 
-    function buildPricePopover() {
+    function buildPricePopoverViewModel() {
       if (state.priceLoading) {
-        return `
-          <section class="onframe-commerce-popover">
-            ${renderPopoverHead('Preço', 'Carregando')}
-            <div class="onframe-commerce-muted">Lendo preço do anúncio.</div>
-          </section>
-        `;
+        return {
+          mode: 'loading',
+          title: 'Preço',
+          badge: { label: 'Carregando', tone: 'grey' },
+          error: ''
+        };
       }
 
       if (state.priceError) {
-        return `
-          <section class="onframe-commerce-popover">
-            ${renderPopoverHead('Preço', 'Aviso')}
-            ${renderNotice(state.priceError, 'warn')}
-            <button class="onframe-commerce-btn primary" data-action="reload-commerce" type="button">${icon('refresh', 14)}Recarregar</button>
-          </section>
-        `;
+        return {
+          mode: 'error',
+          title: 'Preço',
+          badge: { label: 'Aviso', tone: 'orange' },
+          error: shortMessage(state.priceError)
+        };
       }
 
       const priceState = CommerceModel.getPriceState(state.priceSummary);
-      if (state.priceEditing) return renderPriceEdit(priceState);
+      const badge = { label: priceState.label, tone: priceBadgeTone(priceState.tone) };
+      if (state.priceEditing) {
+        return {
+          mode: 'edit',
+          title: 'Editar preço',
+          badge,
+          error: shortMessage(state.actionError),
+          draft: state.priceDraft,
+          draftKey: `${state.itemId || 'item'}:price-edit`,
+          busy: state.busy,
+          canBulk: canUseBulkActions(),
+          bulkEnabled: state.priceBulkEnabled,
+          bulkStatus: buildPriceBulkStatus(),
+          saveLabel: priceSaveLabel()
+        };
+      }
 
-      return `
-        <section class="onframe-commerce-popover">
-          ${renderPopoverHead('Preço')}
-          ${renderNotice(state.actionError, 'warn')}
-          ${renderPriceSummary(state.priceSummary, priceState)}
-          ${renderPriceStackableScenarios(state.priceSummary)}
-          ${state.detailsOpen ? `<p class="onframe-commerce-detail">${escapeHtml(priceState.detail)}</p>` : ''}
-          <div class="onframe-commerce-actions">
-            <button class="onframe-commerce-btn primary" data-action="edit-price" type="button" ${priceState.canEdit ? '' : 'disabled'}>${icon('pencil', 14)}Editar preço base</button>
-            ${priceState.blocker ? '<button class="onframe-commerce-btn" data-action="toggle-details" type="button">Ver motivo</button>' : ''}
-          </div>
-        </section>
-      `;
-    }
-
-    function renderPriceEdit(priceState) {
-      const bulkSwitch = renderBulkSwitch('price', state.priceBulkEnabled);
-      return `
-        <section class="onframe-commerce-popover">
-          ${renderPopoverHead('Editar preço', priceState.label)}
-          ${renderNotice(state.actionError, 'warn')}
-          <section class="ob-card onframe-commerce-popover-price-edit-card">
-            <div class="onframe-commerce-popover-price-edit-field">
-              <label class="onframe-commerce-field">
-                <span>Novo preço</span>
-                <input data-field="price" inputmode="decimal" autocomplete="off" value="${escapeAttribute(state.priceDraft)}">
-              </label>
-            </div>
-            ${bulkSwitch ? `<div class="onframe-commerce-popover-price-edit-bulk">${bulkSwitch}</div>` : ''}
-          </section>
-          ${renderBulkBusyStatus()}
-          ${renderBulkStatus(state.priceBulkPreview, state.priceBulkError)}
-          <div class="onframe-commerce-actions">
-            <button class="onframe-commerce-btn primary" data-action="save-price" type="button" ${state.busy ? 'disabled' : ''}>${priceSaveIcon()}${escapeHtml(priceSaveLabel())}</button>
-            <button class="onframe-commerce-btn" data-action="cancel-price" type="button" ${state.busy ? 'disabled' : ''}>Descartar</button>
-          </div>
-        </section>
-      `;
+      return {
+        mode: 'summary',
+        title: 'Preço',
+        badge: null,
+        error: shortMessage(state.actionError),
+        fields: [priceSnapshot(state.priceSummary, priceState)].concat(priceSummaryCosts(state.priceSummary).fields),
+        scenarios: priceStackableScenarios(state.priceSummary),
+        details: state.detailsOpen ? priceState.detail : '',
+        hasBlocker: Boolean(priceState.blocker),
+        canEdit: priceState.canEdit
+      };
     }
 
     function buildPromotionPopover() {
@@ -2298,19 +2313,6 @@
       return `<span class="onframe-commerce-status ${escapeAttribute(tone)}">${escapeHtml(status)}</span>`;
     }
 
-    function renderPriceSummary(summary, priceState) {
-      const snapshot = priceSnapshot(summary, priceState);
-      const costs = priceSummaryCosts(summary);
-      const fields = [snapshot].concat(costs.fields);
-      return `
-        <section class="ob-card onframe-commerce-popover-price-card">
-          <div class="onframe-commerce-popover-price-grid${fields.length >= 5 ? ' with-benefit' : ''}">
-            ${fields.map(renderPriceSummaryField).join('')}
-          </div>
-        </section>
-      `;
-    }
-
     function priceSnapshot(summary, priceState) {
       const standard = summary && summary.standardPrice ? summary.standardPrice : {};
       const sale = summary && summary.salePrice ? summary.salePrice : null;
@@ -2367,19 +2369,6 @@
       return { fields };
     }
 
-    function renderPriceSummaryField(field) {
-      if (!field || !field.label || !field.value) return '';
-      return `
-        <div class="onframe-commerce-popover-price-field ${escapeAttribute(field.tone || '')}${field.originalPrice ? ' with-transition' : ''}">
-          <small>${escapeHtml(field.label)}</small>
-          ${field.originalPrice ? `
-            <span class="onframe-commerce-popover-price-transition">De <s>${escapeHtml(field.originalPrice)}</s></span>
-            <strong><span class="onframe-commerce-popover-price-transition-prefix">por</span>${escapeHtml(field.value)}</strong>
-          ` : renderCompactPopoverTooltip(field.value, field.description || '', `price-${field.label}`)}
-        </div>
-      `;
-    }
-
     function renderCompactPopoverTooltip(value, description, key, force = false) {
       const text = String(value || '—');
       const tooltipText = String(description || '').trim();
@@ -2398,7 +2387,7 @@
       return `onframe-commerce-${safeKey}-tooltip`;
     }
 
-    function renderPriceStackableScenarios(summary) {
+    function priceStackableScenarios(summary) {
       const breakdown = summary && summary.costBreakdown ? summary.costBreakdown : {};
       const financials = Array.isArray(breakdown.conditional_financials) && breakdown.conditional_financials.length
         ? breakdown.conditional_financials
@@ -2406,20 +2395,10 @@
           ? summary.promotionFinancials.conditional
           : [];
       const list = financials.filter((financial) => promotionFinancialMetrics(financial).length > 0);
-      if (!list.length) return '';
-      return `
-        <section class="onframe-commerce-popover-price-conditions" aria-label="Descontos condicionais">
-          <div class="onframe-commerce-popover-conditions-head">
-            <small>Descontos condicionais</small>
-          </div>
-          <div class="onframe-commerce-popover-price-scenario-list">
-            ${list.map(renderPriceStackableScenario).join('')}
-          </div>
-        </section>
-      `;
+      return list.map(priceStackableScenario);
     }
 
-    function renderPriceStackableScenario(financial) {
+    function priceStackableScenario(financial) {
       const currency = itemCurrency();
       const payment = stackablePaymentLabel(financial);
       const fields = [];
@@ -2427,25 +2406,10 @@
         fields.push({ label: `Preço ${payment ? `no ${payment}` : 'acumulativo'}`, value: CommerceModel.formatMoney(financial.total_price_for_boosted_offer, currency), tone: 'primary' });
       }
       promotionFinancialMetrics(financial).forEach((metric) => fields.push(metric));
-      return `
-        <div class="ob-card onframe-commerce-popover-price-scenario">
-          <div>
-            <small>Desconto acumulativo</small>
-            <strong>${escapeHtml(financial.label || (payment ? `No ${payment}` : 'Acumulativo'))}</strong>
-          </div>
-          ${fields.map(renderPriceScenarioField).join('')}
-        </div>
-      `;
-    }
-
-    function renderPriceScenarioField(field) {
-      if (!field || !field.label || !field.value) return '';
-      return `
-        <div class="onframe-commerce-popover-price-scenario-field ${escapeAttribute(field.tone || '')}">
-          <small>${escapeHtml(field.label)}</small>
-          <strong>${escapeHtml(field.value)}</strong>
-        </div>
-      `;
+      return {
+        label: financial.label || (payment ? `No ${payment}` : 'Acumulativo'),
+        fields: fields.filter((field) => field && field.label && field.value)
+      };
     }
 
     function renderPromotionReview(key, entry, formOpen, confirm) {
@@ -2675,8 +2639,49 @@
       return eligible > 1 ? `Confirmar em ${eligible} variações` : 'Confirmar';
     }
 
-    function priceSaveIcon() {
-      return state.operationPending && state.operationPending.indexOf('price-') === 0 ? spinner() : '';
+    function priceBadgeTone(tone) {
+      if (tone === 'green') return 'green';
+      if (tone === 'blue') return 'blue';
+      if (tone === 'orange' || tone === 'warn') return 'orange';
+      return 'grey';
+    }
+
+    function buildPriceBulkStatus() {
+      const busyMessage = bulkBusyText();
+      if (busyMessage) return { loading: true, message: busyMessage, tone: '', blocked: [] };
+      if (state.priceBulkError) {
+        return { loading: false, message: shortMessage(state.priceBulkError), tone: 'warn', blocked: [] };
+      }
+      const preview = state.priceBulkPreview;
+      if (!preview) return null;
+
+      const counts = preview.counts || {};
+      const eligible = Number(counts.eligible || 0);
+      const total = Number(counts.total || 0);
+      const blockedCount = Number(counts.blocked || 0);
+      if (!eligible) {
+        return {
+          loading: false,
+          message: `Nenhuma variação elegível${blockedCount ? ` (${blockedCount} bloqueada${blockedCount === 1 ? '' : 's'})` : ''}.`,
+          tone: 'warn',
+          blocked: []
+        };
+      }
+
+      const blocked = (Array.isArray(preview.targets) ? preview.targets : [])
+        .filter((target) => !target.eligible)
+        .slice(0, 6)
+        .map((target) => ({
+          label: shortTargetLabel(target),
+          message: CommerceModel.friendlyError(target.reasonCode || target.message || 'Bloqueado')
+        }));
+      return {
+        loading: false,
+        message: `${eligible} de ${total} variações elegíveis.`,
+        tone: 'ok',
+        blocked,
+        blockedLabel: blockedCount ? `${blockedCount} ignorada${blockedCount === 1 ? '' : 's'}` : ''
+      };
     }
 
     function renderBulkSwitch(kind, checked) {
@@ -3202,21 +3207,6 @@
     }
 
     function bindBulkControls(container) {
-      const priceToggle = container.querySelector('[data-action="toggle-price-bulk"]');
-      if (priceToggle) {
-        priceToggle.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (state.busy) return;
-          state.priceBulkEnabled = priceToggle.getAttribute('aria-checked') !== 'true';
-          state.priceBulkPreview = null;
-          state.priceBulkHash = '';
-          state.priceBulkError = '';
-          state.actionError = '';
-          rerenderPopover();
-        });
-      }
-
       const promotionToggle = container.querySelector('[data-action="toggle-promotion-bulk"]');
       if (promotionToggle) {
         promotionToggle.addEventListener('click', (event) => {
@@ -3229,15 +3219,6 @@
         });
       }
 
-      const priceInput = container.querySelector('[data-field="price"]');
-      if (priceInput) {
-        priceInput.addEventListener('input', () => {
-          state.priceDraft = priceInput.value;
-          state.priceBulkPreview = null;
-          state.priceBulkHash = '';
-          state.priceBulkError = '';
-        });
-      }
     }
 
     function bindButton(container, action, handler) {
@@ -3840,6 +3821,23 @@
       rerenderPopover();
     }
 
+    function updatePriceDraft(value) {
+      state.priceDraft = String(value || '');
+      state.priceBulkPreview = null;
+      state.priceBulkHash = '';
+      state.priceBulkError = '';
+    }
+
+    function updatePriceBulkEnabled(enabled) {
+      if (state.busy) return;
+      state.priceBulkEnabled = Boolean(enabled);
+      state.priceBulkPreview = null;
+      state.priceBulkHash = '';
+      state.priceBulkError = '';
+      state.actionError = '';
+      rerenderPopover();
+    }
+
     function cancelPriceEdit() {
       state.priceEditing = false;
       state.priceDraft = '';
@@ -3853,8 +3851,7 @@
 
     async function savePrice() {
       if (!state.itemId || state.busy) return;
-      const input = state.popoverRoot ? state.popoverRoot.querySelector('[data-field="price"]') : null;
-      const amount = CommerceModel.parseMoneyInput(input ? input.value : state.priceDraft);
+      const amount = CommerceModel.parseMoneyInput(state.priceDraft);
       if (!amount) {
         state.actionError = 'Informe um preço válido.';
         rerenderPopover();
@@ -4694,7 +4691,10 @@
     }
 
     function removePopover() {
-      if (state.popoverRoot) state.popoverRoot.remove();
+      if (state.popoverRoot) {
+        CommercePriceView.unmount(state.popoverRoot);
+        state.popoverRoot.remove();
+      }
       state.popoverRoot = null;
       state.lastPopoverMarkup = '';
     }
@@ -4849,6 +4849,12 @@
 
     function spinner() {
       return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
+    }
+
+    function handleCommercePriceViewFailure(error) {
+      if (rootScope.console && typeof rootScope.console.error === 'function') {
+        rootScope.console.error('[OnFrame] A interface de preço falhou.', error);
+      }
     }
 
     return {

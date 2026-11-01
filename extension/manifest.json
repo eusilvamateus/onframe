@@ -65,6 +65,7 @@
         "core/photos-view.js",
         "core/description-view.js",
         "core/characteristics-view.js",
+        "core/commerce-price-view.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",
