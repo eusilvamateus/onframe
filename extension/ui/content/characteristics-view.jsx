@@ -151,11 +151,11 @@ function EditorFooter({ model, actions }) {
   );
 }
 
-function CharacteristicStatusBadge({ status }) {
+function CharacteristicStatusBadge({ status, className }) {
   if (!status) return null;
   return (
-    <span title={status.title}>
-      <Badge tone={status.tone} variant="subtle" dot={false} size="sm">
+    <span className={className} title={status.title}>
+      <Badge tone={status.tone} variant="outline" dot size="sm">
         {status.label}
       </Badge>
     </span>
@@ -172,11 +172,19 @@ function PackageFieldLabel({ field }) {
 }
 
 function SyntheticFieldLabel({ model }) {
+  return <span className="onframe-characteristics-extra-label-text">{model.label}</span>;
+}
+
+function SyntheticFieldValue({ model, actions }) {
   return (
-    <>
-      <span className="onframe-characteristics-extra-label-text">{model.label}</span>
-      <CharacteristicStatusBadge status={model.status} />
-    </>
+    <div className="onframe-characteristics-extra-value">
+      {model.editable ? (
+        <InlineField model={model.field} actions={actions} />
+      ) : (
+        <span className="andes-table__column--value">{model.displayValue}</span>
+      )}
+      <CharacteristicStatusBadge className="onframe-characteristics-extra-status" status={model.status} />
+    </div>
   );
 }
 
@@ -395,6 +403,12 @@ function renderSyntheticFieldLabel(host, model, options = {}) {
   render(host, <SyntheticFieldLabel model={model} />, options.onError || (() => {}));
 }
 
+function renderSyntheticFieldValue(host, model, actions = {}) {
+  render(host, <SyntheticFieldValue model={model} actions={{
+    onFieldChange: actions.onFieldChange || (() => {})
+  }} />, actions.onError || (() => {}));
+}
+
 function unmount(host) {
   const root = host && roots.get(host);
   if (!root) return;
@@ -402,4 +416,4 @@ function unmount(host) {
   roots.delete(host);
 }
 
-globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, unmount });
+globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount });

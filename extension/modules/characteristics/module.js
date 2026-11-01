@@ -19,6 +19,7 @@
       typeof CharacteristicsView.renderPackageDimensions === 'function' &&
       typeof CharacteristicsView.renderInlineField === 'function' &&
       typeof CharacteristicsView.renderSyntheticFieldLabel === 'function' &&
+      typeof CharacteristicsView.renderSyntheticFieldValue === 'function' &&
       typeof CharacteristicsView.unmount === 'function'
     );
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
@@ -581,27 +582,22 @@
       state.inlineSyntheticRows.push(row);
 
       CharacteristicsView.renderSyntheticFieldLabel(labelRoot, {
-        label: field.label,
-        status: buildCharacteristicStatusViewModel(field)
+        label: field.label
       }, { onError: handleCharacteristicsViewFailure });
 
+      cell.dataset.onframeCharacteristicsRoot = 'true';
       if (field.editable) {
         cell.classList.add('onframe-characteristics-inline-cell');
-        cell.dataset.onframeCharacteristicsRoot = 'true';
-        CharacteristicsView.renderInlineField(cell, buildInlineFieldViewModel(field, disabled), {
-          onFieldChange: updateDraftField,
-          onError: handleCharacteristicsViewFailure
-        });
-        return true;
       }
-
-      const value = document.createElement('span');
-      value.className = 'onframe-characteristics-extra-value';
-      const valueText = document.createElement('span');
-      valueText.className = 'andes-table__column--value';
-      valueText.textContent = field.displayValue || field.valueName || '-';
-      value.appendChild(valueText);
-      cell.appendChild(value);
+      CharacteristicsView.renderSyntheticFieldValue(cell, {
+        editable: field.editable,
+        displayValue: field.displayValue || field.valueName || '-',
+        field: field.editable ? buildInlineFieldViewModel(field, disabled) : null,
+        status: buildCharacteristicStatusViewModel(field)
+      }, {
+        onFieldChange: updateDraftField,
+        onError: handleCharacteristicsViewFailure
+      });
       return true;
     }
 

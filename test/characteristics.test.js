@@ -25,6 +25,8 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /function PackageDimensions/);
   assert.match(view, /function InlineField/);
   assert.match(view, /function SyntheticFieldLabel/);
+  assert.match(view, /function SyntheticFieldValue/);
+  assert.match(view, /<CharacteristicStatusBadge className="onframe-characteristics-extra-status" status=\{model\.status\} \/>/);
   assert.match(view, /<Input[\s\S]*inputMode="decimal"/);
   assert.match(view, /endAddon=\{\([\s\S]*<Select[\s\S]*embedded[\s\S]*ariaLabel="Unidade"/);
   assert.match(view, /onframe-characteristics-react-field/);
@@ -34,8 +36,9 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /actions\.onFieldChange\(model\.id, 'unit'/);
   assert.doesNotMatch(view, /<Select[\s\S]*label="Unidade"/);
   assert.doesNotMatch(view, /model\.badge/);
+  assert.match(view, /<Badge tone=\{status\.tone\} variant="outline" dot size="sm">/);
   assert.doesNotMatch(controller, /LOGÍSTICA|packageDimensions\.badge/);
-  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, unmount \}\)/);
+  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount \}\)/);
 
   assert.match(controller, /const CharacteristicsView = rootScope\.OnFrameCharacteristicsView/);
   assert.match(controller, /CharacteristicsView\.renderAction/);
@@ -44,6 +47,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(controller, /CharacteristicsView\.renderPackageDimensions/);
   assert.match(controller, /CharacteristicsView\.renderInlineField/);
   assert.match(controller, /CharacteristicsView\.renderSyntheticFieldLabel/);
+  assert.match(controller, /CharacteristicsView\.renderSyntheticFieldValue/);
   assert.match(controller, /CharacteristicsView\.unmount/);
   assert.doesNotMatch(controller, /setDisabledButtonTooltip\(action|removeDisabledButtonTooltip\(wrapper/);
   assert.doesNotMatch(controller, /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/);
@@ -62,11 +66,13 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(styles, /\.onframe-characteristics-react-field input:focus-visible[\s\S]*?border: 0 !important;[\s\S]*?outline: 0 !important;[\s\S]*?box-shadow: none !important;/);
   assert.doesNotMatch(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*display: flex !important;/);
   assert.match(styles, /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;[^}]*padding-bottom: 8px !important;/);
-  assert.match(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;/);
+  assert.match(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*overflow: visible !important;[^}]*height: auto !important;[^}]*padding-top: 8px !important;/);
   assert.match(styles, /\.onframe-characteristics-inline-control \{[^}]*margin-block: auto;[^}]*align-self: center;/);
   assert.match(styles, /\.onframe-characteristics-react-field > div > div \{[^}]*width: 100%;[^}]*min-height: 32px !important;/);
   assert.match(styles, /\.onframe-characteristics-extra-label-text \{[\s\S]*?overflow-wrap: anywhere;/);
   assert.match(styles, /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/);
+  assert.match(styles, /\.onframe-characteristics-extra-status \{[^}]*display: inline-flex;[^}]*position: absolute;[^}]*top: 0;[^}]*right: 12px;[^}]*transform: translateY\(-50%\);/);
+  assert.doesNotMatch(styles, /\.onframe-characteristics-extra-status \{[^}]*padding/);
   assert.match(styles, /\.onframe-characteristics-composite-source \{\s*display: none !important;/);
   assert.doesNotMatch(styles, /\.onframe-characteristics-composite-control|\.onframe-characteristics-select-menu/);
 

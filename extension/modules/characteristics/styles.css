@@ -53,6 +53,7 @@
 .onframe-characteristics-extra-row > .andes-table__header,
 .onframe-characteristics-extra-row > .andes-table__column {
   position: relative !important;
+  overflow: visible !important;
   height: auto !important;
   min-height: 48px !important;
   padding-top: 8px !important;
@@ -137,10 +138,7 @@
 }
 
 .onframe-characteristics-extra-label {
-  display: flex !important;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  display: block !important;
   width: 100%;
   max-width: 100%;
   margin: 0 !important;
@@ -156,21 +154,36 @@
 }
 
 .onframe-characteristics-extra-value {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
   width: 100%;
   min-width: 0;
   max-width: 100%;
 }
 
 .onframe-characteristics-extra-value > .andes-table__column--value {
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
   line-height: var(--ob-lh-normal);
   white-space: normal;
+}
+
+.onframe-characteristics-extra-value > .onframe-characteristics-inline-control {
+  width: 100%;
+}
+
+.onframe-characteristics-extra-status {
+  display: inline-flex;
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 12px;
+  background: var(--ob-surface);
+  border-radius: 999px;
+  line-height: 1;
+  transform: translateY(-50%);
 }
 
 .onframe-characteristics-package {
