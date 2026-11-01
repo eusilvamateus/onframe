@@ -68,7 +68,8 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(styles, /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;[^}]*padding-bottom: 8px !important;/);
   assert.match(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*overflow: visible !important;[^}]*height: auto !important;[^}]*padding-top: 8px !important;/);
   assert.match(styles, /\.onframe-characteristics-inline-control \{[^}]*margin-block: auto;[^}]*align-self: center;/);
-  assert.match(styles, /\.onframe-characteristics-react-field > div > div \{[^}]*width: 100%;[^}]*min-height: 32px !important;/);
+  assert.match(styles, /\.onframe-characteristics-react-field > div > div:first-of-type \{[^}]*width: 100%;[^}]*min-height: 32px !important;/);
+  assert.doesNotMatch(styles, /\.onframe-characteristics-react-field > div > div \{/);
   assert.match(styles, /\.onframe-characteristics-extra-label-text \{[\s\S]*?overflow-wrap: anywhere;/);
   assert.match(styles, /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/);
   assert.match(styles, /\.onframe-characteristics-extra-status \{[^}]*display: inline-flex;[^}]*position: absolute;[^}]*top: 0;[^}]*right: 12px;[^}]*transform: translateY\(-50%\);/);
