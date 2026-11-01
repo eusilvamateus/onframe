@@ -22,7 +22,8 @@ test('descrição usa uma view React como única rota da interface', () => {
   assert.match(view, /<Alert tone="info" title="Este é um anúncio de catálogo">/);
   assert.match(view, /<Card[\s\S]*padding="var\(--ob-s-4\)"/);
   assert.match(view, /function DescriptionTextField/);
-  assert.match(view, /<Textarea[\s\S]*value=\{value\}/);
+  assert.match(view, /const maxRowsWithoutInternalScroll = Math\.max\(18, value\.length \+ 1\);/);
+  assert.match(view, /<Textarea[\s\S]*value=\{value\}[\s\S]*autosize[\s\S]*minRows=\{6\}[\s\S]*maxRows=\{maxRowsWithoutInternalScroll\}/);
   assert.match(view, /<DescriptionTextField[\s\S]*onChange=\{actions\.onTextChange\}/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
@@ -31,6 +32,7 @@ test('descrição usa uma view React como única rota da interface', () => {
   assert.match(controller, /DescriptionView\.renderAction/);
   assert.match(controller, /DescriptionView\.renderCatalogNotice/);
   assert.match(controller, /DescriptionView\.renderEditor/);
+  assert.doesNotMatch(controller, /captureEditingMetrics|editorShellMinHeight|editorTextareaMinHeight/);
   assert.match(controller, /DescriptionView\.unmount/);
   assert.match(controller, /state\.text = visibleText;\s+state\.originalText = visibleText;/);
   assert.match(controller, /function closeEditor\(options = \{\}\) \{\s+state\.requestId \+= 1;/);

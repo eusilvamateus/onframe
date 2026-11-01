@@ -43,8 +43,6 @@
       collapsableElement: null,
       collapsableContainer: null,
       collapsableMaxHeight: '',
-      editorShellMinHeight: 0,
-      editorTextareaMinHeight: 0,
       renderTimer: null,
       requestId: 0,
       pageSignature: ''
@@ -297,7 +295,6 @@
     }
 
     function ensureEditingLayout(elements) {
-      captureEditingMetrics(elements);
       const content = elements.content;
       if (content && content.style.display !== 'none') {
         state.contentDisplay = content.style.display || '';
@@ -315,17 +312,6 @@
       }
     }
 
-    function captureEditingMetrics(elements) {
-      if (state.editorShellMinHeight || !elements) return;
-      const shell = elements.collapsable || elements.description;
-      const shellHeight = shell && typeof shell.getBoundingClientRect === 'function'
-        ? Math.ceil(shell.getBoundingClientRect().height)
-        : 0;
-      if (!shellHeight) return;
-      state.editorShellMinHeight = Math.max(320, shellHeight);
-      state.editorTextareaMinHeight = Math.max(260, state.editorShellMinHeight - 150);
-    }
-
     function buildEditorViewModel() {
       const disabled = state.loading || state.saving;
       const canBulk = DescriptionModel.canBulkEditDescription(state.context);
@@ -337,8 +323,6 @@
       return {
         inputKey: `${state.requestId}:${state.loading ? 'loading' : 'ready'}`,
         text: state.text,
-        rows: Math.max(3, Math.ceil((Math.max(60, state.editorTextareaMinHeight || 260) - 20) / 20)),
-        minHeight: state.editorShellMinHeight || undefined,
         disabled,
         saving: state.saving,
         status: state.loading
@@ -426,8 +410,6 @@
       state.collapsableElement = null;
       state.collapsableContainer = null;
       state.collapsableMaxHeight = '';
-      state.editorShellMinHeight = 0;
-      state.editorTextareaMinHeight = 0;
       state.editing = false;
       state.loading = false;
       state.saving = false;

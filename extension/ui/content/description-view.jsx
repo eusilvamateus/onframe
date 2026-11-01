@@ -104,6 +104,7 @@ function FailureList({ failures }) {
 
 function DescriptionTextField({ model, onChange }) {
   const [value, setValue] = useState(model.text);
+  const maxRowsWithoutInternalScroll = Math.max(18, value.length + 1);
 
   useEffect(() => {
     setValue(model.text);
@@ -113,8 +114,9 @@ function DescriptionTextField({ model, onChange }) {
     <Textarea
       ariaLabel="Descrição do anúncio"
       value={value}
-      rows={model.rows}
-      resize="vertical"
+      autosize
+      minRows={6}
+      maxRows={maxRowsWithoutInternalScroll}
       disabled={model.disabled}
       onChange={(nextValue) => {
         setValue(nextValue);
@@ -130,10 +132,7 @@ function DescriptionEditor({ model, actions }) {
       className="onframe-description-editor"
       aria-label="Editar descrição"
     >
-      <Card
-        padding="var(--ob-s-4)"
-        style={model.minHeight ? { minHeight: model.minHeight, boxSizing: 'border-box' } : undefined}
-      >
+      <Card padding="var(--ob-s-4)">
         <div className="onframe-description-editor-content">
           <div className="onframe-description-editor-head">
             <strong>Editar descrição</strong>
