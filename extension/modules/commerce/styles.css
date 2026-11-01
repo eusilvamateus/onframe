@@ -11,6 +11,8 @@
 .onframe-commerce-action-group {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ob-s-2);
   max-width: 100%;
 }
 
@@ -25,7 +27,7 @@
   pointer-events: auto !important;
 }
 
-.onframe-commerce-listing-controls .onframe-commerce-action-group button {
+.onframe-commerce-listing-controls .onframe-commerce-action-group [role="button"] {
   position: relative;
   z-index: 1;
   cursor: pointer !important;

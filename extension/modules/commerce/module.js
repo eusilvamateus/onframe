@@ -652,7 +652,7 @@
         active: state.listingActiveRecord === record ? state.popover : null,
         price: {
           label: 'Preço',
-          tone: commerceActionTone(listingPriceTone(record))
+          tone: commercePriceActionTone(listingPriceTone(record))
         },
         promotions: {
           label: 'Promoção',
@@ -710,7 +710,7 @@
       if (record.promotionError) return 'warn';
       if (!record.promotionSummary) return '';
       const state = CommerceModel.getPromotionState(record.promotionSummary);
-      return state.tone === 'green' || state.tone === 'orange' ? state.tone : '';
+      return state.tone;
     }
 
     function removeListingRecord(record) {
@@ -943,7 +943,7 @@
         active: state.popover,
         price: {
           label: 'Preço',
-          tone: commerceActionTone(priceTone)
+          tone: commercePriceActionTone(priceTone)
         },
         promotions: {
           label: promotionLabel,
@@ -961,11 +961,16 @@
       openPopover(type);
     }
 
+    function commercePriceActionTone(tone) {
+      return tone === 'warn' ? 'danger' : 'neutral';
+    }
+
     function commerceActionTone(tone) {
       if (tone === 'green') return 'success';
       if (tone === 'orange') return 'warning';
+      if (tone === 'blue') return 'primary';
       if (tone === 'warn') return 'danger';
-      return 'primary';
+      return 'neutral';
     }
 
     function renderPopover() {

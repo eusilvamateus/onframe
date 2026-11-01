@@ -1,6 +1,6 @@
 import { Component } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Button, ButtonGroup, Ph, ToggleButton } from '@onblide/ui';
+import { Button, Chip, Ph } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -61,37 +61,27 @@ function CommerceActions({ model, actions }) {
     <div
       className="onframe-commerce-action-group"
       data-commerce-action-group=""
+      role="group"
+      aria-label="Preço e promoções"
       onPointerDown={stopPropagation}
       onMouseDown={stopPropagation}
       onTouchStart={stopPropagation}
       onClick={containClick}
     >
-      <ButtonGroup
-        attached={false}
-        selection="single"
-        allowEmpty
+      <Chip
+        label={<><Ph n="currency-dollar" size={13} /><span>{model.price.label}</span></>}
         size="sm"
-        value={model.active || null}
-        onChange={actions.onChange}
-        ariaLabel="Preço e promoções"
-      >
-        <ToggleButton
-          value="price"
-          appearance="outline"
-          tone={model.price.tone}
-          icon="currency-dollar"
-        >
-          {model.price.label}
-        </ToggleButton>
-        <ToggleButton
-          value="promotions"
-          appearance="outline"
-          tone={model.promotions.tone}
-          icon="tag"
-        >
-          {model.promotions.label}
-        </ToggleButton>
-      </ButtonGroup>
+        tone={model.price.tone}
+        selected={model.active === 'price'}
+        onToggle={() => actions.onChange(model.active === 'price' ? null : 'price')}
+      />
+      <Chip
+        label={<><Ph n="tag" size={13} /><span>{model.promotions.label}</span></>}
+        size="sm"
+        tone={model.promotions.tone}
+        selected={model.active === 'promotions'}
+        onToggle={() => actions.onChange(model.active === 'promotions' ? null : 'promotions')}
+      />
     </div>
   );
 }

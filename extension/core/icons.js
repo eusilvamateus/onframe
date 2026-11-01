@@ -93,6 +93,8 @@
     return Number.isFinite(size) && size > 0 ? Math.round(size) : 18;
   }
 
+  ensureFontFace();
+
   return {
     names: ICONS,
     ensureFontFace,
