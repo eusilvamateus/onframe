@@ -4282,10 +4282,13 @@
     }
 
     function popoverAnchor() {
-      if (state.popoverAnchor && state.popoverAnchor.isConnected) return state.popoverAnchor;
-      if (!state.inline) return null;
-      const action = state.popover === 'price' ? 'open-price' : 'open-promotions';
-      return state.inline.querySelector(`[data-action="${action}"]`);
+      let anchor = state.popoverAnchor && state.popoverAnchor.isConnected ? state.popoverAnchor : null;
+      if (!anchor && state.inline) {
+        const action = state.popover === 'price' ? 'open-price' : 'open-promotions';
+        anchor = state.inline.querySelector(`[data-action="${action}"]`);
+      }
+      const actionGroup = anchor && anchor.closest('.onframe-commerce-chipbar');
+      return actionGroup || anchor;
     }
 
     function positionFloatingRoot(root, anchor) {
@@ -4296,7 +4299,8 @@
       const preferredWidth = isSummaryPopover ? 560 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
       const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
-      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+      const centeredLeft = rect.left + ((rect.width - width) / 2);
+      const left = Math.max(12, Math.min(centeredLeft, window.innerWidth - width - 12));
       const top = isListingPopover ? rect.bottom + 8 : Math.max(12, rect.bottom + 8);
       root.style.left = `${Math.round(left)}px`;
       root.style.top = `${Math.round(top)}px`;

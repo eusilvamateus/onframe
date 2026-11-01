@@ -590,6 +590,8 @@ test('popover de promocoes apresenta cupom do item como beneficio de checkout', 
   assert.match(source, /classList\.toggle\('price-summary', state\.popover === 'price'\)/);
   assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price';/);
   assert.match(source, /const preferredWidth = isSummaryPopover \? 560 : 340/);
+  assert.match(source, /const actionGroup = anchor && anchor\.closest\('\.onframe-commerce-chipbar'\)/);
+  assert.match(source, /const centeredLeft = rect\.left \+ \(\(rect\.width - width\) \/ 2\)/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);
   assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(pricePromotionEntries\(groups\)\);/);
