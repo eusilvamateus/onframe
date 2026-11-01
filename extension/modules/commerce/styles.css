@@ -906,6 +906,10 @@
   margin-top: 12px;
 }
 
+.onframe-commerce-actions {
+  justify-content: flex-end;
+}
+
 .onframe-commerce-field {
   display: grid;
   align-content: start;

@@ -348,6 +348,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(view, /className="onframe-commerce-popover-price-edit-bulk"/);
   assert.match(view, /<Input[\s\S]*label="Novo preço"/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
+  assert.match(styles, /\.onframe-commerce-actions\s*\{\s*justify-content: flex-end;\s*\}/);
   assert.doesNotMatch(source, /function renderPriceSnapshot/);
   assert.doesNotMatch(source, /function renderPriceCosts/);
   assert.doesNotMatch(source, /function priceCostMetrics/);
