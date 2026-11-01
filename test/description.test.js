@@ -16,7 +16,8 @@ test('descrição usa uma view React como única rota da interface', () => {
 
   assert.match(view, /import \{ Accordion, Alert, Button, Card, Checkbox, Ph, Spinner, Textarea, Tooltip \} from '@onblide\/ui'/);
   assert.match(view, /globalThis\.OnFrameDescriptionView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderEditor, unmount \}\)/);
-  assert.match(view, /<Button[\s\S]*Editar descrição/);
+  assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*size="sm"[\s\S]*Editar descrição/);
+  assert.doesNotMatch(view, /onframe-description-action"[\s\S]*?fill=\{false\}/);
   assert.match(view, /<Tooltip label="Expanda esta seção para editar a descrição\."/);
   assert.match(view, /<Alert tone="info" title="Este é um anúncio de catálogo">/);
   assert.match(view, /<Card[\s\S]*padding="var\(--ob-s-4\)"/);

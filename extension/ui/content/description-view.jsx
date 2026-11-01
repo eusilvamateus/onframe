@@ -31,7 +31,6 @@ function EditAction({ model, actions }) {
       className="onframe-section-edit-action onframe-description-action"
       kind="quiet"
       tone="primary"
-      fill={false}
       size="sm"
       disabled={model.disabled}
       onClick={(event) => {
