@@ -112,6 +112,56 @@
   color-scheme: light;
 }
 
+:where(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+) {
+  color: var(--ob-fg);
+  font-family: var(--ob-font);
+  font-feature-settings: 'ss01', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:where(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+),
+:where(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+) *,
+:where(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+) *::before,
+:where(
+  #onblide-ml-root,
+  [class^='onblide-ml-'],
+  [class*=' onblide-ml-'],
+  [class^='onframe-'],
+  [class*=' onframe-'],
+  [data-ob-popover-id]
+) *::after {
+  box-sizing: border-box;
+}
+
 :is(.onblide-ml-dialog-root, .onframe-commerce-modal-root) {
   --ob-z-overlay: var(--ob-z-extension-overlay);
   --ob-z-modal: var(--ob-z-extension-modal);

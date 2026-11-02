@@ -10,6 +10,31 @@
   display: block;
 }
 
+.onframe-description-action {
+  display: inline-flex !important;
+  position: relative !important;
+  z-index: 2;
+  margin: 8px 0 0;
+  pointer-events: auto !important;
+}
+
+.onframe-description-action-root .onframe-section-edit-tooltip {
+  display: inline-flex;
+  position: relative;
+  z-index: 2;
+  margin: 8px 0 0;
+}
+
+.onframe-description-action-root .onframe-section-edit-tooltip .onframe-description-action {
+  margin: 0;
+}
+
+.onframe-description-action-root .onframe-section-edit-tooltip:focus-visible {
+  border-radius: var(--ob-r-control);
+  box-shadow: 0 0 0 3px var(--ob-focus-ring);
+  outline: none;
+}
+
 .onframe-description-catalog-notice {
   max-width: min(560px, 100%);
   margin-top: var(--ob-s-2);

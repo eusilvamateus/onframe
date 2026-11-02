@@ -285,17 +285,16 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
-  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
   const fonts = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'fonts.js'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
 
-  assert.match(view, /import \{ Button, Chip, Ph \} from '@onblide\/ui'/);
+  assert.match(view, /import \{ Badge, Button, Chip, Ph \} from '@onblide\/ui'/);
   assert.match(view, /<Chip[\s\S]*label=\{<>\s*<Ph n="currency-dollar" size=\{13\} \/>[\s\S]*selected=\{model\.active === 'price'\}/);
   assert.match(view, /<Chip[\s\S]*label=\{<>\s*<Ph n="tag" size=\{13\} \/>[\s\S]*selected=\{model\.active === 'promotions'\}/);
   assert.match(view, /role="group"[\s\S]*aria-label="Preço e promoções"/);
   assert.match(view, /data-commerce-action-group=""/);
   assert.match(view, /function containClick\(event\) \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
-  assert.match(view, /globalThis\.OnFrameCommerceActionsView = Object\.freeze\(\{ render, unmount \}\)/);
+  assert.match(view, /globalThis\.OnFrameCommerceActionsView = Object\.freeze\(\{ render, renderBadge, unmount \}\)/);
   assert.match(build, /commerce-actions-view\.jsx/);
   assert.ok(scripts.indexOf('core/commerce-actions-view.js') < scripts.indexOf('modules/commerce/module.js'));
   assert.match(source, /const CommerceActionsView = rootScope\.OnFrameCommerceActionsView/);
@@ -306,7 +305,7 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   assert.match(source, /function listingPromotionTone\(record\) \{[\s\S]*const state = CommerceModel\.getPromotionState\(record\.promotionSummary\);\s*return state\.tone;/);
   assert.doesNotMatch(source, /function buildInlineMarkup|function bindInlineEvents|function listingControlButton/);
   assert.doesNotMatch(source, /onframe-commerce-chip|onframe-commerce-chipbar/);
-  assert.doesNotMatch(components, /\.onframe-commerce-chip/);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css')), false);
   assert.match(fonts, /font-family: 'Phosphor'/);
 });
 
@@ -319,7 +318,8 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   const scripts = manifest.content_scripts[0].js;
   const pricePopoverSource = source.slice(source.indexOf('function buildPricePopoverViewModel'), source.indexOf('function buildPromotionPopoverViewModel'));
 
-  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
+  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
+  assert.match(view, /<Card padding=\{12\} elevation="shadow">/);
   assert.match(view, /globalThis\.OnFrameCommercePriceView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
   assert.match(build, /commerce-price-view\.jsx/);
@@ -394,8 +394,8 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
 
 test('listagens reutilizam popovers apenas para anuncios da conta conectada', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
 
   assert.match(source, /supportsNonProduct: true/);
   assert.match(source, /function isListingPageUrl/);
@@ -411,8 +411,11 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.doesNotMatch(source, /IntersectionObserver/);
   assert.match(source, /pageIdentity: \{ canonicalItemId: itemId \}/);
   assert.match(source, /onframe-commerce-listing-badge/);
-  assert.match(source, /badge\.className = 'ob-badge green onframe-commerce-listing-badge'/);
-  assert.match(source, /Seu anúncio/);
+  assert.match(source, /badge\.className = 'onframe-commerce-listing-badge'/);
+  assert.match(source, /CommerceActionsView\.renderBadge\(badge/);
+  assert.match(view, /<Badge tone="green" variant="subtle" dot size="sm">/);
+  assert.doesNotMatch(source, /ob-badge/);
+  assert.match(view, /Seu anúncio/);
   assert.doesNotMatch(source, /listingReadonly/);
   assert.doesNotMatch(source, /if \(state\.surface === 'listing'\) return;/);
   assert.match(source, /onEdit: startPriceEdit/);
@@ -423,8 +426,6 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(styles, /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: 3;[\s\S]*pointer-events: auto !important;/);
   assert.match(styles, /\.onframe-commerce-listing-controls \.onframe-commerce-action-group \[role="button"\]\s*\{[\s\S]*cursor: pointer !important;/);
   assert.match(styles, /\.onframe-commerce-listing-badge\s*\{[\s\S]*pointer-events: none;/);
-  assert.match(components, /\.onframe-commerce-listing-controls/);
-  assert.match(components, /\.onframe-commerce-listing-badge/);
   assert.match(source, /function scheduleListingControlsLayout/);
   assert.match(source, /function syncListingControlsLayout/);
   assert.match(source, /function restoreListingControlsLayout/);
@@ -650,7 +651,8 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   const popoverSource = source.slice(source.indexOf('function buildPromotionPopoverViewModel'), source.indexOf('function renderModal'));
   const scripts = manifest.content_scripts[0].js;
 
-  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Ph, ScrollArea, Spinner, Tabs \} from '@onblide\/ui'/);
+  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Card, Ph, ScrollArea, Spinner, Tabs \} from '@onblide\/ui'/);
+  assert.match(view, /<Card padding=\{12\} elevation="shadow">/);
   assert.match(view, /globalThis\.OnFrameCommercePromotionsView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
   assert.match(build, /commerce-promotions-view\.jsx/);
@@ -716,7 +718,7 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   assert.match(styles, /\.onframe-commerce-popover-footer > button\s*{\s*width: 100%;/s);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-tabs\s*{[^}]*overflow/s);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-fee-reduction/);
-  assert.doesNotMatch(view, /<Card/);
+  assert.equal((view.match(/<Card/g) || []).length, 1);
 });
 
 test('modal de promoções comunica o tipo comercial de cada campanha', () => {

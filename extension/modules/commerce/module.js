@@ -20,6 +20,7 @@
     const hasCommerceActionsView = Boolean(
       CommerceActionsView &&
       typeof CommerceActionsView.render === 'function' &&
+      typeof CommerceActionsView.renderBadge === 'function' &&
       typeof CommerceActionsView.unmount === 'function'
     );
     if (!hasCommerceActionsView) throw new Error('Ações de comércio indisponíveis.');
@@ -612,12 +613,14 @@
       const media = record.card.querySelector('.poly-card__portada') || record.card;
       if (!record.badge) {
         const badge = document.createElement('span');
-        badge.className = 'ob-badge green onframe-commerce-listing-badge';
-        badge.textContent = 'Seu anúncio';
+        badge.className = 'onframe-commerce-listing-badge';
         media.appendChild(badge);
         record.badge = badge;
         record.media = media;
         media.classList.add('onframe-commerce-listing-media');
+        CommerceActionsView.renderBadge(badge, {
+          onError: (error) => console.error('[OnFrame comércio] selo da listagem:', error)
+        });
       }
     }
 
@@ -726,7 +729,10 @@
         CommerceActionsView.unmount(record.controls);
         record.controls.remove();
       }
-      if (record.badge) record.badge.remove();
+      if (record.badge) {
+        CommerceActionsView.unmount(record.badge);
+        record.badge.remove();
+      }
       if (record.media) record.media.classList.remove('onframe-commerce-listing-media');
       record.controls = null;
       record.badge = null;

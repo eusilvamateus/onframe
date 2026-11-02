@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Accordion, Alert, Badge, Button, Ph, ScrollArea, Spinner, Tabs } from '@onblide/ui';
+import { Accordion, Alert, Badge, Button, Card, Ph, ScrollArea, Spinner, Tabs } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -234,43 +234,45 @@ function PromotionSummary({ model }) {
 
 function CommercePromotionsPopover({ model, actions }) {
   return (
-    <section
-      className="onframe-commerce-popover onframe-commerce-promotions-view"
-      aria-label="Promoções"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <PromotionsHeader badge={model.badge} onClose={actions.onClose} />
+    <Card padding={12} elevation="shadow">
+      <section
+        className="onframe-commerce-promotions-view"
+        aria-label="Promoções"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <PromotionsHeader badge={model.badge} onClose={actions.onClose} />
 
-      {model.mode === 'loading' && (
-        <div className="onframe-commerce-promotions-view-loading" aria-live="polite">
-          <Spinner size="sm" label="Lendo promoções do anúncio" />
-          <span>Lendo promoções do anúncio.</span>
-        </div>
-      )}
-
-      {model.mode === 'error' && (
-        <>
-          <Alert tone="danger">{model.error}</Alert>
-          <div className="onframe-commerce-actions">
-            <Button kind="primary" size="sm" icon={<Ph n="arrow-clockwise" size={14} />} onClick={actions.onReload}>
-              Recarregar
-            </Button>
+        {model.mode === 'loading' && (
+          <div className="onframe-commerce-promotions-view-loading" aria-live="polite">
+            <Spinner size="sm" label="Lendo promoções do anúncio" />
+            <span>Lendo promoções do anúncio.</span>
           </div>
-        </>
-      )}
+        )}
 
-      {model.mode === 'summary' && (
-        <>
-          {model.error && <Alert tone="danger">{model.error}</Alert>}
-          <PromotionSummary model={model} />
-          <div className="onframe-commerce-popover-footer">
-            <Button kind="primary" size="sm" icon={<Ph n="tag" size={14} />} onClick={actions.onManage}>
-              Gerenciar promoções
-            </Button>
-          </div>
-        </>
-      )}
-    </section>
+        {model.mode === 'error' && (
+          <>
+            <Alert tone="danger">{model.error}</Alert>
+            <div className="onframe-commerce-actions">
+              <Button kind="primary" size="sm" icon={<Ph n="arrow-clockwise" size={14} />} onClick={actions.onReload}>
+                Recarregar
+              </Button>
+            </div>
+          </>
+        )}
+
+        {model.mode === 'summary' && (
+          <>
+            {model.error && <Alert tone="danger">{model.error}</Alert>}
+            <PromotionSummary model={model} />
+            <div className="onframe-commerce-popover-footer">
+              <Button kind="primary" size="sm" icon={<Ph n="tag" size={14} />} onClick={actions.onManage}>
+                Gerenciar promoções
+              </Button>
+            </div>
+          </>
+        )}
+      </section>
+    </Card>
   );
 }
 

@@ -85,7 +85,6 @@
       "css": [
         "vendor/phosphor/phosphor.css",
         "styles/foundations.css",
-        "styles/components.css",
         "modules/photos/styles.css",
         "modules/commerce/styles.css",
         "modules/description/styles.css",

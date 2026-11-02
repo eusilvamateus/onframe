@@ -1,6 +1,6 @@
 import { Component } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Button, Chip, Ph } from '@onblide/ui';
+import { Badge, Button, Chip, Ph } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -86,6 +86,14 @@ function CommerceActions({ model, actions }) {
   );
 }
 
+function ListingBadge() {
+  return (
+    <Badge tone="green" variant="subtle" dot size="sm">
+      Seu anúncio
+    </Badge>
+  );
+}
+
 function getRoot(host) {
   let root = roots.get(host);
   if (!root) {
@@ -106,6 +114,14 @@ function render(host, model, actions = {}) {
   );
 }
 
+function renderBadge(host, options = {}) {
+  getRoot(host).render(
+    <CommerceActionsViewBoundary onError={options.onError || (() => {})}>
+      <ListingBadge />
+    </CommerceActionsViewBoundary>
+  );
+}
+
 function unmount(host) {
   const root = host && roots.get(host);
   if (!root) return;
@@ -113,4 +129,4 @@ function unmount(host) {
   roots.delete(host);
 }
 
-globalThis.OnFrameCommerceActionsView = Object.freeze({ render, unmount });
+globalThis.OnFrameCommerceActionsView = Object.freeze({ render, renderBadge, unmount });

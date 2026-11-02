@@ -344,7 +344,6 @@ test('view React e a unica rota da interface de fotos', () => {
 test('etapa de fidelidade preserva a composicao e as transicoes atuais de fotos', () => {
   const controller = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'styles.css'), 'utf8');
-  const components = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
 
   assert.match(controller, /function beginEditorOpenTransition\(\)/);
@@ -353,8 +352,7 @@ test('etapa de fidelidade preserva a composicao e as transicoes atuais de fotos'
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
   assert.doesNotMatch(styles, /data-onframe-legacy-modal|\.onblide-ml-quality-badge/);
   assert.doesNotMatch(styles, /@keyframes onblide-spin|\.onblide-ml-selection-bar button:not/);
-  assert.doesNotMatch(components, /\.onblide-ml-result-item/);
-  assert.doesNotMatch(components, /\.onblide-ml-status/);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css')), false);
   assert.doesNotMatch(view, /onblide-ml-processing-modal-host/);
   assert.match(styles, /\.onblide-ml-diagnostic-card \{/);
   assert.match(styles, /\.onblide-ml-review-item \{/);

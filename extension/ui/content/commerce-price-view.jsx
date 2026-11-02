@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Accordion, Alert, Badge, Button, Checkbox, Input, Ph, Spinner, Tooltip } from '@onblide/ui';
+import { Accordion, Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -237,57 +237,59 @@ function PriceEditor({ model, actions }) {
 
 function CommercePricePopover({ model, actions }) {
   return (
-    <section
-      className="onframe-commerce-popover onframe-commerce-price-view"
-      aria-label={model.title}
-      onClick={(event) => event.stopPropagation()}
-    >
-      <PriceHeader title={model.title} badge={model.badge} onClose={actions.onClose} />
+    <Card padding={12} elevation="shadow">
+      <section
+        className="onframe-commerce-price-view"
+        aria-label={model.title}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <PriceHeader title={model.title} badge={model.badge} onClose={actions.onClose} />
 
-      {model.mode === 'loading' && (
-        <div className="onframe-commerce-price-view-loading" aria-live="polite">
-          <Spinner size="sm" label="Lendo preço do anúncio" />
-          <span>Lendo preço do anúncio.</span>
-        </div>
-      )}
+        {model.mode === 'loading' && (
+          <div className="onframe-commerce-price-view-loading" aria-live="polite">
+            <Spinner size="sm" label="Lendo preço do anúncio" />
+            <span>Lendo preço do anúncio.</span>
+          </div>
+        )}
 
-      {model.mode === 'error' && (
-        <>
+        {model.mode === 'error' && (
+          <>
+            <Alert tone="danger">{model.error}</Alert>
+            <div className="onframe-commerce-actions">
+              <Button kind="primary" size="sm" icon={<Ph n="arrow-clockwise" size={14} />} onClick={actions.onReload}>
+                Recarregar
+              </Button>
+            </div>
+          </>
+        )}
+
+        {model.mode !== 'loading' && model.mode !== 'error' && model.error && (
           <Alert tone="danger">{model.error}</Alert>
-          <div className="onframe-commerce-actions">
-            <Button kind="primary" size="sm" icon={<Ph n="arrow-clockwise" size={14} />} onClick={actions.onReload}>
-              Recarregar
-            </Button>
-          </div>
-        </>
-      )}
+        )}
 
-      {model.mode !== 'loading' && model.mode !== 'error' && model.error && (
-        <Alert tone="danger">{model.error}</Alert>
-      )}
+        {model.mode === 'summary' && <PriceSummary model={model} actions={actions} />}
 
-      {model.mode === 'summary' && <PriceSummary model={model} actions={actions} />}
-
-      {model.mode === 'edit' && (
-        <>
-          <PriceEditor model={model} actions={actions} />
-          <div className="onframe-commerce-popover-edit-footer">
-            <Button kind="secondary" size="sm" disabled={model.busy} onClick={actions.onCancel}>
-              Descartar
-            </Button>
-            <Button
-              kind="primary"
-              size="sm"
-              disabled={model.busy}
-              icon={model.busy ? <Spinner size="xs" label={model.saveLabel} /> : <Ph n="check-circle" size={14} />}
-              onClick={actions.onSave}
-            >
-              {model.saveLabel}
-            </Button>
-          </div>
-        </>
-      )}
-    </section>
+        {model.mode === 'edit' && (
+          <>
+            <PriceEditor model={model} actions={actions} />
+            <div className="onframe-commerce-popover-edit-footer">
+              <Button kind="secondary" size="sm" disabled={model.busy} onClick={actions.onCancel}>
+                Descartar
+              </Button>
+              <Button
+                kind="primary"
+                size="sm"
+                disabled={model.busy}
+                icon={model.busy ? <Spinner size="xs" label={model.saveLabel} /> : <Ph n="check-circle" size={14} />}
+                onClick={actions.onSave}
+              >
+                {model.saveLabel}
+              </Button>
+            </div>
+          </>
+        )}
+      </section>
+    </Card>
   );
 }
 

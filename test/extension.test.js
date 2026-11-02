@@ -26,7 +26,6 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
 
 test('content script usa o ToastStack oficial sem implementação visual paralela', () => {
   const bridge = fs.readFileSync(path.join(extensionRoot, 'ui', 'content', 'toast-bridge.jsx'), 'utf8');
-  const styles = fs.readFileSync(path.join(extensionRoot, 'styles', 'components.css'), 'utf8');
   const build = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
   const shell = fs.readFileSync(path.join(extensionRoot, 'core', 'content-shell.js'), 'utf8');
 
@@ -35,7 +34,7 @@ test('content script usa o ToastStack oficial sem implementação visual paralel
   assert.match(bridge, /globalThis\.OnFrameToast = Object\.freeze\(\{ show, dismiss, clear \}\)/);
   assert.match(build, /toast-bridge\.jsx/);
   assert.match(shell, /#onframe-toast-root/);
-  assert.doesNotMatch(styles, /\.onframe-toast(?:-stack|-icon|-content|-title|-body|-action|-close)?\s*\{/);
+  assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'components.css')), false);
 });
 
 test('tema usa o contrato do design system nas interfaces da extensao', () => {
