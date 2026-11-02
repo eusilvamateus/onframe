@@ -35,7 +35,6 @@
     variations: [],
     tray: null,
     dialogRoot: null,
-    fileInput: null,
     draggingId: null,
     drag: null,
     dirty: false,
@@ -64,7 +63,6 @@
   };
 
   function startProductEditor() {
-    ensureFileInput();
     state.pageSignature = readPageSignature();
     if (state.editorVisible) mountEditorTray();
   }
@@ -295,7 +293,6 @@
   async function showEditor() {
     if (!isProductPageUrl(location.href)) return getEditorStatus();
     state.editorVisible = true;
-    ensureFileInput();
     if (!state.loaded && !state.busy) {
       state.busy = true;
       state.message = 'Detectando anúncio...';
@@ -325,7 +322,6 @@
     }
     if (isProductPageUrl(location.href)) {
       state.editorVisible = true;
-      ensureFileInput();
       state.busy = true;
       state.message = 'Recarregando...';
       rerenderTray();
@@ -345,8 +341,7 @@
         onCommit: () => void commit(),
         onDiscard: discardDraft,
         onRemove: removePicture,
-        onUpload: () => state.fileInput.click(),
-        onUploadFiles: (files) => void addPendingFiles(files),
+        onUploadFiles: (files) => addPendingFiles(files),
         onPicturePointerDown: beginPictureDrag,
         onMovePicture: movePictureByKeyboard,
         onError: handlePhotosViewFailure
@@ -480,8 +475,7 @@
         onDiscard: discardDraft,
         onReloadQuality: () => void loadPictureQuality(),
         onRemove: removePicture,
-        onUpload: () => state.fileInput.click(),
-        onUploadFiles: (files) => void addPendingFiles(files),
+        onUploadFiles: (files) => addPendingFiles(files),
         onPicturePointerDown: beginPictureDrag,
         onMovePicture: movePictureByKeyboard,
         onSelectAll: () => setAllOptimizeSelection(true),
@@ -1814,20 +1808,6 @@
     if (editability.editable === false) return editability.message || 'Fotos bloqueadas neste anúncio.';
     if (permissions.picturesEditable === false) return 'Fotos bloqueadas neste anúncio.';
     return '';
-  }
-
-  function ensureFileInput() {
-    if (state.fileInput) return;
-    state.fileInput = document.createElement('input');
-    state.fileInput.type = 'file';
-    state.fileInput.accept = 'image/png,image/jpeg';
-    state.fileInput.multiple = true;
-    state.fileInput.className = 'onblide-ml-file';
-    state.fileInput.addEventListener('change', (event) => {
-      void addPendingFiles(event.target.files);
-      event.target.value = '';
-    });
-    root.appendChild(state.fileInput);
   }
 
   function removeTray() {

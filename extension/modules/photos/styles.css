@@ -8,15 +8,6 @@
   pointer-events: none;
 }
 
-.onblide-ml-file {
-  position: fixed;
-  left: -10000px;
-  top: -10000px;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
 .onblide-ml-tray {
   position: fixed !important;
   left: 50%;
@@ -414,46 +405,34 @@
 }
 
 .onblide-ml-upload {
-  appearance: none;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin: 0;
-  border: 0.5px dashed var(--ob-ink-mute);
-  background: var(--ob-surface-2);
-  color: var(--ob-ink);
-  cursor: pointer;
-  padding: 0;
-  font: var(--ob-w-semibold) 11px/1.2 var(--ob-font);
-  text-align: center;
-  transition: background var(--ob-dur-fast) var(--ob-ease), border-color var(--ob-dur-fast) var(--ob-ease), box-shadow var(--ob-dur-fast) var(--ob-ease), color var(--ob-dur-fast) var(--ob-ease);
+  align-items: stretch;
 }
 
-.onblide-ml-upload > .ob-icon,
-.onblide-ml-upload > .ph {
-  color: var(--ob-blue);
-  transition: color var(--ob-dur-fast) var(--ob-ease), transform var(--ob-dur-fast) var(--ob-ease);
+.onblide-ml-upload > div,
+.onblide-ml-upload > div > div:first-of-type {
+  width: 100%;
+  height: 100%;
 }
 
-.onblide-ml-upload:hover {
-  border-color: var(--ob-ink-soft);
-  background: var(--ob-surface);
-  color: var(--ob-ink-strong);
+.onblide-ml-upload > div > div:first-of-type {
+  align-items: stretch !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
-.onblide-ml-upload:hover > .ob-icon,
-.onblide-ml-upload:hover > .ph {
-  color: var(--ob-blue-700);
-  transform: translateY(-1px);
+.onblide-ml-upload button {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  white-space: normal;
 }
 
-.onblide-ml-upload.is-dragover {
-  background: var(--ob-blue-050);
-  border-color: var(--ob-blue);
-  color: var(--ob-ink-strong);
-  box-shadow: 0 0 0 4px var(--ob-focus-ring);
+.onblide-ml-upload > div > div:first-of-type > span,
+.onblide-ml-upload > div > div:nth-of-type(2),
+.onblide-ml-upload > div > span {
+  display: none !important;
 }
 
 .onblide-ml-order {

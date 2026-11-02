@@ -317,7 +317,10 @@ test('view React e a unica rota da interface de fotos', () => {
   assert.match(controller, /PhotosView\.renderTray/);
   assert.match(controller, /PhotosView\.renderTray\(state\.tray, buildTrayViewModel\(\)/);
   assert.match(controller, /onToggle: toggleDock/);
-  assert.match(controller, /onUploadFiles: \(files\) => void addPendingFiles\(files\)/);
+  assert.match(controller, /onUploadFiles: \(files\) => addPendingFiles\(files\)/);
+  assert.doesNotMatch(controller, /fileInput|ensureFileInput|createElement\('input'\)/);
+  assert.match(view, /<FileUpload[\s\S]*variant="button"[\s\S]*accept="image\/png,image\/jpeg"/);
+  assert.doesNotMatch(view, /<button[\s\S]*className="onblide-ml-upload"/);
   assert.match(controller, /pictures: state\.draftPictures\.map\(buildTrayPictureViewModel\)/);
   assert.match(controller, /badgeTone: getQualityBadgeTone\(quality\)/);
   assert.doesNotMatch(controller, /showPictureQuality|data-action="quality"/);
@@ -371,9 +374,10 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(view, /onClick=\{actions\.onToggle\}/);
   assert.match(view, /onClick=\{actions\.onOpenEditor\}/);
   assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*Abrir editor/);
-  assert.match(uploadTile, /<button[\s\S]*type="button"[\s\S]*onDrop=/);
-  assert.doesNotMatch(uploadTile, /role="button"|tabIndex=|onKeyDown=/);
-  assert.doesNotMatch(view, /import \{[^}]*FileUpload/);
+  assert.match(uploadTile, /<FileUpload[\s\S]*variant="button"[\s\S]*multiple[\s\S]*upload=\{upload\}/);
+  assert.match(uploadTile, /queue\.current\.then\(\(\) => actions\.onUploadFiles\(\[file\]\)\)/);
+  assert.doesNotMatch(uploadTile, /<button\b|onDrop=|onDragOver=/);
+  assert.match(view, /import \{[^}]*FileUpload/);
   assert.match(source, /function beginEditorOpenTransition\(\)/);
   assert.match(source, /function beginEditorCloseTransition\(\)/);
   assert.match(source, /EDITOR_MORPH_OPEN_DURATION = 900/);
@@ -427,9 +431,8 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-action \{[\s\S]*?width: 100%;[\s\S]*?height: 32px;/);
   assert.match(styles, /\.onblide-ml-dock-secondary-actions \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 32px;/);
   assert.doesNotMatch(editorDock, /onblide-ml-tray-actions|onblide-ml-dock-open-editor|paddingInline: 6/);
-  assert.match(styles, /\.onblide-ml-upload \{[\s\S]*border: 0\.5px dashed var\(--ob-ink-mute\);[\s\S]*color: var\(--ob-ink\);/);
-  assert.match(styles, /\.onblide-ml-upload > \.ph \{[\s\S]*color: var\(--ob-blue\);/);
-  assert.match(styles, /\.onblide-ml-upload:hover \{[\s\S]*background: var\(--ob-surface\);/);
+  assert.match(styles, /\.onblide-ml-upload button \{[\s\S]*width: 100%;[\s\S]*height: 100%;/);
+  assert.doesNotMatch(styles, /\.onblide-ml-file|\.onblide-ml-upload\.is-dragover/);
   assert.match(styles, /\.onblide-ml-tile \{[\s\S]*background: #fff;/);
   assert.match(styles, /\.onblide-ml-tile img \{[\s\S]*background: #fff;/);
   assert.match(styles, /\.onblide-ml-diagnostic-card img \{[\s\S]*background: #fff;/);

@@ -1,7 +1,7 @@
-import { Component } from 'react';
+import { Component, useCallback, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Alert, Badge, Button, Checkbox, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
+import { Alert, Badge, Button, Checkbox, FileUpload, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -438,30 +438,31 @@ function PictureTile({ picture, actions }) {
 }
 
 function UploadTile({ actions }) {
+  const [uploadKey, setUploadKey] = useState(0);
+  const queue = useRef(Promise.resolve());
+  const upload = useCallback((file) => {
+    const pending = queue.current.then(() => actions.onUploadFiles([file]));
+    queue.current = pending.catch(() => {});
+    return pending;
+  }, [actions]);
+
   return (
-    <button
-      type="button"
-      className="onblide-ml-upload"
-      data-action="upload"
-      onClick={actions.onUpload}
-      onDragOver={(event) => {
-        event.preventDefault();
-        event.currentTarget.classList.add('is-dragover');
-      }}
-      onDragLeave={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          event.currentTarget.classList.remove('is-dragover');
-        }
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        event.currentTarget.classList.remove('is-dragover');
-        actions.onUploadFiles(event.dataTransfer.files);
-      }}
-    >
-      <Ph n="upload" size={18} />
-      <span>Selecionar<br />ou arrastar</span>
-    </button>
+    <div className="onblide-ml-upload">
+      <FileUpload
+        key={uploadKey}
+        variant="button"
+        multiple
+        accept="image/png,image/jpeg"
+        acceptLabel="PNG ou JPG"
+        buttonLabel="Adicionar"
+        upload={upload}
+        onChange={(files) => {
+          if (files.length && files.every((file) => file.status !== 'uploading')) {
+            setUploadKey((current) => current + 1);
+          }
+        }}
+      />
+    </div>
   );
 }
 
@@ -605,7 +606,6 @@ function renderTray(host, model, callbacks = {}) {
     onCommit: typeof callbacks.onCommit === 'function' ? callbacks.onCommit : () => {},
     onDiscard: typeof callbacks.onDiscard === 'function' ? callbacks.onDiscard : () => {},
     onRemove: typeof callbacks.onRemove === 'function' ? callbacks.onRemove : () => {},
-    onUpload: typeof callbacks.onUpload === 'function' ? callbacks.onUpload : () => {},
     onUploadFiles: typeof callbacks.onUploadFiles === 'function' ? callbacks.onUploadFiles : () => {},
     onPicturePointerDown: typeof callbacks.onPicturePointerDown === 'function'
       ? callbacks.onPicturePointerDown
@@ -632,7 +632,6 @@ function renderDialog(host, model, callbacks = {}) {
     onDiscard: typeof callbacks.onDiscard === 'function' ? callbacks.onDiscard : () => {},
     onReloadQuality: typeof callbacks.onReloadQuality === 'function' ? callbacks.onReloadQuality : () => {},
     onRemove: typeof callbacks.onRemove === 'function' ? callbacks.onRemove : () => {},
-    onUpload: typeof callbacks.onUpload === 'function' ? callbacks.onUpload : () => {},
     onUploadFiles: typeof callbacks.onUploadFiles === 'function' ? callbacks.onUploadFiles : () => {},
     onPicturePointerDown: typeof callbacks.onPicturePointerDown === 'function'
       ? callbacks.onPicturePointerDown
