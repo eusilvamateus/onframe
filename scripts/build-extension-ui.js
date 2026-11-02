@@ -58,6 +58,22 @@ builds.push(esbuild.build({
   logLevel: 'info'
 }));
 
+fs.rmSync(path.join(root, 'extension', 'core', 'toast.js'), { force: true });
+builds.push(esbuild.build({
+  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'toast-bridge.jsx')],
+  outfile: path.join(root, 'extension', 'core', 'toast.js'),
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: ['chrome110'],
+  jsx: 'automatic',
+  minify: true,
+  alias: reactAliases,
+  loader: { '.svg': 'text' },
+  logLevel: 'info',
+  metafile: true
+}).then(assertSingleReact));
+
 fs.rmSync(path.join(root, 'extension', 'core', 'photos-view.js'), { force: true });
 builds.push(esbuild.build({
   entryPoints: [path.join(root, 'extension', 'ui', 'content', 'photos-view.jsx')],

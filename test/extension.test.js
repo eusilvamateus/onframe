@@ -24,6 +24,20 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
   assert.match(source.slice(source.indexOf('async function updateAccount'), source.indexOf('async function renameAccount')), /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/);
 });
 
+test('content script usa o ToastStack oficial sem implementação visual paralela', () => {
+  const bridge = fs.readFileSync(path.join(extensionRoot, 'ui', 'content', 'toast-bridge.jsx'), 'utf8');
+  const styles = fs.readFileSync(path.join(extensionRoot, 'styles', 'components.css'), 'utf8');
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const shell = fs.readFileSync(path.join(extensionRoot, 'core', 'content-shell.js'), 'utf8');
+
+  assert.match(bridge, /import \{ ToastStack, toast \} from '@onblide\/ui'/);
+  assert.match(bridge, /<ToastStack position="bottom-right" duration=\{4800\} limit=\{3\}/);
+  assert.match(bridge, /globalThis\.OnFrameToast = Object\.freeze\(\{ show, dismiss, clear \}\)/);
+  assert.match(build, /toast-bridge\.jsx/);
+  assert.match(shell, /#onframe-toast-root/);
+  assert.doesNotMatch(styles, /\.onframe-toast(?:-stack|-icon|-content|-title|-body|-action|-close)?\s*\{/);
+});
+
 test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const control = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'ThemeControl.jsx'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
