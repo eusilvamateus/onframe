@@ -98,12 +98,6 @@
     element.className = `ob-badge ${badgeTone(tone)}`;
   }
 
-  function addIcon(button, name, size = 16) {
-    if (!button || !root.OnblideIcons || button.dataset.iconReady) return;
-    button.insertAdjacentHTML('afterbegin', root.OnblideIcons.render(name, size));
-    button.dataset.iconReady = 'true';
-  }
-
   function badgeTone(tone) {
     if (tone === 'ok') return 'green';
     if (tone === 'warn') return 'orange';
@@ -307,7 +301,6 @@
   }
 
   root.OnFrameShared = {
-    addIcon,
     badgeTone,
     createApi,
     escapeAttribute,

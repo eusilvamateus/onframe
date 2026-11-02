@@ -58,10 +58,7 @@
       "js": [
         "core/theme-sync.js",
         "core/fonts.js",
-        "core/icons.js",
         "core/period.js",
-        "core/datepicker.js",
-        "core/button.js",
         "core/photos-view.js",
         "core/description-view.js",
         "core/characteristics-view.js",

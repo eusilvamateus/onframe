@@ -285,10 +285,11 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   ]);
   assert.equal(manifest.action.default_popup, 'ui/popup/index.html');
   assert.equal(manifest.options_ui.page, 'ui/options/index.html');
-  assert.ok(manifest.content_scripts[0].js.indexOf('core/fonts.js') < manifest.content_scripts[0].js.indexOf('core/icons.js'));
+  assert.ok(manifest.content_scripts[0].js.indexOf('core/fonts.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
   assert.ok(manifest.content_scripts[0].js.indexOf('core/period.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
-  assert.ok(manifest.content_scripts[0].js.indexOf('core/datepicker.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
-  assert.ok(manifest.content_scripts[0].js.indexOf('core/button.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
+  assert.equal(manifest.content_scripts[0].js.includes('core/icons.js'), false);
+  assert.equal(manifest.content_scripts[0].js.includes('core/datepicker.js'), false);
+  assert.equal(manifest.content_scripts[0].js.includes('core/button.js'), false);
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'launcher')), false);
 });
 
@@ -313,6 +314,7 @@ test('fontes do content script usam URLs da extensão', () => {
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins SemiBold';[\s\S]*Poppins-SemiBold\.ttf/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins ExtraBold';[\s\S]*Poppins-ExtraBold\.ttf/s);
+  assert.match(appended[0].textContent, /font-family: 'Phosphor';[\s\S]*vendor\/phosphor\/Phosphor\.woff2/s);
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
   assert.doesNotMatch(phosphor, /@font-face|Phosphor\.woff2/);
 });

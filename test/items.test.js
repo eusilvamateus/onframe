@@ -29,7 +29,6 @@ const {
   photosModel,
   commerceModel,
   moduleRegistry,
-  icons,
   fakePng,
   fakeWebpVp8x,
   fakeDocument,

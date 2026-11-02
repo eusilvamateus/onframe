@@ -36,7 +36,6 @@ const commerceModel = require('../extension/modules/commerce/model');
 const descriptionModel = require('../extension/modules/description/model');
 const characteristicsModel = require('../extension/modules/characteristics/model');
 const moduleRegistry = require('../extension/core/module-registry');
-const icons = require('../extension/core/icons');
 
 function fakePng(width, height) {
   const buffer = Buffer.alloc(33);
@@ -131,7 +130,6 @@ module.exports = {
   descriptionModel,
   characteristicsModel,
   moduleRegistry,
-  icons,
   fakePng,
   fakeWebpVp8x,
   fakeDocument,

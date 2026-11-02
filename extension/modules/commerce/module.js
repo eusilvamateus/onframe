@@ -10,12 +10,8 @@
     const api = services.api;
     const toast = services.toast;
     const requestPageContextReload = services.requestPageContextReload || (() => Promise.resolve(null));
-    const escapeHtml = Shared.escapeHtml;
-    const escapeAttribute = Shared.escapeAttribute;
     const isProductPageUrl = Detection.isProductPageUrl;
     const formatarPeriodo = rootScope.OnFramePeriod && rootScope.OnFramePeriod.formatarPeriodo;
-    const Datepicker = rootScope.OnFrameDatepicker;
-    const DesignSystemButton = rootScope.OnFrameButton;
     const CommerceActionsView = rootScope.OnFrameCommerceActionsView;
     const CommercePriceView = rootScope.OnFrameCommercePriceView;
     const CommercePromotionsView = rootScope.OnFrameCommercePromotionsView;
@@ -78,9 +74,6 @@
       popoverRoot: null,
       modalRoot: null,
       directDiscountModalRoot: null,
-      promotionResultPopoverRoot: null,
-      promotionResultPopoverKey: '',
-      promotionResultPopoverAnchor: null,
       loaded: false,
       busy: false,
       visible: true,
@@ -117,9 +110,6 @@
       detailsOpen: false,
       promotionModalOpen: false,
       directDiscountModalOpen: false,
-      renderingPromotionModal: false,
-      promotionModalTransition: null,
-      promotionModalAnimations: [],
       promotionFormKey: '',
       promotionFormAction: '',
       promotionFormEstimate: null,
@@ -128,23 +118,16 @@
       promotionEstimateTimers: {},
       promotionEstimateRequestId: 0,
       promotionBulkEnabled: false,
-      promotionConfirm: null,
-      promotionFocusKey: '',
       promotionSearch: '',
       promotionTab: 'all',
       promotionStatusFilters: [],
       promotionTypeFilters: [],
       promotionFinancialFilters: [],
-      promotionFiltersOpen: false,
       promotionRemoved: {},
       promotionRemovalTimers: {},
-      modalPositionFrame: null,
-      promotionModalResume: null,
-      promotionModalResumeFocus: '',
       renderTimer: null,
       requestId: 0,
       pageSignature: '',
-      lastModalMarkup: '',
       viewportEventsReady: false,
       documentEventsReady: false
     };
@@ -202,17 +185,10 @@
       state.promotionEstimates = {};
       state.promotionRemoved = {};
       state.promotionBulkEnabled = false;
-      state.promotionConfirm = null;
-      state.promotionFocusKey = '';
-      state.promotionModalResume = null;
-      state.promotionModalResumeFocus = '';
       resetPromotionListFilters();
-      unmountDesignSystemControls();
-      cancelModalPositionRestore();
       state.renderTimer = null;
       state.requestId += 1;
       state.pageSignature = readPageSignature();
-      state.lastModalMarkup = '';
       if (!preserveListing) resetListingState();
     }
 
@@ -1496,7 +1472,6 @@
       state.promotionFormEstimate = state.promotionEstimates[key] || null;
       state.promotionFormKey = key;
       state.promotionFormAction = action;
-      state.promotionConfirm = null;
       state.promotionBulkEnabled = false;
       state.actionError = '';
       if (action === 'details') {
@@ -1533,236 +1508,10 @@
       removeModal();
     }
 
-    function buildPromotionModal() {
-      return `
-        <div class="onframe-commerce-backdrop">
-          <section class="onframe-commerce-modal" role="dialog" aria-modal="true" aria-label="Gerenciar promoções">
-            <header class="onframe-commerce-modal-head">
-              <div>
-                <span>OnFrame</span>
-                <h2>Promoções</h2>
-                <p>Controle ofertas e campanhas deste anúncio.</p>
-              </div>
-              <div class="onframe-commerce-modal-head-actions">
-                <button class="onframe-commerce-icon-btn" data-action="close-promotion-modal" type="button" aria-label="Fechar">${icon('x', 14)}</button>
-              </div>
-            </header>
-            <div class="onframe-commerce-modal-content">
-              ${renderNotice(state.actionError || state.promotionError, 'warn')}
-              ${state.promotionLoading ? '<div class="onframe-commerce-empty">Lendo promoções...</div>' : renderPromotionManager()}
-            </div>
-            <footer class="onframe-commerce-modal-foot">
-              <button class="onframe-commerce-btn" data-action="reload-commerce" type="button" ${state.promotionLoading ? 'disabled' : ''}>${icon('refresh', 14)}Atualizar promoções</button>
-              <button class="onframe-commerce-btn" data-action="close-promotion-modal" type="button">Fechar</button>
-            </footer>
-          </section>
-        </div>
-      `;
-    }
-
-    function renderPromotionManager() {
-      if (!state.promotionSummary) return '<div class="onframe-commerce-empty">Promoções indisponíveis.</div>';
-      const rows = filterPromotionRows(buildPromotionRows());
-      return `
-        <section class="onframe-commerce-promotion-list" aria-label="Lista de promoções">
-          ${renderPromotionListControls()}
-          <div class="ob-table-wrap onframe-commerce-promotion-table-wrap">
-            <table class="ob-table onframe-commerce-promotion-table" aria-label="Promoções deste anúncio">
-              <thead>
-                <tr class="ob-table-row onframe-commerce-promotion-table-head">
-                  <th class="ob-table-header onframe-commerce-promotion-column-name" scope="col">Promoção</th>
-                  <th class="ob-table-header onframe-commerce-promotion-column-period" scope="col">Estado e vigência</th>
-                  <th class="ob-table-header onframe-commerce-promotion-column-condition" scope="col">Condição</th>
-                  <th class="ob-table-header onframe-commerce-promotion-column-result" scope="col">Resultado</th>
-                  <th class="ob-table-header onframe-commerce-promotion-column-actions onframe-commerce-promotion-action-head" scope="col">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows.length ? rows.map(renderPromotionListRow).join('') : renderPromotionListEmpty()}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      `;
-    }
-
-    function renderPromotionListControls() {
-      return `
-        <div class="onframe-commerce-promotion-list-tools">
-          <label class="ob-field-shell onframe-commerce-promotion-search">
-            ${icon('search', 16)}
-            <input class="ob-field-input" data-action="promotion-search" type="search" value="${escapeAttribute(state.promotionSearch)}" placeholder="Buscar promoção ou cupom..." aria-label="Buscar promoção ou cupom" autocomplete="off">
-          </label>
-          <div class="onframe-commerce-promotion-filter-wrap">
-            <button class="onframe-commerce-btn compact ${hasPromotionFilters() ? 'primary' : ''}" data-action="toggle-promotion-filters" type="button" aria-expanded="${state.promotionFiltersOpen ? 'true' : 'false'}" aria-haspopup="dialog">${icon('sliders', 14)}Filtros</button>
-            ${state.promotionFiltersOpen ? renderPromotionFilterPanel() : ''}
-          </div>
-          ${canCreateDirectDiscount() ? `<button class="onframe-commerce-btn primary compact onframe-commerce-direct-discount-trigger" data-action="open-direct-discount" type="button">${icon('tag', 14)}Criar desconto por porcentagem</button>` : ''}
-        </div>
-      `;
-    }
-
-    function renderPromotionFilterPanel() {
-      return `
-        <div class="onframe-commerce-promotion-filter-panel" role="dialog" aria-label="Filtrar promoções">
-          <div class="onframe-commerce-promotion-filter-group">
-            <strong>Estado</strong>
-            ${renderPromotionFilterOption('status', 'active', 'Ativas')}
-            ${renderPromotionFilterOption('status', 'programmed', 'Programadas')}
-            ${renderPromotionFilterOption('status', 'available', 'Elegíveis')}
-          </div>
-          <div class="onframe-commerce-promotion-filter-group">
-            <strong>Tipo</strong>
-            ${renderPromotionFilterOption('type', 'campaign', 'Campanhas')}
-            ${renderPromotionFilterOption('type', 'coupon', 'Cupons')}
-            ${renderPromotionFilterOption('type', 'direct', 'Descontos diretos')}
-            ${renderPromotionFilterOption('type', 'payment', 'Descontos por pagamento')}
-          </div>
-          <div class="onframe-commerce-promotion-filter-group">
-            <strong>Financeiro</strong>
-            ${renderPromotionFilterOption('financial', 'fee_reduction', 'Com redução de tarifa')}
-          </div>
-          ${hasPromotionFilters() ? '<button class="onframe-commerce-link" data-action="clear-promotion-filters" type="button">Limpar filtros</button>' : ''}
-        </div>
-      `;
-    }
-
-    function renderPromotionFilterOption(group, value, label) {
-      const selected = promotionFilterValues(group).includes(value);
-      return `
-        <button class="ob-checkbox onframe-commerce-promotion-filter-option ${selected ? 'is-checked' : ''}" data-action="toggle-promotion-filter" data-filter-group="${escapeAttribute(group)}" data-filter-value="${escapeAttribute(value)}" type="button" role="checkbox" aria-checked="${selected ? 'true' : 'false'}">
-          <span class="ob-checkbox-box" aria-hidden="true"></span>
-          <span class="ob-checkbox-label">${escapeHtml(label)}</span>
-        </button>
-      `;
-    }
-
     function directDiscountActionLabel() {
       const key = directDiscountKey();
       if (isPromotionActionPending(key, 'create')) return 'Criando desconto...';
       return 'Criar desconto';
-    }
-
-    function renderPromotionListEmpty() {
-      const message = state.promotionSearch || hasPromotionFilters()
-        ? 'Nenhuma promoção corresponde aos filtros atuais.'
-        : 'Nenhuma promoção disponível para este anúncio.';
-      return `
-        <tr class="ob-table-row onframe-commerce-promotion-list-empty-row">
-          <td class="ob-table-cell" colspan="5">
-            <div class="onframe-commerce-promotion-list-empty">${escapeHtml(message)}</div>
-          </td>
-        </tr>
-      `;
-    }
-
-    function renderPromotionListRow(row) {
-      const { entry, kind, index, key, type, status } = row;
-      const canCreate = kind === 'eligible-offer' || kind === 'stackable-offer' && isCandidatePromotion(entry) || kind === 'discount-offer' && isCandidatePromotion(entry);
-      const canUpdate = (kind === 'active-offer' || kind === 'programmed-offer') && CommerceModel.canUpdateOffer(entry);
-      const canDelete = (kind === 'active-offer' || kind === 'programmed-offer' || kind === 'stackable-offer' && !isCandidatePromotion(entry) || kind === 'discount-offer' && !isCandidatePromotion(entry)) && CommerceModel.canDeleteOffer(entry);
-      const userFields = CommerceModel.getUserFields(canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
-      const formOpen = state.promotionFormKey === key;
-      const confirm = state.promotionConfirm && state.promotionConfirm.key === key ? state.promotionConfirm : null;
-      const confirmBlocked = confirm ? isPromotionConfirmationBlocked(entry, confirm) : false;
-      const expanded = formOpen || confirm;
-      const actionMarkup = renderPromotionListActions({ key, kind, canCreate, canUpdate, canDelete, confirm, formOpen, confirmBlocked, userFields });
-
-      return `
-        <tr class="ob-table-row onframe-commerce-promotion-list-row ${expanded ? 'is-expanded' : ''}" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-name" data-label="Promoção">
-            <div class="onframe-commerce-promotion-name-content">
-              <span class="onframe-commerce-promotion-type-icon ${escapeAttribute(type)}" aria-hidden="true">${icon(promotionTypeIcon(type), 16)}</span>
-              <div>
-                <strong>${escapeHtml(entry.label || 'Promoção')}</strong>
-                <span>${escapeHtml(promotionTypeLabel(entry, type))}</span>
-              </div>
-            </div>
-          </td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-period" data-label="Estado e vigência">
-            <div class="onframe-commerce-promotion-period-content">
-              <small>${escapeHtml(formatPromotionPeriod(entry) || 'Sem vigência informada')}</small>
-              <span class="onframe-commerce-status ${escapeAttribute(promotionDisplayTone(entry))}">${escapeHtml(promotionListStatusLabel(status))}</span>
-            </div>
-          </td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-condition" data-label="Condição"><div class="onframe-commerce-promotion-condition-content ${type === 'coupon' ? 'coupon' : ''}">${renderPromotionListCondition(entry, type)}</div></td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-result" data-label="Resultado"><div class="onframe-commerce-promotion-result-content ${type === 'coupon' ? 'coupon' : ''}">${renderPromotionListResult(entry, key, kind)}</div></td>
-          <td class="ob-table-cell onframe-commerce-promotion-cell onframe-commerce-promotion-row-actions" data-label="Ação"><div class="onframe-commerce-promotion-row-actions-content">${confirm ? '' : actionMarkup}</div></td>
-        </tr>
-        ${expanded ? `
-          <tr class="ob-table-row onframe-commerce-promotion-list-detail-row" data-entry-kind="${escapeAttribute(kind)}" data-entry-index="${index}" data-entry-key="${escapeAttribute(key)}">
-            <td class="ob-table-cell onframe-commerce-promotion-list-detail-cell" colspan="5">
-              <div class="onframe-commerce-promotion-list-row-detail">
-              ${formOpen ? renderPromotionFields(userFields, key, entry) : ''}
-              ${renderPromotionReview(key, entry, formOpen, confirm)}
-              ${formOpen || confirm ? `<div class="onframe-commerce-promotion-form-actions${confirm ? ' has-review' : ''}">
-                ${formOpen ? `<button class="onframe-commerce-btn compact danger onframe-commerce-promotion-discard-btn" data-action="cancel-promotion-form" type="button">${icon('trash', 14)}Descartar alterações</button>` : ''}
-                ${confirm ? `<div class="onframe-commerce-promotion-review-actions">${actionMarkup}</div>` : ''}
-              </div>` : ''}
-              </div>
-            </td>
-          </tr>
-        ` : ''}
-      `;
-    }
-
-    function renderPromotionListActions({ key, kind, canCreate, canUpdate, canDelete, confirm, formOpen, confirmBlocked, userFields }) {
-      if (confirm) {
-        const action = confirm.action;
-        const blocked = action === 'create'
-          ? confirmBlocked
-          : action === 'update'
-            ? confirmBlocked
-            : false;
-        const tone = action === 'delete' ? 'danger' : 'primary';
-        return `
-          <button class="onframe-commerce-btn ${tone} compact" data-action="${escapeAttribute(`${action}-offer`)}" type="button" ${promotionActionDisabled(blocked)}>${promotionActionIcon(action, key, confirm, formOpen)}${promotionActionLabel(action, confirm, formOpen, userFields, key)}</button>
-          <button class="onframe-commerce-btn compact" data-action="cancel-promotion-confirm" type="button" ${state.busy ? 'disabled' : ''}>Cancelar</button>
-        `;
-      }
-      const createLabel = promotionActionLabel('create', null, false, userFields, key);
-      const updateLabel = promotionActionLabel('update', null, false, userFields, key);
-      return `
-        ${canCreate ? renderDesignSystemIconButton({
-          action: 'create-offer',
-          label: createLabel,
-          iconName: promotionActionIconName('create', key, confirm, formOpen),
-          tone: 'success',
-          placement: 'left',
-          disabled: state.busy
-        }) : ''}
-        ${canUpdate ? renderDesignSystemIconButton({
-          action: 'update-offer',
-          label: updateLabel,
-          iconName: promotionActionIconName('update', key, confirm, formOpen),
-          tone: 'primary',
-          placement: 'left',
-          disabled: state.busy
-        }) : ''}
-        ${canDelete ? renderDesignSystemIconButton({
-          action: 'delete-offer',
-          label: 'Remover promoção',
-          iconName: promotionActionIconName('delete', key, confirm, formOpen),
-          tone: 'danger',
-          placement: 'left',
-          disabled: state.busy
-        }) : ''}
-      `;
-    }
-
-    function renderDesignSystemIconButton({ action, label, iconName, tone, placement = 'top', disabled = false, controls = '', expanded = false, entryKey = '' }) {
-      return `<span
-        data-onframe-button-root
-        data-action="${escapeAttribute(action)}"
-        data-button-label="${escapeAttribute(label)}"
-        data-button-icon="${escapeAttribute(iconName)}"
-        data-button-tone="${escapeAttribute(tone)}"
-        data-button-placement="${escapeAttribute(placement)}"
-        data-button-disabled="${disabled ? 'true' : 'false'}"
-        ${controls ? `data-button-controls="${escapeAttribute(controls)}"` : ''}
-        data-button-expanded="${expanded ? 'true' : 'false'}"
-        ${entryKey ? `data-entry-key="${escapeAttribute(entryKey)}"` : ''}
-      ></span>`;
     }
 
     function buildPromotionRows() {
@@ -1780,20 +1529,6 @@
         const type = promotionListType(entry);
         return { entry, kind, index, key: `${kind}:${index}`, status, type };
       })).sort(comparePromotionRows);
-    }
-
-    function filterPromotionRows(rows) {
-      const query = normalizeSearchText(state.promotionSearch);
-      const statuses = state.promotionStatusFilters;
-      const types = state.promotionTypeFilters;
-      const financial = state.promotionFinancialFilters;
-      return rows.filter((row) => {
-        if (statuses.length && !statuses.includes(row.status)) return false;
-        if (types.length && !types.includes(row.type)) return false;
-        if (financial.includes('fee_reduction') && !hasPromotionFeeReduction(row.entry)) return false;
-        if (!query) return true;
-        return normalizeSearchText(`${row.entry.label || ''} ${promotionTypeLabel(row.entry, row.type)}`).includes(query);
-      });
     }
 
     function comparePromotionRows(left, right) {
@@ -1834,12 +1569,6 @@
       return 'campaign';
     }
 
-    function promotionTypeIcon(type) {
-      if (type === 'coupon') return 'ticket';
-      if (type === 'payment') return 'creditCard';
-      return 'tag';
-    }
-
     function promotionTypeLabel(entry, type) {
       const promotionType = String(entry && (entry.type || entry.promotion_type || entry.campaign_type) || '').toUpperCase();
       if (PROMOTION_TYPE_LABELS[promotionType]) return PROMOTION_TYPE_LABELS[promotionType];
@@ -1847,149 +1576,6 @@
       if (type === 'payment') return 'Desconto por pagamento';
       if (type === 'direct') return 'Desconto do anúncio';
       return 'Promoção';
-    }
-
-    function renderPromotionListCondition(entry, type) {
-      const displayPrice = promotionDisplayPrice(entry);
-      const discount = discountPercent(entry && entry.original_price, displayPrice);
-      if (type === 'coupon') {
-        return `<strong>${escapeHtml(couponBenefitLabel(entry))}</strong><span>${escapeHtml(couponApplicationLabel())}</span>`;
-      }
-      if (type === 'payment') {
-        const payment = stackablePaymentLabel(entry);
-        return `<strong>${escapeHtml(payment ? `No ${payment}` : 'Desconto acumulativo')}</strong>${discount ? `<span>${escapeHtml(`${discount}% OFF`)}</span>` : ''}`;
-      }
-      if (displayPrice) {
-        return `<strong>${escapeHtml(CommerceModel.formatMoney(displayPrice, itemCurrency()))}</strong>${discount ? `<span>${escapeHtml(`${discount}% OFF`)}</span>` : ''}`;
-      }
-      if (type === 'direct') return '<strong>Defina preço e prazo</strong>';
-      return '<span>Condição informada ao revisar</span>';
-    }
-
-    function renderPromotionListResult(entry, key, kind) {
-      if (promotionListType(entry) === 'coupon') return renderCouponPromotionListResult(entry, key);
-      if (!CommerceModel.canEstimatePromotion(entry)) {
-        return '<strong>Depende do comprador</strong><span>Não entra nesta estimativa</span>';
-      }
-      const estimate = state.promotionEstimates[key];
-      if (!estimate) {
-        return moneyOrNull(promotionDisplayPrice(entry))
-          ? '<span>Calculando valores...</span>'
-          : '<span>Preço ainda não informado.</span>';
-      }
-      if (estimate.status === 'loading') return '<span>Calculando valores...</span>';
-      if (estimate.status === 'error') return `<span>${escapeHtml(estimate.message || 'Valores indisponíveis.')}</span>`;
-      if (estimate.status !== 'ready' || !estimate.data || moneyOrNull(estimate.data.youReceive) === null) return '<span>Valores indisponíveis.</span>';
-      const currency = estimate.data.currency_id || itemCurrency();
-      const financialMetrics = promotionFinancialMetrics(estimate.data.promotionFinancial);
-      return `
-        <div class="onframe-commerce-promotion-result-value">
-          <strong>Você recebe ${escapeHtml(CommerceModel.formatMoney(estimate.data.youReceive, currency))}</strong>
-          ${renderPromotionResultPopoverTrigger(key)}
-        </div>
-        ${financialMetrics.map((metric) => `<span>${escapeHtml(promotionFinancialListText(metric, promotionBenefitState(entry, kind)))}</span>`).join('')}
-      `;
-    }
-
-    function renderPromotionResultPopoverTrigger(key) {
-      const id = promotionResultPopoverId(key);
-      return renderDesignSystemIconButton({
-        action: 'toggle-promotion-result-popover',
-        label: 'Ver detalhes do cálculo',
-        iconName: 'info',
-        tone: 'primary',
-        controls: id
-      });
-    }
-
-    function promotionResultPopoverId(key) {
-      return `onframe-promotion-result-${String(key || '').replace(/[^a-z0-9_-]/gi, '-')}`;
-    }
-
-    function couponDetailsPopoverId(key) {
-      return `onframe-coupon-details-${String(key || '').replace(/[^a-z0-9_-]/gi, '-')}`;
-    }
-
-    function togglePromotionResultPopover(button) {
-      const card = button.closest('[data-entry-key]');
-      const key = card && card.dataset ? card.dataset.entryKey : '';
-      if (!key) return;
-      if (state.promotionResultPopoverKey === key) {
-        removePromotionResultPopover();
-        return;
-      }
-
-      const details = promotionResultPopoverDetails(key);
-      if (!details) return;
-      removePromotionResultPopover();
-      state.promotionResultPopoverKey = key;
-      state.promotionResultPopoverAnchor = button;
-      updateDesignSystemButton(button, { pressed: true, expanded: true });
-      renderPromotionResultPopover(details);
-    }
-
-    function toggleCouponDetailsPopover(button) {
-      const key = String(button && button.dataset && button.dataset.entryKey || '');
-      if (!key) return;
-      const popoverKey = `coupon:${key}`;
-      if (state.promotionResultPopoverKey === popoverKey) {
-        removePromotionResultPopover();
-        return;
-      }
-
-      const [kind, indexText] = key.split(':');
-      const entry = getPromotionEntry(kind, Number(indexText));
-      const rows = couponDetailRows(entry);
-      if (!CommerceModel.isCheckoutCouponPromotion(entry) || !rows.length) return;
-
-      removePromotionResultPopover();
-      state.promotionResultPopoverKey = popoverKey;
-      state.promotionResultPopoverAnchor = button;
-      updateDesignSystemButton(button, { pressed: true, expanded: true });
-      renderCouponDetailsPopover({ key, entry, rows });
-    }
-
-    function renderPromotionResultPopover(details) {
-      if (!details || !state.promotionResultPopoverAnchor) return;
-      if (!state.promotionResultPopoverRoot) {
-        state.promotionResultPopoverRoot = document.createElement('div');
-        state.promotionResultPopoverRoot.className = 'onframe-commerce-promotion-result-popover-root';
-        document.body.appendChild(state.promotionResultPopoverRoot);
-      }
-
-      state.promotionResultPopoverRoot.innerHTML = buildPromotionResultPopover(details);
-      positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
-      bindButton(state.promotionResultPopoverRoot, 'close-promotion-result-popover', removePromotionResultPopover);
-    }
-
-    function buildPromotionResultPopover({ key, entry, estimate }) {
-      const id = promotionResultPopoverId(key);
-      const currency = estimate.currency_id || itemCurrency();
-      const rows = promotionResultPopoverRows(entry, estimate, currency);
-      return `
-        <section class="ob-popover onframe-commerce-promotion-result-popover" id="${escapeAttribute(id)}" role="dialog" aria-label="Detalhes do cálculo da promoção">
-          <header class="onframe-commerce-promotion-result-popover-head">
-            <div>
-              <strong>Detalhes do cálculo</strong>
-              <span>${escapeHtml(entry.label || 'Promoção')}</span>
-            </div>
-            <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-popover-close" data-action="close-promotion-result-popover" type="button" aria-label="Fechar detalhes do cálculo">${icon('x', 14)}</button>
-          </header>
-          <div class="onframe-commerce-promotion-result-popover-rows">
-            ${rows.map(renderPromotionResultPopoverRow).join('')}
-          </div>
-          <p class="onframe-commerce-promotion-result-popover-note">Estimativa calculada com o preço promocional.</p>
-        </section>
-      `;
-    }
-
-    function promotionResultPopoverDetails(key) {
-      const [kind, indexText] = String(key || '').split(':');
-      const entry = getPromotionEntry(kind, Number(indexText));
-      const record = state.promotionEstimates[key];
-      const estimate = record && record.status === 'ready' ? record.data : null;
-      if (!entry || !estimate || moneyOrNull(estimate.youReceive) === null) return null;
-      return { key, entry, estimate };
     }
 
     function promotionResultPopoverRows(entry, estimate, currency) {
@@ -2018,19 +1604,6 @@
       }
       rows.push({ label: 'Você recebe', value: CommerceModel.formatMoney(estimate.youReceive, currency), tone: 'total' });
       return rows;
-    }
-
-    function renderPromotionResultPopoverRow(row) {
-      if (!row || !row.label) return '';
-      return `
-        <div class="onframe-commerce-promotion-result-popover-row ${escapeAttribute(row.tone || '')}">
-          <div>
-            <strong>${escapeHtml(row.label)}</strong>
-            ${row.description ? `<span>${escapeHtml(row.description)}</span>` : ''}
-          </div>
-          ${row.value ? `<b>${escapeHtml(row.value)}</b>` : ''}
-        </div>
-      `;
     }
 
     function promotionShippingDescription(shipping) {
@@ -2076,17 +1649,6 @@
       return { subtype, benefit: 'Desconto não informado' };
     }
 
-    function couponMinimumPurchaseLabel(entry) {
-      const amount = couponAmount(couponCampaignData(entry).min_purchase_amount);
-      return amount === null ? '' : `Compra mínima de ${formatCouponMoney(amount)}`;
-    }
-
-    function couponMaximumRefundLabel(entry) {
-      if (couponPresentation(entry).subtype !== 'FIXED_PERCENTAGE') return '';
-      const amount = couponAmount(couponCampaignData(entry).max_purchase_amount);
-      return amount === null ? '' : `Reembolso máximo de ${formatCouponMoney(amount)}`;
-    }
-
     function couponCompactTerms(entry) {
       const coupon = couponCampaignData(entry);
       const minimum = couponAmount(coupon.min_purchase_amount);
@@ -2127,88 +1689,6 @@
       }
     }
 
-    function couponDetailRows(entry) {
-      const coupon = couponCampaignData(entry);
-      const rows = [];
-      const code = String(coupon.coupon_code || '').trim();
-      const remaining = couponAmount(coupon.remaining_budget);
-      const budget = couponAmount(coupon.budget);
-      const used = Number(coupon.used_coupons);
-      const redeems = Number(coupon.redeems_per_user);
-
-      if (code) rows.push({ label: 'Código do cupom', value: code });
-      if (remaining !== null && budget !== null) {
-        rows.push({ label: 'Orçamento restante', value: `${formatCouponMoney(remaining)} de ${formatCouponMoney(budget)}` });
-      } else if (remaining !== null) {
-        rows.push({ label: 'Orçamento restante', value: formatCouponMoney(remaining) });
-      } else if (budget !== null) {
-        rows.push({ label: 'Orçamento', value: formatCouponMoney(budget) });
-      }
-      if (Number.isFinite(used) && used >= 0) {
-        rows.push({ label: 'Cupons usados', value: used.toLocaleString('pt-BR') });
-      }
-      if (Number.isFinite(redeems) && redeems > 0) {
-        rows.push({ label: 'Uso por comprador', value: `${redeems.toLocaleString('pt-BR')} ${redeems === 1 ? 'vez' : 'vezes'}` });
-      }
-      return rows;
-    }
-
-    function renderCouponDetailsPopoverTrigger(entry, key) {
-      if (!couponDetailRows(entry).length) return '';
-      const id = couponDetailsPopoverId(key);
-      return renderDesignSystemIconButton({
-        action: 'toggle-coupon-details-popover',
-        label: 'Ver detalhes do cupom',
-        iconName: 'info',
-        tone: 'primary',
-        controls: id,
-        entryKey: key
-      });
-    }
-
-    function renderCouponDetailsPopover(details) {
-      if (!details || !state.promotionResultPopoverAnchor) return;
-      if (!state.promotionResultPopoverRoot) {
-        state.promotionResultPopoverRoot = document.createElement('div');
-        state.promotionResultPopoverRoot.className = 'onframe-commerce-promotion-result-popover-root';
-        document.body.appendChild(state.promotionResultPopoverRoot);
-      }
-
-      state.promotionResultPopoverRoot.innerHTML = buildCouponDetailsPopover(details);
-      positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
-      bindButton(state.promotionResultPopoverRoot, 'close-promotion-result-popover', removePromotionResultPopover);
-    }
-
-    function buildCouponDetailsPopover({ key, entry, rows }) {
-      const id = couponDetailsPopoverId(key);
-      return `
-        <section class="ob-popover onframe-commerce-promotion-result-popover coupon" id="${escapeAttribute(id)}" role="dialog" aria-label="Detalhes do cupom">
-          <header class="onframe-commerce-promotion-result-popover-head">
-            <div>
-              <strong>Detalhes do cupom</strong>
-              <span>${escapeHtml(entry.label || 'Cupom do vendedor')}</span>
-            </div>
-            <button class="onframe-commerce-icon-btn onframe-commerce-promotion-result-popover-close" data-action="close-promotion-result-popover" type="button" aria-label="Fechar detalhes do cupom">${icon('x', 14)}</button>
-          </header>
-          <div class="onframe-commerce-promotion-result-popover-rows">
-            ${rows.map(renderPromotionResultPopoverRow).join('')}
-          </div>
-        </section>
-      `;
-    }
-
-    function renderCouponPromotionListResult(entry, key) {
-      const terms = [couponMinimumPurchaseLabel(entry), couponMaximumRefundLabel(entry)].filter(Boolean);
-      const primary = terms.shift();
-      return `
-        <div class="onframe-commerce-promotion-result-value">
-          ${primary ? `<strong>${escapeHtml(primary)}</strong>` : '<span>Regras não informadas</span>'}
-          ${renderCouponDetailsPopoverTrigger(entry, key)}
-        </div>
-        ${terms.map((term) => `<span>${escapeHtml(term)}</span>`).join('')}
-      `;
-    }
-
     function promotionEndTimestamp(entry) {
       const value = entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
       const date = parseIsoDate(value) || parseDateValue(value);
@@ -2225,23 +1705,12 @@
       return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
     }
 
-    function promotionFilterValues(group) {
-      if (group === 'status') return state.promotionStatusFilters;
-      if (group === 'financial') return state.promotionFinancialFilters;
-      return state.promotionTypeFilters;
-    }
-
-    function hasPromotionFilters() {
-      return state.promotionStatusFilters.length > 0 || state.promotionTypeFilters.length > 0 || state.promotionFinancialFilters.length > 0;
-    }
-
     function resetPromotionListFilters() {
       state.promotionSearch = '';
       state.promotionTab = 'all';
       state.promotionStatusFilters = [];
       state.promotionTypeFilters = [];
       state.promotionFinancialFilters = [];
-      state.promotionFiltersOpen = false;
     }
 
     function promotionPopoverCampaignEntry(groups) {
@@ -2428,12 +1897,6 @@
       return copy || `${metric.label}: ${metric.value}`;
     }
 
-    function promotionBenefitState(entry, kind) {
-      if (kind === 'eligible-offer' || isCandidatePromotion(entry)) return 'available';
-      if (kind === 'programmed-offer' || String(entry && entry.display_status || '').toLowerCase() === 'programmed') return 'programmed';
-      return 'active';
-    }
-
     function promotionFinancialPopoverRow(metric) {
       if (!metric) return null;
       if (metric.copy) {
@@ -2448,18 +1911,6 @@
         value: metric.value,
         tone: metric.tone === 'green' ? 'benefit' : ''
       };
-    }
-
-    function renderPromotionMetricGrid(metrics) {
-      const list = Array.isArray(metrics) ? metrics.filter(Boolean) : [];
-      if (!list.length) return '';
-      return `
-        <div class="onframe-commerce-promo-metrics">
-          ${list.map((metric) => `
-            ${renderMetricChip(metric)}
-          `).join('')}
-        </div>
-      `;
     }
 
     function currentPromotionEntries(entries) {
@@ -2511,55 +1962,6 @@
       if (status === 'programmed') return 'blue';
       if (status === 'available') return 'orange';
       return 'muted';
-    }
-
-    function renderPromotionFacts(entry, kind, key, userFields = [], options = {}) {
-      const metrics = [];
-      const displayPrice = promotionDisplayPrice(entry);
-      const priceLabel = entry.price ? 'Preço' : entry.suggested_price ? 'Sugerido' : entry.total_price_for_boosted_offer ? 'Preço' : '';
-      if (displayPrice) metrics.push({ label: priceLabel, value: CommerceModel.formatMoney(displayPrice, itemCurrency()), tone: 'primary' });
-      const discount = discountPercent(entry.original_price, displayPrice);
-      if (discount) metrics.push({ label: 'Desconto', value: `${discount}% OFF`, tone: 'success' });
-      if (entry.suggested_price && entry.price && entry.suggested_price !== entry.price) {
-        metrics.push({ label: 'Sugerido', value: CommerceModel.formatMoney(entry.suggested_price, itemCurrency()), tone: 'primary' });
-      }
-      const stackableContext = stackablePromotionContextMetric(entry);
-      if (stackableContext) metrics.push(stackableContext);
-      let appliedCostFacts = [];
-      if (!options.suppressCostFacts && kind !== 'eligible-offer') {
-        appliedCostFacts = renderAppliedPromotionCostFacts(key);
-        appliedCostFacts.forEach((metric) => {
-          metrics.push(metric);
-        });
-      }
-      if (!options.suppressCostFacts) {
-        promotionFinancialMetrics(entry, { originalPrice: entry.original_price }).forEach((metric) => {
-          if (hasMetricLabel(metrics, metric.label)) return;
-          if (!hasMetric(metrics, metric)) metrics.push(metric);
-        });
-      }
-      if (entry.stock) metrics.push({ label: 'Estoque', value: `${entry.stock} un.`, tone: 'muted' });
-      if (userFields.includes('deal_price')) metrics.push({ label: 'Entrada', value: 'Preço editável', tone: 'muted' });
-      return metrics.map(renderMetricChip).join('');
-    }
-
-    function renderAppliedPromotionCostFacts(key) {
-      const estimate = state.promotionEstimates[key];
-      if (!estimate || estimate.status !== 'ready' || !estimate.data) return [];
-      const currency = estimate.data.currency_id || itemCurrency();
-      const facts = [];
-      if (moneyOrNull(estimate.data.youReceive) !== null) {
-        facts.push({ label: 'Você recebe', value: CommerceModel.formatMoney(estimate.data.youReceive, currency), tone: 'success' });
-      }
-      promotionFinancialMetrics(estimate.data.promotionFinancial).forEach((metric) => {
-        facts.push(Object.assign({}, metric, { tone: metric.tone === 'green' ? 'success' : metric.tone }));
-      });
-      return facts;
-    }
-
-    function renderPromotionStatusBadge(status, tone, kind) {
-      if (kind === 'eligible-offer') return '';
-      return `<span class="onframe-commerce-status ${escapeAttribute(tone)}">${escapeHtml(status)}</span>`;
     }
 
     function priceSnapshot(summary, priceState) {
@@ -2643,79 +2045,6 @@
       };
     }
 
-    function renderPromotionReview(key, entry, formOpen, confirm) {
-      if (!formOpen && !confirm) return '';
-      if (confirm) return renderPromotionConfirmation(key, entry, confirm);
-      return renderPromotionEstimate(key, 'inline');
-    }
-
-    function renderPromotionConfirmation(key, entry, confirm) {
-      const values = confirm.values || {};
-      const rangeWarning = promotionDraftWarning(entry, values);
-      const estimateMarkup = confirm.action === 'delete' ? '' : renderPromotionEstimate(key, 'review');
-      const removalWarning = confirm.action === 'delete'
-        ? `<div class="onframe-commerce-review-head"><div><strong>Remover esta promoção?</strong><span>A remoção será enviada ao Mercado Livre ao confirmar.</span></div></div>`
-        : '';
-      return `
-        <div class="onframe-commerce-review">
-          ${removalWarning}
-          ${renderPromotionConfirmWarnings(rangeWarning)}
-          ${estimateMarkup}
-          ${entry && entry.direct_discount_draft ? '' : renderBulkSwitch('promotion', state.promotionBulkEnabled)}
-          ${renderBulkBusyStatus()}
-        </div>
-      `;
-    }
-
-    function isPromotionConfirmationBlocked(entry, confirm) {
-      if (!confirm || (confirm.action !== 'create' && confirm.action !== 'update')) return false;
-      return Boolean(promotionDraftWarning(entry, confirm.values || {}));
-    }
-
-    function renderPromotionConfirmWarnings(rangeWarning) {
-      if (!rangeWarning) return '';
-      return `<div class="onframe-commerce-review-grid">${renderReviewMetric({ label: 'Ajuste necessário', value: rangeWarning, tone: 'warning' })}</div>`;
-    }
-
-    function renderPromotionEstimate(key, mode = 'review') {
-      const estimate = state.promotionEstimates[key] || null;
-      if (!estimate) return '';
-      if (estimate.status === 'blocked') {
-        return `<div class="onframe-commerce-estimate muted">${escapeHtml(estimate.message || 'Preço fora da faixa.')}</div>`;
-      }
-      if (estimate.status === 'loading') {
-        return '<div class="onframe-commerce-estimate muted">Calculando custos...</div>';
-      }
-      if (estimate.status === 'error') {
-        return `<div class="onframe-commerce-estimate warn">${escapeHtml(estimate.message || 'Custos indisponíveis.')}</div>`;
-      }
-      if (estimate.status === 'ready' && estimate.data) return renderPromotionEstimateResult(estimate.data, mode);
-      return '';
-    }
-
-    function renderPromotionEstimateResult(estimate, mode = 'review') {
-      const currency = estimate.currency_id || itemCurrency();
-      const metrics = promotionEstimateMetrics(estimate, currency);
-
-      if (!metrics.length) {
-        return '<div class="onframe-commerce-estimate warn">Custos indisponíveis.</div>';
-      }
-      if (mode === 'inline') {
-        return `<div class="onframe-commerce-estimate muted">Revise para ver custos e repasse.</div>`;
-      }
-      return `
-        <div class="onframe-commerce-estimate">
-          <div class="onframe-commerce-estimate-head">
-            <strong>Resumo da promoção</strong>
-            ${estimate.complete === false ? '<small>Dados incompletos</small>' : ''}
-          </div>
-          <section class="ob-card onframe-commerce-promotion-estimate-summary" aria-label="Resumo financeiro da promoção">
-            ${metrics.map(renderPromotionEstimateSummaryMetric).join('')}
-          </section>
-        </div>
-      `;
-    }
-
     function promotionEstimateMetrics(estimate, currency) {
       const commission = estimate.commission || null;
       const shipping = estimate.shipping || null;
@@ -2733,33 +2062,6 @@
         metrics.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, currency), tone: 'muted' });
       }
       return metrics;
-    }
-
-    function renderReviewMetric(metric) {
-      return renderMetricChip(metric);
-    }
-
-    function renderPromotionEstimateSummaryMetric(metric) {
-      if (!metric || !metric.label || !metric.value) return '';
-      return `
-        <div class="onframe-commerce-promotion-estimate-summary-metric ${escapeAttribute(metric.tone || 'muted')}">
-          <small>${escapeHtml(metric.label)}</small>
-          <strong>${escapeHtml(metric.value)}</strong>
-        </div>
-      `;
-    }
-
-    function renderMetricChip(metric) {
-      if (!metric || !metric.value) return '';
-      return `
-        <span class="onframe-commerce-metric ${escapeAttribute(metric.tone || 'muted')}">
-          <small>${escapeHtml(metric.label)}</small>
-          <b>
-            ${escapeHtml(metric.value)}
-            ${metric.badge ? `<em class="onframe-commerce-metric-badge">${escapeHtml(metric.badge)}</em>` : ''}
-          </b>
-        </span>
-      `;
     }
 
     function buildFinancialMetric(label, amount, percentage, currency, tone = 'muted', kind = '') {
@@ -2803,17 +2105,6 @@
       if (state === 'available') return `Redução de ${benefit} nas suas tarifas por venda ao participar.`;
       if (state === 'programmed') return `Reduziremos ${benefit} nas suas tarifas por venda.`;
       return `Reduzimos ${benefit} nas suas tarifas por venda.`;
-    }
-
-    function hasMetric(metrics, candidate) {
-      return metrics.some((metric) => metric &&
-        metric.label === candidate.label &&
-        metric.value === candidate.value &&
-        (metric.badge || '') === (candidate.badge || ''));
-    }
-
-    function hasMetricLabel(metrics, label) {
-      return metrics.some((metric) => metric && metric.label === label);
     }
 
     function priceSaveLabel() {
@@ -2870,31 +2161,6 @@
       };
     }
 
-    function renderBulkSwitch(kind, checked) {
-      if (!canUseBulkActions()) return '';
-      const action = kind === 'price' ? 'toggle-price-bulk' : 'toggle-promotion-bulk';
-      const id = `onframe-commerce-bulk-${kind}`;
-      return `
-        <button id="${escapeAttribute(id)}" class="ob-checkbox onframe-commerce-bulk-switch ${checked ? 'is-checked' : ''}" data-action="${escapeAttribute(action)}" type="button" role="checkbox" aria-checked="${checked ? 'true' : 'false'}" ${state.busy ? 'disabled' : ''}>
-          <span class="ob-checkbox-box" aria-hidden="true"></span>
-          <span>
-            <span class="ob-checkbox-label">Aplicar a todas as variações</span>
-            <span class="ob-checkbox-description">Esta aplicação será enviada para as variações ativas desta família.</span>
-          </span>
-        </button>
-      `;
-    }
-
-    function renderBulkBusyStatus() {
-      const text = bulkBusyText();
-      if (!text) return '';
-      return `
-        <div class="onframe-commerce-bulk-status loading" aria-live="polite">
-          ${spinner()}${escapeHtml(text)}
-        </div>
-      `;
-    }
-
     function bulkBusyText() {
       if (state.operationPending === 'price-bulk-preview') return 'Validando variações elegíveis...';
       if (state.operationPending === 'price-bulk-commit') return 'Aplicando preço nas variações elegíveis...';
@@ -2907,34 +2173,6 @@
         return state.operationPendingAction === 'delete' ? 'Removendo promoção...' : 'Enviando promoção...';
       }
       return '';
-    }
-
-    function renderBulkStatus(preview, error) {
-      if (error) {
-        return `<div class="onframe-commerce-bulk-status warn">${escapeHtml(shortMessage(error))}</div>`;
-      }
-      if (!preview) return '';
-      const counts = preview.counts || {};
-      const eligible = Number(counts.eligible || 0);
-      const total = Number(counts.total || 0);
-      const blocked = Number(counts.blocked || 0);
-      if (!eligible) {
-        return `<div class="onframe-commerce-bulk-status warn">Nenhuma variação elegível${blocked ? ` (${blocked} bloqueada${blocked === 1 ? '' : 's'})` : ''}.</div>`;
-      }
-      return `
-        <div class="onframe-commerce-bulk-status ok">
-          ${escapeHtml(`${eligible} de ${total} variações elegíveis.`)}
-          ${blocked ? `<details><summary>${escapeHtml(`${blocked} ignorada${blocked === 1 ? '' : 's'}`)}</summary>${renderBulkBlockedList(preview)}</details>` : ''}
-        </div>
-      `;
-    }
-
-    function renderBulkBlockedList(preview) {
-      const blocked = (preview && Array.isArray(preview.targets) ? preview.targets : [])
-        .filter((target) => !target.eligible)
-        .slice(0, 6);
-      if (!blocked.length) return '';
-      return `<ul>${blocked.map((target) => `<li>${escapeHtml(shortTargetLabel(target))}: ${escapeHtml(CommerceModel.friendlyError(target.reasonCode || target.message || 'Bloqueado'))}</li>`).join('')}</ul>`;
     }
 
     function shortTargetLabel(target) {
@@ -2975,109 +2213,11 @@
       return '';
     }
 
-    function promotionActionLabel(action, confirm, formOpen, userFields, key) {
-      if (isPromotionActionPending(key, action)) return promotionPendingLabel(action);
-      if (confirm && confirm.action === action) {
-        if (state.promotionBulkEnabled) {
-          if (action === 'delete') return 'Remover em todas as variações';
-          if (action === 'update') return 'Alterar em todas as variações';
-          return 'Confirmar em todas as variações';
-        }
-        if (action === 'delete') return 'Confirmar remoção';
-        if (action === 'update') return 'Confirmar alteração';
-        return 'Confirmar aplicação';
-      }
-      if (action === 'delete') return 'Remover promoção';
-      if (action === 'update') return userFields.length && !formOpen ? 'Alterar valores' : 'Revisar alteração';
-      return userFields.length && !formOpen ? 'Configurar oferta' : 'Revisar aplicação';
-    }
-
-    function promotionPendingLabel(action) {
-      if (state.operationPending === 'promotion-bulk-commit') return action === 'delete' ? 'Removendo da família...' : 'Aplicando na família...';
-      return action === 'delete' ? 'Removendo...' : 'Enviando...';
-    }
-
-    function promotionActionIcon(action, key, confirm, formOpen) {
-      if (isPromotionActionPending(key, action)) return spinner();
-      return icon(promotionActionIconName(action, key, confirm, formOpen), 14);
-    }
-
-    function promotionActionIconName(action, key, confirm, formOpen) {
-      if (isPromotionActionPending(key, action)) return 'spinner-gap';
-      return confirm && confirm.action === action
-        ? 'checkCircle'
-        : formOpen && state.promotionFormAction === action
-          ? 'checkCircle'
-          : action === 'create'
-            ? 'tag'
-            : action === 'update'
-              ? 'pencil'
-              : 'trash';
-    }
-
-    function promotionActionDisabled(blocked) {
-      return blocked || state.busy ? 'disabled' : '';
-    }
-
     function isPromotionActionPending(key, action) {
       return Boolean(state.busy &&
         state.operationPending.indexOf('promotion-') === 0 &&
         state.operationPendingKey === key &&
         state.operationPendingAction === action);
-    }
-
-    function promotionTone(entry, kind) {
-      if (kind === 'active-offer') return promotionDisplayTone(entry);
-      if (kind === 'programmed-offer') return 'blue';
-      if (kind === 'stackable-offer') return promotionDisplayTone(entry);
-      if (kind === 'discount-offer') return promotionDisplayTone(entry);
-      if (kind === 'eligible-offer') return 'orange';
-      const bucket = String(entry && entry.bucket || '').toLowerCase();
-      if (bucket === 'active') return 'green';
-      if (bucket === 'eligible') return 'orange';
-      if (bucket === 'scheduled') return 'blue';
-      return 'muted';
-    }
-
-    function promotionStatusLabel(entry, kind) {
-      if (kind === 'active-offer') return promotionDisplayStatusLabel(entry);
-      if (kind === 'stackable-offer') return promotionDisplayStatusLabel(entry);
-      if (kind === 'discount-offer') return promotionDisplayStatusLabel(entry);
-      if (kind === 'eligible-offer') return 'Elegível';
-      if (kind === 'programmed-offer') return 'Programada';
-      const status = String(entry && entry.status || '').toLowerCase();
-      if (status === 'started' || status === 'active') return 'Programada';
-      if (status === 'candidate') return 'Elegível';
-      if (status === 'pending' || status === 'programmed') return 'Programada';
-      return 'Informativa';
-    }
-
-    function promotionHint(entry, kind, canCreate, canUpdate, canDelete, userFields) {
-      if (kind === 'discount-offer') {
-        if (canCreate) return 'Crie um desconto direto para este anúncio.';
-        if (String(entry && entry.display_status || '').toLowerCase() === 'programmed') return 'Desconto direto programado para este anúncio.';
-        if (canDelete) return 'Desconto direto aplicado ao anúncio.';
-        return 'Desconto direto do anúncio.';
-      }
-      if (kind === 'active-offer') {
-        if (entry && entry.display_status === 'programmed') return 'Aplicada ao anúncio. Entra quando for a promoção vigente.';
-        if (canUpdate && userFields.length) return 'Edite os valores desta promoção.';
-        if (canDelete) return 'Promoção aplicada. Você pode remover daqui.';
-        return 'Promoção aplicada pelo Mercado Livre.';
-      }
-      if (kind === 'programmed-offer') {
-        if (canUpdate && userFields.length) return 'Aplicada ao anúncio. Você pode alterar antes de entrar.';
-        if (canDelete) return 'Aplicada ao anúncio. Você pode remover antes de entrar.';
-        return 'Vai entrar em vigor automaticamente.';
-      }
-      if (kind === 'stackable-offer') {
-        if (isCandidatePromotion(entry)) return 'Desconto acumulativo disponível para este anúncio.';
-        if (String(entry && entry.display_status || '').toLowerCase() === 'programmed') return 'Desconto acumulativo programado.';
-        return 'Aplica junto com a promoção do preço.';
-      }
-      if (canCreate && userFields.length) return 'Configure os dados antes de aplicar.';
-      if (canCreate) return 'Pronta para aplicar neste anúncio.';
-      return 'Disponível para consulta.';
     }
 
     function formatPromotionPeriod(entry) {
@@ -3144,17 +2284,6 @@
       return entry && entry.is_stackable === true || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN';
     }
 
-    function stackablePromotionContextMetric(entry) {
-      if (!isStackablePromotion(entry)) return null;
-      const paymentMethod = String(entry && entry.payment_method || '').trim().toUpperCase();
-      if (paymentMethod) return { label: 'Acumula no', value: paymentMethod };
-      const type = String(entry && entry.type || '').toUpperCase();
-      if (type === 'SELLER_COUPON_CAMPAIGN') return { label: 'Aplicação', value: 'Checkout' };
-      const context = String(entry && entry.stackable_context || '').trim();
-      if (context === 'payment_method') return { label: 'Acumula no', value: 'Pagamento' };
-      return { label: 'Tipo', value: 'Acumulativo' };
-    }
-
     function isCandidatePromotion(entry) {
       const status = String(entry && (entry.status || entry.api_status) || '').toLowerCase();
       return status === 'candidate' || String(entry && entry.display_status || '').toLowerCase() === 'available';
@@ -3193,38 +2322,6 @@
         String(date.getMonth() + 1).padStart(2, '0'),
         String(date.getDate()).padStart(2, '0')
       ].join('-');
-    }
-
-    function renderPromotionFields(fields, key, entry) {
-      const list = Array.isArray(fields) ? fields : [];
-      if (!list.length) return '';
-      return `
-        <div class="onframe-commerce-form-grid">
-          ${list.map((field) => renderPromotionField(field, key, entry)).join('')}
-        </div>
-      `;
-    }
-
-    function renderPromotionField(field, key, entry) {
-      const value = promotionFieldValue(key, field, entry);
-      const validation = field === 'deal_price' ? promotionPriceFieldValidation(entry, value) : null;
-      const fieldClass = validation && validation.tone ? ` ${validation.tone}` : '';
-      if (field === 'start_date' || field === 'finish_date') {
-        return `
-          <div class="onframe-commerce-field onframe-commerce-date-field onframe-commerce-field-${escapeAttribute(field)}">
-            <div data-onframe-datepicker-root data-date-mode="single" data-date-field="${escapeAttribute(field)}" data-date-label="${escapeAttribute(CommerceModel.fieldLabel(field))}"></div>
-            <input data-field="${escapeAttribute(field)}" type="hidden" value="${escapeAttribute(value)}">
-          </div>
-        `;
-      }
-
-      return `
-        <label class="onframe-commerce-field onframe-commerce-field-${escapeAttribute(field)}${escapeAttribute(fieldClass)}">
-          <span>${escapeHtml(CommerceModel.fieldLabel(field))}</span>
-          <input data-field="${escapeAttribute(field)}" ${fieldType(field)} value="${escapeAttribute(value)}">
-          ${validation && validation.message ? `<small class="onframe-commerce-field-help">${escapeHtml(validation.message)}</small>` : ''}
-        </label>
-      `;
     }
 
     function promotionPriceFieldValidation(entry, value) {
@@ -3314,325 +2411,9 @@
       renderModal();
     }
 
-    function renderNotice(message, tone) {
-      if (!message) return '';
-      return `
-        <div class="onframe-commerce-alert ${escapeAttribute(tone === 'warn' ? 'danger' : 'info')}" role="alert">
-          ${icon(tone === 'warn' ? 'warning' : 'info', 16)}
-          <span>${escapeHtml(shortMessage(message))}</span>
-        </div>
-      `;
-    }
-
-    function bindModalEvents() {
-      if (!state.modalRoot) return;
-      bindButton(state.modalRoot, 'close-promotion-modal', closePromotionModal);
-      bindButton(state.modalRoot, 'reload-commerce', () => void reloadCommerce());
-      bindButton(state.modalRoot, 'create-offer', (button) => void performPromotionAction(button, 'create'));
-      bindButton(state.modalRoot, 'update-offer', (button) => void performPromotionAction(button, 'update'));
-      bindButton(state.modalRoot, 'delete-offer', (button) => void performPromotionAction(button, 'delete'));
-      bindButton(state.modalRoot, 'toggle-promotion-result-popover', togglePromotionResultPopover);
-      bindButton(state.modalRoot, 'toggle-coupon-details-popover', toggleCouponDetailsPopover);
-      bindButton(state.modalRoot, 'open-direct-discount', openDirectDiscountForm);
-      bindButton(state.modalRoot, 'cancel-promotion-form', cancelPromotionForm);
-      bindButton(state.modalRoot, 'cancel-promotion-confirm', cancelPromotionConfirm);
-      bindButton(state.modalRoot, 'toggle-promotion-filters', () => {
-        state.promotionFiltersOpen = !state.promotionFiltersOpen;
-        rerenderModal();
-      });
-      bindButton(state.modalRoot, 'clear-promotion-filters', () => {
-        state.promotionStatusFilters = [];
-        state.promotionTypeFilters = [];
-        state.promotionFinancialFilters = [];
-        rerenderModal();
-      });
-      state.modalRoot.querySelectorAll('[data-action="toggle-promotion-filter"]').forEach((button) => {
-        button.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const group = button.dataset.filterGroup;
-          const value = button.dataset.filterValue;
-          const values = promotionFilterValues(group);
-          const next = values.includes(value)
-            ? values.filter((item) => item !== value)
-            : values.concat(value);
-          if (group === 'status') state.promotionStatusFilters = next;
-          else if (group === 'financial') state.promotionFinancialFilters = next;
-          else state.promotionTypeFilters = next;
-          rerenderModal();
-        });
-      });
-      const search = state.modalRoot.querySelector('[data-action="promotion-search"]');
-      if (search) {
-        search.addEventListener('input', () => {
-          state.promotionSearch = search.value;
-          rerenderModal();
-        });
-      }
-      bindBulkControls(state.modalRoot);
-      bindPromotionFieldDrafts(state.modalRoot);
-      mountDatepickers(state.modalRoot);
-      mountButtons(state.modalRoot);
-    }
-
-    function bindBulkControls(container) {
-      const promotionToggle = container.querySelector('[data-action="toggle-promotion-bulk"]');
-      if (promotionToggle) {
-        promotionToggle.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (state.busy) return;
-          state.promotionBulkEnabled = promotionToggle.getAttribute('aria-checked') !== 'true';
-          state.actionError = '';
-          rerenderModal();
-        });
-      }
-
-    }
-
-    function bindButton(container, action, handler) {
-      container.querySelectorAll(`[data-action="${action}"]`).forEach((button) => {
-        button.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          handler(button, event);
-        });
-      });
-    }
-
-    function mountDatepickers(container) {
-      if (!container || !Datepicker || typeof Datepicker.mount !== 'function') return;
-      container.querySelectorAll('[data-onframe-datepicker-root]').forEach((host) => {
-        const field = host.dataset.dateField;
-        const wrapper = host.closest('.onframe-commerce-date-field');
-        const input = wrapper && wrapper.querySelector(`[data-field="${field}"]`);
-        if (!field || !input) return;
-        Datepicker.mount(host, {
-          mode: 'single',
-          label: host.dataset.dateLabel || CommerceModel.fieldLabel(field),
-          stepper: 'day',
-          value: parseIsoDate(input.value),
-          onChange: (value) => {
-            input.value = toIsoDate(value);
-            savePromotionFieldDraft(input);
-          }
-        });
-      });
-    }
-
-    function mountButtons(container) {
-      if (!container || !DesignSystemButton || typeof DesignSystemButton.mount !== 'function') return;
-      container.querySelectorAll('[data-onframe-button-root]').forEach((host) => {
-        DesignSystemButton.mount(host, {
-          kind: 'quiet',
-          tone: host.dataset.buttonTone || 'neutral',
-          size: 'sm',
-          iconOnly: true,
-          label: host.dataset.buttonLabel || 'Ação',
-          tooltip: host.dataset.buttonLabel || 'Ação',
-          placement: host.dataset.buttonPlacement || 'top',
-          icon: phosphorIconName(host.dataset.buttonIcon),
-          disabled: host.dataset.buttonDisabled === 'true',
-          controls: host.dataset.buttonControls || undefined,
-          expanded: host.dataset.buttonExpanded === 'true'
-        });
-      });
-    }
-
-    function updateDesignSystemButton(host, options) {
-      if (!host || !DesignSystemButton || typeof DesignSystemButton.update !== 'function') return;
-      DesignSystemButton.update(host, options);
-    }
-
-    function phosphorIconName(name) {
-      const names = { checkCircle: 'check-circle', pencil: 'pencil-simple' };
-      return names[name] || name || 'circle';
-    }
-
-    function bindPromotionFieldDrafts(container) {
-      container.querySelectorAll('[data-field]').forEach((input) => {
-        input.addEventListener('input', () => savePromotionFieldDraft(input));
-        input.addEventListener('change', () => savePromotionFieldDraft(input));
-        input.addEventListener('keydown', (event) => {
-          if (event.key !== 'Enter' || input.type === 'hidden') return;
-          event.preventDefault();
-          savePromotionFieldDraft(input);
-          reviewPromotionFieldDraft(input);
-        });
-        input.addEventListener('blur', (event) => {
-          if (input.type === 'hidden' || !shouldReviewPromotionFieldOnBlur(input, event)) return;
-          setTimeout(() => {
-            if (!shouldReviewPromotionFieldOnBlur(input, event)) return;
-            savePromotionFieldDraft(input);
-            reviewPromotionFieldDraft(input);
-          }, 0);
-        });
-      });
-    }
-
-    function shouldReviewPromotionFieldOnBlur(input, event) {
-      if (state.renderingPromotionModal) return false;
-      const card = input.closest('[data-entry-key]');
-      const next = event && event.relatedTarget || document.activeElement;
-      if (card && next && card.contains(next)) return false;
-      return !next || typeof next.closest !== 'function' || !next.closest('[data-action]');
-    }
-
-    function reviewPromotionFieldDraft(input) {
-      const card = input.closest('[data-entry-key]');
-      const key = card && card.dataset ? card.dataset.entryKey : '';
-      const action = state.promotionFormAction;
-      if (!card || !key || state.promotionFormKey !== key || state.promotionConfirm || !['create', 'update'].includes(action)) return;
-
-      const entry = getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex));
-      if (!entry) return;
-      const values = readPromotionValues(card);
-      const targetPrice = promotionTargetPrice(entry, values);
-      if (!targetPrice || promotionDraftWarning(entry, values)) return;
-
-      try {
-        if (action === 'update') CommerceModel.buildOfferUpdatePayload(entry, values);
-        else CommerceModel.buildOfferPayload(entry, values);
-      } catch (err) {
-        return;
-      }
-
-      state.promotionConfirm = { key, action, values };
-      state.promotionFocusKey = key;
-      state.actionError = '';
-      schedulePromotionEstimate(key, entry, values);
-      rerenderModal();
-    }
-
-    function savePromotionFieldDraft(input) {
-      const card = input.closest('[data-entry-key]');
-      const field = input.dataset.field;
-      if (!card || !field) return;
-      const key = card.dataset.entryKey;
-      const entry = getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex));
-      state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, {
-        [field]: input.value
-      });
-      if (field === 'deal_price') {
-        updatePromotionPriceFieldFeedback(input, entry);
-      }
-      const clearedConfirm = Boolean(state.promotionConfirm && state.promotionConfirm.key === key);
-      if (state.promotionConfirm && state.promotionConfirm.key === key) {
-        state.promotionConfirm = null;
-      }
-      clearPromotionActionFeedback();
-      schedulePromotionEstimate(key, entry, state.promotionDraftValues[key] || {});
-      if (clearedConfirm) {
-        rerenderModal();
-        return;
-      }
-      syncPromotionModalMarkupCache();
-    }
-
-    function updatePromotionPriceFieldFeedback(input, entry) {
-      const label = input.closest('.onframe-commerce-field');
-      updatePromotionFieldFeedback(label, promotionPriceFieldValidation(entry, input.value));
-    }
-
-    function updatePromotionFieldFeedback(label, validation) {
-      if (!label) return;
-      label.classList.remove('ok', 'warn');
-      const shell = label.querySelector('.ob-field-shell');
-      const input = label.querySelector('input:not([type="hidden"])');
-      let help = label.querySelector('.ob-field-help, .onframe-commerce-field-help');
-      if (!validation || !validation.message) {
-        if (shell) shell.classList.remove('is-error');
-        if (input) input.removeAttribute('aria-invalid');
-        if (help && help.classList.contains('ob-field-help')) {
-          help.textContent = '';
-          help.classList.remove('is-error');
-        } else if (help) {
-          help.remove();
-        }
-        return;
-      }
-      label.classList.add('warn');
-      if (shell) shell.classList.add('is-error');
-      if (input) input.setAttribute('aria-invalid', 'true');
-      if (!help) {
-        help = document.createElement('small');
-        help.className = 'onframe-commerce-field-help';
-        label.appendChild(help);
-      }
-      if (help.classList.contains('ob-field-help')) help.classList.add('is-error');
-      help.textContent = validation.message;
-    }
-
-    function clearPromotionActionFeedback() {
-      state.actionError = '';
-    }
-
     function clearDirectDiscountEstimate(key) {
       clearPromotionEstimateTimer(key);
       delete state.promotionEstimates[key];
-    }
-
-    function unmountDatepickers() {
-      if (!Datepicker || typeof Datepicker.unmountWithin !== 'function') return;
-      Datepicker.unmountWithin(state.modalRoot);
-    }
-
-    function unmountButtons() {
-      if (!DesignSystemButton || typeof DesignSystemButton.unmountWithin !== 'function') return;
-      DesignSystemButton.unmountWithin(state.modalRoot);
-    }
-
-    function unmountDesignSystemControls() {
-      unmountDatepickers();
-      unmountButtons();
-    }
-
-    function cancelModalPositionRestore() {
-      if (!state.modalPositionFrame) return;
-      cancelAnimationFrame(state.modalPositionFrame);
-      state.modalPositionFrame = null;
-    }
-
-    function restoreModalPosition(position, revealFocus) {
-      if (!position || !state.modalRoot) return;
-      const content = state.modalRoot.querySelector('.onframe-commerce-modal-content');
-      if (content) {
-        content.scrollTop = position.contentScrollTop || 0;
-        content.scrollLeft = position.contentScrollLeft || 0;
-      }
-      const focusKey = revealFocus ? state.promotionFocusKey : '';
-      if (focusKey && content) {
-        const focusedCard = content.querySelector(`[data-entry-key="${escapeAttribute(focusKey)}"]`);
-        if (focusedCard) {
-          const modalRect = content.getBoundingClientRect();
-          const cardRect = focusedCard.getBoundingClientRect();
-          const isAbove = cardRect.top < modalRect.top + 16;
-          const isBelow = cardRect.bottom > modalRect.bottom - 16;
-          if (isAbove || isBelow) content.scrollTop += cardRect.top - modalRect.top - 16;
-        }
-      }
-      if (revealFocus) state.promotionFocusKey = '';
-      if (window.scrollX !== position.pageScrollX || window.scrollY !== position.pageScrollY) {
-        window.scrollTo(position.pageScrollX, position.pageScrollY);
-      }
-    }
-
-    function syncPromotionModalMarkupCache() {
-      if (state.promotionModalOpen && state.modalRoot) state.lastModalMarkup = buildPromotionModal();
-    }
-
-    function restorePromotionModalResumeFocus() {
-      const action = state.promotionModalResumeFocus;
-      if (!action || !state.modalRoot) return;
-      state.promotionModalResumeFocus = '';
-      const selector = action === 'promotion-search'
-        ? '[data-action="promotion-search"]'
-        : `[data-action="${escapeAttribute(action)}"]`;
-      const target = state.modalRoot.querySelector(selector) || state.modalRoot.querySelector('[data-action="close-promotion-modal"]');
-      if (!target || typeof target.focus !== 'function') return;
-      requestAnimationFrame(() => {
-        if (target.isConnected) target.focus({ preventScroll: true });
-      });
     }
 
     function schedulePromotionManagerEstimates() {
@@ -3949,144 +2730,21 @@
     }
 
     function openPromotionModal() {
-      const popoverRect = readPromotionPopoverRect();
       state.popover = null;
       removePopover();
-      removePromotionResultPopover();
       state.promotionModalOpen = true;
       state.directDiscountModalOpen = false;
       state.actionError = '';
       state.promotionFormKey = '';
       state.promotionFormAction = '';
       state.promotionFormEstimate = null;
-      state.promotionConfirm = null;
-      state.promotionFocusKey = '';
-      state.promotionModalResume = null;
-      state.promotionModalResumeFocus = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
       resetPromotionListFilters();
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
       renderModal();
-      void beginPromotionModalOpenTransition(popoverRect);
-    }
-
-    async function beginPromotionModalOpenTransition(popoverRect) {
-      const modal = getPromotionModalElement();
-      const backdrop = getPromotionModalBackdropElement();
-      if (!modal || !backdrop || !popoverRect) {
-        schedulePromotionManagerEstimates();
-        return;
-      }
-
-      clearPromotionModalTransition();
-      const transition = { direction: 'open', popoverRect };
-      state.promotionModalTransition = transition;
-      const transform = getPromotionModalMorphTransform(modal, popoverRect);
-      const modalStyle = getComputedStyle(modal);
-      const backdropStyle = getComputedStyle(backdrop);
-      modal.classList.add('is-promotion-modal-morphing', 'is-promotion-modal-opening');
-      backdrop.classList.add('is-promotion-modal-morphing', 'is-promotion-modal-opening');
-
-      const animations = [
-        animatePromotionModalElement(modal, [
-          { transform, borderRadius: '8px', boxShadow: 'none' },
-          { transform: 'none', borderRadius: modalStyle.borderRadius, boxShadow: modalStyle.boxShadow }
-        ], {
-          duration: 620,
-          easing: 'cubic-bezier(0.22, 0.78, 0.18, 1)',
-          fill: 'both'
-        }),
-        animatePromotionModalElement(backdrop, [
-          { backgroundColor: 'transparent' },
-          { backgroundColor: backdropStyle.backgroundColor }
-        ], {
-          duration: 560,
-          easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
-          fill: 'both'
-        }),
-        ...animatePromotionModalChildren(modal)
-      ].filter(Boolean);
-
-      await waitForPromotionModalAnimations(animations);
-      if (state.promotionModalTransition !== transition) return;
-      modal.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
-      backdrop.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
-      finishPromotionModalAnimations();
-      state.promotionModalTransition = null;
       schedulePromotionManagerEstimates();
-    }
-
-    function animatePromotionModalChildren(modal) {
-      return Array.from(modal.children).map((child, index) => animatePromotionModalElement(child, [
-        { opacity: 0, transform: 'translateY(20px)' },
-        { opacity: 1, transform: 'translateY(0)' }
-      ], {
-        duration: 340,
-        delay: 210 + index * 55,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        fill: 'both'
-      })).filter(Boolean);
-    }
-
-    function animatePromotionModalElement(element, keyframes, options) {
-      if (!element || typeof element.animate !== 'function') return null;
-      try {
-        const animation = element.animate(keyframes, options);
-        state.promotionModalAnimations.push(animation);
-        return animation;
-      } catch (_err) {
-        return null;
-      }
-    }
-
-    function waitForPromotionModalAnimations(animations) {
-      if (!animations.length) return Promise.resolve();
-      return Promise.all(animations.map((animation) => animation.finished.catch(() => null)));
-    }
-
-    function finishPromotionModalAnimations() {
-      state.promotionModalAnimations.forEach((animation) => animation.cancel());
-      state.promotionModalAnimations = [];
-    }
-
-    function clearPromotionModalTransition() {
-      finishPromotionModalAnimations();
-      const modal = getPromotionModalElement();
-      const backdrop = getPromotionModalBackdropElement();
-      if (modal) modal.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
-      if (backdrop) backdrop.classList.remove('is-promotion-modal-morphing', 'is-promotion-modal-opening');
-      state.promotionModalTransition = null;
-    }
-
-    function getPromotionModalElement() {
-      return state.modalRoot && state.modalRoot.querySelector('.onframe-commerce-modal');
-    }
-
-    function getPromotionModalBackdropElement() {
-      return state.modalRoot && state.modalRoot.querySelector('.onframe-commerce-backdrop');
-    }
-
-    function readPromotionPopoverRect() {
-      if (!state.popoverRoot || typeof state.popoverRoot.getBoundingClientRect !== 'function') return null;
-      const rect = state.popoverRoot.getBoundingClientRect();
-      if (!rect || !rect.width || !rect.height) return null;
-      return {
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height
-      };
-    }
-
-    function getPromotionModalMorphTransform(modal, popoverRect) {
-      const modalRect = modal.getBoundingClientRect();
-      const translateX = popoverRect.left + popoverRect.width / 2 - (modalRect.left + modalRect.width / 2);
-      const translateY = popoverRect.top + popoverRect.height / 2 - (modalRect.top + modalRect.height / 2);
-      const scaleX = popoverRect.width / modalRect.width;
-      const scaleY = popoverRect.height / modalRect.height;
-      return `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px) scale(${scaleX}, ${scaleY})`;
     }
 
     function openDirectDiscountForm() {
@@ -4094,20 +2752,9 @@
       const entry = buildDirectDiscountDraftEntry();
       if (!entry) return;
       const key = directDiscountKey();
-      const content = state.modalRoot && state.modalRoot.querySelector('.onframe-commerce-modal-content');
-      state.promotionModalResume = {
-        contentScrollTop: content ? content.scrollTop : 0,
-        contentScrollLeft: content ? content.scrollLeft : 0,
-        pageScrollX: window.scrollX,
-        pageScrollY: window.scrollY
-      };
-      state.promotionModalResumeFocus = 'open-direct-discount';
-      state.promotionFiltersOpen = false;
       state.promotionFormKey = key;
       state.promotionFormAction = 'create';
       state.promotionFormEstimate = null;
-      state.promotionConfirm = null;
-      state.promotionFocusKey = '';
       ensureDirectDiscountDraft(key, entry);
       state.actionError = '';
       state.promotionModalOpen = false;
@@ -4127,13 +2774,7 @@
       state.promotionBulkEnabled = false;
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
-      state.promotionConfirm = null;
-      state.promotionFocusKey = '';
-      state.promotionModalResume = null;
-      state.promotionModalResumeFocus = '';
       resetPromotionListFilters();
-      unmountDesignSystemControls();
-      cancelModalPositionRestore();
       removeModal();
       removeDirectDiscountModal();
     }
@@ -4196,13 +2837,11 @@
         delete state.promotionDraftValues[key];
         clearPromotionEstimateTimer(key);
         delete state.promotionEstimates[key];
-        state.promotionConfirm = null;
         state.promotionBulkEnabled = false;
         delete state.promotionRemoved[key];
         if (createdDirectDiscount) {
           state.directDiscountModalOpen = false;
           state.promotionModalOpen = true;
-          state.promotionModalResumeFocus = 'promotion-search';
           removeDirectDiscountModal();
         }
         await loadSummaries(state.requestId);
@@ -4253,123 +2892,6 @@
       state.promotionRemovalTimers = {};
     }
 
-    async function performPromotionAction(button, action) {
-      if (!state.itemId || state.busy) return;
-      const card = button.closest('[data-entry-kind]');
-      if (!card) return;
-      const key = `${card.dataset.entryKind}:${card.dataset.entryIndex}`;
-      const entry = getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex));
-      if (!entry) return;
-
-      const fields = action === 'delete'
-        ? []
-        : CommerceModel.getUserFields(action === 'update' ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry));
-      if (fields.length && state.promotionFormKey !== key) {
-        state.promotionFormKey = key;
-        state.promotionFormAction = action;
-        ensurePromotionDraft(key, entry, fields);
-        state.promotionConfirm = null;
-        state.promotionFocusKey = key;
-        state.actionError = '';
-        rerenderModal();
-        schedulePromotionEstimate(key, entry, state.promotionDraftValues[key] || {});
-        return;
-      }
-
-      try {
-        if (fields.length) ensurePromotionDraft(key, entry, fields);
-        state.actionError = '';
-        const values = readPromotionValues(card);
-        const draftWarning = action === 'delete' ? '' : promotionDraftWarning(entry, values);
-        if (draftWarning) {
-          state.actionError = draftWarning;
-          rerenderModal();
-          return;
-        }
-        const method = action === 'delete' ? 'DELETE' : action === 'update' ? 'PUT' : 'POST';
-        const payload = action === 'delete'
-          ? CommerceModel.buildOfferDeletePayload(entry)
-          : action === 'update'
-            ? CommerceModel.buildOfferUpdatePayload(entry, values)
-            : CommerceModel.buildOfferPayload(entry, values);
-        const confirming = state.promotionConfirm && state.promotionConfirm.key === key && state.promotionConfirm.action === action;
-        if (!confirming && !entry.direct_discount_draft) {
-          state.promotionConfirm = { key, action, values };
-          state.promotionFocusKey = key;
-          state.actionError = '';
-          if (action !== 'delete') schedulePromotionEstimate(key, entry, values);
-          rerenderModal();
-          return;
-        }
-
-        if (state.promotionBulkEnabled && canUseBulkActions() && !entry.direct_discount_draft) {
-          state.busy = true;
-          state.operationPending = 'promotion-bulk-commit';
-          state.operationPendingKey = key;
-          state.operationPendingAction = action;
-          state.actionError = '';
-          rerenderModal();
-          const result = await commitBulkInBatches(`promotion.offer.${action}`, payload);
-          notifyBulkResult(result, promotionActionSuccessLabel(action));
-          state.promotionFormKey = '';
-          state.promotionFormAction = '';
-          state.promotionFormEstimate = null;
-          state.promotionDraftValues = {};
-          clearPromotionEstimateTimers();
-          state.promotionEstimates = {};
-          state.promotionConfirm = null;
-          await loadSummaries(state.requestId);
-          schedulePromotionManagerEstimates();
-          void reconcileBulkResult(result, promotionActionSuccessLabel(action));
-          return;
-        }
-
-        state.busy = true;
-        state.operationPending = 'promotion-single';
-        state.operationPendingKey = key;
-        state.operationPendingAction = action;
-        state.actionError = '';
-        rerenderModal();
-        await api(itemApiPath('/promotions/offers'), {
-          method,
-          body: JSON.stringify(payload)
-        });
-        const createdDirectDiscount = Boolean(entry.direct_discount_draft);
-        showToast('success', promotionActionSuccessLabel(action));
-        state.promotionFormKey = '';
-        state.promotionFormAction = '';
-        state.promotionFormEstimate = null;
-        state.promotionDraftValues = {};
-        clearPromotionEstimateTimers();
-        state.promotionEstimates = {};
-        state.promotionConfirm = null;
-        if (createdDirectDiscount) {
-          state.directDiscountModalOpen = false;
-          state.promotionModalOpen = true;
-          state.promotionModalResumeFocus = 'promotion-search';
-          removeDirectDiscountModal();
-        }
-        await loadSummaries(state.requestId);
-        schedulePromotionManagerEstimates();
-      } catch (err) {
-        state.actionError = CommerceModel.friendlyError(err);
-        state.promotionConfirm = null;
-      } finally {
-        state.busy = false;
-        state.operationPending = '';
-        state.operationPendingKey = '';
-        state.operationPendingAction = '';
-        mountCommerce();
-      }
-    }
-
-    function cancelPromotionConfirm() {
-      state.promotionConfirm = null;
-      state.promotionFocusKey = state.promotionFormKey || '';
-      state.actionError = '';
-      rerenderModal();
-    }
-
     function cancelPromotionForm() {
       const key = state.promotionFormKey;
       if (!key || state.busy) return;
@@ -4386,11 +2908,8 @@
       state.promotionFormKey = '';
       state.promotionFormAction = '';
       state.promotionFormEstimate = null;
-      state.promotionConfirm = null;
-      state.promotionFocusKey = '';
       state.promotionBulkEnabled = false;
       state.actionError = '';
-      unmountDesignSystemControls();
       if (returningFromDirectDiscount) {
         state.directDiscountModalOpen = false;
         state.promotionModalOpen = true;
@@ -4404,8 +2923,6 @@
 
     async function reloadCommerce() {
       state.actionError = '';
-      state.promotionConfirm = null;
-      state.promotionFocusKey = '';
       state.promotionDraftValues = {};
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
@@ -4420,17 +2937,6 @@
       }
       await loadSummaries(state.requestId);
       schedulePromotionManagerEstimates();
-    }
-
-    function getPromotionEntry(kind, index) {
-      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
-      if (kind === 'active-offer') return currentPromotionEntries(campaignPromotionEntries(pricePromotionEntries(groups)))[index] || null;
-      if (kind === 'stackable-offer') return stackablePromotionEntries(groups)[index] || null;
-      if (kind === 'eligible-offer') return promotionOpportunityEntries(groups)[index] || null;
-      if (kind === 'discount-offer') return buildDiscountEntry();
-      if (kind === 'direct-discount') return buildDirectDiscountDraftEntry();
-      if (kind === 'programmed-offer') return programmedPromotionEntries(groups)[index] || null;
-      return null;
     }
 
     function buildDiscountEntry() {
@@ -4467,7 +2973,7 @@
     }
 
     function canCreateDirectDiscount() {
-      if (state.promotionFormKey || state.promotionConfirm) return false;
+      if (state.promotionFormKey) return false;
       return Boolean(buildDirectDiscountDraftEntry());
     }
 
@@ -4493,16 +2999,6 @@
       if (!Object.prototype.hasOwnProperty.call(draft, 'start_date')) draft.start_date = defaultFieldValue('start_date', entry);
       if (!Object.prototype.hasOwnProperty.call(draft, 'finish_date')) draft.finish_date = defaultFieldValue('finish_date', entry);
       state.promotionDraftValues[key] = draft;
-    }
-
-    function readPromotionValues(card) {
-      const key = card.dataset.entryKey || '';
-      const values = Object.assign({}, state.promotionDraftValues[key] || {});
-      card.querySelectorAll('[data-field]').forEach((input) => {
-        values[input.dataset.field] = input.value;
-      });
-      if (key) state.promotionDraftValues[key] = Object.assign({}, values);
-      return values;
     }
 
     function findPriceAnchor() {
@@ -4555,34 +3051,6 @@
     function positionPopover() {
       if (!state.popover || !state.popoverRoot) return;
       positionFloatingRoot(state.popoverRoot, popoverAnchor());
-    }
-
-    function positionPromotionResultPopover(root, anchor) {
-      if (!root || !anchor || typeof anchor.getBoundingClientRect !== 'function') return;
-      const rect = anchor.getBoundingClientRect();
-      const width = Math.min(320, window.innerWidth - 24);
-      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
-      root.style.left = `${Math.round(left)}px`;
-      root.style.top = `${Math.round(Math.max(12, rect.bottom + 8))}px`;
-
-      const height = root.getBoundingClientRect().height;
-      if (rect.bottom + 8 + height > window.innerHeight - 12 && rect.top - height - 8 >= 12) {
-        root.style.top = `${Math.round(rect.top - height - 8)}px`;
-      }
-    }
-
-    function fieldType(field) {
-      if (field === 'stock') return 'type="number" min="1" step="1"';
-      return 'inputmode="decimal" autocomplete="off"';
-    }
-
-    function promotionFieldValue(key, field, entry) {
-      if (!state.promotionDraftValues[key]) {
-        ensurePromotionDraft(key, entry, [field]);
-      }
-      const draft = state.promotionDraftValues[key] || {};
-      if (Object.prototype.hasOwnProperty.call(draft, field)) return draft[field];
-      return defaultFieldValue(field, entry);
     }
 
     function ensurePromotionDraft(key, entry, fields) {
@@ -4818,7 +3286,6 @@
     }
 
     function rerenderModal() {
-      state.lastModalMarkup = '';
       renderModal();
       renderDirectDiscountModal();
     }
@@ -4840,23 +3307,10 @@
       state.popoverRoot = null;
     }
 
-    function removePromotionResultPopover() {
-      updateDesignSystemButton(state.promotionResultPopoverAnchor, { pressed: false, expanded: false });
-      if (state.promotionResultPopoverRoot) state.promotionResultPopoverRoot.remove();
-      state.promotionResultPopoverRoot = null;
-      state.promotionResultPopoverKey = '';
-      state.promotionResultPopoverAnchor = null;
-    }
-
     function removeModal() {
-      clearPromotionModalTransition();
-      removePromotionResultPopover();
-      if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.modalRoot);
-      if (DesignSystemButton && typeof DesignSystemButton.unmountWithin === 'function') DesignSystemButton.unmountWithin(state.modalRoot);
       if (state.modalRoot) CommercePromotionManagerView.unmount(state.modalRoot);
       if (state.modalRoot) state.modalRoot.remove();
       state.modalRoot = null;
-      state.lastModalMarkup = '';
     }
 
     function removeDirectDiscountModal() {
@@ -4871,13 +3325,9 @@
       window.addEventListener('resize', () => {
         scheduleRender(80);
         positionPopover();
-        if (state.promotionResultPopoverRoot) {
-          positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
-        }
       });
       window.addEventListener('scroll', () => {
         positionPopover();
-        if (state.promotionResultPopoverRoot) positionPromotionResultPopover(state.promotionResultPopoverRoot, state.promotionResultPopoverAnchor);
       }, true);
     }
 
@@ -4898,34 +3348,11 @@
             cancelPromotionForm();
             return;
           }
-          if (state.promotionFiltersOpen) {
-            state.promotionFiltersOpen = false;
-            rerenderModal();
-            return;
-          }
-          if (state.promotionResultPopoverRoot) {
-            removePromotionResultPopover();
-            return;
-          }
           closePopover();
           closePromotionModal();
         }
       });
       document.addEventListener('click', (event) => {
-        if (state.promotionFiltersOpen && state.modalRoot) {
-          const filterWrap = state.modalRoot.querySelector('.onframe-commerce-promotion-filter-wrap');
-          if (!filterWrap || !filterWrap.contains(event.target)) {
-            state.promotionFiltersOpen = false;
-            rerenderModal();
-          }
-        }
-        if (state.promotionResultPopoverRoot) {
-          const target = event.target;
-          const anchor = state.promotionResultPopoverAnchor;
-          if (!state.promotionResultPopoverRoot.contains(target) && (!anchor || !anchor.contains(target))) {
-            removePromotionResultPopover();
-          }
-        }
         if (!state.popoverRoot || !state.popover) return;
         const target = event.target;
         if (state.popoverRoot.contains(target)) return;
@@ -4989,14 +3416,6 @@
         await reloadCommerce();
       }
       return getCommerceStatus();
-    }
-
-    function icon(name, size) {
-      return window.OnblideIcons ? window.OnblideIcons.render(name, size) : '';
-    }
-
-    function spinner() {
-      return '<span class="ob-spinner ob-spinner-sm" aria-hidden="true"></span>';
     }
 
     function handleCommercePriceViewFailure(error) {
