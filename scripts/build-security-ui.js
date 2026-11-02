@@ -12,7 +12,10 @@ fs.copyFileSync(path.join(root, 'extension', 'core', 'remote-auth.js'), path.joi
 fs.copyFileSync(require.resolve('@onblide/ui/theme-init'), path.join(output, 'theme-init.js'));
 fs.copyFileSync(path.join(root, 'extension', 'assets', 'onframe-stacked-primary.png'), path.join(output, 'onframe-stacked-primary.png'));
 esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'passkeys', 'app.jsx')],
+  entryPoints: {
+    app: path.join(root, 'extension', 'ui', 'passkeys', 'app.jsx'),
+    hosted: path.join(root, 'extension', 'ui', 'hosted', 'app.jsx')
+  },
   outdir: output, bundle: true, format: 'iife', platform: 'browser',
   target: ['chrome110'], jsx: 'automatic', minify: true,
   alias: { react: require.resolve('react'), 'react/jsx-runtime': require.resolve('react/jsx-runtime'), 'react-dom': require.resolve('react-dom'), 'react-dom/client': require.resolve('react-dom/client') },

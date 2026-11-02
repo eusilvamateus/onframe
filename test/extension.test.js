@@ -70,6 +70,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(passkeys, /<ThemeMenuButton \/>/);
   assert.match(extensionBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /@onblide\/ui\/theme-init/);
+  assert.match(securityBuild, /hosted: path\.join\(root, 'extension', 'ui', 'hosted', 'app\.jsx'\)/);
   assert.equal(manifest.content_scripts[0].js[0], 'core/theme-sync.js');
   assert.match(themeSync, /data-onframe-theme/);
   assert.match(themeSync, /prefers-color-scheme: dark/);

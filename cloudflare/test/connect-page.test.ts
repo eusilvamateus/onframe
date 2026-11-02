@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
 import { captchaPage, captchaPageCsp, connectionPage, interactivePageCsp, invitationPage, resultPage } from '../src/connect-page.ts';
+import { readConnectionContext, secondFactorUrl } from '../../extension/ui/hosted/connection-flow.js';
 import worker from '../src/index.ts';
+
+const hostedApp = fs.readFileSync(new URL('../../extension/ui/hosted/app.jsx', import.meta.url), 'utf8');
 
 test('configuracao publica informa o contrato de seguranca sem expor segredo', async () => {
   const response = await worker.fetch(new Request('https://onframe.onblide.com/v1/auth/config'), {
@@ -25,35 +28,33 @@ test('página pública conclui o fluxo iniciado pela extensão sem exibir códig
     supabasePublishableKey: 'sb_publishable_example'
   });
 
-  assert.match(page, /extension-auth-flows/);
-  assert.match(page, /auth\/v1\/user/);
-  assert.match(page, /Acesso confirmado\. Volte à extensão para continuar/);
-  assert.match(page, /type==='recovery'/);
-  assert.doesNotMatch(page, /token\?grant_type=password|request-otp|verify-otp|pairing-code|Cole este código|OF-\[/);
-
-  const [inlineScript] = Array.from(page.matchAll(/<script>([\s\S]*?)<\/script>/g), (match) => match[1]);
-  assert.ok(inlineScript);
-  assert.doesNotThrow(() => new Function(inlineScript));
+  assert.match(page, /\/security\/hosted\.css/);
+  assert.match(page, /\/security\/hosted\.js/);
+  assert.match(page, /data-page-config=/);
+  assert.doesNotMatch(page, /<input\b|<button\b|<style>/);
+  assert.match(hostedApp, /import \{ Alert, Button, Card, Input, Logo, Ph, Spinner \} from '@onblide\/ui'/);
+  assert.match(hostedApp, /extension-auth-flows/);
+  assert.match(hostedApp, /auth\/v1\/user/);
+  assert.match(hostedApp, /Acesso confirmado\. Volte à extensão para continuar/);
+  assert.match(hostedApp, /context\.type === 'recovery'/);
+  assert.doesNotMatch(hostedApp, /token\?grant_type=password|request-otp|verify-otp|pairing-code|Cole este código|OF-\[/);
+  assert.doesNotMatch(hostedApp, /<input\b|<button\b/);
 });
 
 test('recuperacao apresenta titulo e legenda proprios sem alterar o fluxo de senha', () => {
-  const page = connectionPage({ title: 'Conectar extensão - OnFrame', eyebrow: 'ACESSO À EXTENSÃO', heading: 'Conclua o acesso', description: 'Confirmação de acesso.', supabaseUrl: 'https://project.supabase.co', supabasePublishableKey: 'public-test-key' });
-  const script = page.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-  assert.ok(script);
-  let focused = false;
-  let hashCleared = false;
-  const elements: Record<string, { hidden: boolean; value: string; textContent: string; focus: () => void; addEventListener: () => void }> = {};
-  for (const key of ['feedback', 'reset-form', 'password', 'confirmation', '.auth-card h1', '.description', '.eyebrow']) elements[key] = { hidden: true, value: '', textContent: '', focus: () => { focused = true; }, addEventListener: () => {} };
-  const document = { title: '', getElementById: (key: string) => elements[key], querySelector: (key: string) => elements[key] };
-  runInNewContext(script, { document, URL, URLSearchParams, location: new URL('https://onframe.onblide.com/connect?flow=test#access_token=test-recovery-token&type=recovery'), history: { replaceState: () => { hashCleared = true; } }, fetch: () => { throw new Error('Unexpected request'); } });
-  assert.equal(document.title, 'Redefinir senha - OnFrame');
-  assert.equal(elements['.auth-card h1'].textContent, 'Defina uma nova senha');
-  assert.equal(elements['.description'].textContent, 'Escolha uma nova senha para sua conta.');
-  assert.equal(elements['.eyebrow'].textContent, 'RECUPERAÇÃO DE ACESSO');
-  assert.equal(elements['reset-form'].hidden, false);
-  assert.equal(elements.feedback.hidden, true);
-  assert.equal(focused, true);
-  assert.equal(hashCleared, true);
+  const context = readConnectionContext('https://onframe.onblide.com/connect?flow=test#access_token=test-recovery-token&refresh_token=test-refresh&type=recovery');
+  assert.deepEqual(context, {
+    flow: 'test',
+    accessToken: 'test-recovery-token',
+    refreshToken: 'test-refresh',
+    type: 'recovery'
+  });
+  assert.match(hostedApp, /Defina uma nova senha/);
+  assert.match(hostedApp, /Escolha uma nova senha para sua conta/);
+  assert.match(hostedApp, /RECUPERAÇÃO DE ACESSO/);
+  assert.match(hostedApp, /<Input[\s\S]*label="Nova senha"[\s\S]*autoFocus/);
+  assert.match(hostedApp, /<Input[\s\S]*label="Confirme a nova senha"/);
+  assert.match(secondFactorUrl('https://onframe.onblide.com', context), /\/auth\/passkeys\?action=verify&flow=test#access_token=test-recovery-token&refresh_token=test-refresh/);
 });
 
 test('desafio do Turnstile fica em uma origem do OnFrame e responde somente ao pai da extensão', () => {
@@ -77,6 +78,9 @@ test('CSP da confirmação e do desafio permite somente as origens necessárias'
   const csp = interactivePageCsp('https://ignrkxityihpvreaimxe.supabase.co');
   assert.match(csp, /connect-src 'self' https:\/\/ignrkxityihpvreaimxe\.supabase\.co/);
   assert.match(csp, /frame-ancestors 'none'/);
+  assert.match(csp, /script-src 'self'/);
+  assert.match(csp, /style-src 'self' 'unsafe-inline'/);
+  assert.doesNotMatch(csp, /script-src[^;]*unsafe-inline/);
   assert.doesNotMatch(csp, /challenges\.cloudflare\.com/);
   assert.doesNotMatch(csp, /\*/);
 
@@ -101,7 +105,8 @@ test('resultado OAuth mantém um resultado sem controles interativos aninhados',
 
 test('convite hospedado encaminha para as opções sem expor um bearer', () => {
   const page = invitationPage('chrome-extension://example/ui/options/index.html?invite=abc');
-  assert.match(page, /CONVITE PARA WORKSPACE/);
+  assert.match(hostedApp, /CONVITE PARA WORKSPACE/);
+  assert.match(hostedApp, /Abrir extensão/);
   assert.match(page, /chrome-extension:\/\/example\/ui\/options\/index\.html\?invite=abc/);
   assert.doesNotMatch(page, /access_token|refresh_token|supabase\.co/);
 });

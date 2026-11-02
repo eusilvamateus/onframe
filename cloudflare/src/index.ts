@@ -1590,7 +1590,9 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
         heading: 'Não foi possível conectar a conta',
         message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
         tone: 'danger'
-      }), 400);
+      }), 400, {
+        'content-security-policy': interactivePageCsp()
+      });
     }
 
     const token = await exchangeMeliAuthorizationCode(env, code, transaction);
@@ -1608,7 +1610,9 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
       heading: 'Conta conectada',
       message: `${account.nickname || 'A conta'} foi vinculada ao workspace. Volte para as opções da extensão.`,
       tone: 'success'
-    }));
+    }), 200, {
+      'content-security-policy': interactivePageCsp()
+    });
   } catch (error) {
     logFailure(requestId, request, error);
     return html(resultPage({
@@ -1617,7 +1621,9 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
       heading: 'Não foi possível conectar a conta',
       message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
       tone: 'danger'
-    }), error instanceof RequestError ? error.status : 503);
+    }), error instanceof RequestError ? error.status : 503, {
+      'content-security-policy': interactivePageCsp()
+    });
   }
 }
 
@@ -1649,7 +1655,7 @@ export default {
         return html(connectionPage({
           title: 'Conectar extensão - OnFrame',
           eyebrow: 'ACESSO À EXTENSÃO',
-          heading: 'Conclua o acesso ao <em>OnFrame</em>',
+          heading: 'Conclua o acesso ao OnFrame',
           description: 'Esta página confirma o link enviado pela extensão.',
           supabaseUrl,
           supabasePublishableKey
@@ -1752,7 +1758,9 @@ export default {
         const token = url.searchParams.get('token') || '';
         const safeToken = parseExtensionAuthFlowToken(token);
         const extensionUrl = `chrome-extension://${EXTENSION_ID}/ui/options/index.html?invite=${encodeURIComponent(safeToken)}`;
-        return html(invitationPage(extensionUrl));
+        return html(invitationPage(extensionUrl), 200, {
+          'content-security-policy': interactivePageCsp()
+        });
       }
 
       if (url.pathname === '/v1/app/workspaces' && request.method === 'GET') {
