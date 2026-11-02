@@ -37,6 +37,19 @@ test('content script usa o ToastStack oficial sem implementação visual paralel
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'components.css')), false);
 });
 
+test('interfaces React não reintroduzem controles HTML ou folhas legadas', () => {
+  const uiRoot = path.join(extensionRoot, 'ui');
+  const jsxFiles = fs.readdirSync(uiRoot, { recursive: true })
+    .filter((file) => String(file).endsWith('.jsx'));
+  const source = jsxFiles
+    .map((file) => fs.readFileSync(path.join(uiRoot, file), 'utf8'))
+    .join('\n');
+
+  assert.doesNotMatch(source, /<(?:button|input|select|textarea|details|summary)\b/u);
+  assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'components.css')), false);
+  assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'shell.css')), false);
+});
+
 test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const control = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'ThemeControl.jsx'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
@@ -326,8 +339,7 @@ test('fontes do content script usam URLs da extensão', () => {
   assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s);
-  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins SemiBold';[\s\S]*Poppins-SemiBold\.ttf/s);
-  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins ExtraBold';[\s\S]*Poppins-ExtraBold\.ttf/s);
+  assert.doesNotMatch(appended[0].textContent, /font-family: 'OnFrame Poppins (?:Regular|Medium|SemiBold|Bold|ExtraBold)'/);
   assert.match(appended[0].textContent, /font-family: 'Phosphor';[\s\S]*vendor\/phosphor\/Phosphor\.woff2/s);
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
   assert.doesNotMatch(phosphor, /@font-face|Phosphor\.woff2/);

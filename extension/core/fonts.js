@@ -17,11 +17,6 @@
     ['OnFrame Poppins', 'Poppins-SemiBold.ttf', 600, 'normal'],
     ['OnFrame Poppins', 'Poppins-Bold.ttf', 700, 'normal'],
     ['OnFrame Poppins', 'Poppins-ExtraBold.ttf', 800, 'normal'],
-    ['OnFrame Poppins Regular', 'Poppins-Regular.ttf', 400, 'normal'],
-    ['OnFrame Poppins Medium', 'Poppins-Medium.ttf', 500, 'normal'],
-    ['OnFrame Poppins SemiBold', 'Poppins-SemiBold.ttf', 600, 'normal'],
-    ['OnFrame Poppins Bold', 'Poppins-Bold.ttf', 700, 'normal'],
-    ['OnFrame Poppins ExtraBold', 'Poppins-ExtraBold.ttf', 800, 'normal'],
     ['JetBrains Mono', 'JetBrainsMono-Medium.ttf', 500, 'normal'],
     ['Playfair Display', 'PlayfairDisplay-MediumItalic.ttf', 500, 'italic']
   ];

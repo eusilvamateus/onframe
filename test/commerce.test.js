@@ -334,6 +334,9 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(source, /function priceSnapshot/);
   assert.match(source, /function priceSummaryCosts/);
   assert.match(view, /<Accordion items=\{summaryItems\} type="single" ariaLabel="Resumo do preço"/);
+  assert.match(view, /<Accordion items=\{blockedItems\} type="single" ariaLabel="Variações não atualizadas"/);
+  assert.match(view, /<Alert tone=\{status\.tone === 'warn' \? 'danger' : 'success'\} title=\{status\.message\}>/);
+  assert.doesNotMatch(view, /<(?:details|summary)>/);
   assert.match(view, /const heroField = model\.fields\.find\(\(field\) => field\.label === 'Você recebe'\) \|\| priceField/);
   assert.match(view, /className="onframe-commerce-price-base"/);
   assert.match(view, /className="onframe-commerce-price-editor"/);
@@ -525,16 +528,16 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(styles, /> \[role='tooltip'\] :where\(kbd, \[style\*="--ob-font-mono"\]\),/);
   assert.match(styles, /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-commerce-promotion-type-icon\s*\{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*border: 1px solid var\(--ob-line-soft\);[\s\S]*border-radius: var\(--ob-r-control\);[\s\S]*background: var\(--ob-bg-alt\);/s);
-  assert.match(styles, /--onframe-promotion-font-black: 'OnFrame Poppins ExtraBold', var\(--ob-font\);/);
-  assert.match(styles, /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-black\) !important;[\s\S]*font-weight: var\(--ob-w-black\)/s);
-  assert.match(styles, /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: 13px;[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
-  assert.match(styles, /\.onframe-promotion-manager-name strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;[\s\S]*color: var\(--ob-fg-strong\);/s);
+  assert.doesNotMatch(styles, /--onframe-promotion-font-/);
+  assert.match(styles, /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-black\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: 13px;[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-name strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;[\s\S]*color: var\(--ob-fg-strong\);/s);
   assert.match(styles, /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: 1px;[\s\S]*margin-top: 2px;/s);
   assert.match(styles, /\.onframe-promotion-manager-meta > small\s*\{[\s\S]*margin-top: 0;/s);
-  assert.match(styles, /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
   assert.match(styles, /\.onframe-promotion-manager-title > small\s*\{[\s\S]*font-weight: var\(--ob-w-regular\)/s);
   assert.match(styles, /\.onframe-promotion-manager-condition > span,[\s\S]*font-weight: var\(--ob-w-regular\) !important;/s);
-  assert.match(styles, /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s);
+  assert.match(styles, /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-calculation strong\s*\{[^}]*font-size:/s);
   assert.match(styles, /\.onframe-promotion-manager-calculation span small\s*\{[\s\S]*font-size: 11px;/s);
   assert.match(styles, /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*position: sticky;[\s\S]*background: var\(--ob-surface\)/s);
@@ -550,7 +553,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(styles, /\.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border: 1px solid var\(--ob-line-soft\);/s);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-editor-metrics \.onframe-promotion-manager-metric \+ \.onframe-promotion-manager-metric\s*\{/);
   assert.match(styles, /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s);
-  assert.match(styles, /\.onframe-promotion-manager-removed\s*\{[\s\S]*border: 1px dashed var\(--ob-line-soft\);/s);
+  assert.match(view, /<Alert tone="success" action="Desfazer" onAction=\{\(\) => actions\.onUndoRemove\(row\.key\)\}>/);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-removed\b/);
 });
 
 test('modal de promoções abre pela view oficial sem animação legada', () => {

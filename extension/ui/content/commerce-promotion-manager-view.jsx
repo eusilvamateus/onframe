@@ -241,11 +241,9 @@ function CardActions({ row, actions }) {
 function PromotionCard({ row, actions }) {
   if (row.removed) {
     return (
-      <div className="onframe-promotion-manager-removed">
-        {icon('check-circle', 18)}
-        <span>{row.name} removida.</span>
-        <Button kind="ghost" size="sm" onClick={() => actions.onUndoRemove(row.key)}>Desfazer</Button>
-      </div>
+      <Alert tone="success" action="Desfazer" onAction={() => actions.onUndoRemove(row.key)}>
+        {row.name} removida.
+      </Alert>
     );
   }
 

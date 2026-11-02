@@ -625,44 +625,19 @@
 }
 
 .onframe-commerce-bulk-status {
-  display: grid;
-  gap: 6px;
   margin: 10px 0 0;
-  padding: 10px;
-  border: 1px solid var(--ob-line);
-  border-radius: var(--ob-r-sm);
-  background: var(--ob-surface-2);
-  color: var(--ob-ink-soft);
-  font: 600 12px/1.35 var(--ob-font);
 }
 
-.onframe-commerce-bulk-status.ok {
-  border-color: color-mix(in srgb, var(--ob-green) 35%, var(--ob-border));
-  background: var(--ob-green-100);
-  color: var(--ob-green-700);
-}
-
-.onframe-commerce-bulk-status.warn {
-  border-color: color-mix(in srgb, var(--ob-red) 45%, var(--ob-border));
-  background: var(--ob-red-100);
-  color: var(--ob-red);
-}
-
-.onframe-commerce-bulk-status.loading {
+.onframe-commerce-bulk-status-loading {
   display: flex;
   align-items: center;
-  color: var(--ob-blue);
+  gap: 6px;
 }
 
-.onframe-commerce-bulk-status summary {
-  margin-top: 2px;
-  cursor: pointer;
-}
-
-.onframe-commerce-bulk-status ul {
+.onframe-commerce-bulk-status-list {
   display: grid;
   gap: 4px;
-  margin: 6px 0 0;
+  margin: 0;
   padding-left: 16px;
   color: var(--ob-ink-soft);
   font: 500 11px/1.35 var(--ob-font);
@@ -860,11 +835,6 @@ body:has(:is(
 ) [aria-describedby]) > [role='tooltip'] {
   --ob-font: 'OnFrame Poppins', 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ob-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --onframe-promotion-font-regular: 'OnFrame Poppins Regular', var(--ob-font);
-  --onframe-promotion-font-medium: 'OnFrame Poppins Medium', var(--ob-font);
-  --onframe-promotion-font-semibold: 'OnFrame Poppins SemiBold', var(--ob-font);
-  --onframe-promotion-font-bold: 'OnFrame Poppins Bold', var(--ob-font);
-  --onframe-promotion-font-black: 'OnFrame Poppins ExtraBold', var(--ob-font);
   font-family: var(--ob-font) !important;
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
@@ -918,7 +888,7 @@ body:has(:is(
   flex-direction: column;
   min-height: min(680px, calc(88vh - 156px));
   margin: -12px -24px -20px;
-  font-family: var(--onframe-promotion-font-regular);
+  font-family: var(--ob-font);
   font-weight: var(--ob-w-regular);
 }
 
@@ -944,13 +914,13 @@ body:has(:is(
 .onframe-promotion-manager-title > span {
   color: var(--ob-blue);
   font-size: 11px;
-  font-family: var(--onframe-promotion-font-semibold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-semibold) !important;
 }
 
 .onframe-promotion-manager-title > strong {
   font-size: 22px;
-  font-family: var(--onframe-promotion-font-black) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-black) !important;
   line-height: 1.2;
   color: var(--ob-fg-strong);
@@ -958,7 +928,7 @@ body:has(:is(
 
 .onframe-promotion-manager-title > small {
   font-size: 13px;
-  font-family: var(--onframe-promotion-font-regular) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-regular) !important;
   color: var(--ob-fg-soft);
 }
@@ -1017,7 +987,7 @@ body:has(:is(
 }
 
 .onframe-promotion-manager-filter-group > strong {
-  font-family: var(--onframe-promotion-font-semibold) !important;
+  font-family: var(--ob-font) !important;
   font-size: 12px;
   font-weight: var(--ob-w-semibold) !important;
   color: var(--ob-fg-soft);
@@ -1060,7 +1030,7 @@ body:has(:is(
   gap: 8px;
   margin: 14px 0 2px;
   font-size: 13px;
-  font-family: var(--onframe-promotion-font-bold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-bold) !important;
   color: var(--ob-fg-strong);
 }
@@ -1068,7 +1038,7 @@ body:has(:is(
 .onframe-promotion-manager-section > p {
   margin: 0 0 10px;
   font-size: 12px;
-  font-family: var(--onframe-promotion-font-regular) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-regular) !important;
   color: var(--ob-fg-mute);
 }
@@ -1084,13 +1054,13 @@ body:has(:is(
   gap: 8px;
   margin: 0 0 8px;
   font-size: 12px;
-  font-family: var(--onframe-promotion-font-semibold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-semibold) !important;
   color: var(--ob-fg-soft);
 }
 
 .onframe-promotion-manager-subgroup > h3 span {
-  font-family: var(--onframe-promotion-font-regular) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-regular) !important;
   color: var(--ob-fg-mute);
 }
@@ -1147,7 +1117,7 @@ body:has(:is(
   flex-wrap: wrap;
   gap: 8px;
   font-size: 15px;
-  font-family: var(--onframe-promotion-font-bold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-bold) !important;
   color: var(--ob-fg-strong);
 }
@@ -1169,7 +1139,7 @@ body:has(:is(
   display: block;
   margin-top: 2px;
   font-size: 12px;
-  font-family: var(--onframe-promotion-font-regular) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-regular) !important;
   line-height: 1.4;
   color: var(--ob-fg-soft);
@@ -1180,18 +1150,18 @@ body:has(:is(
 .onframe-promotion-manager-metric strong {
   display: block;
   font-size: 16px;
-  font-family: var(--onframe-promotion-font-bold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-bold) !important;
   color: var(--ob-fg-strong);
 }
 
 .onframe-promotion-manager-calculation {
-  font-family: var(--onframe-promotion-font-regular) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-regular) !important;
 }
 
 .onframe-promotion-manager-calculation strong {
-  font-family: var(--onframe-promotion-font-bold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-bold) !important;
   color: var(--ob-fg-strong);
 }
@@ -1237,7 +1207,7 @@ body:has(:is(
 
 .onframe-promotion-manager-editor .onframe-promotion-manager-kicker {
   margin-bottom: 8px;
-  font-family: var(--onframe-promotion-font-semibold) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-semibold) !important;
   color: var(--ob-fg-soft);
 }
@@ -1260,7 +1230,7 @@ body:has(:is(
   display: block;
   margin-top: 3px;
   font-size: 11px;
-  font-family: var(--onframe-promotion-font-regular) !important;
+  font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-regular) !important;
   line-height: 1.4;
   color: var(--ob-fg-mute);
@@ -1304,19 +1274,6 @@ body:has(:is(
   align-items: center;
   gap: 5px;
   white-space: nowrap;
-}
-
-.onframe-promotion-manager-removed {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border: 1px dashed var(--ob-line-soft);
-  border-radius: var(--ob-r-surface);
-  font-size: 13px;
-  font-family: var(--onframe-promotion-font-regular) !important;
-  font-weight: var(--ob-w-regular) !important;
-  color: var(--ob-fg-soft);
 }
 
 @media (max-width: 860px) {

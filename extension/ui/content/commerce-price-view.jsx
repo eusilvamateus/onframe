@@ -173,24 +173,32 @@ function BulkStatus({ status }) {
   if (!status) return null;
   if (status.loading) {
     return (
-      <div className="onframe-commerce-bulk-status loading" aria-live="polite">
-        <Spinner size="xs" label={status.message} />
-        {status.message}
+      <div className="onframe-commerce-bulk-status" aria-live="polite">
+        <Alert tone="info">
+          <span className="onframe-commerce-bulk-status-loading">
+            <Spinner size="xs" label={status.message} />
+            {status.message}
+          </span>
+        </Alert>
       </div>
     );
   }
 
+  const blockedItems = status.blocked.length ? [{
+    id: 'blocked-variations',
+    title: status.blockedLabel,
+    content: (
+      <ul className="onframe-commerce-bulk-status-list">
+        {status.blocked.map((entry, index) => <li key={`${entry.label}:${index}`}>{entry.label}: {entry.message}</li>)}
+      </ul>
+    )
+  }] : [];
+
   return (
-    <div className={`onframe-commerce-bulk-status ${status.tone || ''}`} role={status.tone === 'warn' ? 'alert' : undefined}>
-      {status.message}
-      {!!status.blocked.length && (
-        <details>
-          <summary>{status.blockedLabel}</summary>
-          <ul>
-            {status.blocked.map((entry, index) => <li key={`${entry.label}:${index}`}>{entry.label}: {entry.message}</li>)}
-          </ul>
-        </details>
-      )}
+    <div className="onframe-commerce-bulk-status">
+      <Alert tone={status.tone === 'warn' ? 'danger' : 'success'} title={status.message}>
+        {!!blockedItems.length && <Accordion items={blockedItems} type="single" ariaLabel="Variações não atualizadas" />}
+      </Alert>
     </div>
   );
 }
