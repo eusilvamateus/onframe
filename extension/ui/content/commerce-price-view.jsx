@@ -1,7 +1,7 @@
 import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip } from '@onblide/ui';
+import { Accordion, Alert, Badge, Button, Checkbox, Input, Ph, Spinner, Tooltip } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -30,7 +30,7 @@ function PriceHeader({ title, badge, onClose }) {
     <header className="onframe-commerce-price-view-head">
       <strong>{title}</strong>
       {badge?.label && (
-        <Badge tone={badge.tone} variant="subtle" size="sm">
+        <Badge tone={badge.tone} variant="subtle" size="sm" dot>
           {badge.label}
         </Badge>
       )}
@@ -46,68 +46,126 @@ function PriceHeader({ title, badge, onClose }) {
   );
 }
 
-function PriceField({ field }) {
-  if (!field?.label || !field?.value) return null;
-  const value = field.description ? (
-    <span className="onframe-commerce-price-view-tooltip">
-      <Tooltip label={field.description} placement="bottom">
-        <strong tabIndex={0}>{field.value}</strong>
-      </Tooltip>
-    </span>
-  ) : <strong>{field.value}</strong>;
-
+function PriceSummaryTitle({ field, promoted }) {
   return (
-    <div className={`onframe-commerce-popover-price-field ${field.tone || ''}${field.originalPrice ? ' with-transition' : ''}`}>
-      <small>{field.label}</small>
-      {field.originalPrice ? (
-        <>
-          <span className="onframe-commerce-popover-price-transition">De <s>{field.originalPrice}</s></span>
-          <strong><span className="onframe-commerce-popover-price-transition-prefix">por</span>{field.value}</strong>
-        </>
-      ) : value}
+    <span className="onframe-commerce-popover-summary-title price">
+      <span className="onframe-commerce-popover-summary-icon price" aria-hidden="true">
+        <Ph n="currency-circle-dollar" size={17} />
+      </span>
+      <span className="onframe-commerce-popover-summary-copy">
+        <span>{field?.label || 'Preço atual'}</span>
+        <strong>{field?.value || '—'}</strong>
+      </span>
+      {promoted && <Badge tone="green" variant="subtle" size="sm" dot>Com promoção</Badge>}
+    </span>
+  );
+}
+
+function PriceBreakdownRow({ field }) {
+  if (!field?.label || !field?.value) return null;
+  return (
+    <div className={`onframe-commerce-price-breakdown-row ${field.tone || ''}`}>
+      <span>
+        <strong>{field.label}</strong>
+        {field.description && <small>{field.description}</small>}
+        {field.originalPrice && <small>Preço base {field.originalPrice}</small>}
+      </span>
+      <strong>{field.value}</strong>
     </div>
   );
 }
 
-function PriceSummary({ model }) {
+function PriceScenarios({ scenarios }) {
+  if (!scenarios.length) return null;
   return (
-    <>
-      <div className="onframe-commerce-popover-price-card">
-        <Card padding={0}>
-          <div className={`onframe-commerce-popover-price-grid${model.fields.length >= 5 ? ' with-benefit' : ''}`}>
-            {model.fields.map((field) => <PriceField key={`${field.label}:${field.value}`} field={field} />)}
-          </div>
-        </Card>
-      </div>
-
-      {!!model.scenarios.length && (
-        <section className="onframe-commerce-popover-price-conditions" aria-label="Descontos condicionais">
-          <div className="onframe-commerce-popover-conditions-head"><small>Descontos condicionais</small></div>
-          <div className="onframe-commerce-popover-price-scenario-list">
-            {model.scenarios.map((scenario, index) => (
-              <div className="onframe-commerce-popover-price-scenario" key={`${scenario.label}:${index}`}>
-                <Card padding={0}>
-                  <div className="onframe-commerce-popover-price-scenario-grid">
-                    <div>
-                      <small>Desconto acumulativo</small>
-                      <strong>{scenario.label}</strong>
-                    </div>
-                    {scenario.fields.map((field) => (
-                      <div className={`onframe-commerce-popover-price-scenario-field ${field.tone || ''}`} key={`${field.label}:${field.value}`}>
-                        <small>{field.label}</small>
-                        <strong>{field.value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </div>
+    <section className="onframe-commerce-price-scenarios" aria-label="Descontos condicionais">
+      <small className="onframe-commerce-price-scenarios-label">Descontos condicionais</small>
+      {scenarios.map((scenario, index) => (
+        <div className="onframe-commerce-price-scenario" key={`${scenario.label}:${index}`}>
+          <strong>{scenario.label}</strong>
+          <div>
+            {scenario.fields.map((field) => (
+              <span className={field.tone || ''} key={`${field.label}:${field.value}`}>
+                <small>{field.label}</small>
+                <strong>{field.value}</strong>
+              </span>
             ))}
           </div>
-        </section>
-      )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function PriceSummary({ model, actions }) {
+  const priceField = model.fields[0] || null;
+  const heroField = model.fields.find((field) => field.label === 'Você recebe') || priceField;
+  const breakdown = model.fields.filter((field) => field !== heroField);
+  const promoted = Boolean(priceField?.originalPrice);
+  const basePrice = priceField?.originalPrice || priceField?.value || '—';
+  const summaryItems = [{
+    id: 'price-summary',
+    title: <PriceSummaryTitle field={heroField} promoted={promoted} />,
+    content: (
+      <div className="onframe-commerce-price-breakdown">
+        {model.sellingIn && (
+          <div className="onframe-commerce-price-promotion-link">
+            <small>Vendendo em:</small>
+            <Button
+              kind="quiet"
+              tone="primary"
+              size="sm"
+              icon={<Ph n="tag" size={14} />}
+              onClick={actions.onOpenPromotion}
+            >
+              <span className="onframe-commerce-price-promotion-link-label">{model.sellingIn.label}</span>
+            </Button>
+          </div>
+        )}
+        {breakdown.map((field) => (
+          <PriceBreakdownRow key={`${field.label}:${field.value}`} field={field} />
+        ))}
+        <PriceScenarios scenarios={model.scenarios} />
+      </div>
+    )
+  }];
+
+  return (
+    <div className="onframe-commerce-popover-summary">
+      <Accordion items={summaryItems} type="single" ariaLabel="Resumo do preço" />
+      <div className="onframe-commerce-price-base">
+        <span className="onframe-commerce-popover-summary-icon base" aria-hidden="true">
+          <Ph n="tag" size={17} />
+        </span>
+        <span>
+          <small>Preço base</small>
+          <strong>{basePrice}</strong>
+          <span>{promoted ? 'Preço original antes da promoção' : 'Preço atual do anúncio'}</span>
+        </span>
+        <Tooltip label={model.canEdit ? 'Editar preço base' : 'Este preço não pode ser editado agora'} placement="bottom">
+          <span>
+            <Button
+              kind="neutral"
+              size="sm"
+              iconOnly
+              disabled={!model.canEdit}
+              aria-label="Editar preço base"
+              icon={<Ph n="pencil-simple" size={15} />}
+              onClick={actions.onEdit}
+            />
+          </span>
+        </Tooltip>
+      </div>
 
       {model.details && <p className="onframe-commerce-detail">{model.details}</p>}
-    </>
+      {model.hasBlocker && (
+        <div className="onframe-commerce-price-blocker-action">
+          <Button kind="secondary" size="sm" onClick={actions.onToggleDetails}>
+            {model.details ? 'Ocultar motivo' : 'Ver motivo'}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -146,34 +204,31 @@ function PriceEditor({ model, actions }) {
 
   return (
     <>
-      <div className="onframe-commerce-popover-price-edit-card">
-        <Card padding={0}>
-          <div className="onframe-commerce-popover-price-edit-field">
-            <Input
-              label="Novo preço"
-              inputMode="decimal"
-              autoComplete="off"
-              value={draft}
+      <div className="onframe-commerce-price-editor">
+        <Input
+          label="Novo preço base"
+          startAddon="R$"
+          inputMode="decimal"
+          autoComplete="off"
+          value={draft}
+          disabled={model.busy}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            setDraft(nextValue);
+            actions.onDraftChange(nextValue);
+          }}
+        />
+        {model.canBulk && (
+          <div className="onframe-commerce-price-editor-bulk">
+            <Checkbox
+              checked={model.bulkEnabled}
               disabled={model.busy}
-              onChange={(event) => {
-                const nextValue = event.target.value;
-                setDraft(nextValue);
-                actions.onDraftChange(nextValue);
-              }}
+              onChange={actions.onBulkChange}
+              label="Aplicar a todas as variações"
+              description="Esta aplicação será enviada para as variações ativas desta família."
             />
           </div>
-          {model.canBulk && (
-            <div className="onframe-commerce-popover-price-edit-bulk">
-              <Checkbox
-                checked={model.bulkEnabled}
-                disabled={model.busy}
-                onChange={actions.onBulkChange}
-                label="Aplicar a todas as variações"
-                description="Esta aplicação será enviada para as variações ativas desta família."
-              />
-            </div>
-          )}
-        </Card>
+        )}
       </div>
       <BulkStatus status={model.bulkStatus} />
     </>
@@ -211,32 +266,15 @@ function CommercePricePopover({ model, actions }) {
         <Alert tone="danger">{model.error}</Alert>
       )}
 
-      {model.mode === 'summary' && (
-        <>
-          <PriceSummary model={model} />
-          <div className="onframe-commerce-actions">
-            <Button
-              kind="primary"
-              size="sm"
-              disabled={!model.canEdit}
-              icon={<Ph n="pencil" size={14} />}
-              onClick={actions.onEdit}
-            >
-              Editar preço base
-            </Button>
-            {model.hasBlocker && (
-              <Button kind="secondary" size="sm" onClick={actions.onToggleDetails}>
-                {model.details ? 'Ocultar motivo' : 'Ver motivo'}
-              </Button>
-            )}
-          </div>
-        </>
-      )}
+      {model.mode === 'summary' && <PriceSummary model={model} actions={actions} />}
 
       {model.mode === 'edit' && (
         <>
           <PriceEditor model={model} actions={actions} />
-          <div className="onframe-commerce-actions">
+          <div className="onframe-commerce-popover-edit-footer">
+            <Button kind="secondary" size="sm" disabled={model.busy} onClick={actions.onCancel}>
+              Descartar
+            </Button>
             <Button
               kind="primary"
               size="sm"
@@ -245,9 +283,6 @@ function CommercePricePopover({ model, actions }) {
               onClick={actions.onSave}
             >
               {model.saveLabel}
-            </Button>
-            <Button kind="secondary" size="sm" disabled={model.busy} onClick={actions.onCancel}>
-              Descartar
             </Button>
           </div>
         </>
@@ -275,6 +310,7 @@ function render(host, model, actions = {}) {
           onClose: actions.onClose || (() => {}),
           onReload: actions.onReload || (() => {}),
           onToggleDetails: actions.onToggleDetails || (() => {}),
+          onOpenPromotion: actions.onOpenPromotion || (() => {}),
           onEdit: actions.onEdit || (() => {}),
           onDraftChange: actions.onDraftChange || (() => {}),
           onBulkChange: actions.onBulkChange || (() => {}),

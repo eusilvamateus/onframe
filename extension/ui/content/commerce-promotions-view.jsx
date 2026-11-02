@@ -1,7 +1,7 @@
-import { Component } from 'react';
+import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Alert, Badge, Button, Card, Ph, Spinner, Tooltip } from '@onblide/ui';
+import { Accordion, Alert, Badge, Button, Ph, ScrollArea, Spinner, Tabs } from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -29,7 +29,7 @@ function PromotionsHeader({ badge, onClose }) {
   return (
     <header className="onframe-commerce-promotions-view-head">
       <strong>Promoções</strong>
-      {badge?.label && <Badge tone={badge.tone} size="sm">{badge.label}</Badge>}
+      {badge?.label && <Badge tone={badge.tone} variant="subtle" size="sm">{badge.label}</Badge>}
       <Button
         kind="neutral"
         size="sm"
@@ -42,120 +42,192 @@ function PromotionsHeader({ badge, onClose }) {
   );
 }
 
-function CompactValue({ value, description }) {
-  if (!description) return <strong>{value}</strong>;
+function SummaryTitle({ icon, tone, title, subtitle, status }) {
   return (
-    <span className="onframe-commerce-promotions-view-tooltip">
-      <Tooltip label={description} placement="bottom">
-        <strong tabIndex={0}>{value}</strong>
-      </Tooltip>
+    <span className="onframe-commerce-popover-summary-title">
+      <span className={`onframe-commerce-popover-summary-icon ${tone}`} aria-hidden="true">
+        <Ph n={icon} size={17} />
+      </span>
+      <span className="onframe-commerce-popover-summary-copy">
+        <strong>{title}</strong>
+        {subtitle && <span>{subtitle}</span>}
+      </span>
+      {status?.label && (
+        <Badge tone={status.tone} variant="subtle" size="sm" dot>
+          {status.label}
+        </Badge>
+      )}
     </span>
   );
 }
 
-function CampaignSummary({ campaign }) {
-  if (!campaign) return null;
-  const fields = [
-    { label: 'Promoção', value: campaign.label, className: 'name' },
-    { label: 'Estado e vigência', value: campaign.period, description: campaign.period, className: 'period', badge: campaign.status },
-    { label: 'Desconto', value: campaign.discount },
-    { label: 'Preço final', value: campaign.finalPrice }
-  ];
-  if (campaign.financialBenefit) {
-    fields.push({
-      label: campaign.financialBenefit.label,
-      value: campaign.financialBenefit.value,
-      description: campaign.financialBenefit.description,
-      className: `financial ${campaign.financialBenefit.tone || ''}`
+function SummaryMetric({ label, value, tone = '' }) {
+  if (!value) return null;
+  return (
+    <span className={`onframe-commerce-popover-summary-metric ${tone}`}>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  );
+}
+
+function SummaryContext({ children }) {
+  return (
+    <span className="onframe-commerce-popover-summary-context">
+      <Ph n="calendar-blank" size={14} />
+      <span>{children}</span>
+    </span>
+  );
+}
+
+function campaignItem(campaign) {
+  return {
+    id: 'campaign',
+    title: (
+      <SummaryTitle
+        icon="tag"
+        tone="campaign"
+        title={campaign.label}
+        subtitle={campaign.discount}
+        status={campaign.status}
+      />
+    ),
+    content: (
+      <div className="onframe-commerce-popover-summary-content">
+        <div className="onframe-commerce-popover-summary-metrics">
+          <SummaryMetric label="Preço final" value={campaign.finalPrice} />
+          <SummaryMetric label="Desconto" value={campaign.discount} tone="success" />
+          {campaign.financialBenefit && (
+            <SummaryMetric
+              label={campaign.financialBenefit.label}
+              value={campaign.financialBenefit.value}
+              tone={campaign.financialBenefit.tone}
+            />
+          )}
+        </div>
+        {campaign.financialBenefit?.description && (
+          <p className="onframe-commerce-popover-summary-description">{campaign.financialBenefit.description}</p>
+        )}
+        <SummaryContext>{[campaign.typeLabel, campaign.period].filter(Boolean).join(' · ')}</SummaryContext>
+      </div>
+    )
+  };
+}
+
+function couponItem(coupon, applicationLabel, index) {
+  return {
+    id: `coupon-${index}`,
+    title: (
+      <SummaryTitle
+        icon="ticket"
+        tone="coupon"
+        title={coupon.label}
+        subtitle={coupon.benefit}
+        status={coupon.status}
+      />
+    ),
+    content: (
+      <div className="onframe-commerce-popover-summary-content">
+        <div className="onframe-commerce-popover-summary-metrics coupon">
+          <SummaryMetric label="Benefício" value={coupon.benefit} tone="warning" />
+          <SummaryMetric label="Condições" value={coupon.terms} />
+        </div>
+        <SummaryContext>{[applicationLabel, coupon.period].filter(Boolean).join(' · ')}</SummaryContext>
+      </div>
+    )
+  };
+}
+
+function paymentItem(payment, index) {
+  return {
+    id: `payment-${index}`,
+    title: (
+      <SummaryTitle
+        icon="credit-card"
+        tone="payment"
+        title={payment.label}
+        subtitle={payment.benefit || payment.description}
+      />
+    ),
+    content: (
+      <div className="onframe-commerce-popover-summary-content">
+        <div className="onframe-commerce-popover-summary-metrics payment">
+          <SummaryMetric label="Benefício" value={payment.benefit} tone="primary" />
+          <SummaryMetric label="Condição" value={payment.description} />
+        </div>
+      </div>
+    )
+  };
+}
+
+function promotionGroups(model) {
+  const groups = [];
+  if (model.campaign) {
+    groups.push({ id: 'campaigns', label: 'Campanhas', items: [campaignItem(model.campaign)] });
+  }
+  if (model.coupons.length) {
+    groups.push({
+      id: 'coupons',
+      label: 'Cupons',
+      items: model.coupons.map((coupon, index) => couponItem(coupon, model.couponApplicationLabel, index))
     });
   }
-
-  return (
-    <div className="onframe-commerce-popover-campaign">
-      <Card padding={0}>
-        <div className={`onframe-commerce-popover-campaign-grid${campaign.financialBenefit ? ' with-benefit' : ''}`}>
-          {fields.map((field) => (
-            <div className={`onframe-commerce-popover-campaign-field ${field.className || ''}`} key={field.label}>
-              <small>{field.label}</small>
-              <CompactValue value={field.value} description={field.description} />
-              {field.badge && (
-                <span className="onframe-commerce-promotions-view-badge">
-                  <Badge tone={field.badge.tone} size="sm">{field.badge.label}</Badge>
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function CouponList({ coupons, applicationLabel }) {
-  if (!coupons.length) return null;
-  return (
-    <section className="onframe-commerce-popover-coupon-list" aria-label="Cupons do vendedor">
-      <Card padding={0}>
-        <div className="onframe-commerce-popover-coupon-list-head">
-          <small>Cupons do vendedor</small>
-          <span>{applicationLabel}</span>
-        </div>
-        <div className="onframe-commerce-popover-coupon-list-rows">
-          {coupons.map((coupon, index) => (
-            <div className="onframe-commerce-popover-coupon-row" key={`${coupon.label}:${index}`}>
-              <span className="onframe-commerce-popover-coupon-icon" aria-hidden="true"><Ph n="ticket" size={14} /></span>
-              <strong className="onframe-commerce-popover-coupon-name" title={coupon.label}>{coupon.label}</strong>
-              <span className="onframe-commerce-popover-coupon-period" title={coupon.period}>{coupon.period}</span>
-              <strong className="onframe-commerce-popover-coupon-benefit">{coupon.benefit}</strong>
-              <span className="onframe-commerce-popover-coupon-terms" title={coupon.terms}>{coupon.terms}</span>
-              <span className="onframe-commerce-popover-coupon-badge">
-                <Badge tone={coupon.status.tone} size="sm">{coupon.status.label}</Badge>
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </section>
-  );
-}
-
-function PaymentList({ payments }) {
-  if (!payments.length) return null;
-  return (
-    <section className="onframe-commerce-popover-conditions payment" aria-label="Descontos por pagamento">
-      <div className="onframe-commerce-popover-conditions-head"><small>Descontos por pagamento</small></div>
-      <div className="onframe-commerce-popover-condition-list">
-        {payments.map((payment, index) => (
-          <div className="onframe-commerce-popover-condition-card" key={`${payment.label}:${index}`}>
-            <Card padding={0}>
-              <div className="onframe-commerce-popover-condition payment">
-                <span className="onframe-commerce-popover-condition-icon" aria-hidden="true"><Ph n="credit-card" size={14} /></span>
-                <div>
-                  <strong>{payment.label}</strong>
-                  <span>{payment.description}</span>
-                </div>
-                {payment.benefit && <b>{payment.benefit}</b>}
-              </div>
-            </Card>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+  if (model.payments.length) {
+    groups.push({
+      id: 'payments',
+      label: 'Pagamento',
+      items: model.payments.map(paymentItem)
+    });
+  }
+  return groups;
 }
 
 function EmptyState() {
   return (
-    <div className="onframe-commerce-popover-empty-wrap">
-      <Card padding={0}>
-        <div className="onframe-commerce-popover-empty">
-          <div>
-            <small>Promoções</small>
-            <strong>Nenhuma promoção aplicada</strong>
-          </div>
-          <span>Gerencie campanhas e descontos deste anúncio.</span>
+    <div className="onframe-commerce-popover-empty">
+      <span className="onframe-commerce-popover-summary-icon campaign" aria-hidden="true">
+        <Ph n="tag" size={17} />
+      </span>
+      <span>
+        <strong>Nenhuma promoção aplicada</strong>
+        <small>Gerencie campanhas e descontos deste anúncio.</small>
+      </span>
+    </div>
+  );
+}
+
+function PromotionSummary({ model }) {
+  const groups = promotionGroups(model);
+  const [activeGroup, setActiveGroup] = useState(groups[0]?.id || '');
+  const availableGroupIds = groups.map((group) => group.id).join(':');
+
+  useEffect(() => {
+    if (!groups.some((group) => group.id === activeGroup)) {
+      setActiveGroup(groups[0]?.id || '');
+    }
+  }, [availableGroupIds, activeGroup]);
+
+  if (!groups.length) return <EmptyState />;
+
+  const currentGroup = groups.find((group) => group.id === activeGroup) || groups[0];
+  const tabs = groups.map((group) => ({ id: group.id, label: group.label }));
+
+  return (
+    <div className="onframe-commerce-popover-summary">
+      {groups.length > 1 && (
+        <div className="onframe-commerce-popover-tabs">
+          <Tabs tabs={tabs} active={currentGroup.id} onChange={setActiveGroup} variant="line" size="sm" />
         </div>
-      </Card>
+      )}
+      <ScrollArea maxHeight={318} ariaLabel={`${currentGroup.label} da promoção`}>
+        <Accordion
+          key={currentGroup.id}
+          items={currentGroup.items}
+          type="single"
+          defaultValue={model.expandCampaign && currentGroup.id === 'campaigns' ? ['campaign'] : []}
+          ariaLabel={currentGroup.label}
+        />
+      </ScrollArea>
     </div>
   );
 }
@@ -190,11 +262,8 @@ function CommercePromotionsPopover({ model, actions }) {
       {model.mode === 'summary' && (
         <>
           {model.error && <Alert tone="danger">{model.error}</Alert>}
-          <CampaignSummary campaign={model.campaign} />
-          <CouponList coupons={model.coupons} applicationLabel={model.couponApplicationLabel} />
-          {model.empty && <EmptyState />}
-          <PaymentList payments={model.payments} />
-          <div className="onframe-commerce-actions">
+          <PromotionSummary model={model} />
+          <div className="onframe-commerce-popover-footer">
             <Button kind="primary" size="sm" icon={<Ph n="tag" size={14} />} onClick={actions.onManage}>
               Gerenciar promoções
             </Button>

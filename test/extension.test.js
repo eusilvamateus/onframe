@@ -64,6 +64,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(foundations, /:root\[data-onframe-theme='dark'\]/);
   assert.match(foundations, /\[class\^='onframe-'\]/);
   assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[aria-describedby\]\) > \[role='tooltip'\]/);
+  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-popover-root[^)]*\) \[aria-describedby\]\) > \[role='tooltip'\]/);
   assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[role='dialog'\]\) > \[role='tooltip'\]/);
   assert.match(foundations, /--ob-z-tooltip: var\(--ob-z-extension-toast\)/);
   assert.match(foundations, /:is\(\.onblide-ml-dialog-root, \.onframe-commerce-modal-root\)\s*\{[\s\S]*--ob-z-overlay: var\(--ob-z-extension-overlay\);[\s\S]*--ob-z-modal: var\(--ob-z-extension-modal\);/s);

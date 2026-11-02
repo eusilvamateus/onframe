@@ -97,6 +97,7 @@
       listingActiveRecord: null,
       actionError: '',
       popover: null,
+      promotionPopoverExpanded: false,
       priceEditing: false,
       priceDraft: '',
       priceBulkEnabled: false,
@@ -173,6 +174,7 @@
       state.listingActiveRecord = null;
       state.actionError = '';
       state.popover = null;
+      state.promotionPopoverExpanded = false;
       state.priceEditing = false;
       state.priceDraft = '';
       state.priceBulkEnabled = false;
@@ -1011,6 +1013,7 @@
             state.detailsOpen = !state.detailsOpen;
             rerenderPopover();
           },
+          onOpenPromotion: () => openPopover('promotions', { expandCurrent: true }),
           onEdit: startPriceEdit,
           onDraftChange: updatePriceDraft,
           onBulkChange: updatePriceBulkEnabled,
@@ -1056,7 +1059,7 @@
       if (state.priceEditing) {
         return {
           mode: 'edit',
-          title: 'Editar preço',
+          title: 'Editar preço base',
           badge,
           error: shortMessage(state.actionError),
           draft: state.priceDraft,
@@ -1069,12 +1072,14 @@
         };
       }
 
+      const snapshot = priceSnapshot(state.priceSummary, priceState);
       return {
         mode: 'summary',
         title: 'Preço',
         badge: null,
         error: shortMessage(state.actionError),
-        fields: [priceSnapshot(state.priceSummary, priceState)].concat(priceSummaryCosts(state.priceSummary).fields),
+        fields: [snapshot].concat(priceSummaryCosts(state.priceSummary).fields),
+        sellingIn: snapshot.originalPrice ? priceSellingPromotion() : null,
         scenarios: priceStackableScenarios(state.priceSummary),
         details: state.detailsOpen ? priceState.detail : '',
         hasBlocker: Boolean(priceState.blocker),
@@ -1111,7 +1116,18 @@
         coupons: couponEntries.map(promotionPopoverCoupon),
         couponApplicationLabel: couponApplicationLabel(),
         payments: paymentEntries.map(promotionPopoverPayment),
+        expandCampaign: state.promotionPopoverExpanded,
         empty: !campaignEntry && !couponEntries.length && !paymentEntries.length
+      };
+    }
+
+    function priceSellingPromotion() {
+      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const entry = currentPromotionEntry(pricePromotionEntries(groups));
+      if (!entry) return null;
+      return {
+        id: entry.id || entry.promotion_id || entry.offer_id || '',
+        label: entry.label || 'Promoção atual'
       };
     }
 
@@ -2260,6 +2276,7 @@
       const period = formatPromotionPeriod(entry) || 'Sem vigência informada';
       return {
         label: entry.label || 'Promoção',
+        typeLabel: promotionTypeLabel(entry, promotionListType(entry)),
         period,
         status: {
           label: promotionDisplayStatusLabel(entry),
@@ -3984,8 +4001,9 @@
       Object.keys(state.promotionEstimateTimers || {}).forEach(clearPromotionEstimateTimer);
     }
 
-    function openPopover(type) {
+    function openPopover(type, options = {}) {
       state.popover = type;
+      state.promotionPopoverExpanded = type === 'promotions' && options.expandCurrent === true;
       state.actionError = '';
       state.detailsOpen = false;
       if (type !== 'price') state.priceEditing = false;
@@ -3996,6 +4014,7 @@
     function closePopover() {
       state.popover = null;
       state.popoverAnchor = null;
+      state.promotionPopoverExpanded = false;
       state.priceEditing = false;
       renderCurrentCommerceActions();
       removePopover();
@@ -4729,7 +4748,7 @@
       const rect = anchor.getBoundingClientRect();
       const isListingPopover = root.classList.contains('listing');
       const isSummaryPopover = state.popover === 'promotions' || state.popover === 'price';
-      const preferredWidth = isSummaryPopover ? 560 : 340;
+      const preferredWidth = isSummaryPopover ? 400 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
       const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
       const centeredLeft = rect.left + ((rect.width - width) / 2);
