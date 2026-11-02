@@ -9,9 +9,6 @@ button, input { font: inherit; }
 .onframe-field { display: flex; flex-direction: column; gap: 6px; }
 .onframe-field-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--ob-s-2); }
 .onframe-field-label { color: var(--ob-fg-strong); font-size: 12px; font-weight: 600; }
-.onframe-field-input { flex: 1; min-width: 0; padding: 10px 0; border: 0; outline: 0; color: var(--ob-fg-strong); background: transparent; font: inherit; font-size: 14px; }
-.onframe-field-input[type="password"]::-ms-reveal { display: none; }
-.onframe-field-action { display: flex; flex: none; align-items: center; white-space: nowrap; }
 .onframe-auth-panel, .onframe-auth-fields { display: flex; flex-direction: column; gap: var(--ob-s-4); }
 .onframe-auth-panel { width: min(100%, 448px); margin-inline: auto; }
 .onframe-security-verification { width: min(100%, 448px); margin-inline: auto; }

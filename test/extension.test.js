@@ -610,9 +610,10 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popupFooter, /kind="quiet" tone="danger" size="sm"/);
   assert.doesNotMatch(popup, /<Card|<Badge|Visibilidade na página|Abrir painel do workspace/);
   assert.match(optionsCss, /\.onframe-popup-resource-switch label > span:last-child\s*\{[^}]*position:\s*absolute;[^}]*width:\s*1px;/);
-  assert.match(authPanel, /FieldShell/);
+  assert.doesNotMatch(authPanel, /FieldShell|<input\b|onframe-field-input/);
+  assert.match(authPanel, /<Input[\s\S]*endAddon=/);
   assert.match(authPanel, /eye-closed/);
-  assert.match(optionsCss, /\.onframe-field-input\[type="password"\]::-ms-reveal\s*\{\s*display:\s*none;\s*\}/);
+  assert.doesNotMatch(optionsCss, /onframe-field-input/);
   assert.doesNotMatch(authPanel, /eye-slash/);
   assert.match(optionsHtml, /app\.css/);
   assert.match(optionsHtml, /app\.js/);

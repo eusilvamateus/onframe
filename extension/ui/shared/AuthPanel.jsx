@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Alert, Button, Card, CodeInput, FieldShell, Input, Link, Ph, Tabs, Tooltip } from '@onblide/ui';
+import { Alert, Button, Card, CodeInput, Input, Link, Ph, Tabs, Tooltip } from '@onblide/ui';
 import { normalizeAuthResumeState } from './popup-session-state';
 import { sendRemoteMessage } from './runtime';
 import { restoreProviderSession, verifySecondFactor } from './provider-auth';
@@ -14,7 +14,6 @@ const AUTH_MODES = {
 export function PasswordField({ label, labelAction, value, onChange, autoComplete, placeholder, disabled }) {
   const inputId = useId();
   const [visible, setVisible] = useState(false);
-  const [focused, setFocused] = useState(false);
   const actionLabel = visible ? 'Ocultar senha' : 'Mostrar senha';
 
   return (
@@ -23,33 +22,30 @@ export function PasswordField({ label, labelAction, value, onChange, autoComplet
         <label className="onframe-field-label" htmlFor={inputId}>{label}</label>
         {labelAction}
       </div>
-      <FieldShell focused={focused} disabled={disabled}>
-        <input
-          id={inputId}
-          value={value}
-          type={visible ? 'text' : 'password'}
-          autoComplete={autoComplete}
-          placeholder={placeholder}
-          disabled={disabled}
-          onChange={(event) => onChange(event.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          className="onframe-field-input"
-        />
-        <Tooltip label={actionLabel} placement="top">
-          <Button
-            kind="quiet"
-            tone="neutral"
-            size="sm"
-            iconOnly
-            aria-label={actionLabel}
-            disabled={disabled}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => setVisible((current) => !current)}
-            icon={<Ph n={visible ? 'eye' : 'eye-closed'} size={17} />}
-          />
-        </Tooltip>
-      </FieldShell>
+      <Input
+        id={inputId}
+        value={value}
+        type={visible ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        endAddon={(
+          <Tooltip label={actionLabel} placement="top">
+            <Button
+              kind="quiet"
+              tone="neutral"
+              size="sm"
+              iconOnly
+              aria-label={actionLabel}
+              disabled={disabled}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setVisible((current) => !current)}
+              icon={<Ph n={visible ? 'eye' : 'eye-closed'} size={17} />}
+            />
+          </Tooltip>
+        )}
+      />
     </div>
   );
 }
@@ -61,14 +57,13 @@ export function AuthBrand({ src = '../../assets/onframe-stacked-primary.png' }) 
 }
 
 export function VerificationEmailField({ email, onEdit }) {
-  const inputId = useId();
-  return <div className="onframe-field">
-    <label className="onframe-field-label" htmlFor={inputId}>E-mail</label>
-    <FieldShell disabled>
-      <input id={inputId} className="onframe-field-input" type="email" value={email} disabled />
-      {onEdit && <span className="onframe-field-action"><Link href="#alterar-email" onClick={(event) => { event.preventDefault(); onEdit(); }}>Alterar e-mail</Link></span>}
-    </FieldShell>
-  </div>;
+  return <Input
+    label="E-mail"
+    type="email"
+    value={email}
+    readOnly
+    endAddon={onEdit ? <Link href="#alterar-email" onClick={(event) => { event.preventDefault(); onEdit(); }}>Alterar e-mail</Link> : undefined}
+  />;
 }
 
 export function VerificationCodeField({ label, length, value, onChange, error, status, disabled }) {
