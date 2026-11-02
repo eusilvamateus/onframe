@@ -266,17 +266,18 @@ test('commerce model preserva mensagem amigavel ja traduzida', () => {
 test('promocoes montam o Datepicker oficial sem calendario proprio', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const bridge = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'datepicker-bridge.jsx'), 'utf8');
+  const directDiscountView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
 
   assert.strictEqual(source.includes('type="date"'), false);
   assert.match(source, /const Datepicker = rootScope\.OnFrameDatepicker/);
   assert.match(source, /data-onframe-datepicker-root/);
   assert.match(source, /stepper: 'day'/);
-  assert.match(source, /mode: 'range'/);
   assert.doesNotMatch(source, /function buildDatePickerMarkup|function buildDirectDiscountDateRangePickerMarkup/);
   assert.match(bridge, /import \{ Datepicker \} from '@onblide\/ui'/);
   assert.match(bridge, /mode="range"/);
   assert.match(bridge, /stepper=\{options\.stepper\}/);
   assert.match(bridge, /calendarDisplay="popover"/);
+  assert.match(directDiscountView, /<Datepicker[\s\S]*mode="range"/s);
 });
 
 test('modulos legados montam o Button oficial com tom, tooltip e estado pressionado', () => {
@@ -390,8 +391,8 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(styles, /\.onframe-commerce-popover-root\.price-summary/);
   assert.doesNotMatch(styles, /\.onframe-commerce-price-view,[\s\S]*font-weight: 500 !important;/);
   assert.match(styles, /\.onframe-commerce-popover-root\.promotions,[\s\S]*width: min\(400px/s);
-  assert.match(styles, /\.onframe-commerce-price-view :where\([^)]+\),[\s\S]*\.onframe-commerce-promotions-view :where\([^)]+\) \{\s*font-family: var\(--ob-font\) !important;/s);
-  assert.match(styles, /body:has\(\.onframe-commerce-popover-root \[aria-describedby\]\) > \[role='tooltip'\],[\s\S]*font-family: var\(--ob-font\) !important;/s);
+  assert.match(styles, /:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root,[\s\S]*\.onframe-commerce-promotion-result-popover-root[\s\S]*\) :where\([\s\S]*summary,[\s\S]*table,[\s\S]*output\),[\s\S]*font-family: var\(--ob-font\) !important;/s);
+  assert.match(styles, /body:has\(:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\) \[aria-describedby\]\) > \[role='tooltip'\][\s\S]*font-family: var\(--ob-font\) !important;/s);
   assert.match(styles, /\.onframe-commerce-price-breakdown-row\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-price-promotion-link\s*{\s*display: flex/s);
   assert.match(styles, /\.onframe-commerce-price-base\s*{\s*display: grid/s);
@@ -527,8 +528,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /setTimeout\(\(\) => commitQueuedPromotionManagerRemoval\(key, row\.entry\), 5000\)/);
   assert.match(source, /function commitQueuedPromotionManagerRemoval/);
   assert.match(styles, /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\)/s);
-  assert.match(styles, /\.onframe-commerce-modal-root,[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\]\s*\{[\s\S]*--ob-font: 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: 'OnFrame Poppins Regular', var\(--ob-font\) !important;/s);
-  assert.match(styles, /\.onframe-commerce-modal-root :where\(div, section, article, header, footer, button, input, textarea, select, option, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6\)[\s\S]*font-family: var\(--onframe-promotion-font-regular,[\s\S]*!important;/s);
+  assert.match(styles, /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-modal-root,[\s\S]*\.onframe-commerce-promotion-result-popover-root[\s\S]*\) :where\(div,[\s\S]*legend,[\s\S]*button,[\s\S]*table,[\s\S]*output\),[\s\S]*font-family: var\(--ob-font\) !important;/s);
+  assert.match(styles, /:where\(kbd, \[style\*="--ob-font-mono"\]\),[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
+  assert.match(styles, /> \[data-ob-popover-id\] :where\(kbd, \[style\*="--ob-font-mono"\]\),/);
+  assert.match(styles, /> \[role='tooltip'\] :where\(kbd, \[style\*="--ob-font-mono"\]\),/);
   assert.match(styles, /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-commerce-promotion-type-icon\s*\{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*border: 1px solid var\(--ob-line-soft\);[\s\S]*border-radius: var\(--ob-r-control\);[\s\S]*background: var\(--ob-bg-alt\);/s);
   assert.match(styles, /--onframe-promotion-font-black: 'OnFrame Poppins ExtraBold', var\(--ob-font\);/);
@@ -575,51 +579,65 @@ test('modal de promocoes nasce do popover em qualquer superficie', () => {
   assert.match(styles, /\.onframe-commerce-modal\.is-promotion-modal-opening > \*\s*\{[\s\S]*translateY\(20px\)/s);
 });
 
-test('modal cria desconto direto em dialogo separado da tabela', () => {
+test('modal de desconto direto usa somente componentes oficiais do design system', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
+  const priceView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const directDiscountSource = source.slice(source.indexOf('function buildDirectDiscountModal'), source.indexOf('function renderDirectDiscountDateRange'));
+  const scripts = manifest.content_scripts[0].js;
 
+  assert.match(view, /import \{ Alert, Button, Datepicker, Input, Modal, Ph, Skeleton, Spinner \} from '@onblide\/ui'/);
+  assert.match(view, /<Modal[\s\S]*size="md"[\s\S]*footer=\{footer\}/s);
+  assert.match(view, /Confirme os detalhes da promoção/);
+  assert.match(view, /<Datepicker[\s\S]*label="Data"[\s\S]*mode="range"/s);
+  assert.doesNotMatch(view, /Vigência/);
+  assert.match(view, /<Input[\s\S]*aria-label="Desconto em porcentagem"[\s\S]*endAddon="%"/s);
+  assert.match(view, /<Input[\s\S]*aria-label="Preço promocional"[\s\S]*startAddon="R\$"/s);
+  assert.match(priceView, /<Input[\s\S]*label="Novo preço base"[\s\S]*startAddon="R\$"/s);
+  assert.match(view, /<Button kind="secondary" size="sm"/);
+  assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*size="sm"/s);
+  assert.match(view, /<Alert tone="danger">/);
+  assert.match(view, /<Skeleton width=\{72\} height=\{16\}/);
+  assert.match(view, /globalThis\.OnFrameCommerceDirectDiscountView = Object\.freeze\(\{ render, unmount \}\)/);
+  assert.match(build, /commerce-direct-discount-view\.jsx/);
+  assert.ok(scripts.indexOf('core/commerce-direct-discount-view.js') < scripts.indexOf('modules/commerce/module.js'));
+  assert.match(source, /const CommerceDirectDiscountView = rootScope\.OnFrameCommerceDirectDiscountView/);
   assert.match(source, /function renderDirectDiscountModal/);
-  assert.match(source, /function buildDirectDiscountModal/);
-  assert.match(source, /Criar desconto por porcentagem/);
+  assert.match(source, /CommerceDirectDiscountView\.render\(state\.directDiscountModalRoot, model/);
+  assert.match(source, /CommerceDirectDiscountView\.unmount\(state\.directDiscountModalRoot\)/);
+  assert.match(source, /function buildDirectDiscountViewModel/);
+  assert.match(source, /function buildDirectDiscountEstimateViewModel/);
   assert.match(source, /onframe-commerce-direct-discount-modal-root/);
-  assert.match(source, /onframe-commerce-direct-discount-overlay/);
   assert.match(source, /state\.promotionModalOpen = false;\s*state\.directDiscountModalOpen = true;/s);
   assert.match(source, /state\.directDiscountModalOpen = false;\s*state\.promotionModalOpen = true;/s);
   assert.match(source, /data-action="open-direct-discount"/);
   assert.match(source, /function buildDirectDiscountDraftEntry/);
   assert.match(source, /function ensureDirectDiscountDraft/);
-  assert.match(source, /data-direct-discount-field="percentage"/);
-  assert.match(source, /function saveDirectDiscountPercentageDraft/);
-  assert.match(source, /function syncDirectDiscountFromPrice/);
-  assert.match(directDiscountSource, /renderPromotionEstimate\(key, 'direct'\)/);
-  assert.match(directDiscountSource, /Criar desconto/);
-  assert.match(directDiscountSource, /ob-field-shell/);
-  assert.match(directDiscountSource, /ob-field-help/);
-  assert.match(directDiscountSource, /ob-field-suffix/);
-  assert.match(directDiscountSource, /<button class="ob-button secondary"[\s\S]*Cancelar[\s\S]*<button class="ob-button primary"/);
-  assert.doesNotMatch(directDiscountSource, />Período</);
-  assert.doesNotMatch(directDiscountSource, /Revisar desconto/);
-  assert.doesNotMatch(directDiscountSource, /cancel-promotion-confirm/);
+  assert.match(source, /function updateDirectDiscountPercentage/);
+  assert.match(source, /function updateDirectDiscountPrice/);
+  assert.match(source, /function updateDirectDiscountDates/);
+  assert.match(source, /calculateDiscountedPrice\(entry\.original_price, value\)/);
+  assert.match(source, /calculateDiscountPercentage\([\s\S]*entry\.original_price,[\s\S]*parseMoneyInput\(value\)/s);
+  assert.match(source, /function directDiscountActionLabel\(\)[\s\S]*return 'Criar desconto';/);
   assert.match(source, /if \(!confirming && !entry\.direct_discount_draft\)/);
-  assert.match(source, /function renderDirectDiscountDateRange/);
-  assert.match(source, /data-onframe-datepicker-root data-date-mode="range"/);
-  assert.match(source, /Datepicker\.mount\(host, \{[\s\S]*mode: 'range'/);
-  assert.match(source, /onChange: \(value\) => applyDirectDiscountDateRange/);
   assert.match(source, /function promotionDraftWarning/);
   assert.match(source, /const draftWarning = promotionDraftWarning\(entry, values\);/);
   assert.match(source, /groups\.activeOffers,[\s\S]*groups\.scheduledOffers[\s\S]*\.flat\(\)\.find\(isPriceDiscountPromotion\)/);
   assert.doesNotMatch(source, /status: 'candidate',[\s\S]{0,300}type: 'PRICE_DISCOUNT'/);
-  assert.match(styles, /\.onframe-commerce-direct-discount\s*{[\s\S]{0,240}display: flex/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount\s*{[\s\S]{0,180}width: min\(720px, calc\(100vw - 32px\)\)/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-overlay\s*{\s*position: fixed !important/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-grid\s*{\s*display: grid/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount \.onframe-commerce-field\s*{\s*grid-template-rows: 14px 44px minmax\(14px, auto\)/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount \.ob-field-shell > \.ob-field-input:focus-visible[\s\S]*?border: 0;[\s\S]*?outline: 0;[\s\S]*?box-shadow: none;/);
-  assert.match(styles, /\.onframe-commerce-direct-discount-summary\s*{[\s\S]*min-height: 88px/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-date-range \[data-onframe-datepicker-root\]/);
-  assert.doesNotMatch(styles, /\.onframe-commerce-datepicker/);
+  assert.doesNotMatch(source, /function buildDirectDiscountModal|function renderDirectDiscountDateRange|data-direct-discount-field/);
+  assert.doesNotMatch(view, /ob-field-(?:shell|prefix|suffix)|<button class=/);
+  assert.match(styles, /\.onframe-commerce-direct-discount\s*{\s*display: grid;/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-calculation,[\s\S]*\.onframe-commerce-direct-discount-results\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 160px;/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-date-range input\[type="text"\]:focus-visible\s*{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s);
+  assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount[^}]*\.ob-field-(?:shell|prefix|suffix)/s);
+  assert.match(source, /promotionFinancialMetrics\(estimate\.promotionFinancial\)/);
+  assert.match(source, /`Comissão · \$\{formatPercent\(commissionPercentage\)\}`/);
+  assert.match(styles, /\.onframe-commerce-direct-discount-total\s*{[\s\S]*border-top: 1px solid var\(--ob-line-soft\)/s);
+  assert.match(source, /if \(state\.directDiscountModalOpen\) \{\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);/s);
 });
 
 test('filtro de promocoes fecha fora do painel e antes do desconto direto', () => {
@@ -856,13 +874,17 @@ test('modal de promocoes limpa erro antigo ao editar campos', () => {
   assert.doesNotMatch(source, /actionMessage/);
 });
 
-test('modal de promocoes nao redesenha enquanto usuario digita', () => {
+test('modais de promocoes reconciliam as views React sem reconstruir o host', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const managerView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const directDiscountView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
 
-  assert.match(source, /function syncPromotionModalMarkupCache/);
-  assert.match(source, /syncPromotionModalMarkupCache\(\)/);
-  assert.match(source, /function captureModalFieldFocus/);
-  assert.match(source, /function restoreModalFieldFocus/);
+  assert.match(source, /CommercePromotionManagerView\.render\(/);
+  assert.match(source, /CommerceDirectDiscountView\.render\(/);
+  assert.match(managerView, /const roots = new WeakMap\(\)/);
+  assert.match(directDiscountView, /const roots = new WeakMap\(\)/);
+  assert.match(directDiscountView, /root\.render\(/);
+  assert.doesNotMatch(source, /function buildDirectDiscountModal|lastDirectDiscountModalMarkup/);
 });
 
 test('promocoes preferem oportunidade do item com faixa de preco', () => {
@@ -933,10 +955,8 @@ test('promocoes formam uma tabela do design system com estado, tipo e resultado 
   assert.match(styles, /\.onframe-commerce-modal\s*{[^}]*height: min\(780px, calc\(100vh - 36px\)\)[^}]*display: flex[^}]*overflow: hidden/s);
   assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*flex: 1 1 auto[^}]*min-height: 0[^}]*overflow: auto/s);
   assert.match(styles, /\.onframe-commerce-modal-content\s*{[^}]*overscroll-behavior: contain;/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-body\s*{[^}]*overscroll-behavior: contain;/s);
   assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-table \.ob-table-header,[\s\S]*font-family: var\(--ob-font-mono\) !important;/);
-  assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-estimate-summary-metric small,/);
-  assert.match(styles, /\.onframe-commerce-direct-discount-modal-root \.onframe-commerce-promotion-estimate-summary-metric small/);
+  assert.match(styles, /\.onframe-commerce-modal-root \.onframe-commerce-promotion-estimate-summary-metric small\s*\{/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.coupon/);
   assert.match(styles, /\.onframe-commerce-promotion-type-icon\.payment/);
   assert.match(styles, /@media \(max-width: 639px\)/);

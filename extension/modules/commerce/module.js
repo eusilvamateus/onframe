@@ -20,6 +20,7 @@
     const CommercePriceView = rootScope.OnFrameCommercePriceView;
     const CommercePromotionsView = rootScope.OnFrameCommercePromotionsView;
     const CommercePromotionManagerView = rootScope.OnFrameCommercePromotionManagerView;
+    const CommerceDirectDiscountView = rootScope.OnFrameCommerceDirectDiscountView;
     const hasCommerceActionsView = Boolean(
       CommerceActionsView &&
       typeof CommerceActionsView.render === 'function' &&
@@ -44,6 +45,12 @@
       typeof CommercePromotionManagerView.unmount === 'function'
     );
     if (!hasCommercePromotionManagerView) throw new Error('Gerenciador de promoções indisponível.');
+    const hasCommerceDirectDiscountView = Boolean(
+      CommerceDirectDiscountView &&
+      typeof CommerceDirectDiscountView.render === 'function' &&
+      typeof CommerceDirectDiscountView.unmount === 'function'
+    );
+    if (!hasCommerceDirectDiscountView) throw new Error('Interface de desconto direto indisponível.');
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -138,7 +145,6 @@
       requestId: 0,
       pageSignature: '',
       lastModalMarkup: '',
-      lastDirectDiscountModalMarkup: '',
       viewportEventsReady: false,
       documentEventsReady: false
     };
@@ -207,7 +213,6 @@
       state.requestId += 1;
       state.pageSignature = readPageSignature();
       state.lastModalMarkup = '';
-      state.lastDirectDiscountModalMarkup = '';
       if (!preserveListing) resetListingState();
     }
 
@@ -1180,20 +1185,83 @@
         document.body.appendChild(state.directDiscountModalRoot);
       }
 
-      const focusedField = captureModalFieldFocus();
-      const markup = buildDirectDiscountModal();
-      if (markup === state.lastDirectDiscountModalMarkup) return;
-      state.lastDirectDiscountModalMarkup = markup;
-      unmountDesignSystemControls();
-      state.renderingPromotionModal = true;
-      try {
-        state.directDiscountModalRoot.innerHTML = markup;
-        bindDirectDiscountModalEvents();
-        restoreModalFieldFocus(focusedField);
-        if (!focusedField) focusDirectDiscountInitialField();
-      } finally {
-        state.renderingPromotionModal = false;
+      const model = buildDirectDiscountViewModel();
+      if (!model) {
+        state.directDiscountModalOpen = false;
+        state.promotionModalOpen = true;
+        removeDirectDiscountModal();
+        renderModal();
+        return;
       }
+      CommerceDirectDiscountView.render(state.directDiscountModalRoot, model, {
+        onClose: cancelPromotionForm,
+        onPercentageChange: updateDirectDiscountPercentage,
+        onPriceChange: updateDirectDiscountPrice,
+        onDateChange: updateDirectDiscountDates,
+        onSubmit: submitDirectDiscount,
+        onError: handleDirectDiscountViewError
+      });
+    }
+
+    function buildDirectDiscountViewModel() {
+      const key = directDiscountKey();
+      const entry = buildDirectDiscountDraftEntry();
+      if (!entry) return null;
+      ensureDirectDiscountDraft(key, entry);
+      const draft = state.promotionDraftValues[key] || {};
+      const priceValidation = promotionPriceFieldValidation(entry, draft.deal_price);
+      const percentageValidation = directDiscountPercentageValidation(draft.discount_percentage);
+      const startDate = parseIsoDate(draft.start_date);
+      const endDate = parseIsoDate(draft.finish_date);
+      return {
+        key,
+        busy: state.busy,
+        error: shortMessage(state.actionError),
+        basePrice: CommerceModel.formatMoney(entry.original_price, itemCurrency()),
+        percentage: draft.discount_percentage || '',
+        price: draft.deal_price || '',
+        percentageError: percentageValidation && percentageValidation.message || '',
+        priceError: priceValidation && priceValidation.message || '',
+        startDate,
+        endDate,
+        dateError: startDate && endDate && endDate < startDate ? 'A data final deve ser posterior ao início.' : '',
+        actionLabel: directDiscountActionLabel(),
+        estimate: buildDirectDiscountEstimateViewModel(key)
+      };
+    }
+
+    function buildDirectDiscountEstimateViewModel(key) {
+      const record = state.promotionEstimates[key] || null;
+      const loading = Boolean(record && record.status === 'loading');
+      const estimate = record && record.status === 'ready' ? record.data : null;
+      const currency = estimate && estimate.currency_id || itemCurrency();
+      const commission = estimate && estimate.commission || null;
+      const shipping = estimate && estimate.shipping || null;
+      const commissionPercentage = financialPercentage(commission && commission.percentage);
+      const value = (amount, sign = '') => {
+        const normalized = moneyOrNull(amount);
+        return normalized === null ? '—' : `${sign}${CommerceModel.formatMoney(normalized, currency)}`;
+      };
+      let message = '';
+      if (record && record.status === 'blocked') message = record.message || 'Preço fora da faixa.';
+      else if (record && record.status === 'error') message = record.message || 'Custos indisponíveis.';
+      else if (estimate && !promotionEstimateMetrics(estimate, currency).length) message = 'Custos indisponíveis.';
+      else if (estimate && estimate.complete === false) message = 'Dados financeiros incompletos.';
+      return {
+        loading,
+        message,
+        tone: 'danger',
+        commission: {
+          label: commissionPercentage === null ? 'Comissão' : `Comissão · ${formatPercent(commissionPercentage)}`,
+          value: value(commission && commission.amount, '−')
+        },
+        benefits: estimate ? promotionFinancialMetrics(estimate.promotionFinancial).map((metric) => ({
+          label: metric.label,
+          value: metric.value
+        })) : [],
+        shipping: { label: 'Frete', value: value(shipping && shipping.amount, '−') },
+        total: { label: 'Você recebe', value: value(estimate && estimate.youReceive) }
+      };
     }
 
     function buildPromotionManagerViewModel() {
@@ -1569,83 +1637,10 @@
       `;
     }
 
-    function buildDirectDiscountModal() {
-      const key = directDiscountKey();
-      const entry = buildDirectDiscountDraftEntry();
-      if (!entry) return '';
-
-      ensureDirectDiscountDraft(key, entry);
-      const draft = state.promotionDraftValues[key] || {};
-      const priceValidation = promotionPriceFieldValidation(entry, draft.deal_price);
-      const percentageValidation = directDiscountPercentageValidation(draft.discount_percentage);
-      const basePrice = CommerceModel.formatMoney(entry.original_price, itemCurrency());
-      const percentageHelpId = 'onframe-direct-discount-percentage-help';
-      const priceHelpId = 'onframe-direct-discount-price-help';
-
-      return `
-        <div class="onframe-commerce-direct-discount-overlay ob-modal-backdrop">
-          <section class="onframe-commerce-direct-discount ob-modal" data-entry-kind="direct-discount" data-entry-index="0" data-entry-key="${escapeAttribute(key)}" role="dialog" aria-modal="true" aria-labelledby="onframe-direct-discount-title">
-          <header class="onframe-commerce-direct-discount-head">
-            <div>
-              <h2 id="onframe-direct-discount-title">Criar desconto por porcentagem</h2>
-              <span>Preço base ${escapeHtml(basePrice)}</span>
-            </div>
-            <button class="ob-icon-button" data-action="cancel-promotion-form" type="button" aria-label="Fechar">${icon('x', 18)}</button>
-          </header>
-          <div class="onframe-commerce-direct-discount-body">
-            ${renderNotice(state.actionError, 'warn')}
-            <div class="onframe-commerce-direct-discount-grid">
-              <label class="onframe-commerce-field onframe-commerce-direct-discount-percentage${percentageValidation ? ' warn' : ''}">
-                <span class="onframe-commerce-field-label">Desconto</span>
-                <span class="ob-field-shell${percentageValidation ? ' is-error' : ''}">
-                  <input class="ob-field-input" data-direct-discount-field="percentage" inputmode="decimal" autocomplete="off" value="${escapeAttribute(draft.discount_percentage || '')}" aria-label="Desconto em porcentagem" aria-describedby="${percentageHelpId}" ${percentageValidation ? 'aria-invalid="true"' : ''}>
-                  <span class="ob-field-suffix" aria-hidden="true">%</span>
-                </span>
-                <small class="ob-field-help${percentageValidation ? ' is-error' : ''}" id="${percentageHelpId}" aria-live="polite">${percentageValidation ? escapeHtml(percentageValidation.message) : ''}</small>
-              </label>
-              <label class="onframe-commerce-field onframe-commerce-field-deal_price${priceValidation ? ' warn' : ''}">
-                <span class="onframe-commerce-field-label">Preço promocional</span>
-                <span class="ob-field-shell${priceValidation ? ' is-error' : ''}">
-                  <input class="ob-field-input" data-field="deal_price" data-direct-discount-field="deal_price" inputmode="decimal" autocomplete="off" value="${escapeAttribute(draft.deal_price || '')}" aria-describedby="${priceHelpId}" ${priceValidation ? 'aria-invalid="true"' : ''}>
-                </span>
-                <small class="ob-field-help${priceValidation ? ' is-error' : ''}" id="${priceHelpId}" aria-live="polite">${priceValidation ? escapeHtml(priceValidation.message) : ''}</small>
-              </label>
-            </div>
-            ${renderDirectDiscountDateRange(draft)}
-            ${renderPromotionEstimate(key, 'direct')}
-          </div>
-          <footer class="onframe-commerce-direct-discount-actions">
-            <button class="ob-button secondary" data-action="cancel-promotion-form" type="button" ${state.busy ? 'disabled' : ''}>Cancelar</button>
-            <button class="ob-button primary" data-action="create-offer" type="button" ${state.busy ? 'disabled' : ''}>${directDiscountActionIcon()}${directDiscountActionLabel()}</button>
-          </footer>
-          </section>
-        </div>
-      `;
-    }
-
-    function renderDirectDiscountDateRange(draft) {
-      const startDate = draft && draft.start_date || '';
-      const finishDate = draft && draft.finish_date || '';
-
-      return `
-        <div class="onframe-commerce-direct-discount-date-range" data-direct-discount-date-range>
-          <div data-onframe-datepicker-root data-date-mode="range" data-date-label="Vigência"></div>
-          <input data-field="start_date" type="hidden" value="${escapeAttribute(startDate)}">
-          <input data-field="finish_date" type="hidden" value="${escapeAttribute(finishDate)}">
-        </div>
-      `;
-    }
-
     function directDiscountActionLabel() {
       const key = directDiscountKey();
       if (isPromotionActionPending(key, 'create')) return 'Criando desconto...';
       return 'Criar desconto';
-    }
-
-    function directDiscountActionIcon() {
-      const key = directDiscountKey();
-      if (isPromotionActionPending(key, 'create')) return spinner();
-      return icon('tag', 14);
     }
 
     function renderPromotionListEmpty() {
@@ -2684,24 +2679,18 @@
 
     function renderPromotionEstimate(key, mode = 'review') {
       const estimate = state.promotionEstimates[key] || null;
-      if (!estimate) return mode === 'direct' ? renderDirectDiscountEstimatePlaceholder() : '';
+      if (!estimate) return '';
       if (estimate.status === 'blocked') {
-        return mode === 'direct'
-          ? renderDirectDiscountEstimateMessage(estimate.message || 'Preço fora da faixa.', 'warn')
-          : `<div class="onframe-commerce-estimate muted">${escapeHtml(estimate.message || 'Preço fora da faixa.')}</div>`;
+        return `<div class="onframe-commerce-estimate muted">${escapeHtml(estimate.message || 'Preço fora da faixa.')}</div>`;
       }
       if (estimate.status === 'loading') {
-        return mode === 'direct'
-          ? renderDirectDiscountEstimateLoading()
-          : '<div class="onframe-commerce-estimate muted">Calculando custos...</div>';
+        return '<div class="onframe-commerce-estimate muted">Calculando custos...</div>';
       }
       if (estimate.status === 'error') {
-        return mode === 'direct'
-          ? renderDirectDiscountEstimateMessage(estimate.message || 'Custos indisponíveis.', 'warn')
-          : `<div class="onframe-commerce-estimate warn">${escapeHtml(estimate.message || 'Custos indisponíveis.')}</div>`;
+        return `<div class="onframe-commerce-estimate warn">${escapeHtml(estimate.message || 'Custos indisponíveis.')}</div>`;
       }
       if (estimate.status === 'ready' && estimate.data) return renderPromotionEstimateResult(estimate.data, mode);
-      return mode === 'direct' ? renderDirectDiscountEstimatePlaceholder() : '';
+      return '';
     }
 
     function renderPromotionEstimateResult(estimate, mode = 'review') {
@@ -2709,25 +2698,10 @@
       const metrics = promotionEstimateMetrics(estimate, currency);
 
       if (!metrics.length) {
-        return mode === 'direct'
-          ? renderDirectDiscountEstimateMessage('Custos indisponíveis.', 'warn')
-          : '<div class="onframe-commerce-estimate warn">Custos indisponíveis.</div>';
+        return '<div class="onframe-commerce-estimate warn">Custos indisponíveis.</div>';
       }
       if (mode === 'inline') {
         return `<div class="onframe-commerce-estimate muted">Revise para ver custos e repasse.</div>`;
-      }
-      if (mode === 'direct') {
-        return `
-          <section class="onframe-commerce-direct-discount-summary" aria-label="Resumo financeiro da promoção">
-            <div class="onframe-commerce-estimate-head">
-              <strong>Resumo da promoção</strong>
-              ${estimate.complete === false ? '<small>Dados incompletos</small>' : ''}
-            </div>
-            <div class="onframe-commerce-direct-discount-summary-grid">
-              ${metrics.map(renderPromotionEstimateSummaryMetric).join('')}
-            </div>
-          </section>
-        `;
       }
       return `
         <div class="onframe-commerce-estimate">
@@ -2772,30 +2746,6 @@
           <small>${escapeHtml(metric.label)}</small>
           <strong>${escapeHtml(metric.value)}</strong>
         </div>
-      `;
-    }
-
-    function renderDirectDiscountEstimatePlaceholder() {
-      return renderDirectDiscountEstimateMessage('Informe o desconto para calcular.', 'muted');
-    }
-
-    function renderDirectDiscountEstimateMessage(message, tone) {
-      return `
-        <section class="onframe-commerce-direct-discount-summary ${escapeAttribute(tone || 'muted')}" aria-label="Resumo financeiro da promoção">
-          <div class="onframe-commerce-estimate-head"><strong>Resumo da promoção</strong></div>
-          <p class="onframe-commerce-direct-discount-summary-message">${escapeHtml(message)}</p>
-        </section>
-      `;
-    }
-
-    function renderDirectDiscountEstimateLoading() {
-      return `
-        <section class="onframe-commerce-direct-discount-summary is-loading" aria-label="Calculando resumo financeiro da promoção" aria-busy="true">
-          <div class="onframe-commerce-estimate-head"><strong>Resumo da promoção</strong></div>
-          <div class="onframe-commerce-direct-discount-summary-grid" aria-hidden="true">
-            ${Array.from({ length: 3 }, () => '<span class="onframe-commerce-direct-discount-summary-skeleton"></span>').join('')}
-          </div>
-        </section>
       `;
     }
 
@@ -3302,6 +3252,68 @@
       return null;
     }
 
+    function updateDirectDiscountPercentage(value) {
+      const key = directDiscountKey();
+      const entry = buildDirectDiscountDraftEntry();
+      if (!entry || state.busy) return;
+      const draft = Object.assign({}, state.promotionDraftValues[key] || {}, {
+        discount_percentage: value
+      });
+      const price = CommerceModel.calculateDiscountedPrice(entry.original_price, value);
+      draft.deal_price = price === null ? '' : moneyInputValue(price);
+      state.promotionDraftValues[key] = draft;
+      state.actionError = '';
+      schedulePromotionEstimate(key, entry, draft);
+      rerenderModal();
+    }
+
+    function updateDirectDiscountPrice(value) {
+      const key = directDiscountKey();
+      const entry = buildDirectDiscountDraftEntry();
+      if (!entry || state.busy) return;
+      const percentage = CommerceModel.calculateDiscountPercentage(
+        entry.original_price,
+        CommerceModel.parseMoneyInput(value)
+      );
+      const draft = Object.assign({}, state.promotionDraftValues[key] || {}, {
+        deal_price: value,
+        discount_percentage: percentage === null ? '' : percentageInputValue(percentage)
+      });
+      state.promotionDraftValues[key] = draft;
+      state.actionError = '';
+      schedulePromotionEstimate(key, entry, draft);
+      rerenderModal();
+    }
+
+    function updateDirectDiscountDates(value) {
+      const key = directDiscountKey();
+      const entry = buildDirectDiscountDraftEntry();
+      if (!entry || state.busy) return;
+      const draft = Object.assign({}, state.promotionDraftValues[key] || {}, {
+        start_date: toIsoDate(value && value.start),
+        finish_date: toIsoDate(value && value.end)
+      });
+      state.promotionDraftValues[key] = draft;
+      state.actionError = '';
+      if (draft.start_date && draft.finish_date) schedulePromotionEstimate(key, entry, draft);
+      else clearDirectDiscountEstimate(key);
+      rerenderModal();
+    }
+
+    function submitDirectDiscount() {
+      const entry = buildDirectDiscountDraftEntry();
+      if (!entry || state.busy) return;
+      void commitPromotionManagerAction(directDiscountKey(), 'create', entry);
+    }
+
+    function handleDirectDiscountViewError(error) {
+      state.actionError = toUserError(error);
+      state.directDiscountModalOpen = false;
+      state.promotionModalOpen = true;
+      removeDirectDiscountModal();
+      renderModal();
+    }
+
     function renderNotice(message, tone) {
       if (!message) return '';
       return `
@@ -3359,55 +3371,8 @@
       }
       bindBulkControls(state.modalRoot);
       bindPromotionFieldDrafts(state.modalRoot);
-      bindDirectDiscountFields(state.modalRoot);
       mountDatepickers(state.modalRoot);
       mountButtons(state.modalRoot);
-    }
-
-    function bindDirectDiscountModalEvents() {
-      if (!state.directDiscountModalRoot) return;
-      bindButton(state.directDiscountModalRoot, 'create-offer', (button) => void performPromotionAction(button, 'create'));
-      bindButton(state.directDiscountModalRoot, 'cancel-promotion-form', cancelPromotionForm);
-      bindDirectDiscountFields(state.directDiscountModalRoot);
-      bindPromotionFieldDrafts(state.directDiscountModalRoot);
-      mountDatepickers(state.directDiscountModalRoot);
-      mountButtons(state.directDiscountModalRoot);
-
-      const backdrop = state.directDiscountModalRoot.querySelector('.onframe-commerce-direct-discount-overlay');
-      if (backdrop) {
-        backdrop.addEventListener('click', (event) => {
-          if (event.target === backdrop) cancelPromotionForm();
-        });
-      }
-
-      const dialog = state.directDiscountModalRoot.querySelector('[role="dialog"]');
-      if (dialog) {
-        dialog.addEventListener('keydown', (event) => trapModalFocus(event, dialog));
-      }
-    }
-
-    function trapModalFocus(event, dialog) {
-      if (!event || event.key !== 'Tab' || !dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll('button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'));
-      if (!focusable.length) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus({ preventScroll: true });
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus({ preventScroll: true });
-      }
-    }
-
-    function focusDirectDiscountInitialField() {
-      if (!state.directDiscountModalRoot) return;
-      const input = state.directDiscountModalRoot.querySelector('[data-direct-discount-field="percentage"]');
-      if (!input || typeof input.focus !== 'function') return;
-      requestAnimationFrame(() => {
-        if (input.isConnected) input.focus({ preventScroll: true });
-      });
     }
 
     function bindBulkControls(container) {
@@ -3438,25 +3403,6 @@
     function mountDatepickers(container) {
       if (!container || !Datepicker || typeof Datepicker.mount !== 'function') return;
       container.querySelectorAll('[data-onframe-datepicker-root]').forEach((host) => {
-        const range = host.closest('[data-direct-discount-date-range]');
-        if (host.dataset.dateMode === 'range' && range) {
-          const start = range.querySelector('[data-field="start_date"]');
-          const finish = range.querySelector('[data-field="finish_date"]');
-          if (!start || !finish) return;
-          Datepicker.mount(host, {
-            mode: 'range',
-            label: host.dataset.dateLabel || 'Vigência',
-            error: host.dataset.dateError || undefined,
-            value: { start: parseIsoDate(start.value), end: parseIsoDate(finish.value) },
-            onChange: (value) => applyDirectDiscountDateRange(
-              range,
-              toIsoDate(value && value.start),
-              toIsoDate(value && value.end)
-            )
-          });
-          return;
-        }
-
         const field = host.dataset.dateField;
         const wrapper = host.closest('.onframe-commerce-date-field');
         const input = wrapper && wrapper.querySelector(`[data-field="${field}"]`);
@@ -3524,27 +3470,6 @@
       });
     }
 
-    function bindDirectDiscountFields(container) {
-      container.querySelectorAll('[data-direct-discount-field="percentage"]').forEach((input) => {
-        input.addEventListener('input', () => saveDirectDiscountPercentageDraft(input));
-        input.addEventListener('change', () => saveDirectDiscountPercentageDraft(input));
-        input.addEventListener('keydown', (event) => {
-          if (event.key !== 'Enter') return;
-          event.preventDefault();
-          saveDirectDiscountPercentageDraft(input);
-          reviewPromotionFieldDraft(input);
-        });
-        input.addEventListener('blur', (event) => {
-          if (!shouldReviewPromotionFieldOnBlur(input, event)) return;
-          setTimeout(() => {
-            if (!shouldReviewPromotionFieldOnBlur(input, event)) return;
-            saveDirectDiscountPercentageDraft(input);
-            reviewPromotionFieldDraft(input);
-          }, 0);
-        });
-      });
-    }
-
     function shouldReviewPromotionFieldOnBlur(input, event) {
       if (state.renderingPromotionModal) return false;
       const card = input.closest('[data-entry-key]');
@@ -3589,7 +3514,6 @@
         [field]: input.value
       });
       if (field === 'deal_price') {
-        syncDirectDiscountFromPrice(card, entry, input.value);
         updatePromotionPriceFieldFeedback(input, entry);
       }
       const clearedConfirm = Boolean(state.promotionConfirm && state.promotionConfirm.key === key);
@@ -3603,50 +3527,6 @@
         return;
       }
       syncPromotionModalMarkupCache();
-    }
-
-    function saveDirectDiscountPercentageDraft(input) {
-      const card = input.closest('[data-entry-key]');
-      const key = card && card.dataset ? card.dataset.entryKey : '';
-      const entry = card ? getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex)) : null;
-      if (!card || !key || !entry || !entry.direct_discount_draft) return;
-
-      const draft = Object.assign({}, state.promotionDraftValues[key] || {}, {
-        discount_percentage: input.value
-      });
-      const price = CommerceModel.calculateDiscountedPrice(entry.original_price, input.value);
-      draft.deal_price = price === null ? '' : moneyInputValue(price);
-      state.promotionDraftValues[key] = draft;
-
-      const priceInput = card.querySelector('[data-direct-discount-field="deal_price"]');
-      if (priceInput) {
-        priceInput.value = draft.deal_price;
-        updatePromotionPriceFieldFeedback(priceInput, entry);
-      }
-      updateDirectDiscountPercentageFeedback(input);
-      clearPromotionActionFeedback();
-      schedulePromotionEstimate(key, entry, draft);
-      syncPromotionModalMarkupCache();
-    }
-
-    function syncDirectDiscountFromPrice(card, entry, value) {
-      if (!card || !entry || !entry.direct_discount_draft) return;
-      const key = card.dataset.entryKey;
-      const percentage = CommerceModel.calculateDiscountPercentage(entry.original_price, CommerceModel.parseMoneyInput(value));
-      const draft = Object.assign({}, state.promotionDraftValues[key] || {}, {
-        discount_percentage: percentage === null ? '' : percentageInputValue(percentage)
-      });
-      state.promotionDraftValues[key] = draft;
-      const percentageInput = card.querySelector('[data-direct-discount-field="percentage"]');
-      if (percentageInput) {
-        percentageInput.value = draft.discount_percentage;
-        updateDirectDiscountPercentageFeedback(percentageInput);
-      }
-    }
-
-    function updateDirectDiscountPercentageFeedback(input) {
-      const label = input.closest('.onframe-commerce-field');
-      updatePromotionFieldFeedback(label, directDiscountPercentageValidation(input.value));
     }
 
     function updatePromotionPriceFieldFeedback(input, entry) {
@@ -3687,29 +3567,6 @@
       state.actionError = '';
     }
 
-    function applyDirectDiscountDateRange(range, startIso, finishIso) {
-      const card = range.closest('[data-entry-key]');
-      const key = card && card.dataset ? card.dataset.entryKey : '';
-      const entry = card ? getPromotionEntry(card.dataset.entryKind, Number(card.dataset.entryIndex)) : null;
-      const start = range.querySelector('[data-field="start_date"]');
-      const finish = range.querySelector('[data-field="finish_date"]');
-      if (!key || !entry || !start || !finish) return;
-
-      start.value = startIso;
-      finish.value = finishIso;
-      state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, {
-        start_date: startIso,
-        finish_date: finishIso
-      });
-      clearPromotionActionFeedback();
-      if (startIso && finishIso) {
-        schedulePromotionEstimate(key, entry, state.promotionDraftValues[key]);
-      } else {
-        clearDirectDiscountEstimate(key);
-      }
-      syncPromotionModalMarkupCache();
-    }
-
     function clearDirectDiscountEstimate(key) {
       clearPromotionEstimateTimer(key);
       delete state.promotionEstimates[key];
@@ -3718,13 +3575,11 @@
     function unmountDatepickers() {
       if (!Datepicker || typeof Datepicker.unmountWithin !== 'function') return;
       Datepicker.unmountWithin(state.modalRoot);
-      Datepicker.unmountWithin(state.directDiscountModalRoot);
     }
 
     function unmountButtons() {
       if (!DesignSystemButton || typeof DesignSystemButton.unmountWithin !== 'function') return;
       DesignSystemButton.unmountWithin(state.modalRoot);
-      DesignSystemButton.unmountWithin(state.directDiscountModalRoot);
     }
 
     function unmountDesignSystemControls() {
@@ -3762,76 +3617,8 @@
       }
     }
 
-    function captureModalFieldFocus() {
-      const modalRoot = activeModalRoot();
-      if (!modalRoot) return null;
-      const active = document.activeElement;
-      if (!active || !modalRoot.contains(active)) return null;
-      if (active.dataset && active.dataset.action === 'promotion-search') {
-        return {
-          promotionSearch: true,
-          start: typeof active.selectionStart === 'number' ? active.selectionStart : null,
-          end: typeof active.selectionEnd === 'number' ? active.selectionEnd : null
-        };
-      }
-      const card = active.closest && active.closest('[data-entry-key]');
-      const key = card && card.dataset ? card.dataset.entryKey : '';
-      const field = active.dataset ? active.dataset.field : '';
-      const directDiscountField = active.dataset ? active.dataset.directDiscountField : '';
-      const datepicker = active.closest && active.closest('[data-onframe-datepicker-root]');
-      const datepickerField = datepicker && (datepicker.dataset.dateField || datepicker.dataset.dateMode) || '';
-      if (!key || (!field && !directDiscountField && !datepickerField)) return null;
-      return {
-        key,
-        field,
-        directDiscountField,
-        datepickerField,
-        datepickerInput: datepicker ? Array.from(datepicker.querySelectorAll('input')).indexOf(active) : -1,
-        start: typeof active.selectionStart === 'number' ? active.selectionStart : null,
-        end: typeof active.selectionEnd === 'number' ? active.selectionEnd : null
-      };
-    }
-
-    function restoreModalFieldFocus(snapshot) {
-      const modalRoot = activeModalRoot();
-      if (!snapshot || !modalRoot) return;
-      if (snapshot.promotionSearch) {
-        const search = modalRoot.querySelector('[data-action="promotion-search"]');
-        if (!search || typeof search.focus !== 'function') return;
-        search.focus({ preventScroll: true });
-        if (snapshot.start !== null && typeof search.setSelectionRange === 'function') search.setSelectionRange(snapshot.start, snapshot.end);
-        return;
-      }
-      const selector = snapshot.datepickerField
-        ? `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-onframe-datepicker-root][data-${snapshot.datepickerField === 'range' ? 'date-mode' : 'date-field'}="${escapeAttribute(snapshot.datepickerField)}"]`
-        : snapshot.directDiscountField
-          ? `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-direct-discount-field="${escapeAttribute(snapshot.directDiscountField)}"]`
-        : `[data-entry-key="${escapeAttribute(snapshot.key)}"] [data-field="${escapeAttribute(snapshot.field)}"]`;
-      const target = modalRoot.querySelector(selector);
-      const input = snapshot.datepickerField
-        ? target && target.querySelectorAll('input')[Math.max(0, snapshot.datepickerInput)]
-        : target;
-      if (!input || typeof input.focus !== 'function') return;
-      input.focus({ preventScroll: true });
-      if (snapshot.start !== null && typeof input.setSelectionRange === 'function') {
-        try {
-          input.setSelectionRange(snapshot.start, snapshot.end);
-        } catch (e) {
-          // Some input types do not support selection ranges.
-        }
-      }
-    }
-
     function syncPromotionModalMarkupCache() {
-      if (state.directDiscountModalOpen && state.directDiscountModalRoot) {
-        state.lastDirectDiscountModalMarkup = buildDirectDiscountModal();
-        return;
-      }
       if (state.promotionModalOpen && state.modalRoot) state.lastModalMarkup = buildPromotionModal();
-    }
-
-    function activeModalRoot() {
-      return state.directDiscountModalRoot || state.modalRoot;
     }
 
     function restorePromotionModalResumeFocus() {
@@ -4356,6 +4143,7 @@
       const row = promotionManagerRow(key);
       const entry = queuedEntry || row && row.entry;
       if (!entry) return;
+      const createdDirectDiscount = Boolean(entry.direct_discount_draft);
       const values = Object.assign({}, state.promotionDraftValues[key] || {});
       const fields = action === 'delete'
         ? []
@@ -4411,6 +4199,12 @@
         state.promotionConfirm = null;
         state.promotionBulkEnabled = false;
         delete state.promotionRemoved[key];
+        if (createdDirectDiscount) {
+          state.directDiscountModalOpen = false;
+          state.promotionModalOpen = true;
+          state.promotionModalResumeFocus = 'promotion-search';
+          removeDirectDiscountModal();
+        }
         await loadSummaries(state.requestId);
         schedulePromotionManagerEstimates();
       } catch (err) {
@@ -5025,7 +4819,6 @@
 
     function rerenderModal() {
       state.lastModalMarkup = '';
-      state.lastDirectDiscountModalMarkup = '';
       renderModal();
       renderDirectDiscountModal();
     }
@@ -5067,11 +4860,9 @@
     }
 
     function removeDirectDiscountModal() {
-      if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.directDiscountModalRoot);
-      if (DesignSystemButton && typeof DesignSystemButton.unmountWithin === 'function') DesignSystemButton.unmountWithin(state.directDiscountModalRoot);
+      if (state.directDiscountModalRoot) CommerceDirectDiscountView.unmount(state.directDiscountModalRoot);
       if (state.directDiscountModalRoot) state.directDiscountModalRoot.remove();
       state.directDiscountModalRoot = null;
-      state.lastDirectDiscountModalMarkup = '';
     }
 
     function bindViewportEvents() {
@@ -5096,6 +4887,8 @@
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
           if (state.directDiscountModalOpen) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
             cancelPromotionForm();
             return;
           }

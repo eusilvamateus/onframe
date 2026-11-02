@@ -58,14 +58,6 @@
   width: min(400px, calc(100vw - 24px));
 }
 
-.onframe-commerce-modal-root .onframe-commerce-modal-head > div:first-child > span,
-.onframe-commerce-modal-root .onframe-commerce-promotion-table .ob-table-header,
-.onframe-commerce-modal-root .onframe-commerce-promotion-filter-group > strong,
-.onframe-commerce-modal-root .onframe-commerce-promotion-estimate-summary-metric small,
-.onframe-commerce-direct-discount-modal-root .onframe-commerce-promotion-estimate-summary-metric small {
-  font-family: var(--ob-font-mono) !important;
-}
-
 .onframe-commerce-promotion-result-popover-root {
   position: fixed !important;
   z-index: var(--ob-z-extension-modal);
@@ -572,17 +564,6 @@
 .onframe-commerce-price-view,
 .onframe-commerce-promotions-view {
   padding: 16px;
-  font-family: var(--ob-font);
-}
-
-.onframe-commerce-price-view :where(div, section, article, header, footer, button, input, textarea, select, option, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6, summary, li),
-.onframe-commerce-promotions-view :where(div, section, article, header, footer, button, input, textarea, select, option, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6, summary, li) {
-  font-family: var(--ob-font) !important;
-}
-
-body:has(.onframe-commerce-popover-root [aria-describedby]) > [role='tooltip'],
-body:has(.onframe-commerce-popover-root [aria-describedby]) > [role='tooltip'] :where(span, p, strong, small, b, kbd) {
-  font-family: var(--ob-font) !important;
 }
 
 .onframe-commerce-price-view-head,
@@ -1414,8 +1395,7 @@ body:has(.onframe-commerce-popover-root [aria-describedby]) > [role='tooltip'] :
   position: relative;
 }
 
-.onframe-commerce-date-field [data-onframe-datepicker-root],
-.onframe-commerce-direct-discount-date-range [data-onframe-datepicker-root] {
+.onframe-commerce-date-field [data-onframe-datepicker-root] {
   width: 100%;
   min-width: 0;
 }
@@ -2082,162 +2062,146 @@ body:has(.onframe-commerce-popover-root [aria-describedby]) > [role='tooltip'] :
   padding: 0 12px;
 }
 
-.onframe-commerce-direct-discount-overlay {
-  position: fixed !important;
-  z-index: var(--ob-z-extension-overlay);
-  padding: var(--ob-s-4);
-  background: var(--ob-scrim);
-  backdrop-filter: blur(2px);
-  overscroll-behavior: contain;
-}
-
-.onframe-commerce-direct-discount {
-  display: flex;
-  flex-direction: column;
-  width: min(720px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  overflow: hidden;
-  padding: 0;
-  border: 0;
-  border-radius: var(--ob-r-overlay);
-  background: var(--ob-surface);
-  box-shadow: var(--ob-shadow-lg);
-}
-
-.onframe-commerce-direct-discount-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex: none;
-  gap: var(--ob-gap-md);
-  padding: var(--ob-s-5);
-  border-bottom: 1px solid var(--ob-border);
-}
-
-.onframe-commerce-direct-discount-head > div {
+.onframe-commerce-direct-discount-title {
   display: grid;
   gap: 3px;
 }
 
-.onframe-commerce-direct-discount-head h2 {
-  margin: 0;
-  color: var(--ob-ink-strong);
-  font: var(--ob-w-bold) 18px/1.2 var(--ob-font);
+.onframe-commerce-direct-discount-title > small {
+  color: var(--ob-fg-soft);
+  font-size: 11px;
+  font-weight: var(--ob-w-regular);
+  line-height: 1.35;
 }
 
-.onframe-commerce-direct-discount-head > div > span {
-  color: var(--ob-ink-soft);
-  font: 400 11px/1.35 var(--ob-font);
-}
-
-.onframe-commerce-direct-discount-body {
+.onframe-commerce-direct-discount {
   display: grid;
-  flex: 1 1 auto;
-  min-height: 0;
-  gap: var(--ob-gap-md);
-  padding: var(--ob-s-5);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  gap: 12px;
 }
 
-.onframe-commerce-direct-discount-body > .onframe-commerce-alert {
-  margin: 0;
-}
-
-.onframe-commerce-direct-discount-grid {
+.onframe-commerce-direct-discount-calculation,
+.onframe-commerce-direct-discount-results {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.onframe-commerce-direct-discount-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 5px 0;
+  color: var(--ob-fg-soft);
+  font: var(--ob-w-regular) 13px/1.35 var(--ob-font);
+}
+
+.onframe-commerce-direct-discount-line > strong {
+  min-width: 0;
+  justify-self: end;
+  color: var(--ob-fg-strong);
+  font-weight: var(--ob-w-semibold);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.onframe-commerce-direct-discount-line > strong .muted {
+  color: var(--ob-fg-mute);
+  font-weight: var(--ob-w-regular);
+}
+
+.onframe-commerce-direct-discount-field {
   align-items: start;
-  gap: var(--ob-gap-md);
 }
 
-.onframe-commerce-direct-discount .onframe-commerce-field {
-  grid-template-rows: 14px 44px minmax(14px, auto);
+.onframe-commerce-direct-discount-field > span {
+  padding-top: 11px;
 }
 
-.onframe-commerce-direct-discount .ob-field-shell > .ob-field-input,
-.onframe-commerce-direct-discount .ob-field-shell > .ob-field-input:focus,
-.onframe-commerce-direct-discount .ob-field-shell > .ob-field-input:focus-visible {
+.onframe-commerce-direct-discount-field > div {
+  width: 160px;
+  min-width: 0;
+  justify-self: end;
+}
+
+.onframe-commerce-direct-discount-field input,
+.onframe-commerce-direct-discount-field input:focus,
+.onframe-commerce-direct-discount-field input:focus-visible {
   min-height: 0;
   margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  outline: 0;
-  background: transparent;
-  box-shadow: none;
-  appearance: none;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  appearance: none !important;
 }
 
 .onframe-commerce-direct-discount-date-range {
   position: relative;
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--ob-line-soft);
 }
 
-.onframe-commerce-direct-discount-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex: none;
-  flex-wrap: wrap;
-  gap: var(--ob-gap-sm);
-  padding: var(--ob-s-3) var(--ob-s-5);
-  border-top: 1px solid var(--ob-border);
-  background: var(--ob-bg-alt);
+.onframe-commerce-direct-discount-date-range > div {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+  align-items: start;
+  gap: 12px !important;
 }
 
-.onframe-commerce-direct-discount-summary {
-  display: grid;
-  min-height: 88px;
-  gap: var(--ob-gap-sm);
-  padding: var(--ob-s-3);
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-surface);
-  background: var(--ob-surface);
+.onframe-commerce-direct-discount-date-range > div > span:first-child {
+  padding-top: 11px;
+  color: var(--ob-fg-soft) !important;
+  font: var(--ob-w-regular) 13px/1.35 var(--ob-font) !important;
 }
 
-.onframe-commerce-direct-discount-summary.warn {
-  border-color: color-mix(in srgb, var(--ob-danger) 40%, var(--ob-border));
+.onframe-commerce-direct-discount-date-range > div > div {
+  width: 290px;
+  min-width: 0;
 }
 
-.onframe-commerce-direct-discount-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  min-height: 42px;
-  overflow: hidden;
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-control);
+.onframe-commerce-direct-discount-date-range input[type="text"],
+.onframe-commerce-direct-discount-date-range input[type="text"]:focus,
+.onframe-commerce-direct-discount-date-range input[type="text"]:focus-visible {
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  appearance: none;
 }
 
-.onframe-commerce-direct-discount-summary-grid > * + * {
-  border-left: 1px solid var(--ob-border);
+.onframe-commerce-direct-discount-line.is-separated {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--ob-line-soft);
 }
 
-.onframe-commerce-direct-discount-summary-grid .onframe-commerce-promotion-estimate-summary-metric {
-  align-content: center;
-  padding: var(--ob-s-2) var(--ob-s-3);
+.onframe-commerce-direct-discount-cost > strong {
+  color: var(--ob-red);
 }
 
-.onframe-commerce-direct-discount-summary-message {
-  display: flex;
-  align-items: center;
-  min-height: 42px;
-  margin: 0;
-  padding: 0 var(--ob-s-3);
-  border-radius: var(--ob-r-control);
-  background: var(--ob-bg-alt);
-  color: var(--ob-fg-soft);
-  font: var(--ob-w-regular) 12px/1.4 var(--ob-font);
+.onframe-commerce-direct-discount-benefit > strong,
+.onframe-commerce-direct-discount-total > strong {
+  color: var(--ob-green);
 }
 
-.onframe-commerce-direct-discount-summary.warn .onframe-commerce-direct-discount-summary-message {
-  background: var(--ob-danger-bg);
-  color: var(--ob-danger);
+.onframe-commerce-direct-discount-total {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ob-line-soft);
+  color: var(--ob-fg-strong);
+  font-size: 14px;
 }
 
-.onframe-commerce-direct-discount-summary-skeleton {
-  min-height: 42px;
-  background: var(--ob-bg-alt);
-  animation: onframe-commerce-skeleton 1.2s ease-in-out infinite alternate;
+.onframe-commerce-direct-discount-total > strong {
+  font-size: 18px;
+}
+
+.onframe-commerce-direct-discount-results > [role='alert'] {
+  margin: 6px 0;
 }
 
 @keyframes onframe-commerce-skeleton {
@@ -2782,29 +2746,105 @@ body:has(.onframe-commerce-popover-root [aria-describedby]) > [role='tooltip'] :
   }
 }
 
-/* Gerenciador de promoções em cartões */
-.onframe-commerce-modal-root,
-body:has(.onframe-commerce-modal-root [role='dialog']) > [data-ob-popover-id],
-body:has(.onframe-commerce-modal-root [aria-describedby]) > [role='tooltip'] {
-  --ob-font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+/* Contrato tipográfico das superfícies de comércio e de seus portais. */
+:is(
+  .onframe-commerce-inline,
+  .onframe-commerce-listing-controls,
+  .onframe-commerce-listing-badge,
+  .onframe-commerce-popover-root,
+  .onframe-commerce-modal-root,
+  .onframe-commerce-direct-discount-modal-root,
+  .onframe-commerce-promotion-result-popover-root
+),
+body:has(:is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [data-ob-popover-id],
+body:has(:is(
+  .onframe-commerce-inline,
+  .onframe-commerce-listing-controls,
+  .onframe-commerce-popover-root,
+  .onframe-commerce-modal-root,
+  .onframe-commerce-direct-discount-modal-root,
+  .onframe-commerce-promotion-result-popover-root
+) [aria-describedby]) > [role='tooltip'] {
+  --ob-font: 'OnFrame Poppins', 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ob-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  font-family: 'OnFrame Poppins Regular', var(--ob-font) !important;
-}
-
-.onframe-commerce-modal-root {
   --onframe-promotion-font-regular: 'OnFrame Poppins Regular', var(--ob-font);
   --onframe-promotion-font-medium: 'OnFrame Poppins Medium', var(--ob-font);
   --onframe-promotion-font-semibold: 'OnFrame Poppins SemiBold', var(--ob-font);
   --onframe-promotion-font-bold: 'OnFrame Poppins Bold', var(--ob-font);
   --onframe-promotion-font-black: 'OnFrame Poppins ExtraBold', var(--ob-font);
+  font-family: var(--ob-font) !important;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.onframe-commerce-modal-root :where(div, section, article, header, footer, button, input, textarea, select, option, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6),
-body:has(.onframe-commerce-modal-root [role='dialog']) > [data-ob-popover-id] :where(div, section, article, header, footer, button, input, textarea, select, option, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6),
-body:has(.onframe-commerce-modal-root [aria-describedby]) > [role='tooltip'] :where(span, p, strong, small, b) {
-  font-family: var(--onframe-promotion-font-regular, 'OnFrame Poppins Regular', var(--ob-font)) !important;
+:is(
+  .onframe-commerce-inline,
+  .onframe-commerce-listing-controls,
+  .onframe-commerce-listing-badge,
+  .onframe-commerce-popover-root,
+  .onframe-commerce-modal-root,
+  .onframe-commerce-direct-discount-modal-root,
+  .onframe-commerce-promotion-result-popover-root
+) :where(div, section, article, aside, nav, main, header, footer, form, fieldset, legend, button, input, textarea, select, option, optgroup, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6, summary, details, ul, ol, li, dl, dt, dd, table, caption, thead, tbody, tfoot, tr, th, td, time, output),
+body:has(:is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [data-ob-popover-id] :where(div, section, article, aside, nav, main, header, footer, form, fieldset, legend, button, input, textarea, select, option, optgroup, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6, summary, details, ul, ol, li, dl, dt, dd, table, caption, thead, tbody, tfoot, tr, th, td, time, output),
+body:has(:is(
+  .onframe-commerce-inline,
+  .onframe-commerce-listing-controls,
+  .onframe-commerce-popover-root,
+  .onframe-commerce-modal-root,
+  .onframe-commerce-direct-discount-modal-root,
+  .onframe-commerce-promotion-result-popover-root
+) [aria-describedby]) > [role='tooltip'] :where(div, span, p, strong, small, b, kbd) {
+  font-family: var(--ob-font) !important;
 }
 
+:is(
+  .onframe-commerce-inline,
+  .onframe-commerce-listing-controls,
+  .onframe-commerce-popover-root,
+  .onframe-commerce-modal-root,
+  .onframe-commerce-direct-discount-modal-root,
+  .onframe-commerce-promotion-result-popover-root
+) :where(kbd, [style*="--ob-font-mono"]),
+body:has(:is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [data-ob-popover-id] :where(kbd, [style*="--ob-font-mono"]),
+body:has(:is(
+  .onframe-commerce-inline,
+  .onframe-commerce-listing-controls,
+  .onframe-commerce-popover-root,
+  .onframe-commerce-modal-root,
+  .onframe-commerce-direct-discount-modal-root,
+  .onframe-commerce-promotion-result-popover-root
+) [aria-describedby]) > [role='tooltip'] :where(kbd, [style*="--ob-font-mono"]),
+.onframe-commerce-popover-campaign-field small,
+.onframe-commerce-popover-conditions-head small,
+.onframe-commerce-popover-empty small,
+.onframe-commerce-popover-coupon-list-head small,
+.onframe-commerce-popover-condition > b,
+.onframe-commerce-popover-price-field small,
+.onframe-commerce-popover-price-scenario small,
+.onframe-commerce-price-base small,
+.onframe-commerce-price-scenarios-label,
+.onframe-commerce-price-scenario small,
+.onframe-commerce-hero small,
+.onframe-commerce-row span,
+.onframe-commerce-price-main small,
+.onframe-commerce-cost-grid small,
+.onframe-commerce-promo-summary small,
+.onframe-commerce-promo-metrics small,
+.onframe-commerce-period-legend,
+.onframe-commerce-estimate-grid small,
+.onframe-commerce-modal-root .onframe-commerce-modal-head > div:first-child > span,
+.onframe-commerce-modal-root .onframe-commerce-promotion-table .ob-table-header,
+.onframe-commerce-meta small,
+.onframe-commerce-review-grid small,
+.onframe-commerce-metric small,
+.onframe-commerce-modal-root .onframe-commerce-promotion-filter-group > strong,
+.onframe-commerce-modal-root .onframe-commerce-promotion-estimate-summary-metric small {
+  font-family: var(--ob-font-mono) !important;
+}
+
+/* Gerenciador de promoções em cartões */
 .onframe-promotion-manager {
   display: flex;
   flex-direction: column;
@@ -3366,40 +3406,20 @@ body:has(.onframe-commerce-modal-root [aria-describedby]) > [role='tooltip'] :wh
     flex: 1 1 auto;
   }
 
-  .onframe-commerce-direct-discount-overlay {
-    align-items: flex-end;
-    padding: 0;
+  .onframe-commerce-direct-discount-line {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 150px);
   }
 
-  .onframe-commerce-direct-discount {
+  .onframe-commerce-direct-discount-field > div {
+    width: 150px;
+  }
+
+  .onframe-commerce-direct-discount-date-range > div {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .onframe-commerce-direct-discount-date-range > div > div {
     width: 100%;
-    max-height: calc(100vh - var(--ob-s-4));
-    border-radius: var(--ob-r-overlay) var(--ob-r-overlay) 0 0;
-  }
-
-  .onframe-commerce-direct-discount-head,
-  .onframe-commerce-direct-discount-body {
-    padding: var(--ob-s-4);
-  }
-
-  .onframe-commerce-direct-discount-grid,
-  .onframe-commerce-direct-discount-date-range-fields,
-  .onframe-commerce-direct-discount-summary-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .onframe-commerce-direct-discount-summary-grid > * + * {
-    border-top: 1px solid var(--ob-border);
-    border-left: 0;
-  }
-
-  .onframe-commerce-direct-discount-actions {
-    justify-content: stretch;
-    padding: var(--ob-s-3) var(--ob-s-4);
-  }
-
-  .onframe-commerce-direct-discount-actions .ob-button {
-    flex: 1 1 140px;
   }
 
 }

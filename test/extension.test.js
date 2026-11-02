@@ -309,6 +309,8 @@ test('fontes do content script usam URLs da extensão', () => {
 
   assert.equal(appended.length, 1);
   assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
+  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s);
+  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins SemiBold';[\s\S]*Poppins-SemiBold\.ttf/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins ExtraBold';[\s\S]*Poppins-ExtraBold\.ttf/s);
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);

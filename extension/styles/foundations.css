@@ -53,7 +53,7 @@
   --ob-shadow-pop: 0 8px 24px rgba(10, 78, 228, 0.18);
   --ob-scrim: rgba(20, 20, 20, 0.45);
   --ob-scrim-light: rgba(20, 20, 20, 0.08);
-  --ob-font: 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ob-font: 'OnFrame Poppins', 'Poppins', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ob-font-serif: 'Playfair Display', 'Iowan Old Style', 'Apple Garamond', Georgia, serif;
   --ob-font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --ob-w-regular: 400;
