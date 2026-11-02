@@ -155,14 +155,19 @@ async function buildPromotionSummary(client, itemId) {
 
   const itemPromotionEntries = extractEntries(itemPromotions);
   const sellerPromotionEntries = extractEntries(sellerPromotions);
-  const itemPromotionsWithCouponDetails = await enrichItemCouponPromotions(client, itemPromotionEntries);
+  const itemPromotionsWithDetails = await enrichItemPromotionDetails(
+    client,
+    item.id,
+    itemPromotionEntries,
+    sellerPromotionEntries
+  );
   const enrichedItemPromotions = await enrichSellerPromotionsForItem(
     client,
     item.id,
     sellerPromotionEntries,
-    itemPromotionsWithCouponDetails
+    itemPromotionsWithDetails
   );
-  const normalizedOffers = itemPromotionsWithCouponDetails
+  const normalizedOffers = itemPromotionsWithDetails
     .concat(enrichedItemPromotions)
     .map(normalizePromotionEntry);
   const winnerReconciliation = await reconcileSalePriceWinner(client, item.id, normalizedOffers, salePrice);
@@ -335,30 +340,74 @@ async function enrichSellerPromotionsForItem(client, itemId, sellerPromotions, i
   });
 }
 
-async function enrichItemCouponPromotions(client, entries) {
+async function enrichItemPromotionDetails(client, itemId, entries, sellerPromotions = []) {
   const itemEntries = Array.isArray(entries) ? entries : [];
-  if (!client || typeof client.getPromotion !== 'function') return itemEntries;
-
-  const couponIds = Array.from(new Set(itemEntries
-    .filter(isSellerCouponCampaign)
-    .map(promotionId)
-    .filter(Boolean)));
-  if (!couponIds.length) return itemEntries;
-
-  const details = await Promise.all(couponIds.map((id) => optional(() => client.getPromotion(
-    id,
-    PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN
-  ), [400, 404])));
-  const detailById = new Map(details
-    .filter((detail) => detail && !hasError(detail))
-    .map((detail) => [promotionId(detail), detail])
-    .filter(([id]) => Boolean(id)));
-
-  return itemEntries.map((entry) => {
-    if (!isSellerCouponCampaign(entry)) return entry;
-    const detail = detailById.get(promotionId(entry));
-    return detail ? mergeCouponCampaignDetail(entry, detail) : entry;
+  const sellerDetails = new Map((Array.isArray(sellerPromotions) ? sellerPromotions : [])
+    .map((entry) => [promotionEntryKey(entry), entry])
+    .filter(([key]) => Boolean(key)));
+  let enrichedEntries = itemEntries.map((entry) => {
+    const detail = sellerDetails.get(promotionEntryKey(entry));
+    return detail ? mergePromotionCampaignDetail(entry, detail) : entry;
   });
+
+  if (client && typeof client.getPromotion === 'function') {
+    const references = promotionReferences(enrichedEntries
+      .filter((entry) => isSellerCouponCampaign(entry) || !promotionPeriodComplete(entry)));
+    const details = await Promise.all(references.map((reference) => optional(() => client.getPromotion(
+      reference.id,
+      reference.type
+    ), [400, 404])));
+    const detailByKey = new Map(details
+      .map((detail, index) => detail && !hasError(detail) ? [references[index].key, detail] : null)
+      .filter(Boolean));
+
+    enrichedEntries = enrichedEntries.map((entry) => {
+      const detail = detailByKey.get(promotionEntryKey(entry));
+      if (!detail) return entry;
+      return isSellerCouponCampaign(entry)
+        ? mergeCouponCampaignDetail(entry, detail)
+        : mergePromotionCampaignDetail(entry, detail);
+    });
+  }
+
+  if (!client || typeof client.getPromotionItems !== 'function') return enrichedEntries;
+  const missingReferences = promotionReferences(enrichedEntries.filter((entry) => !promotionPeriodComplete(entry)));
+  if (!missingReferences.length) return enrichedEntries;
+
+  const itemLookups = await Promise.all(missingReferences.map((reference) => optional(() => client.getPromotionItems(
+    reference.id,
+    reference.type,
+    { item_id: itemId, limit: 50 }
+  ), [400, 404])));
+  const campaignItemByKey = new Map(itemLookups
+    .map((response, index) => {
+      const itemEntry = extractEntries(response)
+        .find((entry) => String(entry && entry.id || '') === String(itemId));
+      return itemEntry ? [missingReferences[index].key, itemEntry] : null;
+    })
+    .filter(Boolean));
+
+  return enrichedEntries.map((entry) => {
+    const itemEntry = campaignItemByKey.get(promotionEntryKey(entry));
+    return itemEntry ? normalizeCampaignItemEntry(entry, itemEntry) : entry;
+  });
+}
+
+function promotionReferences(entries) {
+  return Array.from(new Map((Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      const key = promotionEntryKey(entry);
+      const id = promotionId(entry);
+      const type = normalizePromotionType(entry && (entry.type || entry.promotion_type || entry.campaign_type));
+      return key && id && type ? [key, { key, id, type }] : null;
+    })
+    .filter(Boolean)).values());
+}
+
+function promotionPeriodComplete(entry) {
+  const start = entry && (entry.start_date || entry.startDate);
+  const finish = entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
+  return Boolean(start && finish);
 }
 
 function isSellerCouponCampaign(entry) {
@@ -372,19 +421,8 @@ function promotionId(entry) {
 }
 
 function mergeCouponCampaignDetail(itemEntry, campaign) {
-  const itemStatus = itemEntry.status || itemEntry.status_item || null;
-  const id = promotionId(itemEntry) || promotionId(campaign) || null;
-  return Object.assign({}, campaign, itemEntry, {
-    id,
-    promotion_id: id,
+  return Object.assign(mergePromotionCampaignDetail(itemEntry, campaign), {
     type: PROMOTION_TYPES.SELLER_COUPON_CAMPAIGN,
-    status: itemStatus || campaign.status || null,
-    status_item: itemStatus || itemEntry.status_item || null,
-    name: itemEntry.name || itemEntry.promotion_name || campaign.name || campaign.title || null,
-    title: itemEntry.title || campaign.title || null,
-    start_date: itemEntry.start_date || campaign.start_date || null,
-    end_date: itemEntry.end_date || itemEntry.finish_date || campaign.end_date || campaign.finish_date || null,
-    finish_date: itemEntry.finish_date || itemEntry.end_date || campaign.finish_date || campaign.end_date || null,
     sub_type: firstDefined(campaign.sub_type, itemEntry.sub_type),
     fixed_amount: firstDefined(campaign.fixed_amount, itemEntry.fixed_amount),
     fixed_percentage: firstDefined(campaign.fixed_percentage, itemEntry.fixed_percentage),
@@ -395,6 +433,29 @@ function mergeCouponCampaignDetail(itemEntry, campaign) {
     remaining_budget: firstDefined(campaign.remaining_budget, itemEntry.remaining_budget),
     used_coupons: firstDefined(campaign.used_coupons, itemEntry.used_coupons),
     redeems_per_user: firstDefined(campaign.redeems_per_user, itemEntry.redeems_per_user),
+    campaign
+  });
+}
+
+function mergePromotionCampaignDetail(itemEntry, campaign) {
+  const itemStatus = itemEntry.status || itemEntry.status_item || null;
+  const id = promotionId(itemEntry) || promotionId(campaign) || null;
+  return Object.assign({}, campaign, itemEntry, {
+    id,
+    promotion_id: id,
+    type: normalizePromotionType(
+      itemEntry.type || itemEntry.promotion_type || itemEntry.campaign_type ||
+      campaign.type || campaign.promotion_type || campaign.campaign_type
+    ),
+    status: itemStatus || campaign.status || null,
+    status_item: itemStatus || itemEntry.status_item || null,
+    name: itemEntry.name || itemEntry.promotion_name || campaign.name || campaign.title || null,
+    title: itemEntry.title || campaign.title || null,
+    start_date: itemEntry.start_date || itemEntry.startDate || campaign.start_date || campaign.startDate || null,
+    end_date: itemEntry.end_date || itemEntry.finish_date || itemEntry.endDate || itemEntry.finishDate ||
+      campaign.end_date || campaign.finish_date || campaign.endDate || campaign.finishDate || null,
+    finish_date: itemEntry.finish_date || itemEntry.end_date || itemEntry.finishDate || itemEntry.endDate ||
+      campaign.finish_date || campaign.end_date || campaign.finishDate || campaign.endDate || null,
     campaign
   });
 }

@@ -68,6 +68,7 @@
         "core/commerce-actions-view.js",
         "core/commerce-price-view.js",
         "core/commerce-promotions-view.js",
+        "core/commerce-promotion-manager-view.js",
         "core/detection.js",
         "core/shared.js",
         "core/toast.js",

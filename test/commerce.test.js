@@ -327,6 +327,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
+  const pricePopoverSource = source.slice(source.indexOf('function buildPricePopoverViewModel'), source.indexOf('function buildPromotionPopoverViewModel'));
 
   assert.match(view, /import \{ Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
   assert.match(view, /globalThis\.OnFrameCommercePriceView = Object\.freeze\(\{ render, unmount \}\)/);
@@ -375,7 +376,7 @@ test('popover de preco resume valores e custos em um card horizontal', () => {
   assert.match(source, /Custos/);
   assert.strictEqual(source.includes('onframe-commerce-price-secondary'), false);
   assert.doesNotMatch(source, /label: 'Preço base'/);
-  assert.doesNotMatch(source, /OFF sobre/);
+  assert.doesNotMatch(pricePopoverSource, /OFF sobre/);
   assert.doesNotMatch(source, /Líquido aprox\./);
   assert.doesNotMatch(source, /<small>Diferença<\/small>/);
   assert.doesNotMatch(source, /Vs\. referência/);
@@ -438,18 +439,116 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.doesNotMatch(styles, /\.onframe-commerce-listing-popover-space/);
 });
 
-test('modal de promocoes preserva posicao ao revisar oferta', () => {
+test('modal de promocoes usa uma view React sem reconstruir o DOM ao editar', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+  const scripts = manifest.content_scripts[0].js;
 
-  assert.match(source, /restoreModalPosition/);
-  assert.match(source, /promotionFocusKey/);
-  assert.match(source, /contentScrollTop/);
-  assert.match(source, /onframe-commerce-modal-content/);
-  assert.match(source, /state\.modalPositionFrame = requestAnimationFrame/);
-  assert.match(source, /function cancelModalPositionRestore/);
-  assert.match(source, /card\.contains\(next\)/);
-  assert.match(source, /datepickerField/);
-  assert.match(source, /data-entry-key/);
+  assert.match(view, /globalThis\.OnFrameCommercePromotionManagerView = Object\.freeze\(\{ render, unmount \}\)/);
+  assert.match(build, /commerce-promotion-manager-view\.jsx/);
+  assert.ok(scripts.indexOf('core/commerce-promotion-manager-view.js') < scripts.indexOf('modules/commerce/module.js'));
+  assert.match(source, /const CommercePromotionManagerView = rootScope\.OnFrameCommercePromotionManagerView/);
+  assert.match(source, /CommercePromotionManagerView\.render\(/);
+  assert.match(source, /function updatePromotionManagerDraft/);
+  assert.match(source, /state\.promotionDraftValues\[key\] = Object\.assign/);
+  assert.match(view, /value=\{row\.draftPrice\}/);
+  assert.match(view, /onClose=\{model\.openKey \? actions\.onCancelEdit : actions\.onClose\}/);
+  assert.doesNotMatch(view, /danger[^\n]+Descartar alterações/);
+});
+
+test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design system', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+
+  assert.match(view, /Modal,[\s\S]*Popover,[\s\S]*SearchInput,[\s\S]*Tabs/s);
+  assert.doesNotMatch(view, /<ScrollArea/, 'o Modal já fornece a única região rolável desta tela');
+  assert.match(view, /variant="pill" size="sm"/);
+  assert.doesNotMatch(view, /appearance=/);
+  assert.match(view, /onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover[\s\S]*<Tabs/s);
+  assert.match(view, /<Badge tone=\{tone\} variant="subtle" size="sm" dot>/);
+  assert.match(view, /status\.id === 'available'[\s\S]*\? 'orange'/);
+  assert.match(view, /title="Filtrar promoções"/);
+  assert.match(view, /label="Ativas"/);
+  assert.match(view, /label="Programadas"/);
+  assert.match(view, /label="Elegíveis"/);
+  assert.match(view, /label="Descontos diretos"/);
+  assert.match(view, /label="Descontos por pagamento"/);
+  assert.match(view, /label="Com redução de tarifa"/);
+  assert.match(view, /Aplicadas ao anúncio/);
+  assert.match(view, /Disponíveis para aplicar/);
+  assert.match(view, /<Card padding=\{0\}/);
+  assert.match(view, /borderColor: row\.formOpen \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
+  assert.doesNotMatch(view, /Avatar/);
+  assert.match(view, /onframe-commerce-promotion-type-icon \$\{row\.type\}/);
+  assert.match(view, /row\.type === 'coupon' \? 'ticket' : row\.type === 'payment' \? 'credit-card' : 'tag'/);
+  assert.match(view, /<div className="onframe-promotion-manager-meta">\s*<small>\{row\.typeLabel\}<\/small>\s*<small>\{row\.period\}<\/small>\s*<\/div>/s);
+  assert.doesNotMatch(view, /\{row\.typeLabel\} · \{row\.period\}/);
+  assert.match(view, /const isCoupon = row\.type === 'coupon'/);
+  assert.match(view, /tone=\{isCoupon \? 'warning' : 'primary'\}/);
+  assert.match(view, /icon=\{icon\(isCoupon \? 'clipboard-text' : 'tag'\)\}/);
+  assert.match(view, /tone=\{row\.canUpdate \? 'primary' : 'neutral'\}/);
+  assert.match(view, /aria-hidden="true"/);
+  assert.match(view, /label="Preço promocional"/);
+  assert.match(view, /startAddon="R\$"/);
+  assert.match(view, /Como o valor é calculado/);
+  assert.match(view, /onframe-promotion-manager-editor\$\{row\.readOnly \? ' is-readonly' : ''\}/);
+  assert.match(view, /Kbd,[\s\S]*from '@onblide\/ui'/s);
+  assert.match(view, /<Kbd size="sm">Esc<\/Kbd> cancela/);
+  assert.match(view, /<Kbd size="sm">Enter<\/Kbd> confirma/);
+  assert.match(view, /Nenhuma promoção encontrada/);
+  assert.match(view, /Desfazer/);
+  assert.match(source, /function buildPromotionManagerViewModel/);
+  assert.doesNotMatch(source, /buildPromotionRows\(\)\.filter\(\(row\) => row\.type !== 'payment'\)/);
+  assert.match(source, /state\.promotionStatusFilters\.includes\(row\.status\.id\)/);
+  assert.match(source, /state\.promotionTypeFilters\.includes\(row\.type\)/);
+  assert.match(source, /state\.promotionFinancialFilters\.includes\('fee_reduction'\) && !row\.hasFeeReduction/);
+  assert.match(source, /hasFeeReduction: hasPromotionFeeReduction\(entry\)/);
+  assert.match(source, /function togglePromotionManagerType/);
+  assert.match(source, /function togglePromotionManagerFinancial/);
+  assert.match(source, /function clearPromotionManagerAdvancedFilters/);
+  assert.match(source, /if \(action === 'details'\) \{\s*schedulePromotionEstimate\(key, row\.entry, \{\}, true\);/s);
+  assert.match(source, /function schedulePromotionEstimate\(key, entry, values, immediate = false\)/);
+  assert.match(view, /row\.result\.loading[\s\S]*<Skeleton key=\{item\} width="72%" height=\{38\}/s);
+  assert.match(source, /if \(status === 'available'\) return 'Elegível';/);
+  assert.doesNotMatch(source, /if \(status === 'available'\) return 'Disponível';/);
+  assert.match(source, /function commitPromotionManagerAction/);
+  assert.match(source, /function queuePromotionManagerRemoval/);
+  assert.match(source, /setTimeout\(\(\) => commitQueuedPromotionManagerRemoval\(key, row\.entry\), 5000\)/);
+  assert.match(source, /function commitQueuedPromotionManagerRemoval/);
+  assert.match(styles, /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\)/s);
+  assert.match(styles, /\.onframe-commerce-modal-root,[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\]\s*\{[\s\S]*--ob-font: 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: 'OnFrame Poppins Regular', var\(--ob-font\) !important;/s);
+  assert.match(styles, /\.onframe-commerce-modal-root :where\(div, section, article, header, footer, button, input, textarea, select, option, label, span, p, strong, small, b, a, h1, h2, h3, h4, h5, h6\)[\s\S]*font-family: var\(--onframe-promotion-font-regular,[\s\S]*!important;/s);
+  assert.match(styles, /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-commerce-promotion-type-icon\s*\{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*border: 1px solid var\(--ob-line-soft\);[\s\S]*border-radius: var\(--ob-r-control\);[\s\S]*background: var\(--ob-bg-alt\);/s);
+  assert.match(styles, /--onframe-promotion-font-black: 'OnFrame Poppins ExtraBold', var\(--ob-font\);/);
+  assert.match(styles, /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-black\) !important;[\s\S]*font-weight: var\(--ob-w-black\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: 13px;[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-name strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;[\s\S]*color: var\(--ob-fg-strong\);/s);
+  assert.match(styles, /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: 1px;[\s\S]*margin-top: 2px;/s);
+  assert.match(styles, /\.onframe-promotion-manager-meta > small\s*\{[\s\S]*margin-top: 0;/s);
+  assert.match(styles, /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-title > small\s*\{[\s\S]*font-weight: var\(--ob-w-regular\)/s);
+  assert.match(styles, /\.onframe-promotion-manager-condition > span,[\s\S]*font-weight: var\(--ob-w-regular\) !important;/s);
+  assert.match(styles, /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--onframe-promotion-font-bold\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-calculation strong\s*\{[^}]*font-size:/s);
+  assert.match(styles, /\.onframe-promotion-manager-calculation span small\s*\{[\s\S]*font-size: 11px;/s);
+  assert.match(styles, /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*position: sticky;[\s\S]*background: var\(--ob-surface\)/s);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-toolbar\s*\{[^}]*border-bottom:/s);
+  assert.match(styles, /\.onframe-promotion-manager-search-line\s*\{[\s\S]*justify-content: flex-start;/s);
+  assert.match(styles, /\.onframe-promotion-manager-filter-controls\s*\{[\s\S]*flex: none;/s);
+  assert.match(styles, /\.onframe-promotion-manager-filter-group \+ \.onframe-promotion-manager-filter-group\s*\{[\s\S]*border-top: 1px solid var\(--ob-line-soft\);/s);
+  assert.match(styles, /\.onframe-promotion-manager input:focus-visible\s*\{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s);
+  assert.match(styles, /\.onframe-promotion-manager-editor\s*\{[\s\S]*background: var\(--ob-bg-alt\);/s);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-editor > div \+ div\s*\{/);
+  assert.match(styles, /\.onframe-promotion-manager-editor > div\s*\{[\s\S]*border-inline: 0 !important;/s);
+  assert.match(styles, /\.onframe-promotion-manager-editor \.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border-inline: 0;[\s\S]*border-radius: 0;/s);
+  assert.match(styles, /\.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border: 1px solid var\(--ob-line-soft\);/s);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-editor-metrics \.onframe-promotion-manager-metric \+ \.onframe-promotion-manager-metric\s*\{/);
+  assert.match(styles, /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s);
+  assert.match(styles, /\.onframe-promotion-manager-removed\s*\{[\s\S]*border: 1px dashed var\(--ob-line-soft\);/s);
 });
 
 test('modal de promocoes nasce do popover em qualquer superficie', () => {
@@ -543,6 +642,10 @@ test('modal de promocoes mostra revisao de custos na lista continua antes de apl
   assert.match(source, /onframe-commerce-promotion-discard-btn" data-action="cancel-promotion-form" type="button">\$\{icon\('trash', 14\)\}Descartar alterações/);
   assert.match(source, /onframe-commerce-promotion-form-actions\$\{confirm \? ' has-review' : ''\}[\s\S]*onframe-commerce-promotion-review-actions/);
   assert.match(source, /function cancelPromotionForm/);
+  assert.match(source, /state\.promotionFormEstimate = state\.promotionEstimates\[key\] \|\| null;/);
+  assert.match(source, /if \(formAction !== 'details'\) \{\s*if \(previousEstimate\) state\.promotionEstimates\[key\] = previousEstimate;\s*else delete state\.promotionEstimates\[key\];/s);
+  assert.match(source, /schedulePromotionEstimate\(key, row\.entry, \{\}, true\);/);
+  assert.match(source, /if \(state\.promotionModalOpen && state\.promotionFormKey\) \{\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);\s*cancelPromotionForm\(\);\s*return;/s);
   assert.match(source, /delete state\.promotionDraftValues\[key\]/);
   assert.match(styles, /\.onframe-commerce-promotion-form-actions\.has-review\s*{\s*justify-content: space-between;/s);
   assert.match(styles, /\.onframe-commerce-promotion-discard-btn:hover:not\(:disabled\),[\s\S]*background: var\(--ob-danger\);[\s\S]*color: var\(--ob-fg-on-color\);/);
@@ -1689,6 +1792,113 @@ test('promotion summary enriquece campanhas com dados do item', async () => {
   assert.strictEqual(summary.offers.eligible[0].suggested_price, 196.59);
 });
 
+test('promotion summary combina a vigencia geral com a participacao do item', async () => {
+  let detailCalls = 0;
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+    getItemPromotions: async () => ([{
+      id: 'P-MLB17797034',
+      type: 'SMART',
+      status: 'started',
+      price: 196.59,
+      original_price: 220.99
+    }]),
+    getSellerPromotions: async () => ({
+      results: [{
+        id: 'P-MLB17797034',
+        type: 'SMART',
+        status: 'started',
+        name: '8.8 e Dia dos Pais',
+        start_date: '2026-07-20T00:00:00-03:00',
+        finish_date: '2026-08-10T23:59:59-03:00'
+      }]
+    }),
+    getPromotion: async () => {
+      detailCalls += 1;
+      return {};
+    },
+    getPromotionItems: async () => ({ results: [] })
+  }, 'MLB7186779490');
+
+  assert.strictEqual(detailCalls, 0);
+  assert.strictEqual(summary.offers.active[0].label, '8.8 e Dia dos Pais');
+  assert.strictEqual(summary.offers.active[0].start_date, '2026-07-20T00:00:00-03:00');
+  assert.strictEqual(summary.offers.active[0].end_date, '2026-08-10T23:59:59-03:00');
+});
+
+test('promotion summary consulta o detalhe quando a vigencia nao acompanha o item', async () => {
+  const detailCalls = [];
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+    getItemPromotions: async () => ([{
+      id: 'P-MLB17797034',
+      type: 'DEAL',
+      status: 'started',
+      name: '8.8 e Dia dos Pais',
+      price: 196.59,
+      original_price: 220.99
+    }]),
+    getSellerPromotions: async () => ({ results: [] }),
+    getPromotion: async (promotionId, promotionType) => {
+      detailCalls.push({ promotionId, promotionType });
+      return {
+        id: promotionId,
+        type: promotionType,
+        status: 'started',
+        start_date: '2026-07-20T00:00:00-03:00',
+        finish_date: '2026-08-10T23:59:59-03:00'
+      };
+    }
+  }, 'MLB7186779490');
+
+  assert.deepStrictEqual(detailCalls, [{ promotionId: 'P-MLB17797034', promotionType: 'DEAL' }]);
+  assert.strictEqual(summary.offers.active[0].start_date, '2026-07-20T00:00:00-03:00');
+  assert.strictEqual(summary.offers.active[0].end_date, '2026-08-10T23:59:59-03:00');
+});
+
+test('promotion summary consulta o item da campanha quando o detalhe nao informa vigencia', async () => {
+  const promotionItemCalls = [];
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({ id: 'MLB4483183993', seller_id: 123, site_id: 'MLB', price: 515.05, currency_id: 'BRL' }),
+    getItemPromotions: async () => ([{
+      id: 'LGH-MLB1000',
+      type: 'LIGHTNING',
+      status: 'candidate',
+      original_price: 515.05,
+      min_discounted_price: 103.01,
+      max_discounted_price: 463.55
+    }]),
+    getSellerPromotions: async () => ({
+      results: [{ id: 'LGH-MLB1000', type: 'LIGHTNING', status: 'started' }]
+    }),
+    getPromotion: async () => ({ id: 'LGH-MLB1000', type: 'LIGHTNING', status: 'started' }),
+    getPromotionItems: async (promotionId, promotionType, params) => {
+      promotionItemCalls.push({ promotionId, promotionType, params });
+      return {
+        results: [{
+          id: 'MLB4483183993',
+          status: 'candidate',
+          start_date: '2026-11-08T15:00:00-03:00',
+          finish_date: '2026-11-08T23:00:00-03:00',
+          price: 425.14,
+          original_price: 515.05
+        }]
+      };
+    }
+  }, 'MLB4483183993');
+
+  assert.deepStrictEqual(promotionItemCalls, [{
+    promotionId: 'LGH-MLB1000',
+    promotionType: 'LIGHTNING',
+    params: { item_id: 'MLB4483183993', limit: 50 }
+  }]);
+  assert.strictEqual(summary.offers.eligible[0].start_date, '2026-11-08T15:00:00-03:00');
+  assert.strictEqual(summary.offers.eligible[0].end_date, '2026-11-08T23:00:00-03:00');
+});
+
 test('promotion summary usa somente cupom participante do item e carrega os dados da campanha', async () => {
   const promotionItemCalls = [];
   const couponDetailCalls = [];
@@ -1716,6 +1926,8 @@ test('promotion summary usa somente cupom participante do item e carrega os dado
         type: 'SELLER_COUPON_CAMPAIGN',
         status: 'started',
         name: 'Cupom para carrinhos abandonados',
+        start_date: '2026-10-25T03:00:00Z',
+        finish_date: '2026-12-25T02:59:59Z',
         sub_type: 'FIXED_PERCENTAGE',
         fixed_amount: 0,
         fixed_percentage: 10,

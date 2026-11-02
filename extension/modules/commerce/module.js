@@ -19,6 +19,7 @@
     const CommerceActionsView = rootScope.OnFrameCommerceActionsView;
     const CommercePriceView = rootScope.OnFrameCommercePriceView;
     const CommercePromotionsView = rootScope.OnFrameCommercePromotionsView;
+    const CommercePromotionManagerView = rootScope.OnFrameCommercePromotionManagerView;
     const hasCommerceActionsView = Boolean(
       CommerceActionsView &&
       typeof CommerceActionsView.render === 'function' &&
@@ -37,6 +38,12 @@
       typeof CommercePromotionsView.unmount === 'function'
     );
     if (!hasCommercePromotionsView) throw new Error('Interface de promoções indisponível.');
+    const hasCommercePromotionManagerView = Boolean(
+      CommercePromotionManagerView &&
+      typeof CommercePromotionManagerView.render === 'function' &&
+      typeof CommercePromotionManagerView.unmount === 'function'
+    );
+    if (!hasCommercePromotionManagerView) throw new Error('Gerenciador de promoções indisponível.');
     const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
@@ -107,6 +114,7 @@
       promotionModalAnimations: [],
       promotionFormKey: '',
       promotionFormAction: '',
+      promotionFormEstimate: null,
       promotionDraftValues: {},
       promotionEstimates: {},
       promotionEstimateTimers: {},
@@ -115,10 +123,13 @@
       promotionConfirm: null,
       promotionFocusKey: '',
       promotionSearch: '',
+      promotionTab: 'all',
       promotionStatusFilters: [],
       promotionTypeFilters: [],
       promotionFinancialFilters: [],
       promotionFiltersOpen: false,
+      promotionRemoved: {},
+      promotionRemovalTimers: {},
       modalPositionFrame: null,
       promotionModalResume: null,
       promotionModalResumeFocus: '',
@@ -176,9 +187,12 @@
       state.directDiscountModalOpen = false;
       state.promotionFormKey = '';
       state.promotionFormAction = '';
+      state.promotionFormEstimate = null;
       state.promotionDraftValues = {};
       clearPromotionEstimateTimers();
+      clearPromotionRemovalTimers();
       state.promotionEstimates = {};
+      state.promotionRemoved = {};
       state.promotionBulkEnabled = false;
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
@@ -1112,37 +1126,30 @@
         state.modalRoot.className = 'onframe-commerce-modal-root';
         document.body.appendChild(state.modalRoot);
       }
-
-      const modalContent = state.modalRoot.querySelector('.onframe-commerce-modal-content');
-      const currentPosition = {
-        contentScrollTop: modalContent ? modalContent.scrollTop : 0,
-        contentScrollLeft: modalContent ? modalContent.scrollLeft : 0,
-        pageScrollX: window.scrollX,
-        pageScrollY: window.scrollY
-      };
-      const position = state.promotionModalResume || currentPosition;
-      const focusedField = captureModalFieldFocus();
-      const markup = buildPromotionModal();
-      if (markup === state.lastModalMarkup) return;
-      state.lastModalMarkup = markup;
-      unmountDesignSystemControls();
-      removePromotionResultPopover();
-      state.renderingPromotionModal = true;
-      try {
-        state.modalRoot.innerHTML = markup;
-        bindModalEvents();
-        restoreModalPosition(position, true);
-        restoreModalFieldFocus(focusedField);
-        restorePromotionModalResumeFocus();
-        state.promotionModalResume = null;
-        cancelModalPositionRestore();
-        state.modalPositionFrame = requestAnimationFrame(() => {
-          state.modalPositionFrame = null;
-          restoreModalPosition(position, false);
-        });
-      } finally {
-        state.renderingPromotionModal = false;
-      }
+      CommercePromotionManagerView.render(
+        state.modalRoot,
+        buildPromotionManagerViewModel(),
+        {
+          onClose: closePromotionModal,
+          onReload: () => void reloadCommerce(),
+          onCreateDiscount: openDirectDiscountForm,
+          onSearchChange: setPromotionManagerSearch,
+          onTabChange: setPromotionManagerTab,
+          onToggleStatus: togglePromotionManagerStatus,
+          onToggleType: togglePromotionManagerType,
+          onToggleFinancial: togglePromotionManagerFinancial,
+          onClearAdvancedFilters: clearPromotionManagerAdvancedFilters,
+          onClearFilters: clearPromotionManagerFilters,
+          onOpen: openPromotionManagerCard,
+          onCancelEdit: cancelPromotionForm,
+          onDraftChange: updatePromotionManagerDraft,
+          onToggleBulk: togglePromotionManagerBulk,
+          onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
+          onRemove: queuePromotionManagerRemoval,
+          onUndoRemove: undoPromotionManagerRemoval,
+          onError: handlePromotionManagerViewError
+        }
+      );
     }
 
     function renderDirectDiscountModal() {
@@ -1171,6 +1178,275 @@
       } finally {
         state.renderingPromotionModal = false;
       }
+    }
+
+    function buildPromotionManagerViewModel() {
+      const rows = state.promotionSummary
+        ? buildPromotionRows().map(buildPromotionManagerRow)
+        : [];
+      const query = normalizeSearchText(state.promotionSearch);
+      const filteredRows = rows.filter((row) => {
+        if (state.promotionTab !== 'all' && row.type !== state.promotionTab) return false;
+        if (state.promotionStatusFilters.length && !state.promotionStatusFilters.includes(row.status.id)) return false;
+        if (state.promotionTypeFilters.length && !state.promotionTypeFilters.includes(row.type)) return false;
+        if (state.promotionFinancialFilters.includes('fee_reduction') && !row.hasFeeReduction) return false;
+        if (!query) return true;
+        return normalizeSearchText(`${row.name} ${row.typeLabel}`).includes(query);
+      });
+      return {
+        loading: state.promotionLoading,
+        busy: state.busy,
+        error: shortMessage(state.actionError || state.promotionError),
+        tab: state.promotionTab,
+        search: state.promotionSearch,
+        statusFilters: state.promotionStatusFilters.slice(),
+        typeFilters: state.promotionTypeFilters.slice(),
+        financialFilters: state.promotionFinancialFilters.slice(),
+        canCreateDiscount: canCreateDirectDiscount(),
+        openKey: state.promotionFormKey,
+        rows: filteredRows
+      };
+    }
+
+    function buildPromotionManagerRow(row) {
+      const { entry, kind, key, status } = row;
+      const type = ['campaign', 'coupon', 'direct', 'payment'].includes(row.type) ? row.type : 'campaign';
+      const available = status === 'available';
+      const canCreate = available && (
+        kind === 'eligible-offer' ||
+        kind === 'stackable-offer' && isCandidatePromotion(entry) ||
+        kind === 'discount-offer' && isCandidatePromotion(entry)
+      );
+      const canUpdate = !available && CommerceModel.canUpdateOffer(entry);
+      const canDelete = !available && CommerceModel.canDeleteOffer(entry);
+      const formAction = state.promotionFormKey === key ? state.promotionFormAction : '';
+      const readOnly = formAction === 'details';
+      const fields = CommerceModel.getUserFields(
+        canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry)
+      );
+      const draft = state.promotionDraftValues[key] || {};
+      const showPriceField = fields.includes('deal_price') && !readOnly;
+      const draftPrice = Object.prototype.hasOwnProperty.call(draft, 'deal_price')
+        ? draft.deal_price
+        : defaultFieldValue('deal_price', entry);
+      const validationError = showPriceField ? promotionManagerPriceError(entry, draftPrice) : '';
+      const displayPrice = promotionDisplayPrice(entry);
+      const originalPrice = promotionManagerOriginalPrice(entry);
+      const discount = discountPercent(originalPrice, displayPrice);
+      const estimateRecord = state.promotionEstimates[key] || null;
+      const estimate = estimateRecord && estimateRecord.status === 'ready' ? estimateRecord.data : null;
+      const coupon = couponCampaignData(entry);
+      const couponMinimum = couponAmount(coupon.min_purchase_amount);
+      const couponMaximum = couponPresentation(entry).subtype === 'FIXED_PERCENTAGE'
+        ? couponAmount(coupon.max_purchase_amount)
+        : null;
+      const metrics = promotionManagerMetrics(estimate);
+      const calculation = promotionManagerCalculation(entry, estimate);
+      return {
+        key,
+        group: available ? 'available' : 'applied',
+        type,
+        name: entry.label || (type === 'coupon' ? 'Cupom' : 'Promoção'),
+        typeLabel: promotionTypeLabel(entry, type),
+        period: formatPromotionManagerPeriod(entry),
+        status: { id: status, label: promotionListStatusLabel(status) },
+        hasFeeReduction: hasPromotionFeeReduction(entry),
+        condition: type === 'coupon'
+          ? { primary: couponBenefitLabel(entry), secondary: '' }
+          : {
+            primary: displayPrice ? CommerceModel.formatMoney(displayPrice, itemCurrency()) : '—',
+            secondary: discount ? `${discount}% OFF` : ''
+          },
+        result: type === 'coupon'
+          ? {
+            primary: couponMinimum === null ? '—' : formatCouponMoney(couponMinimum),
+            secondary: couponMaximum === null ? '' : formatCouponMoney(couponMaximum),
+            loading: false
+          }
+          : {
+            primary: estimate && moneyOrNull(estimate.youReceive) !== null
+              ? CommerceModel.formatMoney(estimate.youReceive, estimate.currency_id || itemCurrency())
+              : '',
+            secondary: estimateRecord && estimateRecord.status === 'error' ? 'Valores indisponíveis.' : '',
+            loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
+          },
+        metrics,
+        calculation,
+        canUpdate,
+        canDelete,
+        createAction: canCreate,
+        formOpen: state.promotionFormKey === key,
+        formAction,
+        readOnly,
+        showPriceField,
+        draftPrice,
+        validationError,
+        priceHint: promotionManagerPriceHint(originalPrice, draftPrice),
+        canBulk: canUseBulkActions(),
+        bulkEnabled: state.promotionBulkEnabled,
+        busy: state.busy,
+        confirmLabel: state.promotionBulkEnabled
+          ? (formAction === 'update' ? 'Alterar em todas as variações' : 'Aplicar em todas as variações')
+          : (formAction === 'update' ? 'Confirmar alteração' : 'Confirmar aplicação'),
+        removed: Boolean(state.promotionRemoved[key])
+      };
+    }
+
+    function promotionManagerOriginalPrice(entry) {
+      return moneyOrNull(entry && entry.original_price) ||
+        moneyOrNull(state.priceSummary && state.priceSummary.salePrice && (
+          state.priceSummary.salePrice.regular_amount || state.priceSummary.salePrice.amount
+        ));
+    }
+
+    function promotionManagerPriceError(entry, value) {
+      const raw = String(value || '').trim();
+      if (!raw) return 'Informe um preço válido.';
+      const price = CommerceModel.parseMoneyInput(raw);
+      if (!price) return 'Informe um preço válido.';
+      const original = promotionManagerOriginalPrice(entry);
+      if (original && price >= original) return 'O preço promocional deve ser menor que o preço original.';
+      const rangeWarning = promotionRangeWarning(entry, price);
+      return rangeWarning || '';
+    }
+
+    function promotionManagerPriceHint(originalPrice, value) {
+      const price = CommerceModel.parseMoneyInput(value);
+      const discount = discountPercent(originalPrice, price);
+      if (!originalPrice || !discount) return '';
+      return `${discount}% OFF sobre o preço original ${CommerceModel.formatMoney(originalPrice, itemCurrency())}`;
+    }
+
+    function promotionManagerMetrics(estimate) {
+      if (!estimate) return [];
+      const currency = estimate.currency_id || itemCurrency();
+      return promotionEstimateMetrics(estimate, currency)
+        .filter((metric) => ['Você recebe', 'Comissão', 'Frete'].includes(metric.label))
+        .map((metric) => ({
+          label: metric.label,
+          value: metric.value,
+          tone: metric.label === 'Você recebe' ? 'success' : ''
+        }));
+    }
+
+    function promotionManagerCalculation(entry, estimate) {
+      if (!estimate) return [];
+      const currency = estimate.currency_id || itemCurrency();
+      return promotionResultPopoverRows(entry, estimate, currency).map((item) => ({
+        label: item.label,
+        value: item.value,
+        description: item.description,
+        tone: item.tone === 'total' ? 'success' : ''
+      }));
+    }
+
+    function formatPromotionManagerPeriod(entry) {
+      const start = parseIsoDate(entry && (entry.start_date || entry.startDate)) || parseDateValue(entry && (entry.start_date || entry.startDate));
+      const endValue = entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
+      const end = parseIsoDate(endValue) || parseDateValue(endValue);
+      if (!start && !end) return 'Sem prazo definido';
+      const format = (date) => date
+        ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date).replace('.', '')
+        : '';
+      if (start && end) return `${format(start)} – ${format(end)}`;
+      return format(start || end);
+    }
+
+    function setPromotionManagerSearch(value) {
+      state.promotionSearch = String(value || '');
+      rerenderModal();
+    }
+
+    function setPromotionManagerTab(tab) {
+      state.promotionTab = ['campaign', 'coupon'].includes(tab) ? tab : 'all';
+      state.promotionTypeFilters = [];
+      rerenderModal();
+    }
+
+    function togglePromotionManagerStatus(status) {
+      const values = state.promotionStatusFilters;
+      state.promotionStatusFilters = values.includes(status)
+        ? values.filter((item) => item !== status)
+        : values.concat(status);
+      rerenderModal();
+    }
+
+    function togglePromotionManagerType(type) {
+      const values = state.promotionTypeFilters;
+      state.promotionTab = 'all';
+      state.promotionTypeFilters = values.includes(type)
+        ? values.filter((item) => item !== type)
+        : values.concat(type);
+      rerenderModal();
+    }
+
+    function togglePromotionManagerFinancial(financial) {
+      const values = state.promotionFinancialFilters;
+      state.promotionFinancialFilters = values.includes(financial)
+        ? values.filter((item) => item !== financial)
+        : values.concat(financial);
+      rerenderModal();
+    }
+
+    function clearPromotionManagerAdvancedFilters() {
+      state.promotionStatusFilters = [];
+      state.promotionTypeFilters = [];
+      state.promotionFinancialFilters = [];
+      rerenderModal();
+    }
+
+    function clearPromotionManagerFilters() {
+      resetPromotionListFilters();
+      state.promotionTab = 'all';
+      rerenderModal();
+    }
+
+    function promotionManagerRow(key) {
+      return buildPromotionRows().find((row) => row.key === key) || null;
+    }
+
+    function openPromotionManagerCard(key, action) {
+      if (state.busy) return;
+      const row = promotionManagerRow(key);
+      if (!row) return;
+      state.promotionFormEstimate = state.promotionEstimates[key] || null;
+      state.promotionFormKey = key;
+      state.promotionFormAction = action;
+      state.promotionConfirm = null;
+      state.promotionBulkEnabled = false;
+      state.actionError = '';
+      if (action === 'details') {
+        schedulePromotionEstimate(key, row.entry, {}, true);
+      } else {
+        const fields = CommerceModel.getUserFields(
+          action === 'update' ? CommerceModel.getOfferUpdateFields(row.entry) : CommerceModel.getOfferCreateFields(row.entry)
+        );
+        ensurePromotionDraft(key, row.entry, fields);
+        schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key] || {});
+      }
+      rerenderModal();
+    }
+
+    function updatePromotionManagerDraft(key, field, value) {
+      const row = promotionManagerRow(key);
+      if (!row || state.busy) return;
+      state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, { [field]: value });
+      state.actionError = '';
+      schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key]);
+      rerenderModal();
+    }
+
+    function togglePromotionManagerBulk(checked) {
+      if (state.busy) return;
+      state.promotionBulkEnabled = Boolean(checked);
+      state.actionError = '';
+      rerenderModal();
+    }
+
+    function handlePromotionManagerViewError(error) {
+      state.actionError = toUserError(error);
+      state.promotionModalOpen = false;
+      removeModal();
     }
 
     function buildPromotionModal() {
@@ -1249,7 +1525,7 @@
             <strong>Estado</strong>
             ${renderPromotionFilterOption('status', 'active', 'Ativas')}
             ${renderPromotionFilterOption('status', 'programmed', 'Programadas')}
-            ${renderPromotionFilterOption('status', 'available', 'Disponíveis')}
+            ${renderPromotionFilterOption('status', 'available', 'Elegíveis')}
           </div>
           <div class="onframe-commerce-promotion-filter-group">
             <strong>Tipo</strong>
@@ -1535,7 +1811,7 @@
 
     function promotionListStatusLabel(status) {
       if (status === 'programmed') return 'Programada';
-      if (status === 'available') return 'Disponível';
+      if (status === 'available') return 'Elegível';
       return 'Ativa';
     }
 
@@ -1950,6 +2226,7 @@
 
     function resetPromotionListFilters() {
       state.promotionSearch = '';
+      state.promotionTab = 'all';
       state.promotionStatusFilters = [];
       state.promotionTypeFilters = [];
       state.promotionFinancialFilters = [];
@@ -3572,7 +3849,7 @@
         .map(({ key, entry }) => ({ key, entry }));
     }
 
-    function schedulePromotionEstimate(key, entry, values) {
+    function schedulePromotionEstimate(key, entry, values, immediate = false) {
       if (!key || !entry || !state.itemId) return;
       if (!CommerceModel.canEstimatePromotion(entry)) {
         clearPromotionEstimate(key);
@@ -3595,6 +3872,10 @@
       const current = state.promotionEstimates[key];
       if (current && current.hash === hash && (current.status === 'loading' || current.status === 'ready')) return;
       clearPromotionEstimateTimer(key);
+      if (immediate) {
+        void loadPromotionEstimate(key, hash, payload);
+        return;
+      }
       state.promotionEstimateTimers[key] = setTimeout(() => {
         delete state.promotionEstimateTimers[key];
         void loadPromotionEstimate(key, hash, payload);
@@ -3871,6 +4152,7 @@
       state.actionError = '';
       state.promotionFormKey = '';
       state.promotionFormAction = '';
+      state.promotionFormEstimate = null;
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
       state.promotionModalResume = null;
@@ -4017,6 +4299,7 @@
       state.promotionFiltersOpen = false;
       state.promotionFormKey = key;
       state.promotionFormAction = 'create';
+      state.promotionFormEstimate = null;
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
       ensureDirectDiscountDraft(key, entry);
@@ -4033,6 +4316,7 @@
       state.directDiscountModalOpen = false;
       state.promotionFormKey = '';
       state.promotionFormAction = '';
+      state.promotionFormEstimate = null;
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
       clearPromotionEstimateTimers();
@@ -4046,6 +4330,114 @@
       cancelModalPositionRestore();
       removeModal();
       removeDirectDiscountModal();
+    }
+
+    async function commitPromotionManagerAction(key, action, queuedEntry = null) {
+      if (!state.itemId || state.busy || !['create', 'update', 'delete'].includes(action)) return;
+      const row = promotionManagerRow(key);
+      const entry = queuedEntry || row && row.entry;
+      if (!entry) return;
+      const values = Object.assign({}, state.promotionDraftValues[key] || {});
+      const fields = action === 'delete'
+        ? []
+        : CommerceModel.getUserFields(action === 'update'
+          ? CommerceModel.getOfferUpdateFields(entry)
+          : CommerceModel.getOfferCreateFields(entry));
+      ensurePromotionDraft(key, entry, fields);
+      Object.assign(values, state.promotionDraftValues[key] || {});
+
+      const draftWarning = action === 'delete' ? '' : promotionDraftWarning(entry, values);
+      const priceWarning = fields.includes('deal_price') ? promotionManagerPriceError(entry, values.deal_price) : '';
+      if (draftWarning || priceWarning) {
+        state.actionError = draftWarning || priceWarning;
+        rerenderModal();
+        return;
+      }
+
+      try {
+        const method = action === 'delete' ? 'DELETE' : action === 'update' ? 'PUT' : 'POST';
+        const payload = action === 'delete'
+          ? CommerceModel.buildOfferDeletePayload(entry)
+          : action === 'update'
+            ? CommerceModel.buildOfferUpdatePayload(entry, values)
+            : CommerceModel.buildOfferPayload(entry, values);
+
+        state.busy = true;
+        state.operationPending = state.promotionBulkEnabled && canUseBulkActions()
+          ? 'promotion-bulk-commit'
+          : 'promotion-single';
+        state.operationPendingKey = key;
+        state.operationPendingAction = action;
+        state.actionError = '';
+        rerenderModal();
+
+        if (state.promotionBulkEnabled && canUseBulkActions()) {
+          const result = await commitBulkInBatches(`promotion.offer.${action}`, payload);
+          notifyBulkResult(result, promotionActionSuccessLabel(action));
+          void reconcileBulkResult(result, promotionActionSuccessLabel(action));
+        } else {
+          await api(itemApiPath('/promotions/offers'), {
+            method,
+            body: JSON.stringify(payload)
+          });
+          showToast('success', promotionActionSuccessLabel(action));
+        }
+
+        state.promotionFormKey = '';
+        state.promotionFormAction = '';
+        state.promotionFormEstimate = null;
+        delete state.promotionDraftValues[key];
+        clearPromotionEstimateTimer(key);
+        delete state.promotionEstimates[key];
+        state.promotionConfirm = null;
+        state.promotionBulkEnabled = false;
+        delete state.promotionRemoved[key];
+        await loadSummaries(state.requestId);
+        schedulePromotionManagerEstimates();
+      } catch (err) {
+        delete state.promotionRemoved[key];
+        state.actionError = CommerceModel.friendlyError(err);
+      } finally {
+        state.busy = false;
+        state.operationPending = '';
+        state.operationPendingKey = '';
+        state.operationPendingAction = '';
+        mountCommerce();
+      }
+    }
+
+    function queuePromotionManagerRemoval(key) {
+      if (state.busy || state.promotionRemoved[key]) return;
+      const row = promotionManagerRow(key);
+      if (!row || !CommerceModel.canDeleteOffer(row.entry)) return;
+      state.promotionRemoved[key] = { entry: row.entry };
+      state.actionError = '';
+      clearTimeout(state.promotionRemovalTimers[key]);
+      state.promotionRemovalTimers[key] = setTimeout(() => commitQueuedPromotionManagerRemoval(key, row.entry), 5000);
+      rerenderModal();
+    }
+
+    function commitQueuedPromotionManagerRemoval(key, entry) {
+      if (state.busy) {
+        state.promotionRemovalTimers[key] = setTimeout(() => commitQueuedPromotionManagerRemoval(key, entry), 500);
+        return;
+      }
+      delete state.promotionRemovalTimers[key];
+      void commitPromotionManagerAction(key, 'delete', entry);
+    }
+
+    function undoPromotionManagerRemoval(key) {
+      clearTimeout(state.promotionRemovalTimers[key]);
+      delete state.promotionRemovalTimers[key];
+      delete state.promotionRemoved[key];
+      rerenderModal();
+    }
+
+    function clearPromotionRemovalTimers() {
+      Object.keys(state.promotionRemovalTimers || {}).forEach((key) => {
+        clearTimeout(state.promotionRemovalTimers[key]);
+      });
+      state.promotionRemovalTimers = {};
     }
 
     async function performPromotionAction(button, action) {
@@ -4108,6 +4500,7 @@
           notifyBulkResult(result, promotionActionSuccessLabel(action));
           state.promotionFormKey = '';
           state.promotionFormAction = '';
+          state.promotionFormEstimate = null;
           state.promotionDraftValues = {};
           clearPromotionEstimateTimers();
           state.promotionEstimates = {};
@@ -4132,6 +4525,7 @@
         showToast('success', promotionActionSuccessLabel(action));
         state.promotionFormKey = '';
         state.promotionFormAction = '';
+        state.promotionFormEstimate = null;
         state.promotionDraftValues = {};
         clearPromotionEstimateTimers();
         state.promotionEstimates = {};
@@ -4166,12 +4560,19 @@
     function cancelPromotionForm() {
       const key = state.promotionFormKey;
       if (!key || state.busy) return;
+      const row = promotionManagerRow(key);
+      const formAction = state.promotionFormAction;
+      const previousEstimate = state.promotionFormEstimate;
       const returningFromDirectDiscount = state.directDiscountModalOpen && key === directDiscountKey();
       clearPromotionEstimateTimer(key);
-      delete state.promotionEstimates[key];
       delete state.promotionDraftValues[key];
+      if (formAction !== 'details') {
+        if (previousEstimate) state.promotionEstimates[key] = previousEstimate;
+        else delete state.promotionEstimates[key];
+      }
       state.promotionFormKey = '';
       state.promotionFormAction = '';
+      state.promotionFormEstimate = null;
       state.promotionConfirm = null;
       state.promotionFocusKey = '';
       state.promotionBulkEnabled = false;
@@ -4183,6 +4584,9 @@
         removeDirectDiscountModal();
       }
       rerenderModal();
+      if (!returningFromDirectDiscount && formAction !== 'details' && !previousEstimate && row) {
+        schedulePromotionEstimate(key, row.entry, {}, true);
+      }
     }
 
     async function reloadCommerce() {
@@ -4637,6 +5041,7 @@
       removePromotionResultPopover();
       if (Datepicker && typeof Datepicker.unmountWithin === 'function') Datepicker.unmountWithin(state.modalRoot);
       if (DesignSystemButton && typeof DesignSystemButton.unmountWithin === 'function') DesignSystemButton.unmountWithin(state.modalRoot);
+      if (state.modalRoot) CommercePromotionManagerView.unmount(state.modalRoot);
       if (state.modalRoot) state.modalRoot.remove();
       state.modalRoot = null;
       state.lastModalMarkup = '';
@@ -4672,6 +5077,12 @@
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
           if (state.directDiscountModalOpen) {
+            cancelPromotionForm();
+            return;
+          }
+          if (state.promotionModalOpen && state.promotionFormKey) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
             cancelPromotionForm();
             return;
           }

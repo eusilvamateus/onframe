@@ -112,8 +112,18 @@
   color-scheme: light;
 }
 
-body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'] {
+:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root) {
+  --ob-z-overlay: var(--ob-z-extension-overlay);
+  --ob-z-modal: var(--ob-z-extension-modal);
+}
+
+body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'],
+body:has(:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [role='tooltip'] {
   --ob-z-tooltip: var(--ob-z-extension-toast);
+}
+
+body:has(:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [data-ob-popover-id] {
+  --ob-z-dropdown: var(--ob-z-extension-modal);
 }
 
 :root[data-onframe-theme='dark'] :where(
@@ -123,7 +133,8 @@ body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-act
   [class^='onframe-'],
   [class*=' onframe-'],
   [data-ob-popover-id],
-  body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip']
+  body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'],
+  body:has(:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [role='tooltip']
 ) {
   --ob-blue: #4d7fef;
   --ob-blue-700: #6e96f1;
@@ -198,8 +209,10 @@ body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-act
   [class*=' onframe-'],
   [data-ob-popover-id]
 ) *::selection,
-body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip']::selection,
-body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'] *::selection {
+body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip']::selection,
+body:has(:is(.onblide-ml-tray, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root, .onframe-description-action-root, .onframe-characteristics-action-root) [aria-describedby]) > [role='tooltip'] *::selection,
+body:has(:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [role='tooltip']::selection,
+body:has(:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog']) > [role='tooltip'] *::selection {
   color: var(--ob-selection-fg);
   background: var(--ob-selection-bg);
 }

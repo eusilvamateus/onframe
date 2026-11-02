@@ -63,8 +63,11 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(themeSync, /chrome\.storage\.onChanged/);
   assert.match(foundations, /:root\[data-onframe-theme='dark'\]/);
   assert.match(foundations, /\[class\^='onframe-'\]/);
-  assert.match(foundations, /body:has\(:is\(\.onblide-ml-tray, \.onblide-ml-dialog-root, \.onframe-description-action-root, \.onframe-characteristics-action-root\) \[aria-describedby\]\) > \[role='tooltip'\]/);
+  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[aria-describedby\]\) > \[role='tooltip'\]/);
+  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[role='dialog'\]\) > \[role='tooltip'\]/);
   assert.match(foundations, /--ob-z-tooltip: var\(--ob-z-extension-toast\)/);
+  assert.match(foundations, /:is\(\.onblide-ml-dialog-root, \.onframe-commerce-modal-root\)\s*\{[\s\S]*--ob-z-overlay: var\(--ob-z-extension-overlay\);[\s\S]*--ob-z-modal: var\(--ob-z-extension-modal\);/s);
+  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[role='dialog'\]\) > \[data-ob-popover-id\]\s*\{[\s\S]*--ob-z-dropdown: var\(--ob-z-extension-modal\);/s);
   assert.match(foundations, /--ob-selection-bg: var\(--ob-blue-100\)/);
   assert.match(foundations, /--ob-selection-bg: #3a6ee0/);
   assert.match(foundations, /--ob-selection-fg: #ffffff/);
@@ -305,6 +308,8 @@ test('fontes do content script usam URLs da extensão', () => {
 
   assert.equal(appended.length, 1);
   assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
+  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins SemiBold';[\s\S]*Poppins-SemiBold\.ttf/s);
+  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins ExtraBold';[\s\S]*Poppins-ExtraBold\.ttf/s);
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
   assert.doesNotMatch(phosphor, /@font-face|Phosphor\.woff2/);
 });
