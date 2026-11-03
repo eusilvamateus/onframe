@@ -2,6 +2,7 @@ import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { Accordion, Alert, Badge, Button, Card, Checkbox, Divider, Input, Ph, Select, Spinner, Tooltip } from '@onblide/ui';
+import { CatalogNotice } from './catalog-notice';
 
 const roots = new WeakMap();
 
@@ -57,14 +58,6 @@ function EditAction({ model, actions }) {
         {button}
       </span>
     </Tooltip>
-  );
-}
-
-function CatalogNotice() {
-  return (
-    <Alert tone="info" title="Este é um anúncio de catálogo">
-      As características são definidas pelo catálogo. Para editá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.
-    </Alert>
   );
 }
 
@@ -375,7 +368,13 @@ function renderAction(host, model, actions = {}) {
 }
 
 function renderCatalogNotice(host, options = {}) {
-  render(host, <CatalogNotice />, options.onError || (() => {}));
+  render(
+    host,
+    <CatalogNotice>
+      As características são definidas pelo catálogo. Para editá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.
+    </CatalogNotice>,
+    options.onError || (() => {})
+  );
 }
 
 function renderFooter(host, model, actions = {}) {

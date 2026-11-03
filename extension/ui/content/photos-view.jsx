@@ -346,31 +346,18 @@ function TrayBar({ model, actions }) {
           </span>
         </div>
       )}
-      <div className="onblide-ml-dock-state-actions">
-        {!model.blocked && (
-          <Button kind="primary" size="sm" onClick={actions.onConnect}>
-            Conectar
+      {!model.catalog && (
+        <div className="onblide-ml-dock-state-actions">
+          {!model.blocked && (
+            <Button kind="primary" size="sm" onClick={actions.onConnect}>
+              Conectar
+            </Button>
+          )}
+          <Button kind="quiet" tone="primary" fill={false} size="sm" onClick={actions.onReload}>
+            Recarregar
           </Button>
-        )}
-        <Button kind="quiet" tone="primary" fill={false} size="sm" onClick={actions.onReload}>
-          Recarregar
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function CatalogNotice() {
-  return (
-    <div className="onblide-ml-dock-catalog-notice">
-      <Ph n="info" size={16} />
-      <span className="onblide-ml-dock-catalog-copy">
-        <strong>Este é um anúncio de catálogo</strong>
-        <small>
-          As fotos são definidas pelo catálogo. Para gerenciá-las, acesse seu anúncio próprio,
-          como um Anúncio UP ou Anúncio.
-        </small>
-      </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -530,7 +517,7 @@ function EditorDockContent({ model, actions }) {
 
 function DockContent({ model, actions }) {
   if (!model.hasContext) return <TrayBar model={model} actions={actions} />;
-  if (model.blocked) return model.catalog ? <CatalogNotice /> : <TrayBar model={model} actions={actions} />;
+  if (model.blocked) return <TrayBar model={model} actions={actions} />;
   return <EditorDockContent model={model} actions={actions} />;
 }
 

@@ -37,7 +37,7 @@
 
 .onframe-description-catalog-notice {
   max-width: min(560px, 100%);
-  margin-top: var(--ob-s-2);
+  margin-top: var(--ob-s-1);
 }
 
 .onframe-description-is-editing .onframe-description-action-root {

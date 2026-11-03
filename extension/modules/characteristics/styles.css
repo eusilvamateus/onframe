@@ -42,7 +42,7 @@
 
 .onframe-characteristics-catalog-notice {
   max-width: min(560px, 100%);
-  margin-top: var(--ob-s-2);
+  margin-top: var(--ob-s-1);
 }
 
 .onframe-characteristics-is-editing .onframe-characteristics-action-root {

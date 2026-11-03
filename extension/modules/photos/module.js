@@ -366,7 +366,7 @@
       busy: state.busy,
       dirty: state.dirty,
       saveDisabled: Boolean(state.busy || (limitState && limitState.message)),
-      status: buildTrayStatusViewModel(limitState),
+      status: buildTrayStatusViewModel(limitState, catalog),
       counter: limitState && limitState.counterText
         ? limitState.counterText
         : `${state.draftPictures.length} fotos`,
@@ -375,7 +375,7 @@
     };
   }
 
-  function buildTrayStatusViewModel(limitState) {
+  function buildTrayStatusViewModel(limitState, catalog = false) {
     if (state.error === AUTH_REQUIRED_MESSAGE) {
       return {
         title: 'Extensão desconectada',
@@ -390,6 +390,14 @@
         text: state.error,
         tone: 'error',
         icon: 'warning-circle'
+      };
+    }
+    if (catalog) {
+      return {
+        title: 'Este é um anúncio de catálogo',
+        text: 'As fotos são definidas pelo catálogo. Para gerenciá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.',
+        tone: 'muted',
+        icon: 'info'
       };
     }
     const blockedMessage = getPictureEditingBlockedMessage();

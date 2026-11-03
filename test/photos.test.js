@@ -399,9 +399,9 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(view, /className="onblide-ml-dock-identity"/);
   assert.match(view, /className="onblide-ml-dock-shell"/);
   assert.match(view, /className="onblide-ml-dock-silhouette"/);
-  assert.match(view, /function CatalogNotice\(\)/);
-  assert.match(view, /Este é um anúncio de catálogo/);
-  assert.match(view, /model\.catalog \? <CatalogNotice \/> : <TrayBar/);
+  assert.doesNotMatch(view, /function CatalogNotice\(\)/);
+  assert.match(view, /if \(model\.blocked\) return <TrayBar model=\{model\} actions=\{actions\} \/>/);
+  assert.match(view, /!model\.catalog && \(/);
   assert.match(source, /if \(isCatalogListing\(\)\) return 'Fotos definidas pelo catálogo\.';/);
   assert.match(source, /sendRemoteMessage\('oauth-start'\)/);
   assert.doesNotMatch(source, /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/);
@@ -418,8 +418,8 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-state \{[\s\S]*?grid-template-columns: minmax\(280px, 1fr\) auto;/);
   assert.doesNotMatch(view, /function Status\(|onblide-ml-status/);
   assert.doesNotMatch(styles, /\.onblide-ml-dock-silhouette-outline \{/);
-  assert.match(styles, /\.onblide-ml-dock-catalog-notice \{/);
-  assert.match(styles, /\.onblide-ml-dock-catalog-notice \{[\s\S]*?align-items: center;/);
+  assert.doesNotMatch(styles, /\.onblide-ml-dock-catalog-notice \{/);
+  assert.match(source, /if \(catalog\) \{[\s\S]*?title: 'Este é um anúncio de catálogo'[\s\S]*?tone: 'muted'[\s\S]*?icon: 'info'/);
   assert.match(styles, /bottom: calc\(100% - 1px\);/);
   assert.doesNotMatch(styles, /\.onblide-ml-start-service \{/);
   assert.match(editorDock, /kind=\{model\.dirty \? 'secondary' : 'primary'\}/);

@@ -19,7 +19,8 @@ test('descrição usa uma view React como única rota da interface', () => {
   assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*size="sm"[\s\S]*Editar descrição/);
   assert.doesNotMatch(view, /onframe-description-action"[\s\S]*?fill=\{false\}/);
   assert.match(view, /<Tooltip label="Expanda esta seção para editar a descrição\."/);
-  assert.match(view, /<Alert tone="info" title="Este é um anúncio de catálogo">/);
+  assert.match(view, /import \{ CatalogNotice \} from '\.\/catalog-notice'/);
+  assert.match(view, /<CatalogNotice>[\s\S]*?A descrição é definida pelo catálogo\.[\s\S]*?<\/CatalogNotice>/);
   assert.match(view, /<Card[\s\S]*padding="var\(--ob-s-4\)"/);
   assert.match(view, /function DescriptionTextField/);
   assert.match(view, /const maxRowsWithoutInternalScroll = Math\.max\(18, value\.length \+ 1\);/);

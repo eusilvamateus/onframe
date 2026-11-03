@@ -19,7 +19,8 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*size="sm"[\s\S]*Editar características/);
   assert.doesNotMatch(view, /onframe-characteristics-action"[\s\S]*?fill=\{false\}/);
   assert.match(view, /<Tooltip label="Expanda esta seção para editar as características\."/);
-  assert.match(view, /<Alert tone="info" title="Este é um anúncio de catálogo">/);
+  assert.match(view, /import \{ CatalogNotice \} from '\.\/catalog-notice'/);
+  assert.match(view, /<CatalogNotice>[\s\S]*?As características são definidas pelo catálogo\.[\s\S]*?<\/CatalogNotice>/);
   assert.match(view, /<Card padding="var\(--ob-s-3\)"/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
