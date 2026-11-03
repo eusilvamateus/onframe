@@ -76,6 +76,24 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       sku: 'CADEIRA-01', name: 'Cadeira dobrável', description: '', cost: 80,
       taxRate: 4, variableCost: 2, status: 'inactive'
     }), env, admin, 'request-chair');
+    await db.batch([
+      db.prepare("UPDATE products SET name = 'A Mesa', created_at = 100, updated_at = 400 WHERE id = ?").bind(created.id),
+      db.prepare("UPDATE products SET name = 'Z Cadeira', created_at = 200, updated_at = 300 WHERE id = ?").bind(chair.id)
+    ]);
+    const skuOrder = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?sort=sku'));
+    assert.deepEqual(skuOrder.products.map((entry) => entry.id), [chair.id, created.id]);
+    const nameOrder = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?sort=name'));
+    assert.deepEqual(nameOrder.products.map((entry) => entry.id), [created.id, chair.id]);
+    const recentOrder = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?sort=recent'));
+    assert.deepEqual(recentOrder.products.map((entry) => entry.id), [chair.id, created.id]);
+    const updatedOrder = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?sort=updated'));
+    assert.deepEqual(updatedOrder.products.map((entry) => entry.id), [created.id, chair.id]);
+    const fallbackOrder = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?sort=unknown'));
+    assert.deepEqual(fallbackOrder.products.map((entry) => entry.id), [created.id, chair.id]);
+    await db.batch([
+      db.prepare("UPDATE products SET name = 'Mesa atualizada' WHERE id = ?").bind(created.id),
+      db.prepare("UPDATE products SET name = 'Cadeira dobrável' WHERE id = ?").bind(chair.id)
+    ]);
     const importRows = [
       { rowNumber: 2, ...payload, sku: 'MESA-180', cost: 170 },
       { rowNumber: 3, sku: 'BANCO-01', name: 'Banco portátil', description: '', cost: 55.9, taxRate: 3.5, variableCost: 1, status: 'active' },

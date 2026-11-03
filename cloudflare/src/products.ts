@@ -217,6 +217,13 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const query = String(url.searchParams.get('q') || '').trim();
   const requestedStatus = String(url.searchParams.get('status') || 'all');
   const status = ['active', 'inactive', 'all'].includes(requestedStatus) ? requestedStatus : 'all';
+  const requestedSort = String(url.searchParams.get('sort') || 'updated');
+  const orderBy = {
+    sku: 'normalized_sku ASC, id ASC',
+    name: 'name COLLATE NOCASE ASC, id ASC',
+    recent: 'created_at DESC, id DESC',
+    updated: 'updated_at DESC, id DESC'
+  }[requestedSort] || 'updated_at DESC, id DESC';
   const requestedPage = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '25', 10) || 25));
   const where = ['workspace_id = ?', 'archived_at IS NULL'];
@@ -239,7 +246,7 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const rows = await env.ONFRAME_DB.prepare(`
     SELECT id, sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
     FROM products WHERE ${clause}
-    ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?
+    ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `).bind(...bindings, limit, (page - 1) * limit).all<ProductRow>();
   return {
     products: rows.results.map(productPayload),

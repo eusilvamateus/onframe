@@ -94,7 +94,7 @@ function itemEditHistoryPath(query) {
 function productsPath(query) {
   const source = query && typeof query === 'object' ? query : {};
   const params = new URLSearchParams();
-  for (const key of ['q', 'status', 'page', 'limit']) {
+  for (const key of ['q', 'status', 'sort', 'page', 'limit']) {
     const value = String(source[key] === undefined || source[key] === null ? '' : source[key]).trim();
     if (value) params.set(key, value);
   }
