@@ -28,13 +28,6 @@
   src: url('${runtime.getURL(`fonts/${file}`)}') format('truetype');
   font-weight: ${weight};
   font-style: ${fontStyle};
-}`).join('\n') + `
-@font-face {
-  font-family: 'Phosphor';
-  src: url('${runtime.getURL('vendor/phosphor/Phosphor.woff2')}') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: block;
-}`;
+}`).join('\n');
   (document.head || document.documentElement).appendChild(style);
 })(globalThis);

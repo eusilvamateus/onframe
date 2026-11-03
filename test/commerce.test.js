@@ -286,7 +286,7 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
-  const fonts = fs.readFileSync(path.join(__dirname, '..', 'extension', 'core', 'fonts.js'), 'utf8');
+  const phosphor = fs.readFileSync(path.join(__dirname, '..', 'extension', 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
 
   assert.match(view, /import \{ Badge, Button, Chip, Ph \} from '@onblide\/ui'/);
@@ -307,7 +307,9 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   assert.doesNotMatch(source, /function buildInlineMarkup|function bindInlineEvents|function listingControlButton/);
   assert.doesNotMatch(source, /onframe-commerce-chip|onframe-commerce-chipbar/);
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css')), false);
-  assert.match(fonts, /font-family: 'Phosphor'/);
+  assert.match(phosphor, /font-family: 'Phosphor'/);
+  assert.match(phosphor, /font-family: 'Phosphor-Bold'/);
+  assert.match(phosphor, /font-family: 'Phosphor-Fill'/);
 });
 
 test('popover de preco organiza resumo e edicao em conteudo progressivo', () => {

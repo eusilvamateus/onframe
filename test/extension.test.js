@@ -10,6 +10,37 @@ const { transformSync } = require('esbuild');
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
 
+test('pacote da extensão mantém o orçamento de tamanho e não duplica assets da interface', () => {
+  const generatedFiles = [
+    path.join(extensionRoot, 'ui', 'popup', 'app.js'),
+    path.join(extensionRoot, 'ui', 'popup', 'app.css'),
+    path.join(extensionRoot, 'ui', 'options', 'app.js'),
+    path.join(extensionRoot, 'ui', 'options', 'app.css')
+  ];
+  generatedFiles.forEach((file) => assert.equal(fs.existsSync(file), true, `Bundle ausente: ${file}`));
+
+  const files = fs.readdirSync(extensionRoot, { recursive: true })
+    .map((file) => path.join(extensionRoot, file))
+    .filter((file) => fs.statSync(file).isFile());
+  const totalBytes = files.reduce((total, file) => total + fs.statSync(file).size, 0);
+  const maxBytes = 12 * 1024 * 1024;
+
+  assert.ok(totalBytes <= maxBytes, `Pacote tem ${(totalBytes / 1024 / 1024).toFixed(2)} MiB; limite: 12 MiB.`);
+  assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'popup', 'assets')), false);
+  assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'options', 'assets')), false);
+
+  const phosphor = fs.readFileSync(path.join(extensionRoot, 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
+  assert.match(phosphor, /Phosphor\.woff2/);
+  assert.match(phosphor, /Phosphor-Bold\.woff2/);
+  assert.match(phosphor, /Phosphor-Fill\.woff2/);
+  assert.doesNotMatch(phosphor, /\.(?:svg|ttf|woff)['")]/);
+
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  assert.match(build, /compactDesignSystemStylesPlugin/);
+  assert.match(build, /compactPhosphorWeights/);
+  assert.match(build, /minify: true/);
+});
+
 test('feedback transitorio usa toast e problemas que exigem atencao permanecem em alert', () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const helper = source.slice(source.indexOf('function feedbackSurface'), source.indexOf('function activityLabel'));
@@ -340,9 +371,11 @@ test('fontes do content script usam URLs da extensão', () => {
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s);
   assert.doesNotMatch(appended[0].textContent, /font-family: 'OnFrame Poppins (?:Regular|Medium|SemiBold|Bold|ExtraBold)'/);
-  assert.match(appended[0].textContent, /font-family: 'Phosphor';[\s\S]*vendor\/phosphor\/Phosphor\.woff2/s);
+  assert.doesNotMatch(appended[0].textContent, /font-family: 'Phosphor'/);
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
-  assert.doesNotMatch(phosphor, /@font-face|Phosphor\.woff2/);
+  assert.match(phosphor, /font-family: 'Phosphor';[\s\S]*\/vendor\/phosphor\/Phosphor\.woff2/s);
+  assert.match(phosphor, /font-family: 'Phosphor-Bold';[\s\S]*\/vendor\/phosphor\/Phosphor-Bold\.woff2/s);
+  assert.match(phosphor, /font-family: 'Phosphor-Fill';[\s\S]*\/vendor\/phosphor\/Phosphor-Fill\.woff2/s);
 });
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
