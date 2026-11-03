@@ -276,8 +276,14 @@ button, input { font: inherit; }
 .onframe-products-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-3); }
 .onframe-products-pagination > span { color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-product-modal { gap: var(--ob-s-4); }
-.onframe-product-import { gap: var(--ob-s-4); }
-.onframe-product-import-intro { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ob-s-4); }
+.onframe-product-import { gap: var(--ob-s-5); }
+.onframe-product-import-intro { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-4); }
+.onframe-product-import-intro p { margin: 0; color: var(--ob-fg); font-size: var(--ob-fs-sm); }
+.onframe-product-import-intro > button { flex: none; white-space: nowrap; }
+.onframe-product-import-guidance { display: flex; flex-direction: column; gap: var(--ob-s-3); margin: 0; padding: 0; list-style: none; }
+.onframe-product-import-guidance li { display: flex; align-items: center; gap: var(--ob-s-2); color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
+.onframe-product-import-guidance svg { flex: none; color: var(--ob-fg-mute); }
+.onframe-product-import-upload > div > [role="button"] { min-height: 180px; justify-content: center; }
 .onframe-product-import-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--ob-border); border-radius: var(--ob-r-surface); overflow: hidden; }
 .onframe-product-import-summary > div { display: flex; flex-direction: column; gap: var(--ob-s-1); padding: var(--ob-s-3); border-right: 1px solid var(--ob-border); }
 .onframe-product-import-summary > div:last-child { border-right: 0; }

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Badge, Button, FileUpload, Modal, Ph, Table } from '@onblide/ui';
+import { Alert, Badge, Button, FileUpload, Modal, Ph, Stepper, Table } from '@onblide/ui';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { downloadProductTemplate, parseProductSpreadsheetFile } from './product-spreadsheet';
 
@@ -43,6 +43,7 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
   const [rows, setRows] = useState([]);
   const [preview, setPreview] = useState(null);
   const [result, setResult] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [uploadKey, setUploadKey] = useState(0);
@@ -68,23 +69,19 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
     }
   ], [result]);
 
-  async function upload(file, onProgress) {
+  async function review() {
+    if (!selectedFile) return;
     setBusy(true);
     setError('');
     setPreview(null);
     try {
-      onProgress(20);
-      const parsedRows = await parseProductSpreadsheetFile(file);
-      onProgress(55);
+      const parsedRows = await parseProductSpreadsheetFile(selectedFile);
       const nextPreview = await sendRemoteMessage('product-import-preview', { payload: { rows: parsedRows } });
-      onProgress(100);
       setRows(parsedRows);
       setPreview(nextPreview);
       setStep('preview');
     } catch (failure) {
-      const message = userError(failure, 'Não foi possível validar a planilha.');
-      setError(message);
-      throw new Error(message);
+      setError(userError(failure, 'Não foi possível validar a planilha.'));
     } finally {
       setBusy(false);
     }
@@ -109,13 +106,17 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
     setRows([]);
     setPreview(null);
     setResult(null);
+    setSelectedFile(null);
     setError('');
     setUploadKey((value) => value + 1);
     setStep('select');
   }
 
-  const footer = step === 'preview' ? <>
-    <Button kind="secondary" disabled={busy} onClick={reset}>Trocar arquivo</Button>
+  const footer = step === 'select' ? <>
+    <Button kind="secondary" disabled={busy} onClick={onClose}>Cancelar</Button>
+    <Button disabled={busy || !selectedFile} icon={<Ph n="arrow-right" size={17} />} onClick={() => void review()}>Revisar planilha</Button>
+  </> : step === 'preview' ? <>
+    <Button kind="secondary" disabled={busy} onClick={reset}>Voltar</Button>
     <Button disabled={busy} icon={<Ph n="upload-simple" size={17} />} onClick={() => void commit()}>Confirmar importação</Button>
   </> : <Button kind="secondary" disabled={busy} onClick={onClose}>Fechar</Button>;
 
@@ -123,39 +124,46 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
     open
     onClose={busy ? undefined : onClose}
     title={step === 'result' ? 'Importação concluída' : 'Importar produtos'}
-    size="lg"
+    width={step === 'select' ? 720 : 960}
     maxHeight="calc(100vh - 48px)"
     footer={footer}
   >
     <div className="onframe-product-import onframe-stack">
+      <Stepper
+        current={step === 'select' ? 0 : step === 'preview' ? 1 : 2}
+        size="md"
+        steps={[{ label: 'Arquivo' }, { label: 'Revisão' }, { label: 'Resultado' }]}
+      />
       {error && <Alert tone="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
 
       {step === 'select' && <>
         <div className="onframe-product-import-intro">
-          <div>
-            <h3 className="onframe-product-section-title">Planilha do catálogo</h3>
-            <p className="onframe-product-section-copy">O SKU identifica produtos existentes. Linhas com SKU novo criam produtos; as demais atualizam os dados cadastrados.</p>
-          </div>
+          <p>Use o modelo oficial para evitar erros de formatação.</p>
           <Button kind="secondary" disabled={busy} icon={<Ph n="download-simple" size={16} />} onClick={downloadProductTemplate}>Baixar modelo</Button>
         </div>
-        <FileUpload
-          key={uploadKey}
-          multiple={false}
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          acceptLabel="uma planilha XLSX"
-          maxSize={10 * 1024 * 1024}
-          label="Arquivo XLSX"
-          hint="Use o modelo oficial e importe até 2.000 produtos por vez."
-          disabled={busy}
-          upload={upload}
-          onChange={(files) => {
-            if (files.length === 0) {
+        <ul className="onframe-product-import-guidance">
+          <li><Ph n="plus-circle" size={16} /><span>SKU novo cria o produto.</span></li>
+          <li><Ph n="arrows-clockwise" size={16} /><span>SKU já cadastrado atualiza os dados do produto.</span></li>
+          <li><Ph n="stack" size={16} /><span>Até 2.000 produtos por vez.</span></li>
+        </ul>
+        <div className="onframe-product-import-upload">
+          <FileUpload
+            key={uploadKey}
+            multiple={false}
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            acceptLabel="uma planilha XLSX"
+            maxSize={10 * 1024 * 1024}
+            disabled={busy}
+            upload={async () => {}}
+            onChange={(files) => {
+              const file = files.find((item) => item.status === 'done')?.file || null;
+              setSelectedFile(file);
               setRows([]);
               setPreview(null);
               setError('');
-            }
-          }}
-        />
+            }}
+          />
+        </div>
       </>}
 
       {step === 'preview' && preview && <>

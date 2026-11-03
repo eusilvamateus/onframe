@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Chip,
+  Drawer,
   EmptyState,
   Input,
   MenuPanel,
@@ -139,12 +140,12 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
   }
 
   return (
-    <Modal
+    <Drawer
       open
-      onClose={locked ? undefined : onClose}
+      onClose={locked ? () => {} : onClose}
       title={current ? (admin ? 'Editar produto' : 'Detalhes do produto') : 'Criar produto'}
-      size="lg"
-      maxHeight="calc(100vh - 48px)"
+      side="right"
+      width={640}
       footer={<>
         <Button kind="secondary" disabled={locked} onClick={onClose}>{admin ? 'Cancelar' : 'Fechar'}</Button>
         {admin && <Button disabled={locked} onClick={() => void save()} icon={<Ph n="floppy-disk" size={17} />}>{current ? 'Salvar alterações' : 'Criar produto'}</Button>}
@@ -169,9 +170,8 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
           onChange={(value) => setField('status', value === 'Inativo' ? 'inactive' : 'active')}
           width={220}
         />
-
       </div>
-    </Modal>
+    </Drawer>
   );
 }
 
