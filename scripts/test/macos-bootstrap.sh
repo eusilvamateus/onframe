@@ -7,7 +7,7 @@ set -eu
   exit 1
 }
 
-ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 
 for script in "$ROOT"/scripts/bootstrap/*.sh; do
   /bin/sh -n "$script"

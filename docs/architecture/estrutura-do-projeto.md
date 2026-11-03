@@ -70,9 +70,10 @@ suíte Node os usa diretamente e com um adaptador HTTP exclusivo de teste em
 
 - `bootstrap/` instala ou atualiza a extensão no Windows e macOS.
 - `onframe-updater://update` inicia o atualizador registrado no computador.
+- `build/` compila as interfaces da extensão e as páginas públicas do Worker.
 - `release/` valida versão, prepara notas e monta o pacote distribuído.
-- `build-extension-ui.js` empacota as duas entradas React e seus ativos antes
-  de testes completos e da montagem do pacote de distribuição.
+- `test/` contém os executores das suítes de interface e do ciclo de bootstrap
+  no macOS.
 
 ### Testes (`test/`)
 

@@ -259,7 +259,7 @@ test('view React e a unica rota da interface de fotos', () => {
   const scripts = manifest.content_scripts[0].js;
   const controller = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'photos-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
 
   assert.ok(scripts.indexOf('core/photos-view.js') < scripts.indexOf('modules/photos/module.js'));
   assert.match(build, /ui', 'content', 'photos-view\.jsx'/);

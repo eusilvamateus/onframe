@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..');
 const outdir = path.resolve(root, '.onframe', 'tests');
 if (!outdir.startsWith(root + path.sep)) throw new Error('Diretorio de testes invalido.');
 const outputs = ['security-ui.test.cjs', 'workspace-people-ui.test.cjs', 'popup-workspace-ui.test.cjs', 'popup-integrations-ui.test.cjs', 'popup-home-summary-ui.test.cjs', 'popup-footer-ui.test.cjs', 'history-ui.test.cjs'].map((file) => path.join(outdir, file));

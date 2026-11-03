@@ -267,7 +267,7 @@ test('promoções usam componentes oficiais sem bridges legados', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const directDiscountView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
   const managerView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
 
   assert.match(directDiscountView, /import \{ Alert, Button, Datepicker, Input, Modal, Ph, Skeleton, Spinner \} from '@onblide\/ui'/);
@@ -284,7 +284,7 @@ test('promoções usam componentes oficiais sem bridges legados', () => {
 test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const phosphor = fs.readFileSync(path.join(__dirname, '..', 'extension', 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
@@ -315,7 +315,7 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
 test('popover de preco organiza resumo e edicao em conteudo progressivo', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
@@ -447,7 +447,7 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
 test('modal de promocoes usa uma view React sem reconstruir o DOM ao editar', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;
 
@@ -575,7 +575,7 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
   const priceView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
@@ -653,7 +653,7 @@ test('modal de promoções mantém filtros e revisão financeira na view React',
 test('popover de promocoes separa grupos reais em abas e accordions', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotions-view.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const popoverSource = source.slice(source.indexOf('function buildPromotionPopoverViewModel'), source.indexOf('function renderModal'));

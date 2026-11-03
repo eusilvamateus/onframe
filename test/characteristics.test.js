@@ -10,7 +10,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   const view = fs.readFileSync(path.join(extensionRoot, 'ui', 'content', 'characteristics-view.jsx'), 'utf8');
   const controller = fs.readFileSync(path.join(extensionRoot, 'modules', 'characteristics', 'module.js'), 'utf8');
   const styles = fs.readFileSync(path.join(extensionRoot, 'modules', 'characteristics', 'styles.css'), 'utf8');
-  const build = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const shell = fs.readFileSync(path.join(extensionRoot, 'core', 'content-shell.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;

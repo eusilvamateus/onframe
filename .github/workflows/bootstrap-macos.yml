@@ -7,7 +7,7 @@ on:
       - '.github/workflows/bootstrap-macos.yml'
       - 'extension/manifest.json'
       - 'scripts/bootstrap/**'
-      - 'scripts/test-macos-bootstrap.sh'
+      - 'scripts/test/macos-bootstrap.sh'
       - 'package.json'
   push:
     branches:
@@ -17,7 +17,7 @@ on:
       - '.github/workflows/bootstrap-macos.yml'
       - 'extension/manifest.json'
       - 'scripts/bootstrap/**'
-      - 'scripts/test-macos-bootstrap.sh'
+      - 'scripts/test/macos-bootstrap.sh'
       - 'package.json'
 
 permissions:
@@ -35,4 +35,4 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Validate macOS install, update and uninstall
-        run: /bin/sh scripts/test-macos-bootstrap.sh
+        run: /bin/sh scripts/test/macos-bootstrap.sh

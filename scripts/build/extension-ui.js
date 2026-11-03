@@ -2,7 +2,7 @@ const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..');
 const reactRoot = path.dirname(require.resolve('react'));
 const reactAliases = {
   react: require.resolve('react'),

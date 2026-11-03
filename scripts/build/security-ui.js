@@ -2,7 +2,7 @@ const esbuild = require('esbuild');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..');
 const output = path.resolve(root, 'cloudflare', 'public', 'security');
 if (!output.startsWith(root + path.sep)) throw new Error('Diretorio de build invalido.');
 fs.rmSync(output, { recursive: true, force: true });

@@ -35,7 +35,7 @@ test('pacote da extensão mantém o orçamento de tamanho e não duplica assets 
   assert.match(phosphor, /Phosphor-Fill\.woff2/);
   assert.doesNotMatch(phosphor, /\.(?:svg|ttf|woff)['")]/);
 
-  const build = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
   assert.match(build, /compactDesignSystemStylesPlugin/);
   assert.match(build, /compactPhosphorWeights/);
   assert.match(build, /minify: true/);
@@ -57,7 +57,7 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
 
 test('content script usa o ToastStack oficial sem implementação visual paralela', () => {
   const bridge = fs.readFileSync(path.join(extensionRoot, 'ui', 'content', 'toast-bridge.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const shell = fs.readFileSync(path.join(extensionRoot, 'core', 'content-shell.js'), 'utf8');
 
   assert.match(bridge, /import \{ ToastStack, toast \} from '@onblide\/ui'/);
@@ -86,8 +86,8 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
-  const extensionBuild = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
-  const securityBuild = fs.readFileSync(path.join(root, 'scripts', 'build-security-ui.js'), 'utf8');
+  const extensionBuild = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
+  const securityBuild = fs.readFileSync(path.join(root, 'scripts', 'build', 'security-ui.js'), 'utf8');
   const themeSync = fs.readFileSync(path.join(extensionRoot, 'core', 'theme-sync.js'), 'utf8');
   const foundations = fs.readFileSync(path.join(extensionRoot, 'styles', 'foundations.css'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
@@ -380,7 +380,7 @@ test('fontes do content script usam URLs da extensão', () => {
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(root, 'scripts', 'build-security-ui.js'), 'utf8');
+  const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'security-ui.js'), 'utf8');
   assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
   assert.doesNotMatch(passkeys, /brandSrc=/);
   assert.match(passkeys, /!managing && <div className="onframe-brand"/);
@@ -476,7 +476,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const authPanel = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'AuthPanel.jsx'), 'utf8');
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
   const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
-  const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build-extension-ui.js'), 'utf8');
+  const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const history = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'ItemEditHistory.jsx'), 'utf8');
   const periodGlobal = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'period-global.js'), 'utf8');
   const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SessionsSettings'));

@@ -5,8 +5,8 @@
   "description": "Extensao remota para editar anuncios do Mercado Livre pela pagina do produto.",
   "type": "commonjs",
   "scripts": {
-    "build:extension-ui": "node scripts/build-extension-ui.js",
-    "build:security-ui": "node scripts/build-security-ui.js",
+    "build:extension-ui": "node scripts/build/extension-ui.js",
+    "build:security-ui": "node scripts/build/security-ui.js",
     "package:release": "npm run build:extension-ui && node scripts/release/package-release.js",
     "release:notes": "node scripts/release/prepare-release-notes.js",
     "version:check": "node scripts/release/check-version.js",
@@ -15,8 +15,8 @@
     "auth:templates:check": "node scripts/auth/generate-email-templates.js --check",
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
-    "test": "node --test test/*.test.js && tsx --test test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test-security-ui.js",
-    "test:all": "npm run build:extension-ui && npm run build:security-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/products.test.js test/remote-architecture.test.js && tsx --test test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test-security-ui.js"
+    "test": "node --test test/*.test.js && tsx --test test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test/security-ui.js",
+    "test:all": "npm run build:extension-ui && npm run build:security-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/products.test.js test/remote-architecture.test.js && tsx --test test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test/security-ui.js"
   },
   "engines": {
     "node": ">=20"
