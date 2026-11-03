@@ -12,10 +12,16 @@ type ProductRow = {
   name: string;
   current_cost_cents: number;
   tax_rate_bps: number;
-  variable_cost_cents: number;
+  custom_costs_json: string;
   status: 'active' | 'inactive';
   created_at: number;
   updated_at: number;
+};
+
+type ProductCustomCost = {
+  description: string;
+  type: 'fixed' | 'percentage';
+  value_scaled: number;
 };
 
 type ProductData = {
@@ -24,7 +30,8 @@ type ProductData = {
   name: string;
   costCents: number;
   taxRateBps: number;
-  variableCostCents: number;
+  customCosts: ProductCustomCost[];
+  customCostsJson: string;
   status: 'active' | 'inactive';
 };
 
@@ -41,7 +48,7 @@ type ProductImportPlanRow = {
     name: string;
     cost: number;
     taxRate: number;
-    variableCost: number;
+    customCosts: Array<{ description: string; type: 'fixed' | 'percentage'; value: number }>;
     status: 'active' | 'inactive';
   } | null;
   data?: ProductData;
@@ -83,6 +90,39 @@ function decimalToInteger(value: unknown, scale: number, max: number): number {
     throw new ProductRequestError('product_invalid_payload', 400);
   }
   return scaled;
+}
+
+function parseCustomCosts(value: unknown): ProductCustomCost[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 50) throw new ProductRequestError('product_invalid_payload', 400);
+  return value.map((entry) => {
+    const cost = recordValue(entry);
+    if (!cost) throw new ProductRequestError('product_invalid_payload', 400);
+    const type = cost.type;
+    if (type !== 'fixed' && type !== 'percentage') throw new ProductRequestError('product_invalid_payload', 400);
+    return {
+      description: asText(cost.description, 120, true),
+      type,
+      value_scaled: decimalToInteger(cost.value, 100, type === 'percentage' ? 10_000 : 9_999_999_999)
+    };
+  });
+}
+
+function storedCustomCosts(value: string): ProductCustomCost[] {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as ProductCustomCost[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function customCostsPayload(value: string) {
+  return storedCustomCosts(value).map((cost) => ({
+    description: cost.description,
+    type: cost.type,
+    value: cost.value_scaled / 100
+  }));
 }
 
 function normalizeSku(value: string): string {
@@ -153,7 +193,7 @@ export async function matchProductForPromotionItem(
   const resolution = resolvePromotionItemSku(item, requestedVariationId);
   if (resolution.status !== 'resolved' || !resolution.sku) return resolution;
   const product = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products
     WHERE workspace_id = ? AND normalized_sku = ? AND status = 'active' AND archived_at IS NULL
   `).bind(actor.workspaceId, normalizeSku(resolution.sku)).first<ProductRow>();
@@ -175,7 +215,7 @@ function productPayload(row: ProductRow) {
     name: row.name,
     cost: row.current_cost_cents / 100,
     taxRate: row.tax_rate_bps / 100,
-    variableCost: row.variable_cost_cents / 100,
+    customCosts: customCostsPayload(row.custom_costs_json),
     status: row.status,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString()
@@ -191,7 +231,7 @@ async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> 
 
 async function assertProduct(env: ProductEnv, actor: ProductActor, productId: string): Promise<ProductRow> {
   const product = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `).bind(productId, actor.workspaceId).first<ProductRow>();
   if (!product) throw new ProductRequestError('product_not_found', 404);
@@ -240,7 +280,7 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const page = Math.min(requestedPage, totalPages);
   const rows = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE ${clause}
     ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `).bind(...bindings, limit, (page - 1) * limit).all<ProductRow>();
@@ -251,16 +291,19 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
 }
 
 function parseProductBody(body: Record<string, unknown>): ProductData {
+  if ('variableCost' in body) throw new ProductRequestError('product_invalid_payload', 400);
   const sku = asText(body.sku, 80, true);
   const status = body.status ?? 'active';
   if (status !== 'active' && status !== 'inactive') throw new ProductRequestError('product_invalid_payload', 400);
+  const customCosts = parseCustomCosts(body.customCosts);
   return {
     sku,
     normalizedSku: normalizeSku(sku),
     name: asText(body.name, 160, true),
     costCents: decimalToInteger(body.cost, 100, 9_999_999_999),
     taxRateBps: decimalToInteger(body.taxRate, 100, 10_000),
-    variableCostCents: decimalToInteger(body.variableCost, 100, 9_999_999_999),
+    customCosts,
+    customCostsJson: JSON.stringify(customCosts),
     status
   };
 }
@@ -295,7 +338,6 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
   else if (name.length > 160) errors.push('Nome deve ter até 160 caracteres.');
   if (row.cost === '' || row.cost === null || row.cost === undefined) errors.push('Custo obrigatório.');
   if (row.taxRate === '' || row.taxRate === null || row.taxRate === undefined) errors.push('Imposto obrigatório.');
-  if (row.variableCost === '' || row.variableCost === null || row.variableCost === undefined) errors.push('Outros custos variáveis são obrigatórios.');
   if (row.status === '' || row.status === null || row.status === undefined) errors.push('Status obrigatório.');
   if (errors.length > 0) return { index, rowNumber, sku, name, action: 'error', errors, productId: null, values: null };
   try {
@@ -313,7 +355,7 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
         name: data.name,
         cost: data.costCents / 100,
         taxRate: data.taxRateBps / 100,
-        variableCost: data.variableCostCents / 100,
+        customCosts: data.customCosts.map((cost) => ({ description: cost.description, type: cost.type, value: cost.value_scaled / 100 })),
         status: data.status
       },
       data
@@ -328,7 +370,7 @@ function productMatchesImport(product: ProductRow, data: ProductData): boolean {
     && product.name === data.name
     && product.current_cost_cents === data.costCents
     && product.tax_rate_bps === data.taxRateBps
-    && product.variable_cost_cents === data.variableCostCents
+    && JSON.stringify(storedCustomCosts(product.custom_costs_json)) === data.customCostsJson
     && product.status === data.status;
 }
 
@@ -351,7 +393,7 @@ async function buildProductImportPlan(request: Request, env: ProductEnv, actor: 
     }
   }
   const existing = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE workspace_id = ? AND archived_at IS NULL
   `).bind(actor.workspaceId).all<ProductRow & { normalized_sku: string }>();
   const productsBySku = new Map(existing.results.map((product) => [product.normalized_sku, product]));
@@ -414,9 +456,9 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
         statements.push(env.ONFRAME_DB.prepare(`
           INSERT OR IGNORE INTO products (
             id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps,
-            variable_cost_cents, status, created_by_user_id, updated_by_user_id, created_at, updated_at
+            custom_costs_json, status, created_by_user_id, updated_by_user_id, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(productId, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp));
+        `).bind(productId, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.customCostsJson, data.status, actor.userId, actor.userId, timestamp, timestamp));
         statements.push(env.ONFRAME_DB.prepare(`
           INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
           SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
@@ -425,9 +467,9 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
         references.push({ row, statementIndex: statements.length, result: 'updated' });
         statements.push(env.ONFRAME_DB.prepare(`
           UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
-            tax_rate_bps = ?, variable_cost_cents = ?, status = ?, updated_by_user_id = ?, updated_at = ?
+            tax_rate_bps = ?, custom_costs_json = ?, status = ?, updated_by_user_id = ?, updated_at = ?
           WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
-        `).bind(data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, row.productId, actor.workspaceId));
+        `).bind(data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.customCostsJson, data.status, actor.userId, timestamp, row.productId, actor.workspaceId));
         if (row.existing?.current_cost_cents !== data.costCents) {
           statements.push(env.ONFRAME_DB.prepare(`
             INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
@@ -481,9 +523,9 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
       env.ONFRAME_DB.prepare(`
         INSERT INTO products (
           id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps,
-          variable_cost_cents, status, created_by_user_id, updated_by_user_id, created_at, updated_at
+          custom_costs_json, status, created_by_user_id, updated_by_user_id, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(id, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp),
+      `).bind(id, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.customCostsJson, data.status, actor.userId, actor.userId, timestamp, timestamp),
       env.ONFRAME_DB.prepare(`
         INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -503,9 +545,9 @@ export async function updateProduct(request: Request, env: ProductEnv, actor: Pr
   const timestamp = Date.now();
   const statements = [env.ONFRAME_DB.prepare(`
     UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
-      tax_rate_bps = ?, variable_cost_cents = ?, status = ?, updated_by_user_id = ?, updated_at = ?
+      tax_rate_bps = ?, custom_costs_json = ?, status = ?, updated_by_user_id = ?, updated_at = ?
     WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
-  `).bind(data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, productId, actor.workspaceId)];
+  `).bind(data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.customCostsJson, data.status, actor.userId, timestamp, productId, actor.workspaceId)];
   if (current.current_cost_cents !== data.costCents) {
     statements.push(env.ONFRAME_DB.prepare(`
       INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)

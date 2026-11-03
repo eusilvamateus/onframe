@@ -23,6 +23,23 @@ function roundPercentage(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function customCosts(value: unknown, salePriceCents: number | null) {
+  if (!Array.isArray(value) || salePriceCents === null) return null;
+  const costs = [];
+  for (const entryValue of value) {
+    const entry = recordOrNull(entryValue);
+    const description = typeof entry?.description === 'string' ? entry.description.trim() : '';
+    const type = entry?.type;
+    const valueNumber = numberOrNull(entry?.value);
+    if (!description || (type !== 'fixed' && type !== 'percentage') || valueNumber === null || valueNumber < 0 || (type === 'percentage' && valueNumber > 100)) return null;
+    const amountCents = type === 'fixed'
+      ? Math.round(valueNumber * 100)
+      : Math.round(salePriceCents * Math.round(valueNumber * 100) / 10_000);
+    costs.push({ description, type, value: valueNumber, base: type === 'percentage' ? 'sale_price' : 'unit', amount: moneyFromCents(amountCents), amountCents });
+  }
+  return costs;
+}
+
 export function buildContributionMargin(estimateValue: unknown, productMatchValue: unknown) {
   const estimate = recordOrNull(estimateValue);
   const productMatch = recordOrNull(productMatchValue);
@@ -30,22 +47,23 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const salePriceCents = centsOrNull(estimate?.dealPrice);
   const youReceiveCents = centsOrNull(estimate?.youReceive);
   const productCostCents = centsOrNull(product?.cost);
-  const variableCostCents = centsOrNull(product?.variableCost);
   const taxRate = numberOrNull(product?.taxRate);
+  const calculatedCustomCosts = product ? customCosts(product.customCosts, salePriceCents) : null;
   const missing: string[] = [];
 
   if (!product) missing.push('product');
   if (salePriceCents === null || salePriceCents <= 0) missing.push('sale_price');
   if (youReceiveCents === null || youReceiveCents < 0) missing.push('you_receive');
   if (product && (productCostCents === null || productCostCents < 0)) missing.push('product_cost');
-  if (product && (variableCostCents === null || variableCostCents < 0)) missing.push('variable_cost');
+  if (product && calculatedCustomCosts === null) missing.push('custom_costs');
   if (product && (taxRate === null || taxRate < 0 || taxRate > 100)) missing.push('tax_rate');
 
   const complete = missing.length === 0;
   const taxRateBps = complete ? Math.round(taxRate! * 100) : null;
   const taxAmountCents = complete ? Math.round(salePriceCents! * taxRateBps! / 10_000) : null;
+  const customCostCents = complete ? calculatedCustomCosts!.reduce((total, cost) => total + cost.amountCents, 0) : null;
   const amountCents = complete
-    ? youReceiveCents! - productCostCents! - taxAmountCents! - variableCostCents!
+    ? youReceiveCents! - productCostCents! - taxAmountCents! - customCostCents!
     : null;
   const percentage = complete
     ? roundPercentage(amountCents! / salePriceCents! * 100)
@@ -60,10 +78,11 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
     productCost: moneyFromCents(productCostCents),
     taxRate,
     taxAmount: moneyFromCents(taxAmountCents),
-    variableCost: moneyFromCents(variableCostCents),
+    customCosts: calculatedCustomCosts?.map(({ amountCents: _amountCents, ...cost }) => cost) || [],
+    customCost: moneyFromCents(customCostCents),
     amount: moneyFromCents(amountCents),
     percentage,
-    formula: 'you_receive - product_cost - tax_amount - variable_cost'
+    formula: 'you_receive - product_cost - tax_amount - custom_costs'
   };
 }
 

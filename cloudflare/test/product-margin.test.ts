@@ -10,7 +10,14 @@ test('margem de contribuicao usa o valor liquido oficial da promocao', () => {
     complete: true
   }, {
     status: 'matched',
-    product: { cost: 170, taxRate: 10, variableCost: 5 }
+    product: {
+      cost: 170,
+      taxRate: 10,
+      customCosts: [
+        { description: 'Embalagem', type: 'fixed', value: 5 },
+        { description: 'Comissão comercial', type: 'percentage', value: 2 }
+      ]
+    }
   });
 
   assert.deepEqual(margin, {
@@ -22,10 +29,14 @@ test('margem de contribuicao usa o valor liquido oficial da promocao', () => {
     productCost: 170,
     taxRate: 10,
     taxAmount: 36.2,
-    variableCost: 5,
-    amount: 52.38,
-    percentage: 14.47,
-    formula: 'you_receive - product_cost - tax_amount - variable_cost'
+    customCosts: [
+      { description: 'Embalagem', type: 'fixed', value: 5, base: 'unit', amount: 5 },
+      { description: 'Comissão comercial', type: 'percentage', value: 2, base: 'sale_price', amount: 7.24 }
+    ],
+    customCost: 12.24,
+    amount: 45.14,
+    percentage: 12.47,
+    formula: 'you_receive - product_cost - tax_amount - custom_costs'
   });
 });
 
@@ -36,7 +47,7 @@ test('margem de contribuicao preserva resultado negativo', () => {
     currency_id: 'BRL'
   }, {
     status: 'matched',
-    product: { cost: 80, taxRate: 10, variableCost: 5 }
+    product: { cost: 80, taxRate: 10, customCosts: [{ description: 'Embalagem', type: 'fixed', value: 5 }] }
   });
 
   assert.equal(margin.amount, -25);
@@ -65,7 +76,7 @@ test('margem de contribuicao informa dados ausentes sem estimar valores', () => 
     complete: false
   }, {
     status: 'matched',
-    product: { cost: 40, taxRate: 5, variableCost: 2 }
+    product: { cost: 40, taxRate: 5, customCosts: [] }
   });
   assert.deepEqual(withoutFinancialEstimate.missing, ['you_receive']);
   assert.equal(withoutFinancialEstimate.amount, null);
@@ -74,7 +85,7 @@ test('margem de contribuicao informa dados ausentes sem estimar valores', () => 
 
 test('estimativa enriquecida preserva o contrato financeiro e associa o produto', () => {
   const estimate = { dealPrice: 100, youReceive: 70, currency_id: 'BRL', promotion: { id: 'P-MLB1' } };
-  const productMatch = { status: 'matched', sku: 'SKU-1', product: { cost: 40, taxRate: 5, variableCost: 2 } };
+  const productMatch = { status: 'matched', sku: 'SKU-1', product: { cost: 40, taxRate: 5, customCosts: [{ description: 'Embalagem', type: 'fixed', value: 2 }] } };
   const enriched = enrichPromotionEstimateWithProduct(estimate, productMatch);
 
   assert.deepEqual(enriched.promotion, estimate.promotion);
