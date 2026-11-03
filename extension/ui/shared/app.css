@@ -265,11 +265,14 @@ button, input { font: inherit; }
 .onframe-history-pagination > span { color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-products-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--ob-s-2); }
 .onframe-products-header-actions > button { white-space: nowrap; }
-.onframe-products-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: center; gap: var(--ob-s-3); }
-.onframe-products-status-filter { justify-self: start; }
-.onframe-products-status-options { display: flex; flex-wrap: wrap; gap: var(--ob-s-2); }
+.onframe-products-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ob-s-3); }
+.onframe-products-search { flex: 0 1 50%; width: 50%; min-width: 260px; }
+.onframe-products-filters, .onframe-products-filter-options { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ob-s-2); }
+.onframe-product-sku-value { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+.onframe-product-action-menu { display: flex; justify-content: flex-end; }
 .onframe-products-table { min-width: 0; overflow-x: auto; }
 .onframe-products-table > * { min-width: 860px; }
+.onframe-products-table .onframe-list-title { font-size: var(--ob-fs-xs); }
 .onframe-products-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-3); }
 .onframe-products-pagination > span { color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-product-modal { gap: var(--ob-s-4); }
@@ -304,7 +307,8 @@ button, input { font: inherit; }
   .onframe-history-event-main { grid-template-columns: 48px minmax(0, 1fr); }
   .onframe-history-change-context { grid-column: 2; padding: 0; border: 0; }
   .onframe-history-event-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .onframe-products-toolbar, .onframe-product-form-grid, .onframe-product-form-grid--three { grid-template-columns: 1fr; }
+  .onframe-product-form-grid, .onframe-product-form-grid--three { grid-template-columns: 1fr; }
+  .onframe-products-search { flex-basis: 100%; width: 100%; }
   .onframe-products-header-actions { justify-content: flex-start; }
 }
 

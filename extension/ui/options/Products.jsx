@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Badge,
   Button,
   Chip,
   EmptyState,
   Input,
+  MenuPanel,
   Modal,
   NumberField,
   Pagination,
@@ -28,6 +28,12 @@ const STATUS_FILTERS = [
   { value: 'active', label: 'Ativos' },
   { value: 'inactive', label: 'Inativos' }
 ];
+const SORT_FILTERS = [
+  { value: 'sku', label: 'Código SKU' },
+  { value: 'name', label: 'Nome' },
+  { value: 'recent', label: 'Mais recentes' },
+  { value: 'updated', label: 'Data de atualização' }
+];
 const EMPTY_FORM = {
   sku: '', name: '', description: '', cost: 0, taxRate: 0, variableCost: 0, status: 'active'
 };
@@ -38,6 +44,58 @@ function money(value) {
 
 function statusLabel(status) {
   return status === 'inactive' ? 'Inativo' : 'Ativo';
+}
+
+function ProductChipFilter({ ariaLabel, icon, options, value, selected, width, onChange }) {
+  const current = options.find((option) => option.value === value) || options[0];
+  return <Popover
+    ariaLabel={ariaLabel}
+    placement="bottom"
+    align="start"
+    width={width}
+    padding={12}
+    closeButton={false}
+    trigger={<Chip icon={icon} label={current.label} size="md" selected={selected} />}
+  >
+    {(close) => <div className="onframe-products-filter-options" role="group" aria-label={ariaLabel}>
+      {options.map((option) => <Chip
+        key={option.value}
+        label={option.label}
+        size="sm"
+        selected={value === option.value}
+        onToggle={() => {
+          onChange(option.value);
+          close();
+        }}
+      />)}
+    </div>}
+  </Popover>;
+}
+
+function ProductSku({ sku }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(sku);
+      toast({ tone: 'success', title: 'SKU copiado.' });
+    } catch {
+      toast({ tone: 'danger', title: 'Não foi possível copiar o SKU.' });
+    }
+  };
+
+  return <Tooltip label="Copiar SKU" placement="top">
+    <Button
+      kind="quiet"
+      tone="primary"
+      fill={false}
+      size="sm"
+      aria-label={`Copiar SKU ${sku}`}
+      onClick={() => void copy()}
+      style={{ minHeight: 24, maxWidth: '100%', justifyContent: 'flex-start', gap: 4, padding: 0, fontFamily: 'var(--ob-font-mono)', fontSize: 'var(--ob-fs-xs)' }}
+    >
+      <span className="onframe-product-sku-value">{sku}</span>
+      <Ph n="copy" size={13} />
+    </Button>
+  </Tooltip>;
 }
 
 function ProductForm({ product, admin, busy, onClose, onSaved }) {
@@ -126,6 +184,7 @@ export function Products({ admin, onHeaderActionsChange }) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [status, setStatus] = useState('all');
+  const [sort, setSort] = useState('updated');
   const [loading, setLoading] = useState(true);
   const [transferBusy, setTransferBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
@@ -142,7 +201,7 @@ export function Products({ admin, onHeaderActionsChange }) {
     setLoading(true);
     setError('');
     try {
-      const result = await sendRemoteMessage('products', { query: { q: debouncedQuery, status, page, limit: PAGE_SIZE } });
+      const result = await sendRemoteMessage('products', { query: { q: debouncedQuery, status, sort, page, limit: PAGE_SIZE } });
       if (sequence !== requestSequence.current) return;
       setProducts(result.products || []);
       setPagination(result.pagination || { page, total: 0, totalPages: 1 });
@@ -152,7 +211,7 @@ export function Products({ admin, onHeaderActionsChange }) {
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [debouncedQuery, status]);
+  }, [debouncedQuery, sort, status]);
 
   useEffect(() => { void load(1); }, [load]);
 
@@ -221,45 +280,63 @@ export function Products({ admin, onHeaderActionsChange }) {
   }
 
   const columns = [
-    { key: 'sku', label: 'SKU', bold: true, width: 150 },
+    { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
     { key: 'name', label: 'Produto', bold: true, render: (_, product) => <div><p className="onframe-list-title">{product.name}</p>{product.description && <p className="onframe-list-meta">{product.description}</p>}</div> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
     { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
     { key: 'variableCost', label: 'Outros custos', width: 145, render: (value) => money(value) },
-    { key: 'status', label: 'Status', width: 105, render: (value) => <Badge tone={value === 'active' ? 'green' : 'grey'}>{statusLabel(value)}</Badge> },
-    { key: 'actions', label: '', width: admin ? 180 : 90, render: (_, product) => <div className="onframe-actions">
-      <Button kind="secondary" size="sm" disabled={loading} onClick={() => setDialog({ type: 'product', product })}>{admin ? 'Editar' : 'Ver'}</Button>
-      {admin && <Tooltip label="Arquivar produto"><Button kind="quiet" tone="danger" size="sm" aria-label="Arquivar produto" disabled={loading} icon={<Ph n="archive" size={16} />} onClick={() => setDialog({ type: 'archive', product })} /></Tooltip>}
+    { key: 'actions', label: '', width: 56, render: (_, product) => <div className="onframe-product-action-menu">
+      <Popover
+        placement="bottom"
+        align="end"
+        width={196}
+        padding={0}
+        closeButton={false}
+        ariaLabel={`Ações de ${product.name}`}
+        trigger={<Button kind="quiet" size="sm" iconOnly aria-label={`Abrir ações de ${product.name}`} disabled={loading} icon={<Ph n="dots-three-vertical" size={18} />} />}
+      >
+        {(close) => <MenuPanel
+          size="sm"
+          ariaLabel={`Ações de ${product.name}`}
+          onCloseTree={close}
+          items={[
+            { label: admin ? 'Editar produto' : 'Ver detalhes', icon: admin ? 'pencil-simple' : 'eye', disabled: loading, onSelect: () => setDialog({ type: 'product', product }) },
+            ...(admin ? [
+              { type: 'separator' },
+              { label: 'Arquivar produto', icon: 'archive', tone: 'danger', disabled: loading, onSelect: () => setDialog({ type: 'archive', product }) }
+            ] : [])
+          ]}
+          style={{ minWidth: 196, border: 'none', boxShadow: 'none' }}
+        />}
+      </Popover>
     </div> }
   ];
 
   return <div className="onframe-products onframe-stack">
     {error && <Alert tone="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
     <div className="onframe-products-toolbar">
-      <SearchInput value={query} onChange={setQuery} loading={loading && query !== debouncedQuery} placeholder="Buscar por SKU, nome ou descrição" ariaLabel="Buscar produtos" width="100%" />
-      <div className="onframe-products-status-filter">
-        <Popover
+      <div className="onframe-products-search">
+        <SearchInput value={query} onChange={setQuery} loading={loading && query !== debouncedQuery} placeholder="Buscar por SKU, nome ou descrição" ariaLabel="Buscar produtos" width="100%" />
+      </div>
+      <div className="onframe-products-filters">
+        <ProductChipFilter
           ariaLabel="Filtrar produtos por status"
-          placement="bottom"
-          align="start"
+          icon="funnel-simple"
+          options={STATUS_FILTERS}
+          value={status}
+          selected={status !== 'all'}
           width={240}
-          padding={12}
-          closeButton={false}
-          trigger={<Chip icon="funnel-simple" label={STATUS_FILTERS.find((option) => option.value === status)?.label || 'Todos'} size="md" selected={status !== 'all'} />}
-        >
-          {(close) => <div className="onframe-products-status-options" role="group" aria-label="Status do produto">
-            {STATUS_FILTERS.map((option) => <Chip
-              key={option.value}
-              label={option.label}
-              size="sm"
-              selected={status === option.value}
-              onToggle={() => {
-                setStatus(option.value);
-                close();
-              }}
-            />)}
-          </div>}
-        </Popover>
+          onChange={setStatus}
+        />
+        <ProductChipFilter
+          ariaLabel="Ordenar produtos"
+          icon="sort-ascending"
+          options={SORT_FILTERS}
+          value={sort}
+          selected
+          width={300}
+          onChange={setSort}
+        />
       </div>
     </div>
     <div className="onframe-products-table">
