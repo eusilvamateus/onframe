@@ -30,9 +30,10 @@ test('pacote da extensão mantém o orçamento de tamanho e não duplica assets 
   assert.equal(fs.existsSync(path.join(extensionRoot, 'ui', 'options', 'assets')), false);
 
   const phosphor = fs.readFileSync(path.join(extensionRoot, 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
-  assert.match(phosphor, /Phosphor\.woff2/);
-  assert.match(phosphor, /Phosphor-Bold\.woff2/);
-  assert.match(phosphor, /Phosphor-Fill\.woff2/);
+  for (const file of ['Phosphor.woff2', 'Phosphor-Bold.woff2', 'Phosphor-Fill.woff2']) {
+    assert.equal(fs.existsSync(path.join(extensionRoot, 'vendor', 'phosphor', file)), true);
+  }
+  assert.doesNotMatch(phosphor, /@font-face|\.woff2/);
   assert.doesNotMatch(phosphor, /\.(?:svg|ttf|woff)['")]/);
 
   const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
@@ -355,6 +356,8 @@ test('fontes do content script usam URLs da extensão', () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'core', 'fonts.js'), 'utf8');
   const foundations = fs.readFileSync(path.join(extensionRoot, 'styles', 'foundations.css'), 'utf8');
   const phosphor = fs.readFileSync(path.join(extensionRoot, 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
+  const popupStyles = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.css'), 'utf8');
+  const optionsStyles = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.css'), 'utf8');
   const appended = [];
   const document = {
     getElementById: () => null,
@@ -368,14 +371,25 @@ test('fontes do content script usam URLs da extensão', () => {
 
   assert.equal(appended.length, 1);
   assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
+  assert.match(appended[0].textContent, /font-family: 'Phosphor';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor\.woff2[\s\S]*format\('woff2'\)/s);
+  assert.match(appended[0].textContent, /font-family: 'Phosphor-Bold';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor-Bold\.woff2/s);
+  assert.match(appended[0].textContent, /font-family: 'Phosphor-Fill';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor-Fill\.woff2/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s);
   assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s);
   assert.doesNotMatch(appended[0].textContent, /font-family: 'OnFrame Poppins (?:Regular|Medium|SemiBold|Bold|ExtraBold)'/);
-  assert.doesNotMatch(appended[0].textContent, /font-family: 'Phosphor'/);
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
-  assert.match(phosphor, /font-family: 'Phosphor';[\s\S]*\/vendor\/phosphor\/Phosphor\.woff2/s);
-  assert.match(phosphor, /font-family: 'Phosphor-Bold';[\s\S]*\/vendor\/phosphor\/Phosphor-Bold\.woff2/s);
-  assert.match(phosphor, /font-family: 'Phosphor-Fill';[\s\S]*\/vendor\/phosphor\/Phosphor-Fill\.woff2/s);
+  assert.doesNotMatch(phosphor, /@font-face|\.woff2/);
+  assert.match(phosphor, /font-family: "Phosphor" !important/);
+  assert.match(phosphor, /font-family: "Phosphor-Bold" !important/);
+  assert.match(phosphor, /font-family: "Phosphor-Fill" !important/);
+  assert.match(phosphor, /\.ph::before\s*\{\s*font-family: 'Phosphor' !important;/);
+  assert.match(phosphor, /\.ph-bold::before\s*\{\s*font-family: 'Phosphor-Bold' !important;/);
+  assert.match(phosphor, /\.ph-fill::before\s*\{\s*font-family: 'Phosphor-Fill' !important;/);
+  for (const bundledStyles of [popupStyles, optionsStyles]) {
+    assert.match(bundledStyles, /url\(\/vendor\/phosphor\/Phosphor\.woff2\)/);
+    assert.match(bundledStyles, /url\(\/vendor\/phosphor\/Phosphor-Bold\.woff2\)/);
+    assert.match(bundledStyles, /url\(\/vendor\/phosphor\/Phosphor-Fill\.woff2\)/);
+  }
 });
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {

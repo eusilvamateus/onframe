@@ -23,9 +23,9 @@ const phosphorSourceRoot = path.join(
 );
 const phosphorTargetRoot = path.join(root, 'extension', 'vendor', 'phosphor');
 const compactPhosphorWeights = [
-  { directory: 'regular', family: 'Phosphor', file: 'Phosphor.woff2' },
-  { directory: 'bold', family: 'Phosphor-Bold', file: 'Phosphor-Bold.woff2' },
-  { directory: 'fill', family: 'Phosphor-Fill', file: 'Phosphor-Fill.woff2' }
+  { directory: 'regular', className: 'ph', family: 'Phosphor', file: 'Phosphor.woff2' },
+  { directory: 'bold', className: 'ph-bold', family: 'Phosphor-Bold', file: 'Phosphor-Bold.woff2' },
+  { directory: 'fill', className: 'ph-fill', family: 'Phosphor-Fill', file: 'Phosphor-Fill.woff2' }
 ];
 
 prepareCompactPhosphorAssets();
@@ -256,7 +256,7 @@ function compactDesignSystemStylesPlugin() {
         );
         const phosphor = fs.readFileSync(path.join(phosphorTargetRoot, 'phosphor.css'), 'utf8');
         return {
-          contents: `${compactFontFaces()}\n${phosphor}\n${tokens}`,
+          contents: `${compactFontFaces()}\n${compactPhosphorFontFaces('/vendor/phosphor/')}\n${phosphor}\n${tokens}`,
           loader: 'css',
           resolveDir: root
         };
@@ -267,18 +267,23 @@ function compactDesignSystemStylesPlugin() {
 
 function prepareCompactPhosphorAssets() {
   fs.mkdirSync(phosphorTargetRoot, { recursive: true });
-  const styles = compactPhosphorWeights.map(({ directory, family, file }) => {
+  const styles = compactPhosphorWeights.map(({ directory, className, family, file }) => {
     const sourceRoot = path.join(phosphorSourceRoot, directory);
     fs.copyFileSync(path.join(sourceRoot, file), path.join(phosphorTargetRoot, file));
-    return `@font-face {
+    const source = stripFontFaces(fs.readFileSync(path.join(sourceRoot, 'style.css'), 'utf8'));
+    return `${source}\n.${className}::before {\n  font-family: '${family}' !important;\n}`;
+  });
+  fs.writeFileSync(path.join(phosphorTargetRoot, 'phosphor.css'), `${styles.join('\n')}\n`);
+}
+
+function compactPhosphorFontFaces(assetPrefix) {
+  return compactPhosphorWeights.map(({ family, file }) => `@font-face {
   font-family: '${family}';
-  src: url('/vendor/phosphor/${file}') format('woff2');
+  src: url('${assetPrefix}${file}') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: block;
-}\n${stripFontFaces(fs.readFileSync(path.join(sourceRoot, 'style.css'), 'utf8'))}`;
-  });
-  fs.writeFileSync(path.join(phosphorTargetRoot, 'phosphor.css'), `${styles.join('\n')}\n`);
+}`).join('\n');
 }
 
 function compactFontFaces() {
