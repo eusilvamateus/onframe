@@ -1,6 +1,7 @@
 import { decryptValue, encryptValue, importAesGcmKeyBase64 } from './token-cipher';
 import { recordConfirmedItemEdits } from './item-edit-history';
 import { matchProductForPromotionItem } from './products';
+import { enrichPromotionEstimateWithProduct } from './product-margin';
 import {
   handleResolve,
   handleResolveQuick,
@@ -369,7 +370,7 @@ export async function handleRemoteApiRequest(input: {
       return {
         ...response,
         estimates: Array.isArray(response.estimates)
-          ? response.estimates.map((estimate: unknown) => ({ ...(recordOrNull(estimate) || {}), productMatch }))
+          ? response.estimates.map((estimate: unknown) => enrichPromotionEstimateWithProduct(estimate, productMatch))
           : []
       };
     }
@@ -383,7 +384,7 @@ export async function handleRemoteApiRequest(input: {
         itemId: promotionEstimate[1],
         readJson
       });
-      return { ...(recordOrNull(estimate) || {}), productMatch: await matchPromotionProduct(client, promotionEstimate[1]) };
+      return enrichPromotionEstimateWithProduct(estimate, await matchPromotionProduct(client, promotionEstimate[1]));
     }
 
     const offer = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/offers$/u);
