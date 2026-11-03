@@ -1,5 +1,6 @@
 import { decryptValue, encryptValue, importAesGcmKeyBase64 } from './token-cipher';
 import { recordConfirmedItemEdits } from './item-edit-history';
+import { matchProductForPromotionItem } from './products';
 import {
   handleResolve,
   handleResolveQuick,
@@ -183,6 +184,19 @@ export async function handleRemoteApiRequest(input: {
     subjectId,
     ownerUserId: input.url.searchParams.get('owner_user_id')
   });
+  const matchPromotionProduct = async (client: RemoteMeliClient, itemId: string) => {
+    try {
+      return await matchProductForPromotionItem(
+        input.env,
+        input.actor,
+        client.historySnapshots(itemId).latest,
+        input.url.searchParams.get('variation_id')
+      );
+    } catch (error) {
+      console.error(JSON.stringify({ event: 'promotion_product_match_failed', itemId, requestId: input.requestId, error: sanitizeError(error) }));
+      return { status: 'unavailable', sku: null, source: null, variationId: null, reason: 'catalog_unavailable', product: null };
+    }
+  };
   const runItemMutation = async (
     operation: string,
     itemId: string,
@@ -344,22 +358,32 @@ export async function handleRemoteApiRequest(input: {
 
     const promotionEstimates = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/estimates$/u);
     if (input.request.method === 'POST' && promotionEstimates) {
-      return handlePromotionEstimates({
+      const client = await resolveItemClient(promotionEstimates[1]);
+      const response = await handlePromotionEstimates({
         req: input.request,
-        client: await resolveItemClient(promotionEstimates[1]),
+        client,
         itemId: promotionEstimates[1],
         readJson
       });
+      const productMatch = await matchPromotionProduct(client, promotionEstimates[1]);
+      return {
+        ...response,
+        estimates: Array.isArray(response.estimates)
+          ? response.estimates.map((estimate: unknown) => ({ ...(recordOrNull(estimate) || {}), productMatch }))
+          : []
+      };
     }
 
     const promotionEstimate = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/estimate$/u);
     if (input.request.method === 'POST' && promotionEstimate) {
-      return handlePromotionEstimate({
+      const client = await resolveItemClient(promotionEstimate[1]);
+      const estimate = await handlePromotionEstimate({
         req: input.request,
-        client: await resolveItemClient(promotionEstimate[1]),
+        client,
         itemId: promotionEstimate[1],
         readJson
       });
+      return { ...(recordOrNull(estimate) || {}), productMatch: await matchPromotionProduct(client, promotionEstimate[1]) };
     }
 
     const offer = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/offers$/u);

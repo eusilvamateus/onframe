@@ -83,8 +83,6 @@ function activityLabel(operation) {
     product_created: 'Produto criado',
     product_updated: 'Produto atualizado',
     product_archived: 'Produto arquivado',
-    product_listing_link_created: 'Anúncio vinculado a um produto',
-    product_listing_link_deleted: 'Vínculo de anúncio removido',
     product_import_committed: 'Produtos importados por planilha',
     profile_updated: 'Perfil atualizado'
   }[operation] || 'Atividade no workspace';
@@ -547,7 +545,6 @@ function OptionsApp() {
         setInvitations(invitationResult?.invitations || []);
       }
       if (view === 'integrations') await loadAccounts();
-      if (view === 'products') await loadAccounts();
       if (view === 'history') {
         const [, memberResult] = await Promise.all([
           loadAccounts(),
@@ -957,7 +954,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'products' && <Products accounts={accounts} admin={admin} />}
+            {view === 'products' && <Products admin={admin} />}
             {view === 'history' && <ItemEditHistory accounts={accounts} members={members} currentUser={connection.user} admin={admin} onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined} />}
             {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
           </div>

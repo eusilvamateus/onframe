@@ -265,7 +265,7 @@ button, input { font: inherit; }
 .onframe-history-pagination > span { color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
 .onframe-products-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) 180px auto; align-items: end; gap: var(--ob-s-3); }
 .onframe-products-toolbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--ob-s-2); }
-.onframe-products-toolbar-actions > button, .onframe-product-link-form > button { white-space: nowrap; }
+.onframe-products-toolbar-actions > button { white-space: nowrap; }
 .onframe-products-table { min-width: 0; overflow-x: auto; }
 .onframe-products-table > * { min-width: 860px; }
 .onframe-products-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-3); }
@@ -284,9 +284,6 @@ button, input { font: inherit; }
 .onframe-product-form-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .onframe-product-section-title { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-md); font-weight: var(--ob-w-semibold); }
 .onframe-product-section-copy { margin: var(--ob-s-1) 0 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); }
-.onframe-product-links { border-top: 1px solid var(--ob-border); }
-.onframe-product-link { display: flex; min-width: 0; align-items: center; gap: var(--ob-s-3); padding: var(--ob-s-3) 0; border-bottom: 1px solid var(--ob-border); }
-.onframe-product-link-form { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1fr) minmax(130px, .8fr) minmax(130px, .8fr) auto; align-items: end; gap: var(--ob-s-2); }
 
 @media (max-width: 767px) {
   .onframe-integration-grid { grid-template-columns: 1fr; }
@@ -305,9 +302,8 @@ button, input { font: inherit; }
   .onframe-history-event-main { grid-template-columns: 48px minmax(0, 1fr); }
   .onframe-history-change-context { grid-column: 2; padding: 0; border: 0; }
   .onframe-history-event-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .onframe-products-toolbar, .onframe-product-form-grid, .onframe-product-form-grid--three, .onframe-product-link-form { grid-template-columns: 1fr; }
+  .onframe-products-toolbar, .onframe-product-form-grid, .onframe-product-form-grid--three { grid-template-columns: 1fr; }
   .onframe-products-toolbar-actions { justify-content: flex-start; }
-  .onframe-product-link-form > button { width: 100%; }
 }
 
 @media (max-width: 560px) {

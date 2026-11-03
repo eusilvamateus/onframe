@@ -2473,7 +2473,7 @@
         const targetPrice = promotionTargetPrice(entry, values);
         if (!targetPrice || promotionRangeWarning(entry, targetPrice)) return [];
         const payload = buildPromotionEstimatePayload(entry, values, targetPrice);
-        return [{ key, hash: JSON.stringify(payload), payload }];
+        return [{ key, hash: promotionEstimateHash(payload), payload }];
       });
       if (candidates.length) void loadPromotionEstimateBatch(candidates);
     }
@@ -2503,7 +2503,7 @@
       }
 
       const payload = buildPromotionEstimatePayload(entry, values, targetPrice);
-      const hash = JSON.stringify(payload);
+      const hash = promotionEstimateHash(payload);
       const current = state.promotionEstimates[key];
       if (current && current.hash === hash && (current.status === 'loading' || current.status === 'ready')) return;
       clearPromotionEstimateTimer(key);
@@ -2522,7 +2522,9 @@
       state.promotionEstimates[key] = { status: 'loading', hash, requestId };
       rerenderModal();
       try {
-        const data = await api(itemApiPath('/promotions/estimate'), {
+        const data = await api(itemApiPath('/promotions/estimate', {
+          variation_id: state.context && state.context.selectedVariationId
+        }), {
           method: 'POST',
           body: JSON.stringify(payload)
         });
@@ -2547,7 +2549,9 @@
       rerenderModal();
 
       try {
-        const response = await api(itemApiPath('/promotions/estimates'), {
+        const response = await api(itemApiPath('/promotions/estimates', {
+          variation_id: state.context && state.context.selectedVariationId
+        }), {
           method: 'POST',
           body: JSON.stringify({ estimates: candidates.map(({ payload }) => payload) })
         });
@@ -2585,6 +2589,13 @@
         startDate: values && values.start_date ? values.start_date : '',
         finishDate: values && values.finish_date ? values.finish_date : ''
       };
+    }
+
+    function promotionEstimateHash(payload) {
+      return JSON.stringify({
+        payload,
+        variationId: state.context && state.context.selectedVariationId || ''
+      });
     }
 
     function promotionTargetPrice(entry, values = {}) {

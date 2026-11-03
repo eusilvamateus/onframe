@@ -9,6 +9,7 @@ const spreadsheetModal = readFileSync(join(root, 'extension/ui/options/ProductSp
 const spreadsheet = readFileSync(join(root, 'extension/ui/options/product-spreadsheet.js'), 'utf8');
 const options = readFileSync(join(root, 'extension/ui/options/app.jsx'), 'utf8');
 const background = readFileSync(join(root, 'extension/background.js'), 'utf8');
+const commerce = readFileSync(join(root, 'extension/modules/commerce/module.js'), 'utf8');
 
 test('catalogo de produtos usa apenas componentes do design system', () => {
   for (const component of ['Table', 'Textarea', 'NumberField', 'SearchInput', 'Select', 'Modal', 'Pagination']) {
@@ -24,9 +25,13 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
 test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(options, /id: 'products', label: 'Produtos', icon: 'package'/u);
   assert.match(options, /view === 'products' && <Products/u);
-  for (const action of ['products', 'product-create', 'product-update', 'product-archive', 'product-link-create', 'product-link-delete', 'product-import-preview', 'product-import-commit']) {
+  for (const action of ['products', 'product-create', 'product-update', 'product-archive', 'product-import-preview', 'product-import-commit']) {
     assert.match(background, new RegExp(`action === '${action}'`, 'u'));
   }
+  assert.doesNotMatch(`${products}\n${background}`, /product-link|Anúncios vinculados|Vincular/u);
   assert.match(spreadsheet, /writeFileXLSX/u);
   assert.match(products, /downloadProductExport/u);
+  assert.match(commerce, /variation_id: state\.context && state\.context\.selectedVariationId/u);
+  assert.match(commerce, /function promotionEstimateHash\(payload\)/u);
+  assert.match(commerce, /hash: promotionEstimateHash\(payload\)/u);
 });

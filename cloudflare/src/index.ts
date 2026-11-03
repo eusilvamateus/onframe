@@ -17,8 +17,6 @@ import {
   archiveProduct,
   commitProductImport,
   createProduct,
-  createProductLink,
-  deleteProductLink,
   listProducts,
   previewProductImport,
   updateProduct
@@ -1826,18 +1824,6 @@ export default {
         const actor = await authenticateExtensionSession(request, env);
         if (request.method === 'PATCH') return json(await updateProduct(request, env, actor, productPath[1], requestId));
         if (request.method === 'DELETE') return json(await archiveProduct(env, actor, productPath[1], requestId));
-      }
-
-      const productLinksPath = /^\/v1\/app\/products\/([^/]+)\/links$/u.exec(url.pathname);
-      if (productLinksPath && request.method === 'POST') {
-        const actor = await authenticateExtensionSession(request, env);
-        return json(await createProductLink(request, env, actor, productLinksPath[1], requestId), 201);
-      }
-
-      const productLinkPath = /^\/v1\/app\/products\/([^/]+)\/links\/([^/]+)$/u.exec(url.pathname);
-      if (productLinkPath && request.method === 'DELETE') {
-        const actor = await authenticateExtensionSession(request, env);
-        return json(await deleteProductLink(env, actor, productLinkPath[1], productLinkPath[2], requestId));
       }
 
       if (url.pathname === '/v1/security' && request.method === 'GET') {

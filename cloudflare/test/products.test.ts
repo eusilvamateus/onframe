@@ -7,8 +7,8 @@ import {
   archiveProduct,
   commitProductImport,
   createProduct,
-  createProductLink,
   listProducts,
+  matchProductForPromotionItem,
   previewProductImport,
   updateProduct
 } from '../src/products.ts';
@@ -43,8 +43,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       db.prepare("INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at, identity_version) VALUES ('user-2', 'subject-2', 'colaborador@example.com', 'Colaborador', 1, 1, 1)"),
       db.prepare("INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'user-1', 1, 1)"),
       db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"),
-      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator', 1, 1)"),
-      db.prepare("INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '310458346', 'Loja principal', 1, 1, 1)")
+      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator', 1, 1)")
     ]);
     const env = { ONFRAME_DB: db };
     const payload = {
@@ -67,20 +66,11 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     await updateProduct(productRequest({ ...payload, sku: 'MESA-180', cost: 160, name: 'Mesa atualizada' }, 'PATCH'), env, admin, created.id, 'request-update-name');
     assert.equal((await db.prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?').bind(created.id).first<{ total: number }>())?.total, 2);
 
-    const linked = await createProductLink(productRequest({
-      sellerAccountId: 'account-1', itemId: 'mlb6312193712', variationId: '123', sellerSku: 'ML-MESA-180'
-    }), env, admin, created.id, 'request-link');
-    assert.equal(linked.links[0].itemId, 'MLB6312193712');
-    await assert.rejects(createProductLink(productRequest({
-      sellerAccountId: 'account-1', itemId: 'MLB6312193712', variationId: '123'
-    }), env, admin, created.id, 'request-link-duplicate'), { code: 'product_link_conflict' });
-
     const adminList = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?q=mesa&status=active'));
     assert.equal(adminList.pagination.total, 1);
-    assert.equal(adminList.products[0].links.length, 1);
+    assert.equal('links' in adminList.products[0], false);
     const collaboratorList = await listProducts(env, collaborator, new URL('https://onframe.onblide.com/v1/app/products'));
     assert.equal(collaboratorList.products.length, 1);
-    assert.equal(collaboratorList.products[0].links.length, 0);
 
     const chair = await createProduct(productRequest({
       sku: 'CADEIRA-01', name: 'Cadeira dobrável', description: '', cost: 80,
@@ -111,6 +101,36 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(importedProducts.products.some((entry) => entry.sku === 'BANCO-01'), true);
     assert.equal(importedProducts.products.some((entry) => entry.sku === 'DUP-01'), false);
     assert.equal((await db.prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?').bind(created.id).first<{ total: number }>())?.total, 3);
+
+    const itemMatch = await matchProductForPromotionItem(env, admin, {
+      seller_custom_field: ' mesa-180 '
+    });
+    assert.equal(itemMatch.status, 'matched');
+    assert.equal(itemMatch.source, 'item');
+    assert.equal(itemMatch.product?.id, created.id);
+    assert.equal(itemMatch.product?.cost, 170);
+
+    const variationMatch = await matchProductForPromotionItem(env, admin, {
+      variations: [{ id: 123, attributes: [{ id: 'SELLER_SKU', value_name: 'banco-01' }] }]
+    }, '123');
+    assert.equal(variationMatch.status, 'matched');
+    assert.equal(variationMatch.source, 'variation');
+    assert.equal(variationMatch.product?.sku, 'BANCO-01');
+
+    const ambiguousMatch = await matchProductForPromotionItem(env, admin, {
+      variations: [
+        { id: 123, seller_custom_field: 'MESA-180' },
+        { id: 456, seller_custom_field: 'BANCO-01' }
+      ]
+    });
+    assert.equal(ambiguousMatch.status, 'unmatched');
+    assert.equal(ambiguousMatch.reason, 'variation_required');
+
+    const inactiveMatch = await matchProductForPromotionItem(env, admin, {
+      seller_custom_field: 'CADEIRA-01'
+    });
+    assert.equal(inactiveMatch.status, 'unmatched');
+    assert.equal(inactiveMatch.reason, 'product_not_found');
 
     await archiveProduct(env, admin, created.id, 'request-archive');
     const afterArchive = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?limit=100'));

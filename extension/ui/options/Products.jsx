@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Badge,
   Button,
-  Divider,
   EmptyState,
   Input,
   Modal,
@@ -17,7 +16,6 @@ import {
   Tooltip,
   toast
 } from '@onblide/ui';
-import { accountName } from '../shared/IntegrationAccount';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { ProductSpreadsheetModal } from './ProductSpreadsheetModal';
 import { downloadProductExport } from './product-spreadsheet';
@@ -35,7 +33,7 @@ function statusLabel(status) {
   return status === 'inactive' ? 'Inativo' : 'Ativo';
 }
 
-function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
+function ProductForm({ product, admin, busy, onClose, onSaved }) {
   const [values, setValues] = useState(() => product ? {
     sku: product.sku,
     name: product.name,
@@ -47,14 +45,8 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
   } : EMPTY_FORM);
   const [current, setCurrent] = useState(product);
   const [error, setError] = useState('');
-  const [link, setLink] = useState({ accountLabel: '', itemId: '', variationId: '', sellerSku: '' });
   const [actionBusy, setActionBusy] = useState(false);
   const locked = busy || actionBusy;
-
-  const accountOptions = useMemo(() => accounts.map((account) => ({
-    label: `${accountName(account)} · ${account.user_id || account.meliUserId || account.meli_user_id || account.id}`,
-    id: account.id
-  })), [accounts]);
 
   const setField = (field, value) => setValues((state) => ({ ...state, [field]: value }));
 
@@ -81,48 +73,6 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
       setActionBusy(false);
     }
     if (closeAfterSave) onClose();
-  }
-
-  async function addLink() {
-    const account = accountOptions.find((option) => option.label === link.accountLabel);
-    if (!account || !link.itemId.trim()) {
-      setError('Selecione uma conta e informe o ID do anúncio.');
-      return;
-    }
-    setError('');
-    setActionBusy(true);
-    try {
-      const result = await sendRemoteMessage('product-link-create', {
-        productId: current.id,
-        payload: {
-          sellerAccountId: account.id,
-          itemId: link.itemId,
-          variationId: link.variationId,
-          sellerSku: link.sellerSku
-        }
-      });
-      setCurrent(result);
-      setLink({ accountLabel: '', itemId: '', variationId: '', sellerSku: '' });
-      onSaved(result, 'Anúncio vinculado.');
-    } catch (failure) {
-      setError(userError(failure));
-    } finally {
-      setActionBusy(false);
-    }
-  }
-
-  async function removeLink(linkId) {
-    setError('');
-    setActionBusy(true);
-    try {
-      const result = await sendRemoteMessage('product-link-delete', { productId: current.id, linkId });
-      setCurrent(result);
-      onSaved(result, 'Vínculo removido.');
-    } catch (failure) {
-      setError(userError(failure));
-    } finally {
-      setActionBusy(false);
-    }
   }
 
   return (
@@ -158,39 +108,12 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
           width={220}
         />
 
-        {current && <>
-          <Divider decorative />
-          <section className="onframe-stack" aria-label="Anúncios vinculados">
-            <div>
-              <h3 className="onframe-product-section-title">Anúncios vinculados</h3>
-              <p className="onframe-product-section-copy">Associe este produto aos anúncios e variações correspondentes.</p>
-            </div>
-            {current.links?.length > 0 ? <div className="onframe-product-links">
-              {current.links.map((item) => <div className="onframe-product-link" key={item.id}>
-                <div className="onframe-grow">
-                  <p className="onframe-list-title">{item.itemId}{item.variationId ? ` · Variação ${item.variationId}` : ''}</p>
-                  <p className="onframe-list-meta">{item.accountName}{item.sellerSku ? ` · SKU no anúncio: ${item.sellerSku}` : ''}</p>
-                </div>
-                {admin && <Tooltip label="Remover vínculo">
-                  <Button kind="quiet" tone="danger" size="sm" aria-label="Remover vínculo" disabled={locked} icon={<Ph n="trash" size={16} />} onClick={() => void removeLink(item.id)} />
-                </Tooltip>}
-              </div>)}
-            </div> : <p className="onframe-empty">Nenhum anúncio vinculado.</p>}
-            {admin && <div className="onframe-product-link-form">
-              <Select label="Conta" placeholder="Selecione" options={accountOptions} value={link.accountLabel || null} disabled={locked || accountOptions.length === 0} onChange={(value) => setLink((state) => ({ ...state, accountLabel: value }))} />
-              <Input label="ID do anúncio" placeholder="MLB1234567890" value={link.itemId} disabled={locked} onChange={(event) => setLink((state) => ({ ...state, itemId: event.target.value }))} />
-              <Input label="ID da variação" placeholder="Opcional" value={link.variationId} disabled={locked} onChange={(event) => setLink((state) => ({ ...state, variationId: event.target.value }))} />
-              <Input label="SKU no anúncio" placeholder="Opcional" value={link.sellerSku} disabled={locked} onChange={(event) => setLink((state) => ({ ...state, sellerSku: event.target.value }))} />
-              <Button kind="secondary" disabled={locked || accountOptions.length === 0} icon={<Ph n="link" size={16} />} onClick={() => void addLink()}>Vincular</Button>
-            </div>}
-          </section>
-        </>}
       </div>
     </Modal>
   );
 }
 
-export function Products({ accounts, admin }) {
+export function Products({ admin }) {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [query, setQuery] = useState('');
@@ -280,7 +203,7 @@ export function Products({ accounts, admin }) {
 
   const columns = [
     { key: 'sku', label: 'SKU', bold: true, width: 150 },
-    { key: 'name', label: 'Produto', bold: true, render: (_, product) => <div><p className="onframe-list-title">{product.name}</p><p className="onframe-list-meta">{product.links?.length || 0} {(product.links?.length || 0) === 1 ? 'vínculo' : 'vínculos'}</p></div> },
+    { key: 'name', label: 'Produto', bold: true, render: (_, product) => <div><p className="onframe-list-title">{product.name}</p>{product.description && <p className="onframe-list-meta">{product.description}</p>}</div> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
     { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
     { key: 'variableCost', label: 'Outros custos', width: 145, render: (value) => money(value) },
@@ -320,7 +243,7 @@ export function Products({ accounts, admin }) {
       <span>{pagination.total} produtos</span>
       <Pagination page={pagination.page} total={pagination.totalPages} onChange={(page) => void load(page)} />
     </div>}
-    {dialog?.type === 'product' && <ProductForm key={dialog.product?.id || 'new'} product={dialog.product} accounts={accounts} admin={admin} busy={loading} onClose={() => setDialog(null)} onSaved={reflectProduct} />}
+    {dialog?.type === 'product' && <ProductForm key={dialog.product?.id || 'new'} product={dialog.product} admin={admin} busy={loading} onClose={() => setDialog(null)} onSaved={reflectProduct} />}
     {dialog?.type === 'import' && <ProductSpreadsheetModal onClose={() => setDialog(null)} onImported={imported} />}
     <Modal
       open={dialog?.type === 'archive'}

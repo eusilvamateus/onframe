@@ -19,18 +19,6 @@ type ProductRow = {
   updated_at: number;
 };
 
-type ProductLinkRow = {
-  id: string;
-  product_id: string;
-  seller_account_id: string;
-  item_id: string;
-  variation_id: string;
-  seller_sku: string | null;
-  account_name: string | null;
-  meli_user_id: string;
-  created_at: number;
-};
-
 type ProductData = {
   sku: string;
   normalizedSku: string;
@@ -63,6 +51,15 @@ type ProductImportPlanRow = {
   existing?: ProductRow;
 };
 
+type ProductSkuResolution = {
+  status: 'resolved' | 'unmatched';
+  sku: string | null;
+  source: 'item' | 'variation' | null;
+  variationId: string | null;
+  reason?: string;
+  product?: null;
+};
+
 export class ProductRequestError extends Error {
   constructor(readonly code: string, readonly status: number) {
     super(code);
@@ -92,10 +89,89 @@ function decimalToInteger(value: unknown, scale: number, max: number): number {
 }
 
 function normalizeSku(value: string): string {
-  return value.normalize('NFKC').toLocaleUpperCase('pt-BR');
+  return value.trim().normalize('NFKC').toLocaleUpperCase('pt-BR');
 }
 
-function productPayload(row: ProductRow, links: ProductLinkRow[] = []) {
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function sellerSkuFromAttributes(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  for (const candidate of value) {
+    const attribute = recordValue(candidate);
+    if (!attribute || String(attribute.id || '').toUpperCase() !== 'SELLER_SKU') continue;
+    const sku = String(attribute.value_name ?? attribute.valueName ?? '').trim();
+    if (sku) return sku;
+  }
+  return null;
+}
+
+function sellerSkuFromEntity(value: unknown): string | null {
+  const entity = recordValue(value);
+  if (!entity) return null;
+  const direct = String(entity.seller_custom_field ?? entity.seller_sku ?? entity.sellerSku ?? '').trim();
+  return direct || sellerSkuFromAttributes(entity.attributes);
+}
+
+function unresolvedProductMatch(reason: string, sku: string | null = null, source: 'item' | 'variation' | null = null, variationId: string | null = null): ProductSkuResolution {
+  return { status: 'unmatched', sku, source, variationId, reason, product: null };
+}
+
+function resolvePromotionItemSku(itemValue: unknown, requestedVariationId: string | null): ProductSkuResolution {
+  const item = recordValue(itemValue);
+  if (!item) return unresolvedProductMatch('item_unavailable');
+  const itemSku = sellerSkuFromEntity(item);
+  const variations = Array.isArray(item.variations) ? item.variations.map(recordValue).filter(Boolean) as Record<string, unknown>[] : [];
+  const variationId = String(requestedVariationId || '').trim();
+
+  if (variationId) {
+    const variation = variations.find((entry) => String(entry.id || '') === variationId);
+    if (!variation) return unresolvedProductMatch('variation_not_found', null, 'variation', variationId);
+    const variationSku = sellerSkuFromEntity(variation);
+    if (variationSku) return { status: 'resolved', sku: variationSku, source: 'variation', variationId };
+    if (itemSku) return { status: 'resolved', sku: itemSku, source: 'item', variationId };
+    return unresolvedProductMatch('sku_unavailable', null, 'variation', variationId);
+  }
+
+  if (itemSku) return { status: 'resolved', sku: itemSku, source: 'item', variationId: null };
+  const variationSkus = variations.flatMap((variation) => {
+    const sku = sellerSkuFromEntity(variation);
+    return sku ? [{ sku, variationId: String(variation.id || '') || null }] : [];
+  });
+  const unique = new Map<string, { sku: string; variationId: string | null }>();
+  for (const candidate of variationSkus) unique.set(normalizeSku(candidate.sku), candidate);
+  if (unique.size === 0) return unresolvedProductMatch('sku_unavailable');
+  if (unique.size > 1) return unresolvedProductMatch('variation_required', null, 'variation');
+  const [candidate] = unique.values();
+  return { status: 'resolved', sku: candidate.sku, source: 'variation', variationId: candidate.variationId };
+}
+
+export async function matchProductForPromotionItem(
+  env: ProductEnv,
+  actor: { workspaceId: string },
+  item: unknown,
+  requestedVariationId: string | null = null
+) {
+  const resolution = resolvePromotionItemSku(item, requestedVariationId);
+  if (resolution.status !== 'resolved' || !resolution.sku) return resolution;
+  const product = await env.ONFRAME_DB.prepare(`
+    SELECT id, sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    FROM products
+    WHERE workspace_id = ? AND normalized_sku = ? AND status = 'active' AND archived_at IS NULL
+  `).bind(actor.workspaceId, normalizeSku(resolution.sku)).first<ProductRow>();
+  if (!product) return unresolvedProductMatch('product_not_found', resolution.sku, resolution.source, resolution.variationId);
+  return {
+    status: 'matched',
+    sku: resolution.sku,
+    source: resolution.source,
+    variationId: resolution.variationId,
+    reason: null,
+    product: productPayload(product)
+  };
+}
+
+function productPayload(row: ProductRow) {
   return {
     id: row.id,
     sku: row.sku,
@@ -106,17 +182,7 @@ function productPayload(row: ProductRow, links: ProductLinkRow[] = []) {
     variableCost: row.variable_cost_cents / 100,
     status: row.status,
     createdAt: new Date(row.created_at).toISOString(),
-    updatedAt: new Date(row.updated_at).toISOString(),
-    links: links.map((link) => ({
-      id: link.id,
-      sellerAccountId: link.seller_account_id,
-      accountName: link.account_name || link.meli_user_id,
-      meliUserId: link.meli_user_id,
-      itemId: link.item_id,
-      variationId: link.variation_id || null,
-      sellerSku: link.seller_sku,
-      createdAt: new Date(link.created_at).toISOString()
-    }))
+    updatedAt: new Date(row.updated_at).toISOString()
   };
 }
 
@@ -147,28 +213,6 @@ function escapedLike(value: string): string {
   return `%${value.replace(/[\\%_]/gu, '\\$&')}%`;
 }
 
-async function visibleLinks(env: ProductEnv, actor: ProductActor, productIds: string[]): Promise<ProductLinkRow[]> {
-  if (productIds.length === 0) return [];
-  const placeholders = productIds.map(() => '?').join(', ');
-  const collaboratorFilter = actor.workspaceRole === 'admin' ? '' : `
-    AND EXISTS (
-      SELECT 1 FROM account_members am
-      WHERE am.seller_account_id = link.seller_account_id AND am.user_id = ?
-    )
-  `;
-  const bindings: unknown[] = [actor.workspaceId, ...productIds];
-  if (actor.workspaceRole !== 'admin') bindings.push(actor.userId);
-  const result = await env.ONFRAME_DB.prepare(`
-    SELECT link.id, link.product_id, link.seller_account_id, link.item_id, link.variation_id, link.seller_sku,
-           COALESCE(account.nickname, account.meli_user_id) AS account_name, account.meli_user_id, link.created_at
-    FROM product_listing_links link
-    JOIN seller_accounts account ON account.id = link.seller_account_id
-    WHERE link.workspace_id = ? AND link.product_id IN (${placeholders}) ${collaboratorFilter}
-    ORDER BY link.created_at DESC
-  `).bind(...bindings).all<ProductLinkRow>();
-  return result.results;
-}
-
 export async function listProducts(env: ProductEnv, actor: ProductActor, url: URL) {
   const query = String(url.searchParams.get('q') || '').trim();
   const requestedStatus = String(url.searchParams.get('status') || 'all');
@@ -197,11 +241,8 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
     FROM products WHERE ${clause}
     ORDER BY updated_at DESC, id DESC LIMIT ? OFFSET ?
   `).bind(...bindings, limit, (page - 1) * limit).all<ProductRow>();
-  const links = await visibleLinks(env, actor, rows.results.map((row) => row.id));
-  const linksByProduct = new Map<string, ProductLinkRow[]>();
-  for (const link of links) linksByProduct.set(link.product_id, [...(linksByProduct.get(link.product_id) || []), link]);
   return {
-    products: rows.results.map((row) => productPayload(row, linksByProduct.get(row.id))),
+    products: rows.results.map(productPayload),
     pagination: { page, limit, total, totalPages }
   };
 }
@@ -477,7 +518,7 @@ export async function updateProduct(request: Request, env: ProductEnv, actor: Pr
     mapWriteError(error);
   }
   await audit(env, actor, requestId, 'product_updated', 'product', productId, 200);
-  return productPayload(await assertProduct(env, actor, productId), await visibleLinks(env, actor, [productId]));
+  return productPayload(await assertProduct(env, actor, productId));
 }
 
 export async function archiveProduct(env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {
@@ -490,47 +531,4 @@ export async function archiveProduct(env: ProductEnv, actor: ProductActor, produ
   `).bind(timestamp, actor.userId, timestamp, productId, actor.workspaceId).run();
   await audit(env, actor, requestId, 'product_archived', 'product', productId, 200);
   return { archived: true };
-}
-
-export async function createProductLink(request: Request, env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {
-  await assertAdmin(env, actor);
-  await assertProduct(env, actor, productId);
-  const body = await requestBody(request);
-  const sellerAccountId = asText(body.sellerAccountId, 80, true);
-  const itemId = asText(body.itemId, 32, true).toUpperCase();
-  const variationId = asText(body.variationId, 32);
-  const sellerSku = asText(body.sellerSku, 80) || null;
-  if (!/^MLB\d+$/u.test(itemId) || (variationId && !/^\d+$/u.test(variationId))) {
-    throw new ProductRequestError('product_link_invalid_payload', 400);
-  }
-  const account = await env.ONFRAME_DB.prepare(`
-    SELECT id FROM seller_accounts WHERE id = ? AND workspace_id = ?
-  `).bind(sellerAccountId, actor.workspaceId).first<{ id: string }>();
-  if (!account) throw new ProductRequestError('product_link_account_not_found', 404);
-  const id = crypto.randomUUID();
-  const timestamp = Date.now();
-  try {
-    await env.ONFRAME_DB.prepare(`
-      INSERT INTO product_listing_links (
-        id, workspace_id, product_id, seller_account_id, item_id, variation_id, seller_sku,
-        created_by_user_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(id, actor.workspaceId, productId, sellerAccountId, itemId, variationId, sellerSku, actor.userId, timestamp, timestamp).run();
-  } catch (error) {
-    if (String(error).includes('UNIQUE constraint failed')) throw new ProductRequestError('product_link_conflict', 409);
-    throw error;
-  }
-  await audit(env, actor, requestId, 'product_listing_link_created', 'product_listing_link', id, 201);
-  return productPayload(await assertProduct(env, actor, productId), await visibleLinks(env, actor, [productId]));
-}
-
-export async function deleteProductLink(env: ProductEnv, actor: ProductActor, productId: string, linkId: string, requestId: string) {
-  await assertAdmin(env, actor);
-  await assertProduct(env, actor, productId);
-  const result = await env.ONFRAME_DB.prepare(`
-    DELETE FROM product_listing_links WHERE id = ? AND product_id = ? AND workspace_id = ?
-  `).bind(linkId, productId, actor.workspaceId).run();
-  if (result.meta.changes !== 1) throw new ProductRequestError('product_link_not_found', 404);
-  await audit(env, actor, requestId, 'product_listing_link_deleted', 'product_listing_link', linkId, 200);
-  return productPayload(await assertProduct(env, actor, productId), await visibleLinks(env, actor, [productId]));
 }
