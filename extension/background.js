@@ -52,6 +52,8 @@ async function handleRemoteMessage(message) {
   if (action === 'product-archive') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'DELETE' });
   if (action === 'product-link-create') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}/links`, { method: 'POST', body: JSON.stringify(message.payload || {}) });
   if (action === 'product-link-delete') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}/links/${encodeURIComponent(String(message.linkId || ''))}`, { method: 'DELETE' });
+  if (action === 'product-import-preview') return requestPlatform('/v1/app/products/import/preview', { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'product-import-commit') return requestPlatform('/v1/app/products/import', { method: 'POST', body: JSON.stringify(message.payload || {}) });
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'workspace-leave') return leaveWorkspace();

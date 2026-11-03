@@ -15,8 +15,8 @@
     "auth:templates:check": "node scripts/auth/generate-email-templates.js --check",
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:release",
-    "test": "node --test test/*.test.js && tsx --test cloudflare/test/*.test.ts && node scripts/test-security-ui.js",
-    "test:all": "npm run build:extension-ui && npm run build:security-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/products.test.js test/remote-architecture.test.js && tsx --test cloudflare/test/*.test.ts && node scripts/test-security-ui.js"
+    "test": "node --test test/*.test.js && tsx --test test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test-security-ui.js",
+    "test:all": "npm run build:extension-ui && npm run build:security-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/products.test.js test/remote-architecture.test.js && tsx --test test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test-security-ui.js"
   },
   "engines": {
     "node": ">=20"
@@ -31,6 +31,7 @@
     "@onblide/ui": "file:../../onblide-design-system/project/package",
     "@supabase/supabase-js": "2.117.2",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

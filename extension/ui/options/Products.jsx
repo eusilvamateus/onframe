@@ -19,6 +19,8 @@ import {
 } from '@onblide/ui';
 import { accountName } from '../shared/IntegrationAccount';
 import { sendRemoteMessage, userError } from '../shared/runtime';
+import { ProductSpreadsheetModal } from './ProductSpreadsheetModal';
+import { downloadProductExport } from './product-spreadsheet';
 
 const PAGE_SIZE = 25;
 const EMPTY_FORM = {
@@ -195,6 +197,7 @@ export function Products({ accounts, admin }) {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [transferBusy, setTransferBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [error, setError] = useState('');
   const requestSequence = useRef(0);
@@ -244,6 +247,37 @@ export function Products({ accounts, admin }) {
     }
   }
 
+  async function exportCatalog() {
+    setTransferBusy(true);
+    setError('');
+    try {
+      const catalog = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const result = await sendRemoteMessage('products', { query: { status: 'all', page, limit: 100 } });
+        catalog.push(...(result.products || []));
+        totalPages = result.pagination?.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages);
+      downloadProductExport(catalog);
+      toast({ tone: 'success', title: `${catalog.length} ${catalog.length === 1 ? 'produto exportado' : 'produtos exportados'}.` });
+    } catch (failure) {
+      setError(userError(failure, 'Não foi possível exportar os produtos.'));
+    } finally {
+      setTransferBusy(false);
+    }
+  }
+
+  function imported({ summary }) {
+    toast({
+      tone: summary.rejected > 0 ? 'warning' : 'success',
+      title: 'Importação processada.',
+      body: `${summary.created} criados, ${summary.updated} atualizados e ${summary.rejected} rejeitados.`
+    });
+    void load(1);
+  }
+
   const columns = [
     { key: 'sku', label: 'SKU', bold: true, width: 150 },
     { key: 'name', label: 'Produto', bold: true, render: (_, product) => <div><p className="onframe-list-title">{product.name}</p><p className="onframe-list-meta">{product.links?.length || 0} {(product.links?.length || 0) === 1 ? 'vínculo' : 'vínculos'}</p></div> },
@@ -268,7 +302,11 @@ export function Products({ accounts, admin }) {
         onChange={(value) => setStatus(value === 'Ativos' ? 'active' : value === 'Inativos' ? 'inactive' : 'all')}
         width={180}
       />
-      {admin && <Button icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Novo produto</Button>}
+      <div className="onframe-products-toolbar-actions">
+        <Button kind="secondary" disabled={transferBusy} icon={<Ph n="download-simple" size={17} />} onClick={() => void exportCatalog()}>Exportar</Button>
+        {admin && <Button kind="secondary" disabled={transferBusy} icon={<Ph n="upload-simple" size={17} />} onClick={() => setDialog({ type: 'import' })}>Importar</Button>}
+        {admin && <Button disabled={transferBusy} icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Novo produto</Button>}
+      </div>
     </div>
     <div className="onframe-products-table">
       <Table
@@ -283,6 +321,7 @@ export function Products({ accounts, admin }) {
       <Pagination page={pagination.page} total={pagination.totalPages} onChange={(page) => void load(page)} />
     </div>}
     {dialog?.type === 'product' && <ProductForm key={dialog.product?.id || 'new'} product={dialog.product} accounts={accounts} admin={admin} busy={loading} onClose={() => setDialog(null)} onSaved={reflectProduct} />}
+    {dialog?.type === 'import' && <ProductSpreadsheetModal onClose={() => setDialog(null)} onImported={imported} />}
     <Modal
       open={dialog?.type === 'archive'}
       onClose={loading ? undefined : () => setDialog(null)}

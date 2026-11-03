@@ -85,6 +85,7 @@ function activityLabel(operation) {
     product_archived: 'Produto arquivado',
     product_listing_link_created: 'Anúncio vinculado a um produto',
     product_listing_link_deleted: 'Vínculo de anúncio removido',
+    product_import_committed: 'Produtos importados por planilha',
     profile_updated: 'Perfil atualizado'
   }[operation] || 'Atividade no workspace';
 }

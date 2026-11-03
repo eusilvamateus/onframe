@@ -50,6 +50,7 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     product_link_account_not_found: 'A conta selecionada não pertence a este workspace.',
     product_link_conflict: 'Este anúncio e variação já estão vinculados a outro produto.',
     product_link_not_found: 'Este vínculo não está mais disponível.',
+    product_import_invalid_payload: 'A planilha deve conter entre 1 e 2.000 produtos.',
     extension_session_unauthorized: 'Sua sessão expirou. Entre novamente para continuar.'
   };
   return messages[code] || String(error?.message || fallback);
