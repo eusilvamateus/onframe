@@ -164,6 +164,16 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(afterArchive.products.some((entry) => entry.id === created.id), false);
     const reused = await createProduct(productRequest({ ...payload, sku: 'mesa-180' }), env, admin, 'request-reuse');
     assert.equal(reused.sku, 'mesa-180');
+
+    const inheritedTax = await createProduct(productRequest({
+      sku: 'HERDA-IMPOSTO', name: 'Produto com imposto herdado', cost: 10, customCosts: [], status: 'active'
+    }), env, admin, 'request-inherited-tax');
+    assert.equal(inheritedTax.taxRate, null);
+    const inheritedPreview = await previewProductImport(productRequest({ rows: [{
+      rowNumber: 2, sku: 'HERDA-PLANILHA', name: 'Produto da planilha', cost: 20, taxRate: '', customCosts: [], status: 'active'
+    }] }), env, admin);
+    assert.equal(inheritedPreview.rows[0].action, 'create');
+    assert.equal(inheritedPreview.rows[0].values?.taxRate, null);
   } finally {
     await simulator.dispose();
   }

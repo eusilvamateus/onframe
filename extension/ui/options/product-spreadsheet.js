@@ -150,7 +150,7 @@ function productsWorksheet(products) {
     product.sku,
     product.name,
     Number(product.cost || 0),
-    Number(product.taxRate || 0),
+    product.taxRate === null || product.taxRate === undefined ? '' : Number(product.taxRate),
     product.status === 'inactive' ? 'Inativo' : 'Ativo'
   ])];
   const worksheet = utils.aoa_to_sheet(data);
@@ -190,7 +190,7 @@ export function createProductWorkbook(products = [], includeInstructions = false
       ['SKU', 'Identificador único do produto no workspace.'],
       ['Nome', 'Nome interno do produto.'],
       ['Custo (R$)', 'Custo unitário do produto. Use valor numérico.'],
-      ['Imposto (%)', 'Alíquota aplicada sobre a venda. Exemplo: 7,25.'],
+      ['Imposto (%)', 'Alíquota específica do produto. Deixe vazio para herdar a configuração da conta ou do workspace.'],
       ['Custos', 'Na aba Custos, associe cada custo ao SKU e escolha R$ ou %. Percentuais usam o preço efetivo da venda.'],
       ['Status', 'Use Ativo ou Inativo.'],
       ['', 'Não altere os títulos da aba Produtos. O SKU decide se a linha cria ou atualiza um produto.']

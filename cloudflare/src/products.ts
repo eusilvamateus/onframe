@@ -11,7 +11,7 @@ type ProductRow = {
   sku: string;
   name: string;
   current_cost_cents: number;
-  tax_rate_bps: number;
+  tax_rate_bps: number | null;
   custom_costs_json: string;
   status: 'active' | 'inactive';
   created_at: number;
@@ -29,7 +29,7 @@ type ProductData = {
   normalizedSku: string;
   name: string;
   costCents: number;
-  taxRateBps: number;
+  taxRateBps: number | null;
   customCosts: ProductCustomCost[];
   customCostsJson: string;
   status: 'active' | 'inactive';
@@ -47,7 +47,7 @@ type ProductImportPlanRow = {
     sku: string;
     name: string;
     cost: number;
-    taxRate: number;
+    taxRate: number | null;
     customCosts: Array<{ description: string; type: 'fixed' | 'percentage'; value: number }>;
     status: 'active' | 'inactive';
   } | null;
@@ -90,6 +90,11 @@ function decimalToInteger(value: unknown, scale: number, max: number): number {
     throw new ProductRequestError('product_invalid_payload', 400);
   }
   return scaled;
+}
+
+function optionalDecimalToInteger(value: unknown, scale: number, max: number): number | null {
+  if (value === '' || value === null || value === undefined) return null;
+  return decimalToInteger(value, scale, max);
 }
 
 function parseCustomCosts(value: unknown): ProductCustomCost[] {
@@ -214,7 +219,7 @@ function productPayload(row: ProductRow) {
     sku: row.sku,
     name: row.name,
     cost: row.current_cost_cents / 100,
-    taxRate: row.tax_rate_bps / 100,
+    taxRate: row.tax_rate_bps === null ? null : row.tax_rate_bps / 100,
     customCosts: customCostsPayload(row.custom_costs_json),
     status: row.status,
     createdAt: new Date(row.created_at).toISOString(),
@@ -301,7 +306,7 @@ function parseProductBody(body: Record<string, unknown>): ProductData {
     normalizedSku: normalizeSku(sku),
     name: asText(body.name, 160, true),
     costCents: decimalToInteger(body.cost, 100, 9_999_999_999),
-    taxRateBps: decimalToInteger(body.taxRate, 100, 10_000),
+    taxRateBps: optionalDecimalToInteger(body.taxRate, 100, 10_000),
     customCosts,
     customCostsJson: JSON.stringify(customCosts),
     status
@@ -337,7 +342,6 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
   if (!name) errors.push('Nome obrigatório.');
   else if (name.length > 160) errors.push('Nome deve ter até 160 caracteres.');
   if (row.cost === '' || row.cost === null || row.cost === undefined) errors.push('Custo obrigatório.');
-  if (row.taxRate === '' || row.taxRate === null || row.taxRate === undefined) errors.push('Imposto obrigatório.');
   if (row.status === '' || row.status === null || row.status === undefined) errors.push('Status obrigatório.');
   if (errors.length > 0) return { index, rowNumber, sku, name, action: 'error', errors, productId: null, values: null };
   try {
@@ -354,7 +358,7 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
         sku: data.sku,
         name: data.name,
         cost: data.costCents / 100,
-        taxRate: data.taxRateBps / 100,
+        taxRate: data.taxRateBps === null ? null : data.taxRateBps / 100,
         customCosts: data.customCosts.map((cost) => ({ description: cost.description, type: cost.type, value: cost.value_scaled / 100 })),
         status: data.status
       },

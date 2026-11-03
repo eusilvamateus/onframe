@@ -38,7 +38,7 @@ const SORT_FILTERS = [
   { value: 'updated', label: 'Data de atualização' }
 ];
 const EMPTY_FORM = {
-  sku: '', name: '', cost: 0, taxRate: 0, customCosts: [], status: 'active'
+  sku: '', name: '', cost: 0, taxRate: null, customCosts: [], status: 'active'
 };
 
 function customCostKey() {
@@ -207,7 +207,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
           <h3>Custos</h3>
           <div className="onframe-product-cost-grid">
             <NumberField label="Custo do produto" value={values.cost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('cost', value ?? 0)} />
-            <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value ?? 0)} />
+            <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value)} />
           </div>
           <div className="onframe-product-custom-costs">
             <div className="onframe-product-custom-costs-header">
@@ -394,7 +394,7 @@ export function Products({ admin, onHeaderActionsChange }) {
     { key: 'name', label: 'Produto', bold: true, render: (value) => <p className="onframe-list-title">{value}</p> },
     { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
-    { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
+    { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => value === null ? '—' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
     { key: 'actions', label: '', width: 56, render: (_, product) => <div className="onframe-product-action-menu">
       <Popover
         placement="bottom"

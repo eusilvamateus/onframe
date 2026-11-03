@@ -28,6 +28,7 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Situação/u);
   assert.match(products, /onframe-product-form-fields[^]*<Input label="Nome"[^]*<Input label="SKU"/u);
   assert.match(products, /<Switch[^]*checked=\{values\.status === 'active'\}[^]*onChange=\{\(checked\) => setField\('status'/u);
+  assert.match(products, /taxRate: null[^]*label="Alíquota de imposto"[^]*onChange=\{\(value\) => setField\('taxRate', value\)\}/u);
   assert.match(products, /function customCostSummary[^]*Novo custo[^]*Custos personalizados[^]*Adicionar custo[^]*onframe-product-custom-cost-chips[^]*<Chip[^]*onframe-product-custom-cost-chip-name[^]*summary\.description[^]*onframe-product-custom-cost-chip-value[^]*summary\.value[^]*aria-label=\{`Editar custo[^]*selected=\{selectedCustomCostKey === cost\.key\}[^]*removable=\{admin\}[^]*onRemove=/u);
   assert.doesNotMatch(products, /\$\{description\} · \$\{value\}/u);
   assert.match(products, /selectedCustomCost &&[^]*Descrição do custo[^]*selection="single"[^>]*>[^]*value="fixed" appearance="ghost" tone="primary">R\$[^]*value="percentage" appearance="ghost" tone="primary">%/u);
@@ -61,6 +62,7 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   }
   assert.doesNotMatch(`${products}\n${background}`, /product-link|Anúncios vinculados|Vincular/u);
   assert.match(spreadsheet, /writeFileXLSX/u);
+  assert.match(spreadsheet, /product\.taxRate === null \|\| product\.taxRate === undefined \? '' : Number\(product\.taxRate\)/u);
   assert.match(products, /downloadProductExport/u);
   assert.match(products, /onHeaderActionsChange\([^]*onframe-products-header-actions[^]*Baixar planilha[^]*Importar[^]*Criar produto/u);
   assert.match(products, /aria-busy=\{exportBusy\}[^]*Gerando planilha\.\.\./u);

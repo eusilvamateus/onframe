@@ -63,6 +63,18 @@ test('planilha interpreta moeda e percentual no formato brasileiro', () => {
   }]);
 });
 
+test('planilha preserva imposto vazio como configuracao herdada', () => {
+  const workbook = createProductWorkbook([{
+    sku: 'HERDA-01',
+    name: 'Produto herdado',
+    cost: 50,
+    taxRate: null,
+    customCosts: [],
+    status: 'active'
+  }]);
+  assert.equal(parseProductWorkbook(buffer(workbook))[0].taxRate, '');
+});
+
 test('planilha sem o contrato oficial e rejeitada antes do envio', () => {
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, utils.aoa_to_sheet([
