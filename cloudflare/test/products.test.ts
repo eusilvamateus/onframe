@@ -5,9 +5,11 @@ import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
 import {
   archiveProduct,
+  commitProductImport,
   createProduct,
   createProductLink,
   listProducts,
+  previewProductImport,
   updateProduct
 } from '../src/products.ts';
 
@@ -80,8 +82,39 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(collaboratorList.products.length, 1);
     assert.equal(collaboratorList.products[0].links.length, 0);
 
+    const chair = await createProduct(productRequest({
+      sku: 'CADEIRA-01', name: 'Cadeira dobrável', description: '', cost: 80,
+      taxRate: 4, variableCost: 2, status: 'inactive'
+    }), env, admin, 'request-chair');
+    const importRows = [
+      { rowNumber: 2, ...payload, sku: 'MESA-180', cost: 170 },
+      { rowNumber: 3, sku: 'BANCO-01', name: 'Banco portátil', description: '', cost: 55.9, taxRate: 3.5, variableCost: 1, status: 'active' },
+      { rowNumber: 4, sku: chair.sku, name: chair.name, description: chair.description, cost: chair.cost, taxRate: chair.taxRate, variableCost: chair.variableCost, status: chair.status },
+      { rowNumber: 5, sku: 'DUP-01', name: 'Duplicado A', description: '', cost: 10, taxRate: 1, variableCost: 0, status: 'active' },
+      { rowNumber: 6, sku: 'dup-01', name: 'Duplicado B', description: '', cost: 11, taxRate: 1, variableCost: 0, status: 'active' },
+      { rowNumber: 7, sku: 'SEM-CUSTO', name: 'Inválido', description: '', cost: '', taxRate: 1, variableCost: 0, status: 'active' }
+    ];
+    const importRequest = () => productRequest({ rows: importRows });
+    await assert.rejects(previewProductImport(importRequest(), env, collaborator), { code: 'product_access_forbidden' });
+    const preview = await previewProductImport(importRequest(), env, admin);
+    assert.deepEqual(preview.summary, { total: 6, create: 1, update: 1, unchanged: 1, error: 3 });
+    assert.equal(preview.rows[0].action, 'update');
+    assert.equal(preview.rows[1].action, 'create');
+    assert.equal(preview.rows[2].action, 'unchanged');
+    assert.equal(preview.rows[3].errors[0], 'SKU repetido na planilha.');
+    assert.equal(preview.rows[5].errors[0], 'Custo obrigatório.');
+
+    const imported = await commitProductImport(importRequest(), env, admin, 'request-import');
+    assert.deepEqual(imported.summary, { total: 6, created: 1, updated: 1, unchanged: 1, rejected: 3 });
+    const importedProducts = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?limit=100'));
+    assert.equal(importedProducts.products.find((entry) => entry.sku === 'MESA-180')?.cost, 170);
+    assert.equal(importedProducts.products.some((entry) => entry.sku === 'BANCO-01'), true);
+    assert.equal(importedProducts.products.some((entry) => entry.sku === 'DUP-01'), false);
+    assert.equal((await db.prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?').bind(created.id).first<{ total: number }>())?.total, 3);
+
     await archiveProduct(env, admin, created.id, 'request-archive');
-    assert.equal((await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products'))).products.length, 0);
+    const afterArchive = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?limit=100'));
+    assert.equal(afterArchive.products.some((entry) => entry.id === created.id), false);
     const reused = await createProduct(productRequest({ ...payload, sku: 'mesa-180' }), env, admin, 'request-reuse');
     assert.equal(reused.sku, 'mesa-180');
   } finally {

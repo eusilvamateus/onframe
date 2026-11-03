@@ -15,10 +15,12 @@ import { latestOnFrameRelease } from './releases';
 import {
   ProductRequestError,
   archiveProduct,
+  commitProductImport,
   createProduct,
   createProductLink,
   deleteProductLink,
   listProducts,
+  previewProductImport,
   updateProduct
 } from './products';
 
@@ -1807,6 +1809,16 @@ export default {
         const actor = await authenticateExtensionSession(request, env);
         if (request.method === 'GET') return json(await listProducts(env, actor, url));
         if (request.method === 'POST') return json(await createProduct(request, env, actor, requestId), 201);
+      }
+
+      if (url.pathname === '/v1/app/products/import/preview' && request.method === 'POST') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await previewProductImport(request, env, actor));
+      }
+
+      if (url.pathname === '/v1/app/products/import' && request.method === 'POST') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await commitProductImport(request, env, actor, requestId));
       }
 
       const productPath = /^\/v1\/app\/products\/([^/]+)$/u.exec(url.pathname);

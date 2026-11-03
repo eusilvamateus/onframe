@@ -31,6 +31,38 @@ type ProductLinkRow = {
   created_at: number;
 };
 
+type ProductData = {
+  sku: string;
+  normalizedSku: string;
+  name: string;
+  description: string;
+  costCents: number;
+  taxRateBps: number;
+  variableCostCents: number;
+  status: 'active' | 'inactive';
+};
+
+type ProductImportPlanRow = {
+  index: number;
+  rowNumber: number;
+  sku: string;
+  name: string;
+  action: 'create' | 'update' | 'unchanged' | 'error';
+  errors: string[];
+  productId: string | null;
+  values: {
+    sku: string;
+    name: string;
+    description: string;
+    cost: number;
+    taxRate: number;
+    variableCost: number;
+    status: 'active' | 'inactive';
+  } | null;
+  data?: ProductData;
+  existing?: ProductRow;
+};
+
 export class ProductRequestError extends Error {
   constructor(readonly code: string, readonly status: number) {
     super(code);
@@ -104,11 +136,11 @@ async function assertProduct(env: ProductEnv, actor: ProductActor, productId: st
   return product;
 }
 
-async function audit(env: ProductEnv, actor: ProductActor, requestId: string, operation: string, targetType: string, targetId: string, statusCode: number): Promise<void> {
+async function audit(env: ProductEnv, actor: ProductActor, requestId: string, operation: string, targetType: string, targetId: string, statusCode: number, metadata: Record<string, unknown> = {}): Promise<void> {
   await env.ONFRAME_DB.prepare(`
     INSERT INTO audit_events (id, workspace_id, user_id, seller_account_id, request_id, operation, target_type, target_id, outcome, status_code, metadata_json, created_at)
-    VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 'success', ?, '{}', ?)
-  `).bind(crypto.randomUUID(), actor.workspaceId, actor.userId, requestId, operation, targetType, targetId, statusCode, Date.now()).run();
+    VALUES (?, ?, ?, NULL, ?, ?, ?, ?, 'success', ?, ?, ?)
+  `).bind(crypto.randomUUID(), actor.workspaceId, actor.userId, requestId, operation, targetType, targetId, statusCode, JSON.stringify(metadata), Date.now()).run();
 }
 
 function escapedLike(value: string): string {
@@ -174,7 +206,7 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   };
 }
 
-function parseProductBody(body: Record<string, unknown>) {
+function parseProductBody(body: Record<string, unknown>): ProductData {
   const sku = asText(body.sku, 80, true);
   const status = body.status ?? 'active';
   if (status !== 'active' && status !== 'inactive') throw new ProductRequestError('product_invalid_payload', 400);
@@ -198,6 +230,199 @@ async function requestBody(request: Request): Promise<Record<string, unknown>> {
   } catch {
     throw new ProductRequestError('product_invalid_payload', 400);
   }
+}
+
+function importRowNumber(value: unknown, index: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 2 ? parsed : index + 2;
+}
+
+function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
+  const rowNumber = importRowNumber(source && typeof source === 'object' ? (source as Record<string, unknown>).rowNumber : null, index);
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    return { index, rowNumber, sku: '', name: '', action: 'error', errors: ['A linha não contém dados válidos.'], productId: null, values: null };
+  }
+  const row = source as Record<string, unknown>;
+  const sku = typeof row.sku === 'string' || typeof row.sku === 'number' ? String(row.sku).trim() : '';
+  const name = typeof row.name === 'string' || typeof row.name === 'number' ? String(row.name).trim() : '';
+  const errors: string[] = [];
+  if (!sku) errors.push('SKU obrigatório.');
+  else if (sku.length > 80) errors.push('SKU deve ter até 80 caracteres.');
+  if (!name) errors.push('Nome obrigatório.');
+  else if (name.length > 160) errors.push('Nome deve ter até 160 caracteres.');
+  if (row.cost === '' || row.cost === null || row.cost === undefined) errors.push('Custo obrigatório.');
+  if (row.taxRate === '' || row.taxRate === null || row.taxRate === undefined) errors.push('Imposto obrigatório.');
+  if (row.variableCost === '' || row.variableCost === null || row.variableCost === undefined) errors.push('Outros custos variáveis são obrigatórios.');
+  if (row.status === '' || row.status === null || row.status === undefined) errors.push('Status obrigatório.');
+  if (errors.length > 0) return { index, rowNumber, sku, name, action: 'error', errors, productId: null, values: null };
+  try {
+    const data = parseProductBody(row);
+    return {
+      index,
+      rowNumber,
+      sku: data.sku,
+      name: data.name,
+      action: 'create',
+      errors: [],
+      productId: null,
+      values: {
+        sku: data.sku,
+        name: data.name,
+        description: data.description,
+        cost: data.costCents / 100,
+        taxRate: data.taxRateBps / 100,
+        variableCost: data.variableCostCents / 100,
+        status: data.status
+      },
+      data
+    };
+  } catch {
+    return { index, rowNumber, sku, name, action: 'error', errors: ['Revise os valores, percentuais e o status desta linha.'], productId: null, values: null };
+  }
+}
+
+function productMatchesImport(product: ProductRow, data: ProductData): boolean {
+  return product.sku === data.sku
+    && product.name === data.name
+    && product.description === data.description
+    && product.current_cost_cents === data.costCents
+    && product.tax_rate_bps === data.taxRateBps
+    && product.variable_cost_cents === data.variableCostCents
+    && product.status === data.status;
+}
+
+async function buildProductImportPlan(request: Request, env: ProductEnv, actor: ProductActor): Promise<ProductImportPlanRow[]> {
+  await assertAdmin(env, actor);
+  const body = await requestBody(request);
+  if (!Array.isArray(body.rows) || body.rows.length === 0 || body.rows.length > 2000) {
+    throw new ProductRequestError('product_import_invalid_payload', 400);
+  }
+  const plan = body.rows.map(importRowPlan);
+  const counts = new Map<string, number>();
+  for (const row of plan) {
+    if (row.data) counts.set(row.data.normalizedSku, (counts.get(row.data.normalizedSku) || 0) + 1);
+  }
+  for (const row of plan) {
+    if (row.data && (counts.get(row.data.normalizedSku) || 0) > 1) {
+      row.action = 'error';
+      row.errors = ['SKU repetido na planilha.'];
+      delete row.data;
+    }
+  }
+  const existing = await env.ONFRAME_DB.prepare(`
+    SELECT id, sku, normalized_sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    FROM products WHERE workspace_id = ? AND archived_at IS NULL
+  `).bind(actor.workspaceId).all<ProductRow & { normalized_sku: string }>();
+  const productsBySku = new Map(existing.results.map((product) => [product.normalized_sku, product]));
+  for (const row of plan) {
+    if (!row.data) continue;
+    const product = productsBySku.get(row.data.normalizedSku);
+    if (!product) continue;
+    row.existing = product;
+    row.productId = product.id;
+    row.action = productMatchesImport(product, row.data) ? 'unchanged' : 'update';
+  }
+  return plan;
+}
+
+function publicImportRow(row: ProductImportPlanRow) {
+  return {
+    rowNumber: row.rowNumber,
+    sku: row.sku,
+    name: row.name,
+    action: row.action,
+    errors: row.errors,
+    productId: row.productId,
+    values: row.values
+  };
+}
+
+function previewSummary(rows: ProductImportPlanRow[]) {
+  return {
+    total: rows.length,
+    create: rows.filter((row) => row.action === 'create').length,
+    update: rows.filter((row) => row.action === 'update').length,
+    unchanged: rows.filter((row) => row.action === 'unchanged').length,
+    error: rows.filter((row) => row.action === 'error').length
+  };
+}
+
+export async function previewProductImport(request: Request, env: ProductEnv, actor: ProductActor) {
+  const rows = await buildProductImportPlan(request, env, actor);
+  return { rows: rows.map(publicImportRow), summary: previewSummary(rows) };
+}
+
+export async function commitProductImport(request: Request, env: ProductEnv, actor: ProductActor, requestId: string) {
+  const plan = await buildProductImportPlan(request, env, actor);
+  const outcomes = plan.map((row) => ({
+    ...publicImportRow(row),
+    result: row.action === 'error' ? 'rejected' : row.action
+  }));
+  const actionable = plan.filter((row) => row.data && (row.action === 'create' || row.action === 'update'));
+  const timestamp = Date.now();
+
+  for (let offset = 0; offset < actionable.length; offset += 250) {
+    const chunk = actionable.slice(offset, offset + 250);
+    const statements: D1PreparedStatement[] = [];
+    const references: Array<{ row: ProductImportPlanRow; statementIndex: number; result: 'created' | 'updated' }> = [];
+    for (const row of chunk) {
+      const data = row.data!;
+      if (row.action === 'create') {
+        const productId = crypto.randomUUID();
+        references.push({ row, statementIndex: statements.length, result: 'created' });
+        statements.push(env.ONFRAME_DB.prepare(`
+          INSERT OR IGNORE INTO products (
+            id, workspace_id, sku, normalized_sku, name, description, current_cost_cents, tax_rate_bps,
+            variable_cost_cents, status, created_by_user_id, updated_by_user_id, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(productId, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.description, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp));
+        statements.push(env.ONFRAME_DB.prepare(`
+          INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
+          SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
+        `).bind(crypto.randomUUID(), data.costCents, timestamp, actor.userId, timestamp, productId, actor.workspaceId));
+      } else {
+        references.push({ row, statementIndex: statements.length, result: 'updated' });
+        statements.push(env.ONFRAME_DB.prepare(`
+          UPDATE products SET sku = ?, normalized_sku = ?, name = ?, description = ?, current_cost_cents = ?,
+            tax_rate_bps = ?, variable_cost_cents = ?, status = ?, updated_by_user_id = ?, updated_at = ?
+          WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
+        `).bind(data.sku, data.normalizedSku, data.name, data.description, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, row.productId, actor.workspaceId));
+        if (row.existing?.current_cost_cents !== data.costCents) {
+          statements.push(env.ONFRAME_DB.prepare(`
+            INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
+            SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
+          `).bind(crypto.randomUUID(), data.costCents, timestamp, actor.userId, timestamp, row.productId, actor.workspaceId));
+        }
+      }
+    }
+    try {
+      const results = await env.ONFRAME_DB.batch(statements);
+      for (const reference of references) {
+        const outcome = outcomes[reference.row.index];
+        if (results[reference.statementIndex]?.meta.changes === 1) {
+          outcome.result = reference.result;
+        } else {
+          outcome.result = 'rejected';
+          outcome.errors = ['O produto foi alterado por outra operação. Revise a planilha e tente novamente.'];
+        }
+      }
+    } catch {
+      for (const row of chunk) {
+        outcomes[row.index].result = 'rejected';
+        outcomes[row.index].errors = ['Não foi possível gravar esta linha. Tente novamente.'];
+      }
+    }
+  }
+
+  const summary = {
+    total: outcomes.length,
+    created: outcomes.filter((row) => row.result === 'created').length,
+    updated: outcomes.filter((row) => row.result === 'updated').length,
+    unchanged: outcomes.filter((row) => row.result === 'unchanged').length,
+    rejected: outcomes.filter((row) => row.result === 'rejected').length
+  };
+  await audit(env, actor, requestId, 'product_import_committed', 'workspace', actor.workspaceId, 200, summary);
+  return { rows: outcomes, summary };
 }
 
 function mapWriteError(error: unknown): never {
