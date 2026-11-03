@@ -51,25 +51,35 @@ test('bootstrap preserva instalação e atualização, sem ciclo de serviço', (
   const macIntegration = fs.readFileSync(path.join(root, 'scripts', 'test', 'macos-bootstrap.sh'), 'utf8');
   const releaseWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
   const bootstrapWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'bootstrap-macos.yml'), 'utf8');
-  const expected = [
+  const publicEntrypoints = [
     'install.ps1',
     'install.sh',
     'update.ps1',
     'update.sh',
-    'updater-protocol-handler.ps1',
-    'register-updater-protocol.ps1',
-    'register-updater-protocol.sh',
-    'unregister-updater-protocol.ps1',
-    'unregister-updater-protocol.sh',
     'uninstall.ps1',
     'uninstall.sh'
-  ];
-  for (const file of expected) assert.equal(fs.existsSync(path.join(bootstrap, file)), true, file);
+  ].sort();
+  const rootFiles = fs.readdirSync(bootstrap, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort();
+  assert.deepEqual(rootFiles, publicEntrypoints);
+
+  const internal = path.join(bootstrap, 'internal');
+  assert.deepEqual(fs.readdirSync(path.join(internal, 'windows')).sort(), [
+    'protocol-handler.ps1',
+    'register-updater.ps1',
+    'unregister-updater.ps1'
+  ]);
+  assert.deepEqual(fs.readdirSync(path.join(internal, 'macos')).sort(), [
+    'register-updater.sh',
+    'unregister-updater.sh'
+  ]);
   for (const file of ['start.ps1', 'stop.ps1', 'restart.ps1', 'check.ps1', 'common.ps1', 'launcher-action.sh']) {
     assert.equal(fs.existsSync(path.join(bootstrap, file)), false, file);
   }
-  assert.equal(fs.existsSync(path.join(bootstrap, 'onframe-updater.ps1')), false, 'legacy updater handler');
   assert.match(installMac, /ONFRAME_RELEASE_ARCHIVE/);
+  assert.match(installMac, /internal\/macos\/register-updater\.sh/);
   assert.match(updateMac, /ONFRAME_INSTALLER_PATH/);
   assert.doesNotMatch(macIntegration, /npm run package:release|node -p/);
   assert.match(macIntegration, /ditto -c -k --keepParent/);

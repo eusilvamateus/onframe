@@ -68,7 +68,8 @@ suíte Node os usa diretamente e com um adaptador HTTP exclusivo de teste em
 
 ### Scripts (`scripts/`)
 
-- `bootstrap/` instala ou atualiza a extensão no Windows e macOS.
+- `bootstrap/` expõe somente `install`, `update` e `uninstall` na raiz; os
+  registradores específicos ficam em `internal/windows/` e `internal/macos/`.
 - `onframe-updater://update` inicia o atualizador registrado no computador.
 - `build/` compila as interfaces da extensão e as páginas públicas do Worker.
 - `release/` valida versão, prepara notas e monta o pacote distribuído.

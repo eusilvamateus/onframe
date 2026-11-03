@@ -67,7 +67,7 @@ try {
     Copy-ReleaseFiles -Source $package.Directory.FullName -Destination $InstallRoot
 
     Write-Host '[4/4] Registrando atualização por um clique...'
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallRoot 'scripts/bootstrap/register-updater-protocol.ps1') -Root $InstallRoot
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $InstallRoot 'scripts/bootstrap/internal/windows/register-updater.ps1') -Root $InstallRoot
     if ($LASTEXITCODE -ne 0) { throw 'Não foi possível registrar o atualizador.' }
   } finally {
     Remove-Item -LiteralPath $temporary -Recurse -Force -ErrorAction SilentlyContinue

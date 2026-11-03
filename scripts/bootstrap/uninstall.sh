@@ -6,8 +6,9 @@ INSTALL_ROOT="${ONFRAME_HOME:-$HOME/Library/Application Support/OnFrame}"
 REMOVE_DATA="${ONFRAME_REMOVE_DATA:-0}"
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
-if [ -x "$SCRIPT_DIR/unregister-updater-protocol.sh" ]; then
-  "$SCRIPT_DIR/unregister-updater-protocol.sh" || true
+unregister="$SCRIPT_DIR/internal/macos/unregister-updater.sh"
+if [ -x "$unregister" ]; then
+  "$unregister" || true
 fi
 
 if [ "$REMOVE_DATA" = "1" ]; then

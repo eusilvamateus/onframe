@@ -9,24 +9,26 @@ $ErrorActionPreference = 'Stop'
 $ProtocolName = 'onframe-updater'
 $UpdaterRoot = Join-Path $env:LOCALAPPDATA 'OnFrame\Updater'
 $StatePath = Join-Path $UpdaterRoot 'updater-state.json'
-$SourceScript = Join-Path $PSScriptRoot 'updater-protocol-handler.ps1'
+$SourceScript = Join-Path $PSScriptRoot 'protocol-handler.ps1'
 
 if (-not (Test-Path -LiteralPath $SourceScript -PathType Leaf)) {
   throw "Script do atualizador nao encontrado: $SourceScript"
 }
 
 if ([string]::IsNullOrWhiteSpace($Root)) {
-  $Root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+  $Root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)))
 }
 
 $InstallRoot = [System.IO.Path]::GetFullPath($Root)
 New-Item -ItemType Directory -Force -Path $UpdaterRoot | Out-Null
 
-$TargetScript = Join-Path $UpdaterRoot 'updater-protocol-handler.ps1'
-$LegacyTargetScript = Join-Path $UpdaterRoot 'onframe-updater.ps1'
+$TargetScript = Join-Path $UpdaterRoot 'protocol-handler.ps1'
 Copy-Item -LiteralPath $SourceScript -Destination $TargetScript -Force
-if (Test-Path -LiteralPath $LegacyTargetScript -PathType Leaf) {
-  Remove-Item -LiteralPath $LegacyTargetScript -Force
+foreach ($legacyName in @('onframe-updater.ps1', 'updater-protocol-handler.ps1')) {
+  $legacyTarget = Join-Path $UpdaterRoot $legacyName
+  if (Test-Path -LiteralPath $legacyTarget -PathType Leaf) {
+    Remove-Item -LiteralPath $legacyTarget -Force
+  }
 }
 
 $state = [pscustomobject]@{

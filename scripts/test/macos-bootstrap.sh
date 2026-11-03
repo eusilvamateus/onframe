@@ -9,9 +9,7 @@ set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 
-for script in "$ROOT"/scripts/bootstrap/*.sh; do
-  /bin/sh -n "$script"
-done
+find "$ROOT/scripts/bootstrap" -type f -name '*.sh' -exec /bin/sh -n {} \;
 
 temporary="$(mktemp -d "${TMPDIR:-/tmp}/onframe-macos-test.XXXXXX")"
 cleanup() {

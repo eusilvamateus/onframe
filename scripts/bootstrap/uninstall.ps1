@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $InstallRoot = if ($Root) { $Root } elseif ($env:ONFRAME_HOME) { $env:ONFRAME_HOME } else { Join-Path $env:LOCALAPPDATA 'OnFrame' }
 
 try {
-  $unregister = Join-Path $PSScriptRoot 'unregister-updater-protocol.ps1'
+  $unregister = Join-Path $PSScriptRoot 'internal/windows/unregister-updater.ps1'
   if (Test-Path -LiteralPath $unregister -PathType Leaf) {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $unregister
   }

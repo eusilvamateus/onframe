@@ -73,7 +73,7 @@ done
 find "$INSTALL_ROOT/scripts/bootstrap" -type f -name '*.sh' -exec chmod 700 {} \;
 
 printf '[4/4] Registrando atualizacao por um clique...\n'
-ONFRAME_HOME="$INSTALL_ROOT" "$INSTALL_ROOT/scripts/bootstrap/register-updater-protocol.sh"
+ONFRAME_HOME="$INSTALL_ROOT" "$INSTALL_ROOT/scripts/bootstrap/internal/macos/register-updater.sh"
 
 printf '\nInstalacao concluida.\n'
 printf 'Extensao: %s/extension\n' "$INSTALL_ROOT"
