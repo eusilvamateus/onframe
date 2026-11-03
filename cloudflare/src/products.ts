@@ -10,7 +10,6 @@ type ProductRow = {
   id: string;
   sku: string;
   name: string;
-  description: string;
   current_cost_cents: number;
   tax_rate_bps: number;
   variable_cost_cents: number;
@@ -23,7 +22,6 @@ type ProductData = {
   sku: string;
   normalizedSku: string;
   name: string;
-  description: string;
   costCents: number;
   taxRateBps: number;
   variableCostCents: number;
@@ -41,7 +39,6 @@ type ProductImportPlanRow = {
   values: {
     sku: string;
     name: string;
-    description: string;
     cost: number;
     taxRate: number;
     variableCost: number;
@@ -156,7 +153,7 @@ export async function matchProductForPromotionItem(
   const resolution = resolvePromotionItemSku(item, requestedVariationId);
   if (resolution.status !== 'resolved' || !resolution.sku) return resolution;
   const product = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
     FROM products
     WHERE workspace_id = ? AND normalized_sku = ? AND status = 'active' AND archived_at IS NULL
   `).bind(actor.workspaceId, normalizeSku(resolution.sku)).first<ProductRow>();
@@ -176,7 +173,6 @@ function productPayload(row: ProductRow) {
     id: row.id,
     sku: row.sku,
     name: row.name,
-    description: row.description,
     cost: row.current_cost_cents / 100,
     taxRate: row.tax_rate_bps / 100,
     variableCost: row.variable_cost_cents / 100,
@@ -195,7 +191,7 @@ async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> 
 
 async function assertProduct(env: ProductEnv, actor: ProductActor, productId: string): Promise<ProductRow> {
   const product = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
     FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `).bind(productId, actor.workspaceId).first<ProductRow>();
   if (!product) throw new ProductRequestError('product_not_found', 404);
@@ -233,9 +229,9 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
     bindings.push(status);
   }
   if (query) {
-    where.push(`(sku LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\')`);
+    where.push(`(sku LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\')`);
     const pattern = escapedLike(query);
-    bindings.push(pattern, pattern, pattern);
+    bindings.push(pattern, pattern);
   }
   const clause = where.join(' AND ');
   const count = await env.ONFRAME_DB.prepare(`SELECT COUNT(*) AS total FROM products WHERE ${clause}`)
@@ -244,7 +240,7 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const page = Math.min(requestedPage, totalPages);
   const rows = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
     FROM products WHERE ${clause}
     ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `).bind(...bindings, limit, (page - 1) * limit).all<ProductRow>();
@@ -262,7 +258,6 @@ function parseProductBody(body: Record<string, unknown>): ProductData {
     sku,
     normalizedSku: normalizeSku(sku),
     name: asText(body.name, 160, true),
-    description: asText(body.description, 4000),
     costCents: decimalToInteger(body.cost, 100, 9_999_999_999),
     taxRateBps: decimalToInteger(body.taxRate, 100, 10_000),
     variableCostCents: decimalToInteger(body.variableCost, 100, 9_999_999_999),
@@ -316,7 +311,6 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
       values: {
         sku: data.sku,
         name: data.name,
-        description: data.description,
         cost: data.costCents / 100,
         taxRate: data.taxRateBps / 100,
         variableCost: data.variableCostCents / 100,
@@ -332,7 +326,6 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
 function productMatchesImport(product: ProductRow, data: ProductData): boolean {
   return product.sku === data.sku
     && product.name === data.name
-    && product.description === data.description
     && product.current_cost_cents === data.costCents
     && product.tax_rate_bps === data.taxRateBps
     && product.variable_cost_cents === data.variableCostCents
@@ -358,7 +351,7 @@ async function buildProductImportPlan(request: Request, env: ProductEnv, actor: 
     }
   }
   const existing = await env.ONFRAME_DB.prepare(`
-    SELECT id, sku, normalized_sku, name, description, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
+    SELECT id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps, variable_cost_cents, status, created_at, updated_at
     FROM products WHERE workspace_id = ? AND archived_at IS NULL
   `).bind(actor.workspaceId).all<ProductRow & { normalized_sku: string }>();
   const productsBySku = new Map(existing.results.map((product) => [product.normalized_sku, product]));
@@ -420,10 +413,10 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
         references.push({ row, statementIndex: statements.length, result: 'created' });
         statements.push(env.ONFRAME_DB.prepare(`
           INSERT OR IGNORE INTO products (
-            id, workspace_id, sku, normalized_sku, name, description, current_cost_cents, tax_rate_bps,
+            id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps,
             variable_cost_cents, status, created_by_user_id, updated_by_user_id, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(productId, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.description, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp));
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(productId, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp));
         statements.push(env.ONFRAME_DB.prepare(`
           INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
           SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
@@ -431,10 +424,10 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
       } else {
         references.push({ row, statementIndex: statements.length, result: 'updated' });
         statements.push(env.ONFRAME_DB.prepare(`
-          UPDATE products SET sku = ?, normalized_sku = ?, name = ?, description = ?, current_cost_cents = ?,
+          UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
             tax_rate_bps = ?, variable_cost_cents = ?, status = ?, updated_by_user_id = ?, updated_at = ?
           WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
-        `).bind(data.sku, data.normalizedSku, data.name, data.description, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, row.productId, actor.workspaceId));
+        `).bind(data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, row.productId, actor.workspaceId));
         if (row.existing?.current_cost_cents !== data.costCents) {
           statements.push(env.ONFRAME_DB.prepare(`
             INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
@@ -487,10 +480,10 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
     await env.ONFRAME_DB.batch([
       env.ONFRAME_DB.prepare(`
         INSERT INTO products (
-          id, workspace_id, sku, normalized_sku, name, description, current_cost_cents, tax_rate_bps,
+          id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps,
           variable_cost_cents, status, created_by_user_id, updated_by_user_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(id, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.description, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp),
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(id, actor.workspaceId, data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, actor.userId, timestamp, timestamp),
       env.ONFRAME_DB.prepare(`
         INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -509,10 +502,10 @@ export async function updateProduct(request: Request, env: ProductEnv, actor: Pr
   const data = parseProductBody(await requestBody(request));
   const timestamp = Date.now();
   const statements = [env.ONFRAME_DB.prepare(`
-    UPDATE products SET sku = ?, normalized_sku = ?, name = ?, description = ?, current_cost_cents = ?,
+    UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
       tax_rate_bps = ?, variable_cost_cents = ?, status = ?, updated_by_user_id = ?, updated_at = ?
     WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
-  `).bind(data.sku, data.normalizedSku, data.name, data.description, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, productId, actor.workspaceId)];
+  `).bind(data.sku, data.normalizedSku, data.name, data.costCents, data.taxRateBps, data.variableCostCents, data.status, actor.userId, timestamp, productId, actor.workspaceId)];
   if (current.current_cost_cents !== data.costCents) {
     statements.push(env.ONFRAME_DB.prepare(`
       INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)

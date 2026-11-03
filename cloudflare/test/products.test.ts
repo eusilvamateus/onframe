@@ -47,7 +47,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     ]);
     const env = { ONFRAME_DB: db };
     const payload = {
-      sku: ' Mesa-180 ', name: 'Mesa dobrável 1,80 m', description: 'Preta',
+      sku: ' Mesa-180 ', name: 'Mesa dobrável 1,80 m',
       cost: 152.35, taxRate: 7.25, variableCost: 4.5, status: 'active'
     };
 
@@ -56,6 +56,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(created.sku, 'Mesa-180');
     assert.equal(created.cost, 152.35);
     assert.equal(created.taxRate, 7.25);
+    assert.equal('description' in created, false);
 
     await assert.rejects(createProduct(productRequest({ ...payload, sku: 'MESA-180' }), env, admin, 'request-duplicate'), { code: 'product_sku_conflict' });
     assert.equal((await db.prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?').bind(created.id).first<{ total: number }>())?.total, 1);
@@ -73,7 +74,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(collaboratorList.products.length, 1);
 
     const chair = await createProduct(productRequest({
-      sku: 'CADEIRA-01', name: 'Cadeira dobrável', description: '', cost: 80,
+      sku: 'CADEIRA-01', name: 'Cadeira dobrável', cost: 80,
       taxRate: 4, variableCost: 2, status: 'inactive'
     }), env, admin, 'request-chair');
     await db.batch([
@@ -96,11 +97,11 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     ]);
     const importRows = [
       { rowNumber: 2, ...payload, sku: 'MESA-180', cost: 170 },
-      { rowNumber: 3, sku: 'BANCO-01', name: 'Banco portátil', description: '', cost: 55.9, taxRate: 3.5, variableCost: 1, status: 'active' },
-      { rowNumber: 4, sku: chair.sku, name: chair.name, description: chair.description, cost: chair.cost, taxRate: chair.taxRate, variableCost: chair.variableCost, status: chair.status },
-      { rowNumber: 5, sku: 'DUP-01', name: 'Duplicado A', description: '', cost: 10, taxRate: 1, variableCost: 0, status: 'active' },
-      { rowNumber: 6, sku: 'dup-01', name: 'Duplicado B', description: '', cost: 11, taxRate: 1, variableCost: 0, status: 'active' },
-      { rowNumber: 7, sku: 'SEM-CUSTO', name: 'Inválido', description: '', cost: '', taxRate: 1, variableCost: 0, status: 'active' }
+      { rowNumber: 3, sku: 'BANCO-01', name: 'Banco portátil', cost: 55.9, taxRate: 3.5, variableCost: 1, status: 'active' },
+      { rowNumber: 4, sku: chair.sku, name: chair.name, cost: chair.cost, taxRate: chair.taxRate, variableCost: chair.variableCost, status: chair.status },
+      { rowNumber: 5, sku: 'DUP-01', name: 'Duplicado A', cost: 10, taxRate: 1, variableCost: 0, status: 'active' },
+      { rowNumber: 6, sku: 'dup-01', name: 'Duplicado B', cost: 11, taxRate: 1, variableCost: 0, status: 'active' },
+      { rowNumber: 7, sku: 'SEM-CUSTO', name: 'Inválido', cost: '', taxRate: 1, variableCost: 0, status: 'active' }
     ];
     const importRequest = () => productRequest({ rows: importRows });
     await assert.rejects(previewProductImport(importRequest(), env, collaborator), { code: 'product_access_forbidden' });
