@@ -1821,7 +1821,7 @@
         .join(' ');
       return {
         label: compactPromotionBenefitLabel(primary),
-        value: primary.value,
+        value: primary.amountText || primary.percentageText,
         description,
         tone: primary.tone || ''
       };

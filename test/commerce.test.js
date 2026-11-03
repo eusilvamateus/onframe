@@ -704,6 +704,7 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   assert.match(view, /defaultValue=\{model\.expandCampaign && currentGroup\.id === 'campaigns' \? \['campaign'\] : \[\]\}/);
   assert.match(view, /<Badge tone=\{status\.tone\} variant="subtle" size="sm" dot>/);
   assert.match(source, /function promotionPopoverFinancialBenefit/);
+  assert.match(source, /value: primary\.amountText \|\| primary\.percentageText/);
   assert.match(source, /Bônus do Mercado Livre/);
   assert.match(source, /function promotionPopoverCouponEntries/);
   assert.doesNotMatch(source, /isSellerWidePromotion/);
