@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, CodeInput, FieldShell, Link, Tabs } from '@onblide/ui';
+import { Button, CodeInput, Input, Link, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
 import { EmailVerification, PasskeySettings, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
@@ -70,10 +70,13 @@ test('campo de senha preserva um unico botao de revelar e ocultar sem alterar o 
     const h = await harness(() => <PasswordField label="Senha" value="senha-de-teste" onChange={() => {}} autoComplete="current-password" disabled={disabled} />);
     try {
       const input = h.renderer.root.findByType('input');
+      const field = h.renderer.root.findByType(Input);
       const buttons = h.renderer.root.findAllByType('button');
       assert.equal(input.props.type, 'password');
-      assert.equal(input.props.className, 'onframe-field-input');
       assert.equal(input.props.disabled, disabled);
+      assert.equal(field.props.type, 'password');
+      assert.equal(field.props.disabled, disabled);
+      assert.equal(field.props.value, 'senha-de-teste');
       assert.ok(input.props.id);
       const label = h.renderer.root.findByType('label');
       assert.equal(label.props.htmlFor, input.props.id);
@@ -110,7 +113,7 @@ test('senha e email nao exibem formulario de alteracao antes de verificar email'
       const fields = h.renderer.root.findAllByType('input');
       assert.equal(fields.length, 1);
       assert.equal(fields[0].props.value, user.email);
-      assert.equal(fields[0].props.disabled, true);
+      assert.equal(fields[0].props.readOnly, true);
       assert.equal(h.renderer.root.findAllByType(CodeInput).length, 0);
       assert.equal(h.renderer.root.findAll((node) => String(node.props.className || '').includes('onframe-security-verification')).length, 1);
       assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-brand' }).length, 0);
@@ -127,7 +130,7 @@ test('verificacao por email aguarda antes de reenviar e nao exibe codigos intern
     assert.equal(h.renderer.root.findByType(CodeInput).props.length, 6);
     const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
     assert.equal(email?.props.value, user.email);
-    assert.equal(email?.props.disabled, true);
+    assert.equal(email?.props.readOnly, true);
     assert.equal(h.renderer.root.findByProps({ role: 'status' }).props.children.join(''), 'Reenviar código em 60 s');
     assert.equal(h.requests.filter((request) => request.path === 'otp').length, 1);
     for (let second = 0; second < 60; second += 1) await act(async () => t.mock.timers.tick(1000));
@@ -198,7 +201,7 @@ test('ativacao TOTP so conclui depois de verificar o codigo do autenticador', as
     assert.equal(h.requests.some((request) => request.path.endsWith('/verify')), false);
     const code = h.renderer.root.findByType(CodeInput);
     assert.equal(code.props.length, 6);
-    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.disabled, true);
+    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.readOnly, true);
     await act(async () => code.props.onChange('123456'));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.equal(h.requests.some((request) => request.path.endsWith('/challenge')), true);
@@ -233,7 +236,7 @@ test('remocao do autenticador usa a mesma verificacao com email e CodeInput', as
     await act(async () => remove.props.onClick());
     assert.equal(h.renderer.root.findByType(CodeInput).props.length, 6);
     assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.value, user.email);
-    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.disabled, true);
+    assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email')?.props.readOnly, true);
     assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-code-field' }).length, 1);
   } finally { await h.close(); }
 });
@@ -342,7 +345,7 @@ test('magic link retoma a etapa do codigo sem restaurar o OTP', async () => {
   try {
     const email = h.renderer.root.findAllByType('input').find((input) => input.props.type === 'email');
     assert.equal(email?.props.value, 'pessoa@example.com');
-    assert.equal(email?.props.disabled, true);
+    assert.equal(email?.props.readOnly, true);
     const code = h.renderer.root.findByType(CodeInput);
     assert.equal(code.props.value, '');
     await act(async () => code.props.onChange('123'));
@@ -470,10 +473,10 @@ test('login faseado nao consulta conta na etapa do email nem envia senha antes d
     const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
     assert.ok(email);
     assert.equal(email.props.value, user.email);
-    assert.equal(email.props.disabled, true);
-    const lockedEmail = h.renderer.root.findAllByType(FieldShell).find((shell) => shell.findAllByType('input').some((field) => field.props.type === 'email'));
+    assert.equal(email.props.readOnly, true);
+    const lockedEmail = h.renderer.root.findAllByType(Input).find((field) => field.props.type === 'email');
     assert.ok(lockedEmail);
-    assert.equal(lockedEmail.props.disabled, true);
+    assert.equal(lockedEmail.props.readOnly, true);
     assert.equal(lockedEmail.findByType(Link).props.children, 'Alterar e-mail');
     assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-identity' }).length, 0);
     const password = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'password');
@@ -494,7 +497,7 @@ test('codigo por email usa OTP nativo sem criar conta ou fluxo externo e autenti
     assert.equal(h.renderer.root.findAllByType(CodeInput).length, 1);
     const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
     assert.equal(email?.props.value, user.email);
-    assert.equal(email?.props.disabled, true);
+    assert.equal(email?.props.readOnly, true);
     assert.equal(h.renderer.root.findAllByType('input').some((field) => field.props.type === 'password'), false);
     const sent = h.requests.find((request) => request.path === 'otp');
     assert.equal((sent?.body as { create_user?: boolean })?.create_user, false);
@@ -577,12 +580,12 @@ test('editar email descarta a senha anterior sem consultar existencia da conta',
     await act(async () => h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Alterar e-mail').props.onClick({ preventDefault() {} }));
     assert.equal(h.renderer.root.findAllByType('input').some((field) => field.props.type === 'password'), false);
     const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
-    assert.equal(email.props.disabled, false);
+    assert.equal(Boolean(email.props.readOnly), false);
     assert.equal(email.props.value, user.email);
     await continueEmail(h.renderer, 'outro@example.com');
     const updatedEmail = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
     assert.equal(updatedEmail.props.value, 'outro@example.com');
-    assert.equal(updatedEmail.props.disabled, true);
+    assert.equal(updatedEmail.props.readOnly, true);
     assert.equal(h.renderer.root.findAllByType('input').find((field) => field.props.type === 'password').props.value, '');
     assert.equal(h.requests.length, 0);
   } finally { await h.close(); }
