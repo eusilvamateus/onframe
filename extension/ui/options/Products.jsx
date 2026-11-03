@@ -49,6 +49,13 @@ function money(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
 }
 
+function customCostSummary(cost) {
+  const value = cost.type === 'percentage'
+    ? `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(Number(cost.value || 0))}%`
+    : money(cost.value);
+  return { description: cost.description.trim() || 'Novo custo', value };
+}
+
 function ProductChipFilter({ ariaLabel, icon, options, value, selected, width, onChange }) {
   const current = options.find((option) => option.value === value) || options[0];
   return <Popover
@@ -113,21 +120,30 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
   const [current, setCurrent] = useState(product);
   const [error, setError] = useState('');
   const [actionBusy, setActionBusy] = useState(false);
+  const [selectedCustomCostKey, setSelectedCustomCostKey] = useState(null);
   const locked = busy || actionBusy;
 
   const setField = (field, value) => setValues((state) => ({ ...state, [field]: value }));
-  const addCustomCost = () => setValues((state) => ({
-    ...state,
-    customCosts: [...state.customCosts, { key: customCostKey(), description: '', type: 'fixed', value: 0 }]
-  }));
+  const addCustomCost = () => {
+    const key = customCostKey();
+    setValues((state) => ({
+      ...state,
+      customCosts: [...state.customCosts, { key, description: '', type: 'fixed', value: 0 }]
+    }));
+    setSelectedCustomCostKey(key);
+  };
   const updateCustomCost = (key, field, value) => setValues((state) => ({
     ...state,
     customCosts: state.customCosts.map((cost) => cost.key === key ? { ...cost, [field]: value } : cost)
   }));
-  const removeCustomCost = (key) => setValues((state) => ({
-    ...state,
-    customCosts: state.customCosts.filter((cost) => cost.key !== key)
-  }));
+  const removeCustomCost = (key) => {
+    setValues((state) => ({
+      ...state,
+      customCosts: state.customCosts.filter((cost) => cost.key !== key)
+    }));
+    setSelectedCustomCostKey((selected) => selected === key ? null : selected);
+  };
+  const selectedCustomCost = values.customCosts.find((cost) => cost.key === selectedCustomCostKey) || null;
 
   async function save() {
     if (!values.sku.trim() || !values.name.trim()) {
@@ -199,35 +215,54 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
               {admin && <Button kind="quiet" tone="primary" size="sm" disabled={locked} icon={<Ph n="plus-circle" size={15} />} onClick={addCustomCost}>Adicionar custo</Button>}
             </div>
             {values.customCosts.length === 0 && <p className="onframe-product-custom-costs-empty">Nenhum custo personalizado.</p>}
-            {values.customCosts.map((cost, index) => <div className="onframe-product-custom-cost" key={cost.key}>
+            {values.customCosts.length > 0 && <div className="onframe-product-custom-cost-chips" aria-label="Custos personalizados">
+              {values.customCosts.map((cost) => {
+                const summary = customCostSummary(cost);
+                return <Chip
+                  key={cost.key}
+                  label={<span className="onframe-product-custom-cost-chip-label">
+                    <span className="onframe-product-custom-cost-chip-name">{summary.description}</span>
+                    <span className="onframe-product-custom-cost-chip-value">{summary.value}</span>
+                  </span>}
+                  aria-label={`Editar custo ${summary.description}: ${summary.value}`}
+                  title={`${summary.description}: ${summary.value}`}
+                  size="md"
+                  selected={selectedCustomCostKey === cost.key}
+                  onToggle={() => setSelectedCustomCostKey((selected) => selected === cost.key ? null : cost.key)}
+                  removable={admin}
+                  onRemove={admin ? () => removeCustomCost(cost.key) : undefined}
+                  disabled={locked}
+                />;
+              })}
+            </div>}
+            {selectedCustomCost && <div className="onframe-product-custom-cost-editor">
               <Input
-                label={`Descrição do custo ${index + 1}`}
-                value={cost.description}
+                label="Descrição do custo"
+                value={selectedCustomCost.description}
                 maxLength={120}
                 disabled={!admin || locked}
-                onChange={(event) => updateCustomCost(cost.key, 'description', event.target.value)}
+                onChange={(event) => updateCustomCost(selectedCustomCost.key, 'description', event.target.value)}
               />
               <div className="onframe-product-custom-cost-value">
-                <ButtonGroup selection="single" value={cost.type} onChange={(value) => updateCustomCost(cost.key, 'type', value)} ariaLabel={`Tipo do custo ${index + 1}`} disabled={!admin || locked}>
+                <ButtonGroup selection="single" value={selectedCustomCost.type} onChange={(value) => updateCustomCost(selectedCustomCost.key, 'type', value)} ariaLabel="Tipo do custo" disabled={!admin || locked}>
                   <ToggleButton value="fixed" appearance="ghost" tone="primary">R$</ToggleButton>
                   <ToggleButton value="percentage" appearance="ghost" tone="primary">%</ToggleButton>
                 </ButtonGroup>
                 <NumberField
                   label="Valor"
-                  value={cost.value}
+                  value={selectedCustomCost.value}
                   min={0}
-                  max={cost.type === 'percentage' ? 100 : undefined}
+                  max={selectedCustomCost.type === 'percentage' ? 100 : undefined}
                   decimals={2}
                   step={0.01}
                   controls="none"
-                  startAddon={cost.type === 'fixed' ? 'R$' : undefined}
-                  endAddon={cost.type === 'percentage' ? '%' : undefined}
+                  startAddon={selectedCustomCost.type === 'fixed' ? 'R$' : undefined}
+                  endAddon={selectedCustomCost.type === 'percentage' ? '%' : undefined}
                   disabled={!admin || locked}
-                  onChange={(value) => updateCustomCost(cost.key, 'value', value ?? 0)}
+                  onChange={(value) => updateCustomCost(selectedCustomCost.key, 'value', value ?? 0)}
                 />
-                {admin && <Button kind="quiet" tone="danger" iconOnly aria-label={`Remover custo ${index + 1}`} disabled={locked} icon={<Ph n="trash" size={17} />} onClick={() => removeCustomCost(cost.key)} />}
               </div>
-            </div>)}
+            </div>}
           </div>
         </section>
 

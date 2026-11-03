@@ -28,8 +28,12 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Situação/u);
   assert.match(products, /onframe-product-form-fields[^]*<Input label="Nome"[^]*<Input label="SKU"/u);
   assert.match(products, /<Switch[^]*checked=\{values\.status === 'active'\}[^]*onChange=\{\(checked\) => setField\('status'/u);
-  assert.match(products, /Custos personalizados[^]*Adicionar custo[^]*Descrição do custo[^]*selection="single"[^>]*>[^]*value="fixed" appearance="ghost" tone="primary">R\$[^]*value="percentage" appearance="ghost" tone="primary">%/u);
+  assert.match(products, /function customCostSummary[^]*Novo custo[^]*Custos personalizados[^]*Adicionar custo[^]*onframe-product-custom-cost-chips[^]*<Chip[^]*onframe-product-custom-cost-chip-name[^]*summary\.description[^]*onframe-product-custom-cost-chip-value[^]*summary\.value[^]*aria-label=\{`Editar custo[^]*selected=\{selectedCustomCostKey === cost\.key\}[^]*removable=\{admin\}[^]*onRemove=/u);
+  assert.doesNotMatch(products, /\$\{description\} · \$\{value\}/u);
+  assert.match(products, /selectedCustomCost &&[^]*Descrição do custo[^]*selection="single"[^>]*>[^]*value="fixed" appearance="ghost" tone="primary">R\$[^]*value="percentage" appearance="ghost" tone="primary">%/u);
+  assert.match(products, /const key = customCostKey\(\)[^]*setSelectedCustomCostKey\(key\)/u);
   assert.doesNotMatch(products, /<ButtonGroup[^>]*(?:appearance|tone|attached=\{false\})/u);
+  assert.doesNotMatch(products, /aria-label=\{`Remover custo|<Ph n="trash"/u);
   assert.match(products, /kind="quiet" tone="primary"[^]*n="plus-circle"[^]*Adicionar custo/u);
   assert.match(products, /n="plus-circle" size=\{17\}[^]*Criar produto/u);
   assert.doesNotMatch(products, /<Ph n="plus"/u);
@@ -43,6 +47,10 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(spreadsheetModal, /\['Novos', values\.create, 'green'\][^]*\['Atualizações', values\.update, 'blue'\][^]*\['Sem alteração', values\.unchanged, 'grey'\][^]*\['Com erro', values\.error, 'red'\]/u);
   assert.match(spreadsheetModal, /onframe-product-import-summary-\$\{tone\}[^]*onframe-product-import-summary-marker/u);
   assert.match(sharedStyles, /onframe-product-import-summary-green[^}]*var\(--ob-green\)[^]*onframe-product-import-summary-blue[^}]*var\(--ob-blue\)[^]*onframe-product-import-summary-red[^}]*var\(--ob-danger\)/u);
+  assert.match(sharedStyles, /\.onframe-product-custom-cost-chips\s*\{[^}]*flex-wrap: wrap;/u);
+  assert.match(sharedStyles, /\.onframe-product-custom-cost-chip-name\s*\{[^}]*opacity: \.72;/u);
+  assert.match(sharedStyles, /\.onframe-product-custom-cost-chip-value\s*\{[^}]*font-family: var\(--ob-font-mono\);[^}]*font-variant-numeric: tabular-nums;/u);
+  assert.match(sharedStyles, /\.onframe-product-custom-cost-editor\s*\{[^}]*border-top: 1px solid var\(--ob-border\);/u);
 });
 
 test('produtos integram navegacao e todas as operacoes remotas', () => {
