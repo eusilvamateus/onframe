@@ -1,4 +1,4 @@
-import { Ph } from '@onblide/ui';
+import { Card, Ph } from '@onblide/ui';
 
 const containerStyle = {
   display: 'flex',
@@ -30,12 +30,14 @@ const titleStyle = {
 
 export function CatalogNotice({ children }) {
   return (
-    <div role="note" aria-label="Anúncio de catálogo" style={containerStyle}>
-      <Ph n="info" size={16} weight="fill" style={iconStyle} />
-      <p style={copyStyle}>
-        <strong style={titleStyle}>Este é um anúncio de catálogo.</strong>{' '}
-        {children}
-      </p>
-    </div>
+    <Card padding="var(--ob-s-3)" elevation="border" style={{ width: '100%', boxSizing: 'border-box' }}>
+      <div role="note" aria-label="Anúncio de catálogo" style={containerStyle}>
+        <Ph n="info" size={16} weight="fill" style={iconStyle} />
+        <p style={copyStyle}>
+          <strong style={titleStyle}>Este é um anúncio de catálogo.</strong>{' '}
+          {children}
+        </p>
+      </div>
+    </Card>
   );
 }

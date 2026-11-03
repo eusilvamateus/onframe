@@ -9,11 +9,12 @@ const notice = fs.readFileSync(
 );
 
 test('aviso de catálogo é compacto, compartilhado e usa o design system', () => {
-  assert.match(notice, /import \{ Ph \} from '@onblide\/ui'/);
+  assert.match(notice, /import \{ Card, Ph \} from '@onblide\/ui'/);
+  assert.match(notice, /<Card padding="var\(--ob-s-3\)" elevation="border"/);
   assert.match(notice, /role="note" aria-label="Anúncio de catálogo"/);
   assert.match(notice, /<Ph n="info" size=\{16\} weight="fill"/);
   assert.match(notice, /fontFamily: 'var\(--ob-font\)'/);
   assert.match(notice, /fontSize: 12/);
   assert.match(notice, /<strong style=\{titleStyle\}>Este é um anúncio de catálogo\.<\/strong>/);
-  assert.doesNotMatch(notice, /<Alert|<Card|background:|border:|padding:/);
+  assert.doesNotMatch(notice, /<Alert|#[0-9a-f]{3,8}|rgb\(/i);
 });
