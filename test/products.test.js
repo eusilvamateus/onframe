@@ -64,6 +64,7 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(options, /<Products admin=\{admin\} onHeaderActionsChange=\{setProductHeaderActions\}/u);
   assert.match(sharedStyles, /\.onframe-products-header-actions\s*\{[^}]*justify-content: flex-end;/u);
   assert.match(sharedStyles, /\.onframe-products-search\s*\{[^}]*width: 50%;/u);
+  assert.match(sharedStyles, /\.onframe-product-import-upload button\[aria-label\^="Remover "\]\s*\{[^}]*var\(--ob-danger\)/u);
   assert.match(commerce, /variation_id: state\.context && state\.context\.selectedVariationId/u);
   assert.match(commerce, /function promotionEstimateHash\(payload\)/u);
   assert.match(commerce, /hash: promotionEstimateHash\(payload\)/u);
