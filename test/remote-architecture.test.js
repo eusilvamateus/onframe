@@ -56,7 +56,7 @@ test('bootstrap preserva instalação e atualização, sem ciclo de serviço', (
     'install.sh',
     'update.ps1',
     'update.sh',
-    'onframe-updater.ps1',
+    'updater-protocol-handler.ps1',
     'register-updater-protocol.ps1',
     'register-updater-protocol.sh',
     'unregister-updater-protocol.ps1',
@@ -68,6 +68,7 @@ test('bootstrap preserva instalação e atualização, sem ciclo de serviço', (
   for (const file of ['start.ps1', 'stop.ps1', 'restart.ps1', 'check.ps1', 'common.ps1', 'launcher-action.sh']) {
     assert.equal(fs.existsSync(path.join(bootstrap, file)), false, file);
   }
+  assert.equal(fs.existsSync(path.join(bootstrap, 'onframe-updater.ps1')), false, 'legacy updater handler');
   assert.match(installMac, /ONFRAME_RELEASE_ARCHIVE/);
   assert.match(updateMac, /ONFRAME_INSTALLER_PATH/);
   assert.doesNotMatch(macIntegration, /npm run package:release|node -p/);
