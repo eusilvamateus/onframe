@@ -3,12 +3,14 @@ import {
   Alert,
   Badge,
   Button,
+  Chip,
   EmptyState,
   Input,
   Modal,
   NumberField,
   Pagination,
   Ph,
+  Popover,
   SearchInput,
   Select,
   Table,
@@ -21,6 +23,11 @@ import { ProductSpreadsheetModal } from './ProductSpreadsheetModal';
 import { downloadProductExport } from './product-spreadsheet';
 
 const PAGE_SIZE = 25;
+const STATUS_FILTERS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'active', label: 'Ativos' },
+  { value: 'inactive', label: 'Inativos' }
+];
 const EMPTY_FORM = {
   sku: '', name: '', description: '', cost: 0, taxRate: 0, variableCost: 0, status: 'active'
 };
@@ -79,7 +86,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
     <Modal
       open
       onClose={locked ? undefined : onClose}
-      title={current ? (admin ? 'Editar produto' : 'Detalhes do produto') : 'Novo produto'}
+      title={current ? (admin ? 'Editar produto' : 'Detalhes do produto') : 'Criar produto'}
       size="lg"
       maxHeight="calc(100vh - 48px)"
       footer={<>
@@ -113,7 +120,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
   );
 }
 
-export function Products({ admin }) {
+export function Products({ admin, onHeaderActionsChange }) {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [query, setQuery] = useState('');
@@ -170,7 +177,7 @@ export function Products({ admin }) {
     }
   }
 
-  async function exportCatalog() {
+  const exportCatalog = useCallback(async () => {
     setTransferBusy(true);
     setError('');
     try {
@@ -190,7 +197,19 @@ export function Products({ admin }) {
     } finally {
       setTransferBusy(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!onHeaderActionsChange) return undefined;
+    onHeaderActionsChange(
+      <div className="onframe-products-header-actions">
+        <Button kind="secondary" disabled={transferBusy} icon={<Ph n="download-simple" size={17} />} onClick={() => void exportCatalog()}>Exportar</Button>
+        {admin && <Button kind="secondary" disabled={transferBusy} icon={<Ph n="upload-simple" size={17} />} onClick={() => setDialog({ type: 'import' })}>Importar</Button>}
+        {admin && <Button disabled={transferBusy} icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Criar produto</Button>}
+      </div>
+    );
+    return undefined;
+  }, [admin, exportCatalog, onHeaderActionsChange, transferBusy]);
 
   function imported({ summary }) {
     toast({
@@ -218,17 +237,29 @@ export function Products({ admin }) {
     {error && <Alert tone="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
     <div className="onframe-products-toolbar">
       <SearchInput value={query} onChange={setQuery} loading={loading && query !== debouncedQuery} placeholder="Buscar por SKU, nome ou descrição" ariaLabel="Buscar produtos" width="100%" />
-      <Select
-        ariaLabel="Filtrar por status"
-        options={['Todos', 'Ativos', 'Inativos']}
-        value={status === 'active' ? 'Ativos' : status === 'inactive' ? 'Inativos' : 'Todos'}
-        onChange={(value) => setStatus(value === 'Ativos' ? 'active' : value === 'Inativos' ? 'inactive' : 'all')}
-        width={180}
-      />
-      <div className="onframe-products-toolbar-actions">
-        <Button kind="secondary" disabled={transferBusy} icon={<Ph n="download-simple" size={17} />} onClick={() => void exportCatalog()}>Exportar</Button>
-        {admin && <Button kind="secondary" disabled={transferBusy} icon={<Ph n="upload-simple" size={17} />} onClick={() => setDialog({ type: 'import' })}>Importar</Button>}
-        {admin && <Button disabled={transferBusy} icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Novo produto</Button>}
+      <div className="onframe-products-status-filter">
+        <Popover
+          ariaLabel="Filtrar produtos por status"
+          placement="bottom"
+          align="start"
+          width={240}
+          padding={12}
+          closeButton={false}
+          trigger={<Chip icon="funnel-simple" label={STATUS_FILTERS.find((option) => option.value === status)?.label || 'Todos'} size="md" selected={status !== 'all'} />}
+        >
+          {(close) => <div className="onframe-products-status-options" role="group" aria-label="Status do produto">
+            {STATUS_FILTERS.map((option) => <Chip
+              key={option.value}
+              label={option.label}
+              size="sm"
+              selected={status === option.value}
+              onToggle={() => {
+                setStatus(option.value);
+                close();
+              }}
+            />)}
+          </div>}
+        </Popover>
       </div>
     </div>
     <div className="onframe-products-table">

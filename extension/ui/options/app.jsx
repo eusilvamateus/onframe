@@ -483,6 +483,7 @@ function OptionsApp() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
   const [dialog, setDialog] = useState(null);
+  const [productHeaderActions, setProductHeaderActions] = useState(null);
   const acceptingInvitation = useRef(false);
 
   function showFeedback({ tone, message, visible = false, needsAttention = false, action, onAction }) {
@@ -912,7 +913,9 @@ function OptionsApp() {
       <Breadcrumbs items={breadcrumbs} size="sm" maxItems={3} onNavigate={navigateBreadcrumb} />
     </div>
   );
-  const pageHeaderActions = workspaceControl || undefined;
+  const pageHeaderActions = (workspaceControl || (view === 'products' && productHeaderActions))
+    ? <>{workspaceControl}{view === 'products' && productHeaderActions}</>
+    : undefined;
 
   return (
     <FeedbackRoot>
@@ -954,7 +957,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'products' && <Products admin={admin} />}
+            {view === 'products' && <Products admin={admin} onHeaderActionsChange={setProductHeaderActions} />}
             {view === 'history' && <ItemEditHistory accounts={accounts} members={members} currentUser={connection.user} admin={admin} onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined} />}
             {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
           </div>
