@@ -196,7 +196,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
           <div className="onframe-product-custom-costs">
             <div className="onframe-product-custom-costs-header">
               <strong>Custos personalizados</strong>
-              {admin && <Button kind="secondary" size="sm" disabled={locked} icon={<Ph n="plus" size={15} />} onClick={addCustomCost}>Adicionar custo</Button>}
+              {admin && <Button kind="quiet" tone="primary" size="sm" disabled={locked} icon={<Ph n="plus-circle" size={15} />} onClick={addCustomCost}>Adicionar custo</Button>}
             </div>
             {values.customCosts.length === 0 && <p className="onframe-product-custom-costs-empty">Nenhum custo personalizado.</p>}
             {values.customCosts.map((cost, index) => <div className="onframe-product-custom-cost" key={cost.key}>
@@ -209,8 +209,8 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
               />
               <div className="onframe-product-custom-cost-value">
                 <ButtonGroup selection="single" value={cost.type} onChange={(value) => updateCustomCost(cost.key, 'type', value)} ariaLabel={`Tipo do custo ${index + 1}`} disabled={!admin || locked}>
-                  <ToggleButton value="fixed">R$</ToggleButton>
-                  <ToggleButton value="percentage">%</ToggleButton>
+                  <ToggleButton value="fixed" appearance="ghost" tone="primary">R$</ToggleButton>
+                  <ToggleButton value="percentage" appearance="ghost" tone="primary">%</ToggleButton>
                 </ButtonGroup>
                 <NumberField
                   label="Valor"
@@ -340,7 +340,7 @@ export function Products({ admin, onHeaderActionsChange }) {
           onClick={() => void exportCatalog()}
         >{exportBusy ? 'Gerando planilha...' : 'Baixar planilha'}</Button>
         {admin && <Button kind="secondary" icon={<Ph n="upload-simple" size={17} />} onClick={() => setDialog({ type: 'import' })}>Importar</Button>}
-        {admin && <Button icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Criar produto</Button>}
+        {admin && <Button icon={<Ph n="plus-circle" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Criar produto</Button>}
       </div>
     );
     return undefined;

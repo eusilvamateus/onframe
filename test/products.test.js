@@ -28,7 +28,11 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Situação/u);
   assert.match(products, /onframe-product-form-fields[^]*<Input label="Nome"[^]*<Input label="SKU"/u);
   assert.match(products, /<Switch[^]*checked=\{values\.status === 'active'\}[^]*onChange=\{\(checked\) => setField\('status'/u);
-  assert.match(products, /Custos personalizados[^]*Adicionar custo[^]*Descrição do custo[^]*value="fixed">R\$[^]*value="percentage">%/u);
+  assert.match(products, /Custos personalizados[^]*Adicionar custo[^]*Descrição do custo[^]*selection="single"[^>]*>[^]*value="fixed" appearance="ghost" tone="primary">R\$[^]*value="percentage" appearance="ghost" tone="primary">%/u);
+  assert.doesNotMatch(products, /<ButtonGroup[^>]*(?:appearance|tone|attached=\{false\})/u);
+  assert.match(products, /kind="quiet" tone="primary"[^]*n="plus-circle"[^]*Adicionar custo/u);
+  assert.match(products, /n="plus-circle" size=\{17\}[^]*Criar produto/u);
+  assert.doesNotMatch(products, /<Ph n="plus"/u);
   assert.match(spreadsheetModal, /steps=\{\[\{ label: 'Arquivo' \}, \{ label: 'Revisão' \}, \{ label: 'Resultado' \}\]\}/u);
   assert.match(spreadsheetModal, /disabled=\{busy \|\| !selectedFile\}[^]*Revisar planilha/u);
   assert.match(spreadsheetModal, /Revise os produtos/u);
