@@ -92,7 +92,7 @@ test('commerce model conta promocoes ativas apenas quando aplicadas ao anuncio',
   assert.strictEqual(state.appliedCount, 2);
   assert.strictEqual(state.eligibleCount, 1);
   assert.strictEqual(state.scheduledCount, 1);
-  assert.strictEqual(state.label, 'Promo ativa');
+  assert.strictEqual(state.label, 'Promoção ativa');
 });
 
 test('commerce model nao conta desconto pix acumulativo como promocao de preco', () => {
@@ -113,7 +113,7 @@ test('commerce model nao conta desconto pix acumulativo como promocao de preco',
   assert.strictEqual(state.appliedCount, 2);
   assert.strictEqual(state.eligibleCount, 1);
   assert.strictEqual(state.scheduledCount, 0);
-  assert.strictEqual(state.label, 'Promo ativa');
+  assert.strictEqual(state.label, 'Promoção ativa');
 });
 
 test('commerce model permite acoes do cupom do item sem estimar desconto no checkout', () => {
@@ -153,7 +153,7 @@ test('commerce model mantém pendente como programada quando outra oferta vence 
 
   assert.strictEqual(state.activeCount, 1);
   assert.strictEqual(state.scheduledCount, 1);
-  assert.strictEqual(state.label, 'Promo ativa');
+  assert.strictEqual(state.label, 'Promoção ativa');
 });
 
 test('commerce model monta payload amigavel de oferta', () => {

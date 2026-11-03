@@ -66,7 +66,7 @@
         appliedCount,
         eligibleCount,
         scheduledCount,
-        label: activeCount === 1 ? 'Promo ativa' : `${activeCount} ativas`,
+        label: activeCount === 1 ? 'Promoção ativa' : `${activeCount} ativas`,
         tone: 'green',
         summary: activeCount === 1 ? 'Existe promoção em vigor.' : `${activeCount} promoções em vigor.`
       };
