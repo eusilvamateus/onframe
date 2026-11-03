@@ -14,6 +14,7 @@ import {
   Popover,
   SearchInput,
   Select,
+  Spinner,
   Table,
   Tooltip,
   toast
@@ -183,7 +184,7 @@ export function Products({ admin, onHeaderActionsChange }) {
   const [status, setStatus] = useState('all');
   const [sort, setSort] = useState('updated');
   const [loading, setLoading] = useState(true);
-  const [transferBusy, setTransferBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [error, setError] = useState('');
   const requestSequence = useRef(0);
@@ -234,7 +235,7 @@ export function Products({ admin, onHeaderActionsChange }) {
   }
 
   const exportCatalog = useCallback(async () => {
-    setTransferBusy(true);
+    setExportBusy(true);
     setError('');
     try {
       const catalog = [];
@@ -247,11 +248,11 @@ export function Products({ admin, onHeaderActionsChange }) {
         page += 1;
       } while (page <= totalPages);
       downloadProductExport(catalog);
-      toast({ tone: 'success', title: `${catalog.length} ${catalog.length === 1 ? 'produto exportado' : 'produtos exportados'}.` });
+      toast({ tone: 'success', title: 'Planilha gerada.', body: `${catalog.length} ${catalog.length === 1 ? 'produto incluído' : 'produtos incluídos'}.` });
     } catch (failure) {
-      setError(userError(failure, 'Não foi possível exportar os produtos.'));
+      setError(userError(failure, 'Não foi possível gerar a planilha de produtos.'));
     } finally {
-      setTransferBusy(false);
+      setExportBusy(false);
     }
   }, []);
 
@@ -259,13 +260,19 @@ export function Products({ admin, onHeaderActionsChange }) {
     if (!onHeaderActionsChange) return undefined;
     onHeaderActionsChange(
       <div className="onframe-products-header-actions">
-        <Button kind="secondary" disabled={transferBusy} icon={<Ph n="download-simple" size={17} />} onClick={() => void exportCatalog()}>Exportar</Button>
-        {admin && <Button kind="secondary" disabled={transferBusy} icon={<Ph n="upload-simple" size={17} />} onClick={() => setDialog({ type: 'import' })}>Importar</Button>}
-        {admin && <Button disabled={transferBusy} icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Criar produto</Button>}
+        <Button
+          kind="secondary"
+          disabled={exportBusy}
+          aria-busy={exportBusy}
+          icon={exportBusy ? <Spinner size="xs" label="Gerando planilha" /> : <Ph n="download-simple" size={17} />}
+          onClick={() => void exportCatalog()}
+        >{exportBusy ? 'Gerando planilha...' : 'Baixar planilha'}</Button>
+        {admin && <Button kind="secondary" icon={<Ph n="upload-simple" size={17} />} onClick={() => setDialog({ type: 'import' })}>Importar</Button>}
+        {admin && <Button icon={<Ph n="plus" size={17} />} onClick={() => setDialog({ type: 'product', product: null })}>Criar produto</Button>}
       </div>
     );
     return undefined;
-  }, [admin, exportCatalog, onHeaderActionsChange, transferBusy]);
+  }, [admin, exportBusy, exportCatalog, onHeaderActionsChange]);
 
   function imported({ summary }) {
     toast({

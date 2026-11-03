@@ -38,7 +38,8 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.doesNotMatch(`${products}\n${background}`, /product-link|Anúncios vinculados|Vincular/u);
   assert.match(spreadsheet, /writeFileXLSX/u);
   assert.match(products, /downloadProductExport/u);
-  assert.match(products, /onHeaderActionsChange\([^]*onframe-products-header-actions[^]*Exportar[^]*Importar[^]*Criar produto/u);
+  assert.match(products, /onHeaderActionsChange\([^]*onframe-products-header-actions[^]*Baixar planilha[^]*Importar[^]*Criar produto/u);
+  assert.match(products, /aria-busy=\{exportBusy\}[^]*Gerando planilha\.\.\./u);
   assert.match(products, /onframe-products-toolbar[^]*onframe-products-search[^]*<SearchInput[^]*onframe-products-filters/u);
   assert.match(products, /function ProductChipFilter[^]*<Popover[^]*placement="bottom"[^]*align="start"[^]*trigger=\{<Chip/u);
   assert.match(products, /options\.map\([^]*<Chip[^]*selected=\{value === option\.value\}/u);
