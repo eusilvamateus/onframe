@@ -35,15 +35,23 @@ extract="$temporary/extract"
 mkdir -p "$extract"
 
 printf '\nONFRAME\nInstalacao da extensao e do atualizador\n\n'
-printf '[1/4] Consultando a release mais recente...\n'
-github_get "https://api.github.com/repos/$REPOSITORY/releases/latest" > "$release_json"
-tag="$(sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' "$release_json" | head -n 1)"
-asset_url="$(sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]*onframe-v[^"]*\.zip\)".*/\1/p' "$release_json" | head -n 1)"
-[ -n "$tag" ] || fail "A API do GitHub nao retornou uma release valida."
-[ -n "$asset_url" ] || fail "A release $tag nao possui o pacote ZIP do OnFrame."
+if [ -n "${ONFRAME_RELEASE_ARCHIVE:-}" ]; then
+  [ -f "$ONFRAME_RELEASE_ARCHIVE" ] || fail "Pacote local nao encontrado: $ONFRAME_RELEASE_ARCHIVE"
+  tag="${ONFRAME_RELEASE_TAG:-local}"
+  printf '[1/4] Validando pacote local %s...\n' "$tag"
+  cp "$ONFRAME_RELEASE_ARCHIVE" "$archive"
+  printf '[2/4] Pacote local preparado.\n'
+else
+  printf '[1/4] Consultando a release mais recente...\n'
+  github_get "https://api.github.com/repos/$REPOSITORY/releases/latest" > "$release_json"
+  tag="$(sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p' "$release_json" | head -n 1)"
+  asset_url="$(sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]*onframe-v[^"]*\.zip\)".*/\1/p' "$release_json" | head -n 1)"
+  [ -n "$tag" ] || fail "A API do GitHub nao retornou uma release valida."
+  [ -n "$asset_url" ] || fail "A release $tag nao possui o pacote ZIP do OnFrame."
 
-printf '[2/4] Baixando pacote %s...\n' "$tag"
-/usr/bin/curl -fsSL "$asset_url" -o "$archive"
+  printf '[2/4] Baixando pacote %s...\n' "$tag"
+  /usr/bin/curl -fsSL "$asset_url" -o "$archive"
+fi
 /usr/bin/ditto -x -k "$archive" "$extract"
 package_file="$(find "$extract" -type f -name package.json | head -n 1)"
 [ -n "$package_file" ] || fail "Pacote vazio ou invalido."

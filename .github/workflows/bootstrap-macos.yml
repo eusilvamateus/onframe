@@ -1,0 +1,38 @@
+name: macOS bootstrap
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/bootstrap-macos.yml'
+      - 'extension/manifest.json'
+      - 'scripts/bootstrap/**'
+      - 'scripts/test-macos-bootstrap.sh'
+      - 'package.json'
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - '.github/workflows/bootstrap-macos.yml'
+      - 'extension/manifest.json'
+      - 'scripts/bootstrap/**'
+      - 'scripts/test-macos-bootstrap.sh'
+      - 'package.json'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - macos-15-intel
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate macOS install, update and uninstall
+        run: /bin/sh scripts/test-macos-bootstrap.sh

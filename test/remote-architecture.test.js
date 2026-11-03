@@ -46,6 +46,11 @@ test('promoções pendentes usam Workflow durável e reconciliação consultáve
 
 test('bootstrap preserva instalação e atualização, sem ciclo de serviço', () => {
   const bootstrap = path.join(root, 'scripts', 'bootstrap');
+  const installMac = fs.readFileSync(path.join(bootstrap, 'install.sh'), 'utf8');
+  const updateMac = fs.readFileSync(path.join(bootstrap, 'update.sh'), 'utf8');
+  const macIntegration = fs.readFileSync(path.join(root, 'scripts', 'test-macos-bootstrap.sh'), 'utf8');
+  const releaseWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'release.yml'), 'utf8');
+  const bootstrapWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'bootstrap-macos.yml'), 'utf8');
   const expected = [
     'install.ps1',
     'install.sh',
@@ -63,4 +68,18 @@ test('bootstrap preserva instalação e atualização, sem ciclo de serviço', (
   for (const file of ['start.ps1', 'stop.ps1', 'restart.ps1', 'check.ps1', 'common.ps1', 'launcher-action.sh']) {
     assert.equal(fs.existsSync(path.join(bootstrap, file)), false, file);
   }
+  assert.match(installMac, /ONFRAME_RELEASE_ARCHIVE/);
+  assert.match(updateMac, /ONFRAME_INSTALLER_PATH/);
+  assert.doesNotMatch(macIntegration, /npm run package:release|node -p/);
+  assert.match(macIntegration, /ditto -c -k --keepParent/);
+  assert.match(macIntegration, /cp -R "\$ROOT\/scripts\/bootstrap"/);
+  assert.match(macIntegration, /"\$executable" 'onframe-updater:\/\/update'/);
+  assert.match(macIntegration, /ONFRAME_REMOVE_DATA=1 "\$uninstaller"/);
+  assert.doesNotMatch(releaseWorkflow, /bootstrap\/common\.sh|onframe_write_agent|onframe_register_launcher/);
+  assert.doesNotMatch(releaseWorkflow, /ONBLIDE_DESIGN_SYSTEM_DEPLOY_KEY|onblide-design-system/);
+  assert.match(releaseWorkflow, /run: \/bin\/sh scripts\/test-macos-bootstrap\.sh/);
+  assert.doesNotMatch(bootstrapWorkflow, /ONBLIDE_DESIGN_SYSTEM_DEPLOY_KEY|onblide-design-system|setup-node|npm ci/);
+  assert.match(bootstrapWorkflow, /macos-latest/);
+  assert.match(bootstrapWorkflow, /macos-15-intel/);
+  assert.match(bootstrapWorkflow, /branches:[\s\S]*- dev[\s\S]*- main/);
 });
