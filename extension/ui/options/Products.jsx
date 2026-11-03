@@ -13,8 +13,8 @@ import {
   Ph,
   Popover,
   SearchInput,
-  Select,
   Spinner,
+  Switch,
   Table,
   Tooltip,
   toast
@@ -41,10 +41,6 @@ const EMPTY_FORM = {
 
 function money(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
-}
-
-function statusLabel(status) {
-  return status === 'inactive' ? 'Inativo' : 'Ativo';
 }
 
 function ProductChipFilter({ ariaLabel, icon, options, value, selected, width, onChange }) {
@@ -146,31 +142,47 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
       onClose={locked ? () => {} : onClose}
       title={current ? (admin ? 'Editar produto' : 'Detalhes do produto') : 'Criar produto'}
       side="right"
-      width={640}
+      width={520}
       footer={<>
         <Button kind="secondary" disabled={locked} onClick={onClose}>{admin ? 'Cancelar' : 'Fechar'}</Button>
         {admin && <Button disabled={locked} onClick={() => void save()} icon={<Ph n="floppy-disk" size={17} />}>{current ? 'Salvar alterações' : 'Criar produto'}</Button>}
       </>}
     >
-      <div className="onframe-product-modal onframe-stack">
-        {error && <Alert tone="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
-        <div className="onframe-product-form-grid">
-          <Input label="SKU" value={values.sku} maxLength={80} disabled={!admin || locked} onChange={(event) => setField('sku', event.target.value)} />
-          <Input label="Nome" value={values.name} maxLength={160} disabled={!admin || locked} onChange={(event) => setField('name', event.target.value)} />
-        </div>
-        <div className="onframe-product-form-grid onframe-product-form-grid--three">
-          <NumberField label="Custo do produto" value={values.cost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('cost', value ?? 0)} />
-          <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value ?? 0)} />
-          <NumberField label="Outros custos variáveis" value={values.variableCost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('variableCost', value ?? 0)} />
-        </div>
-        <Select
-          label="Status"
-          options={['Ativo', 'Inativo']}
-          value={statusLabel(values.status)}
-          disabled={!admin || locked}
-          onChange={(value) => setField('status', value === 'Inativo' ? 'inactive' : 'active')}
-          width={220}
-        />
+      <div className="onframe-product-drawer">
+        {error && <div className="onframe-product-form-error">
+          <Alert tone="danger" dismissible onClose={() => setError('')}>{error}</Alert>
+        </div>}
+        <section className="onframe-product-form-section">
+          <h3>Identificação</h3>
+          <div className="onframe-product-form-fields">
+            <Input label="SKU" value={values.sku} maxLength={80} disabled={!admin || locked} onChange={(event) => setField('sku', event.target.value)} />
+            <Input label="Nome" value={values.name} maxLength={160} disabled={!admin || locked} onChange={(event) => setField('name', event.target.value)} />
+          </div>
+        </section>
+
+        <section className="onframe-product-form-section">
+          <h3>Custos</h3>
+          <div className="onframe-product-cost-grid">
+            <NumberField label="Custo do produto" value={values.cost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('cost', value ?? 0)} />
+            <NumberField label="Outros custos variáveis" value={values.variableCost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('variableCost', value ?? 0)} />
+            <div className="onframe-product-tax-field">
+              <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value ?? 0)} />
+            </div>
+          </div>
+        </section>
+
+        <section className="onframe-product-form-section">
+          <h3>Situação</h3>
+          <div className="onframe-product-status-row">
+            <strong>Produto ativo</strong>
+            <Switch
+              checked={values.status === 'active'}
+              label={values.status === 'active' ? 'Ativo' : 'Inativo'}
+              disabled={!admin || locked}
+              onChange={(checked) => setField('status', checked ? 'active' : 'inactive')}
+            />
+          </div>
+        </section>
       </div>
     </Drawer>
   );
