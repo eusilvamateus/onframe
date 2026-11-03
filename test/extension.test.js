@@ -205,6 +205,7 @@ test('tema do content script acompanha a preferência compartilhada e o sistema'
 
 test('integracoes alternam visualizacao e permitem renomear sem perder controles da conta', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const popupSource = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'IntegrationsSession.jsx'), 'utf8');
   const accountSource = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'IntegrationAccount.jsx'), 'utf8');
   const helpers = accountSource.slice(accountSource.indexOf('export function accountName'), accountSource.indexOf('export function IntegrationAccount')).replaceAll('export ', '');
   const accountComponent = accountSource.slice(accountSource.indexOf('export function IntegrationAccount')).replace('export ', '');
@@ -237,7 +238,9 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
   assert.equal(renderer.root.findAllByType('switch-control')[0].props.checked, true);
   assert.equal(renderer.root.findByType('switch-control').props.size, 'md');
   assert.equal(renderer.root.findByType('switch-control').props.label, undefined);
-  assert.equal(renderer.root.findByType('button-group').props.size, 'lg');
+  assert.equal(renderer.root.findByType('button-group').props.size, 'md');
+  assert.deepEqual(renderer.root.findAllByType('toggle-control').map((node) => node.props.appearance), ['ghost', 'ghost']);
+  assert.match(popupSource, /value="list" appearance="ghost"[^]*value="cards" appearance="ghost"/u);
   await act(async () => renderer.root.findByType('switch-control').props.onChange(false));
   assert.deepEqual(updated, [false]);
   assert.equal(renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' }).length, 1);

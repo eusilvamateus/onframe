@@ -197,9 +197,9 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove
         />
       </div>
       {accounts.length > 0 && <div className="onframe-integration-view-bar">
-        <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="lg">
-          <Tooltip label="Visualizar como lista"><ToggleButton value="list" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
-          <Tooltip label="Visualizar como cards"><ToggleButton value="cards" icon="squares-four" ariaLabel="Cards" /></Tooltip>
+        <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="md">
+          <Tooltip label="Visualizar como lista"><ToggleButton value="list" appearance="ghost" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
+          <Tooltip label="Visualizar como cards"><ToggleButton value="cards" appearance="ghost" icon="squares-four" ariaLabel="Cards" /></Tooltip>
         </ButtonGroup>
       </div>}
       {accounts.length === 0 ? (
