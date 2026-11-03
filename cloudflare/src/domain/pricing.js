@@ -459,12 +459,17 @@ function stackableFinancialActivePrice(entry, activePrice) {
 }
 
 function buildCostBreakdown({ activePrice, currency, costs, shippingCost, promotionFinancial, conditionalFinancials = [] }) {
-  const commission = summarizeCommissionCost(costs);
+  const baseCommission = summarizeCommissionCost(costs);
   const shipping = shippingCost && !shippingCost.error ? shippingCost : null;
   const meliContribution = promotionFinancial && promotionFinancial.meli_contribution || null;
   const feeReduction = promotionFinancial && promotionFinancial.fee_reduction || null;
   const meliContributionAmount = amountOrNull(meliContribution && meliContribution.amount) || 0;
   const feeReductionAmount = amountOrNull(feeReduction && feeReduction.amount) || 0;
+  const commission = summarizePromotionAdjustedCommission(
+    baseCommission,
+    activePrice,
+    meliContributionAmount + feeReductionAmount
+  );
   const missing = [];
   if (amountOrNull(activePrice) === null) missing.push('active_price');
   if (!commission) missing.push('commission');
@@ -508,8 +513,27 @@ function summarizeCommissionCost(costs) {
     fixed_fee: amountOrNull(details.fixed_fee),
     financing_add_on_fee: amountOrNull(details.financing_add_on_fee),
     currency_id: row.currency_id || null,
+    listing_type_id: row.listing_type_id || null,
+    listing_type_name: row.listing_type_name || null,
     source: 'listing_prices'
   };
+}
+
+function summarizePromotionAdjustedCommission(commission, activePrice, promotionReduction) {
+  if (!commission) return null;
+  const grossAmount = amountOrNull(commission.amount);
+  const reductionAmount = amountOrNull(promotionReduction) || 0;
+  const appliedReduction = grossAmount === null ? 0 : Math.min(grossAmount, reductionAmount);
+  const netAmount = grossAmount === null ? null : roundMoney(grossAmount - appliedReduction);
+  const normalizedActivePrice = amountOrNull(activePrice);
+  return Object.assign({}, commission, {
+    net_amount: netAmount,
+    promotion_reduction_amount: roundMoney(appliedReduction),
+    promotion_credit_amount: grossAmount === null ? 0 : roundMoney(Math.max(0, reductionAmount - grossAmount)),
+    effective_percentage: netAmount !== null && normalizedActivePrice
+      ? roundPercentage(netAmount / normalizedActivePrice * 100)
+      : null
+  });
 }
 
 function activeSellingPrice({ item, standardPrice, salePrice }) {
@@ -681,6 +705,10 @@ function amountOrNull(value) {
 }
 
 function roundMoney(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+function roundPercentage(value) {
   return Math.round(Number(value) * 100) / 100;
 }
 

@@ -40,6 +40,7 @@ const {
   buildBulkPreview,
   commitBulkAction
 } = require('../cloudflare/src/domain/bulk-actions');
+const { buildCostProjection } = require('../cloudflare/src/domain/pricing');
 
 test('commerce model resume estado de preco e bloqueios', () => {
   const editable = commerceModel.getPriceState({
@@ -358,7 +359,7 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(source, /function priceSellingPromotion\(\)[\s\S]*currentPromotionEntry\(pricePromotionEntries\(groups\)\)/);
   assert.doesNotMatch(source, /priceMeta/);
   assert.match(source, /Você recebe/);
-  assert.match(source, /Comissão/);
+  assert.match(source, /Tarifa de venda/);
   assert.match(source, /Frete/);
   assert.match(source, /Com redução de tarifas/);
   assert.match(source, /Bônus do Mercado Livre/);
@@ -621,8 +622,9 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   assert.match(styles, /\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 160px;/s);
   assert.match(styles, /\.onframe-commerce-direct-discount-date-range input\[type="text"\]:focus-visible\s*{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s);
   assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount[^}]*\.ob-field-(?:shell|prefix|suffix)/s);
-  assert.match(source, /promotionFinancialMetrics\(estimate\.promotionFinancial\)/);
-  assert.match(source, /`Comissão · \$\{formatPercent\(commissionPercentage\)\}`/);
+  assert.match(source, /description: saleFeeDescription\(commission, currency\)/);
+  assert.match(source, /`Tarifa de venda · \$\{formatPercent\(commissionPercentage\)\}`/);
+  assert.match(view, /description && <small>\{description\}<\/small>/);
   assert.match(styles, /\.onframe-commerce-direct-discount-total\s*{[\s\S]*border-top: 1px solid var\(--ob-line-soft\)/s);
   assert.match(source, /if \(state\.directDiscountModalOpen\) \{\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);/s);
 });
@@ -934,6 +936,9 @@ test('pricing summary normaliza preco, quantidade, automacao, referencia e catal
   assert.strictEqual(summary.costBreakdown.meli_contribution.amount, 3);
   assert.strictEqual(summary.costBreakdown.fee_reduction.amount, 3);
   assert.strictEqual(summary.costBreakdown.complete, true);
+  assert.strictEqual(summary.costBreakdown.commission.net_amount, 6.35);
+  assert.strictEqual(summary.costBreakdown.commission.promotion_reduction_amount, 6);
+  assert.strictEqual(summary.costBreakdown.commission.effective_percentage, 6.68);
   assert.strictEqual(summary.costBreakdown.you_receive, 80.15);
   assert.strictEqual(summary.catalogCompetition.price_to_win, 97);
   assert.strictEqual(summary.restrictions[0].code, 'pricing_automation_active');
@@ -972,6 +977,39 @@ test('pricing summary nao calcula voce recebe quando faltam custos oficiais', as
   assert.strictEqual(summary.costBreakdown.complete, false);
   assert.deepStrictEqual(summary.costBreakdown.missing, ['commission', 'shipping']);
   assert.strictEqual(summary.costBreakdown.you_receive, null);
+});
+
+test('pricing projection apresenta a reducao dentro da tarifa liquida', async () => {
+  const projection = await buildCostProjection({
+    getListingPrices: async () => [{
+      listing_type_id: 'gold_special',
+      listing_type_name: 'Clássico',
+      currency_id: 'BRL',
+      sale_fee_amount: 33.39,
+      sale_fee_details: { gross_amount: 33.39, percentage_fee: 10.5 }
+    }],
+    getSellerShippingCost: async () => ({
+      coverage: { all_country: { list_cost: 69.35, currency_id: 'BRL' } }
+    })
+  }, {
+    id: 'MLB1234567890',
+    seller_id: 123,
+    site_id: 'MLB',
+    category_id: 'MLB1055',
+    listing_type_id: 'gold_special',
+    currency_id: 'BRL',
+    condition: 'new',
+    shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true }
+  }, 318, {
+    meli_contribution: { amount: 17.02, percentage: 5.35 },
+    fee_reduction: null
+  });
+
+  assert.strictEqual(projection.costBreakdown.commission.amount, 33.39);
+  assert.strictEqual(projection.costBreakdown.commission.net_amount, 16.37);
+  assert.strictEqual(projection.costBreakdown.commission.promotion_reduction_amount, 17.02);
+  assert.strictEqual(projection.costBreakdown.commission.effective_percentage, 5.15);
+  assert.strictEqual(projection.costBreakdown.you_receive, 232.28);
 });
 
 test('pricing update bloqueia automacao antes de alterar o item', async () => {
@@ -1492,6 +1530,8 @@ test('promotion estimate calcula custos antes de aplicar oferta', async () => {
   assert.strictEqual(result.promotion.label, '8.8 e Dia dos Pais');
   assert.strictEqual(result.promotion.range.min, 70);
   assert.strictEqual(result.commission.amount, 10);
+  assert.strictEqual(result.commission.net_amount, 6);
+  assert.strictEqual(result.commission.promotion_reduction_amount, 4);
   assert.strictEqual(result.shipping.amount, 5);
   assert.strictEqual(result.promotionFinancial.meli_contribution.amount, 2);
   assert.strictEqual(result.promotionFinancial.seller_contribution.amount, 8);

@@ -1219,7 +1219,7 @@
       const currency = estimate && estimate.currency_id || itemCurrency();
       const commission = estimate && estimate.commission || null;
       const shipping = estimate && estimate.shipping || null;
-      const commissionPercentage = financialPercentage(commission && commission.percentage);
+      const commissionPercentage = financialPercentage(commission && commission.effective_percentage);
       const value = (amount, sign = '') => {
         const normalized = moneyOrNull(amount);
         return normalized === null ? '—' : `${sign}${CommerceModel.formatMoney(normalized, currency)}`;
@@ -1234,13 +1234,11 @@
         message,
         tone: 'danger',
         commission: {
-          label: commissionPercentage === null ? 'Comissão' : `Comissão · ${formatPercent(commissionPercentage)}`,
-          value: value(commission && commission.amount, '−')
+          label: commissionPercentage === null ? 'Tarifa de venda' : `Tarifa de venda · ${formatPercent(commissionPercentage)}`,
+          description: saleFeeDescription(commission, currency),
+          value: value(saleFeeAmount(commission), '−')
         },
-        benefits: estimate ? promotionFinancialMetrics(estimate.promotionFinancial).map((metric) => ({
-          label: metric.label,
-          value: metric.value
-        })) : [],
+        benefits: promotionCreditMetrics(commission, currency),
         shipping: { label: 'Frete', value: value(shipping && shipping.amount, '−') },
         total: { label: 'Você recebe', value: value(estimate && estimate.youReceive) }
       };
@@ -1387,7 +1385,7 @@
       if (!estimate) return [];
       const currency = estimate.currency_id || itemCurrency();
       return promotionEstimateMetrics(estimate, currency)
-        .filter((metric) => ['Você recebe', 'Comissão', 'Frete'].includes(metric.label))
+        .filter((metric) => ['Você recebe', 'Tarifa de venda', 'Crédito promocional', 'Frete'].includes(metric.label))
         .map((metric) => ({
           label: metric.label,
           value: metric.value,
@@ -1587,8 +1585,7 @@
     function promotionResultPopoverRows(entry, estimate, currency) {
       const price = moneyOrNull(estimate.dealPrice);
       const originalPrice = moneyOrNull(entry && entry.original_price) || moneyOrNull(estimate.item && estimate.item.price);
-      const financialMetrics = promotionFinancialMetrics(estimate.promotionFinancial);
-      const commission = moneyOrNull(estimate.commission && estimate.commission.amount);
+      const commission = saleFeeAmount(estimate.commission);
       const shipping = moneyOrNull(estimate.shipping && estimate.shipping.amount);
       const rows = [];
 
@@ -1599,8 +1596,14 @@
           value: CommerceModel.formatMoney(price, currency)
         });
       }
-      financialMetrics.forEach((metric) => rows.push(promotionFinancialPopoverRow(metric)));
-      if (commission !== null) rows.push({ label: 'Comissão', value: formatPromotionCost(commission, currency) });
+      if (commission !== null) {
+        rows.push({
+          label: 'Tarifa de venda',
+          description: saleFeeDescription(estimate.commission, currency),
+          value: formatPromotionCost(commission, currency)
+        });
+      }
+      promotionCreditMetrics(estimate.commission, currency).forEach((metric) => rows.push(metric));
       if (shipping !== null) {
         rows.push({
           label: 'Frete',
@@ -1903,22 +1906,6 @@
       return copy || `${metric.label}: ${metric.value}`;
     }
 
-    function promotionFinancialPopoverRow(metric) {
-      if (!metric) return null;
-      if (metric.copy) {
-        return {
-          label: metric.label,
-          description: metric.copy,
-          tone: `${metric.tone === 'green' ? 'benefit ' : ''}narrative`
-        };
-      }
-      return {
-        label: metric.label,
-        value: metric.value,
-        tone: metric.tone === 'green' ? 'benefit' : ''
-      };
-    }
-
     function currentPromotionEntries(entries) {
       return (Array.isArray(entries) ? entries : []).filter((entry) => entry && !isStackablePromotion(entry) && entry.is_current_price === true);
     }
@@ -1991,8 +1978,6 @@
       const currency = itemCurrency();
       const breakdown = summary && summary.costBreakdown ? summary.costBreakdown : null;
       const fields = [];
-      const financial = breakdown && breakdown.promotion_financial ? breakdown.promotion_financial : null;
-      const feeReduction = breakdown && breakdown.fee_reduction ? breakdown.fee_reduction : financial && financial.fee_reduction || null;
       if (!breakdown) return { fields };
 
       const commission = breakdown.commission || null;
@@ -2002,27 +1987,17 @@
       } else {
         fields.push({ label: 'Custos', value: 'Incompletos', tone: 'warning' });
       }
-      if (commission && moneyOrNull(commission.amount) !== null) {
-        fields.push({ label: 'Comissão', value: CommerceModel.formatMoney(commission.amount, commission.currency_id || currency) });
+      if (commission && saleFeeAmount(commission) !== null) {
+        fields.push({
+          label: 'Tarifa de venda',
+          value: CommerceModel.formatMoney(saleFeeAmount(commission), commission.currency_id || currency),
+          description: saleFeeDescription(commission, currency)
+        });
       }
       if (shipping && moneyOrNull(shipping.amount) !== null) {
         fields.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
       }
-      const benefits = promotionFinancialMetrics(financial)
-        .filter((metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction');
-      if (feeReduction) {
-        const benefit = buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, currency, 'fee-reduction');
-        if (benefit.value && !benefits.some((metric) => metric.kind === benefit.kind && metric.value === benefit.value)) benefits.push(benefit);
-      }
-      if (benefits.length) {
-        const primary = benefits[0];
-        fields.push({
-          label: compactPromotionBenefitLabel(primary),
-          value: primary.value,
-          tone: primary.tone,
-          description: benefits.map((metric) => promotionFinancialListText(metric)).filter(Boolean).join(' ')
-        });
-      }
+      promotionCreditMetrics(commission, currency).forEach((metric) => fields.push(metric));
       return { fields };
     }
 
@@ -2054,20 +2029,53 @@
     function promotionEstimateMetrics(estimate, currency) {
       const commission = estimate.commission || null;
       const shipping = estimate.shipping || null;
-      const financial = estimate.promotionFinancial || null;
       const metrics = [];
 
       if (moneyOrNull(estimate.youReceive) !== null) {
         metrics.push({ label: 'Você recebe', value: CommerceModel.formatMoney(estimate.youReceive, currency), tone: 'review-result' });
       }
-      promotionFinancialMetrics(financial).forEach((metric) => metrics.push(metric));
-      if (commission && moneyOrNull(commission.amount) !== null) {
-        metrics.push({ label: 'Comissão', value: CommerceModel.formatMoney(commission.amount, currency), tone: 'muted' });
+      if (commission && saleFeeAmount(commission) !== null) {
+        metrics.push({
+          label: 'Tarifa de venda',
+          value: CommerceModel.formatMoney(saleFeeAmount(commission), currency),
+          description: saleFeeDescription(commission, currency),
+          tone: 'muted'
+        });
       }
+      promotionCreditMetrics(commission, currency).forEach((metric) => metrics.push(metric));
       if (shipping && moneyOrNull(shipping.amount) !== null) {
         metrics.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, currency), tone: 'muted' });
       }
       return metrics;
+    }
+
+    function saleFeeAmount(commission) {
+      if (!commission) return null;
+      const netAmount = moneyOrNull(commission.net_amount);
+      return netAmount === null ? moneyOrNull(commission.amount) : netAmount;
+    }
+
+    function saleFeeDescription(commission, currency) {
+      if (!commission) return '';
+      const details = [];
+      const listingType = String(commission.listing_type_name || '').trim();
+      if (listingType) details.push(listingType);
+      const reduction = moneyOrNull(commission.promotion_reduction_amount);
+      if (reduction !== null && reduction > 0) {
+        details.push(`Redução de ${CommerceModel.formatMoney(reduction, commission.currency_id || currency)} já aplicada à tarifa.`);
+      }
+      return details.join(' · ');
+    }
+
+    function promotionCreditMetrics(commission, currency) {
+      const credit = moneyOrNull(commission && commission.promotion_credit_amount);
+      if (credit === null || credit <= 0) return [];
+      return [{
+        label: 'Crédito promocional',
+        value: CommerceModel.formatMoney(credit, commission.currency_id || currency),
+        description: 'Parcela do aporte que excede a tarifa de venda.',
+        tone: 'benefit'
+      }];
     }
 
     function buildFinancialMetric(label, amount, percentage, currency, tone = 'muted', kind = '') {

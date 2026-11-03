@@ -39,10 +39,10 @@ function ResultValue({ loading, value }) {
   return <>{value || '—'}</>;
 }
 
-function ResultRow({ label, value, loading = false, tone = '', separated = false }) {
+function ResultRow({ label, description = '', value, loading = false, tone = '', separated = false }) {
   return (
     <div className={`onframe-commerce-direct-discount-line${tone ? ` ${tone}` : ''}${separated ? ' is-separated' : ''}`}>
-      <span>{label}</span>
+      <span>{label}{description && <small>{description}</small>}</span>
       <strong><ResultValue loading={loading} value={value} /></strong>
     </div>
   );

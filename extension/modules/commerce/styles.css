@@ -686,6 +686,13 @@
   white-space: nowrap;
 }
 
+.onframe-commerce-direct-discount-line > span > small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ob-fg-mute);
+  font: var(--ob-w-regular) 11px/1.35 var(--ob-font);
+}
+
 .onframe-commerce-direct-discount-line > strong .muted {
   color: var(--ob-fg-mute);
   font-weight: var(--ob-w-regular);
