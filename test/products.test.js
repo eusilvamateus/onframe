@@ -31,6 +31,14 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(products, /Custos personalizados[^]*Adicionar custo[^]*Descrição do custo[^]*value="fixed">R\$[^]*value="percentage">%/u);
   assert.match(spreadsheetModal, /steps=\{\[\{ label: 'Arquivo' \}, \{ label: 'Revisão' \}, \{ label: 'Resultado' \}\]\}/u);
   assert.match(spreadsheetModal, /disabled=\{busy \|\| !selectedFile\}[^]*Revisar planilha/u);
+  assert.match(spreadsheetModal, /Revise os produtos/u);
+  assert.match(spreadsheetModal, /Nenhuma mudança foi encontrada/u);
+  assert.match(spreadsheetModal, /Trocar arquivo[^]*Nada para importar/u);
+  assert.match(spreadsheetModal, /key: 'name', label: 'Produto'[^]*key: 'sku', label: 'SKU'[^]*label: result \? 'Resultado' : 'Ação'/u);
+  assert.match(spreadsheetModal, /disabled=\{busy \|\| actionable === 0\}[^]*Importar \$\{actionable\}/u);
+  assert.match(spreadsheetModal, /\['Novos', values\.create, 'green'\][^]*\['Atualizações', values\.update, 'blue'\][^]*\['Sem alteração', values\.unchanged, 'grey'\][^]*\['Com erro', values\.error, 'red'\]/u);
+  assert.match(spreadsheetModal, /onframe-product-import-summary-\$\{tone\}[^]*onframe-product-import-summary-marker/u);
+  assert.match(sharedStyles, /onframe-product-import-summary-green[^}]*var\(--ob-green\)[^]*onframe-product-import-summary-blue[^}]*var\(--ob-blue\)[^]*onframe-product-import-summary-red[^}]*var\(--ob-danger\)/u);
 });
 
 test('produtos integram navegacao e todas as operacoes remotas', () => {
