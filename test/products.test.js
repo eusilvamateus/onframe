@@ -13,7 +13,7 @@ const background = readFileSync(join(root, 'extension/background.js'), 'utf8');
 const commerce = readFileSync(join(root, 'extension/modules/commerce/module.js'), 'utf8');
 
 test('catalogo de produtos usa apenas componentes do design system', () => {
-  for (const component of ['Table', 'Textarea', 'NumberField', 'SearchInput', 'Select', 'Modal', 'Pagination', 'Chip', 'Popover', 'MenuPanel', 'Tooltip']) {
+  for (const component of ['Table', 'NumberField', 'SearchInput', 'Select', 'Modal', 'Pagination', 'Chip', 'Popover', 'MenuPanel', 'Tooltip']) {
     assert.match(products, new RegExp(`<${component}\\b`, 'u'));
   }
   assert.match(products, /startAddon="R\$"/u);
@@ -21,6 +21,8 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(spreadsheetModal, /<FileUpload\b/u);
   assert.match(spreadsheetModal, /<Table\b/u);
   assert.doesNotMatch(`${products}\n${spreadsheetModal}`, /<input\b|<textarea\b|<select\b/u);
+  assert.doesNotMatch(products, /Textarea|Descrição|nome ou descrição|product\.description/u);
+  assert.doesNotMatch(spreadsheet, /Descrição|description/u);
 });
 
 test('produtos integram navegacao e todas as operacoes remotas', () => {

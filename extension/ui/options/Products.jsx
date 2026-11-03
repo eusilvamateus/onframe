@@ -14,7 +14,6 @@ import {
   SearchInput,
   Select,
   Table,
-  Textarea,
   Tooltip,
   toast
 } from '@onblide/ui';
@@ -35,7 +34,7 @@ const SORT_FILTERS = [
   { value: 'updated', label: 'Data de atualização' }
 ];
 const EMPTY_FORM = {
-  sku: '', name: '', description: '', cost: 0, taxRate: 0, variableCost: 0, status: 'active'
+  sku: '', name: '', cost: 0, taxRate: 0, variableCost: 0, status: 'active'
 };
 
 function money(value) {
@@ -102,7 +101,6 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
   const [values, setValues] = useState(() => product ? {
     sku: product.sku,
     name: product.name,
-    description: product.description || '',
     cost: product.cost,
     taxRate: product.taxRate,
     variableCost: product.variableCost,
@@ -124,7 +122,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
     setActionBusy(true);
     let closeAfterSave = false;
     try {
-      const payload = { ...values, sku: values.sku.trim(), name: values.name.trim(), description: values.description.trim() };
+      const payload = { ...values, sku: values.sku.trim(), name: values.name.trim() };
       const result = await sendRemoteMessage(current ? 'product-update' : 'product-create', {
         productId: current?.id,
         payload
@@ -158,7 +156,6 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
           <Input label="SKU" value={values.sku} maxLength={80} disabled={!admin || locked} onChange={(event) => setField('sku', event.target.value)} />
           <Input label="Nome" value={values.name} maxLength={160} disabled={!admin || locked} onChange={(event) => setField('name', event.target.value)} />
         </div>
-        <Textarea label="Descrição" value={values.description} maxLength={4000} minRows={3} maxRows={6} autosize disabled={!admin || locked} onChange={(value) => setField('description', value)} />
         <div className="onframe-product-form-grid onframe-product-form-grid--three">
           <NumberField label="Custo do produto" value={values.cost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('cost', value ?? 0)} />
           <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value ?? 0)} />
@@ -281,7 +278,7 @@ export function Products({ admin, onHeaderActionsChange }) {
 
   const columns = [
     { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
-    { key: 'name', label: 'Produto', bold: true, render: (_, product) => <div><p className="onframe-list-title">{product.name}</p>{product.description && <p className="onframe-list-meta">{product.description}</p>}</div> },
+    { key: 'name', label: 'Produto', bold: true, render: (value) => <p className="onframe-list-title">{value}</p> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
     { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
     { key: 'variableCost', label: 'Outros custos', width: 145, render: (value) => money(value) },
@@ -316,7 +313,7 @@ export function Products({ admin, onHeaderActionsChange }) {
     {error && <Alert tone="danger" dismissible onClose={() => setError('')}>{error}</Alert>}
     <div className="onframe-products-toolbar">
       <div className="onframe-products-search">
-        <SearchInput value={query} onChange={setQuery} loading={loading && query !== debouncedQuery} placeholder="Buscar por SKU, nome ou descrição" ariaLabel="Buscar produtos" width="100%" />
+        <SearchInput value={query} onChange={setQuery} loading={loading && query !== debouncedQuery} placeholder="Buscar por SKU ou nome" ariaLabel="Buscar produtos" width="100%" />
       </div>
       <div className="onframe-products-filters">
         <ProductChipFilter

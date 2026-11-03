@@ -3,7 +3,6 @@ import { read, utils, writeFileXLSX } from 'xlsx';
 export const PRODUCT_SPREADSHEET_HEADERS = [
   'SKU',
   'Nome',
-  'Descrição',
   'Custo (R$)',
   'Imposto (%)',
   'Outros custos variáveis (R$)',
@@ -13,7 +12,6 @@ export const PRODUCT_SPREADSHEET_HEADERS = [
 const HEADER_KEYS = [
   ['sku', 'sku'],
   ['nome', 'name'],
-  ['descricao', 'description'],
   ['custo r', 'cost'],
   ['imposto', 'taxRate'],
   ['outros custos variaveis r', 'variableCost'],
@@ -79,14 +77,16 @@ export function parseProductWorkbook(buffer) {
   const matrix = utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: '' });
   if (matrix.length === 0) throw new ProductSpreadsheetError('product_spreadsheet_empty', 'A planilha está vazia.');
   const indexes = new Map();
+  const unknownHeaders = [];
   matrix[0].forEach((header, index) => {
     const key = headerKey(header);
     if (key && !indexes.has(key)) indexes.set(key, index);
+    else if (!key && normalizedHeader(header)) unknownHeaders.push(header);
   });
-  const required = ['sku', 'name', 'description', 'cost', 'taxRate', 'variableCost', 'status'];
+  const required = ['sku', 'name', 'cost', 'taxRate', 'variableCost', 'status'];
   const missing = required.filter((key) => !indexes.has(key));
-  if (missing.length > 0) {
-    throw new ProductSpreadsheetError('product_spreadsheet_headers', 'Use o modelo oficial do OnFrame sem remover colunas.');
+  if (missing.length > 0 || unknownHeaders.length > 0) {
+    throw new ProductSpreadsheetError('product_spreadsheet_headers', 'Use o modelo oficial do OnFrame sem adicionar, remover ou renomear colunas.');
   }
   const rows = matrix.slice(1).flatMap((row, index) => {
     if (!Array.isArray(row) || !rowHasContent(row)) return [];
@@ -95,7 +95,6 @@ export function parseProductWorkbook(buffer) {
       rowNumber: index + 2,
       sku: String(value('sku') ?? '').trim(),
       name: String(value('name') ?? '').trim(),
-      description: String(value('description') ?? '').trim(),
       cost: spreadsheetNumber(value('cost')),
       taxRate: spreadsheetNumber(value('taxRate')),
       variableCost: spreadsheetNumber(value('variableCost')),
@@ -115,17 +114,16 @@ function productsWorksheet(products) {
   const data = [PRODUCT_SPREADSHEET_HEADERS, ...products.map((product) => [
     product.sku,
     product.name,
-    product.description || '',
     Number(product.cost || 0),
     Number(product.taxRate || 0),
     Number(product.variableCost || 0),
     product.status === 'inactive' ? 'Inativo' : 'Ativo'
   ])];
   const worksheet = utils.aoa_to_sheet(data);
-  worksheet['!cols'] = [{ wch: 20 }, { wch: 34 }, { wch: 48 }, { wch: 16 }, { wch: 14 }, { wch: 30 }, { wch: 14 }];
-  worksheet['!autofilter'] = { ref: `A1:G${Math.max(1, data.length)}` };
+  worksheet['!cols'] = [{ wch: 20 }, { wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 30 }, { wch: 14 }];
+  worksheet['!autofilter'] = { ref: `A1:F${Math.max(1, data.length)}` };
   for (let row = 2; row <= data.length; row += 1) {
-    for (const column of ['D', 'E', 'F']) {
+    for (const column of ['C', 'D', 'E']) {
       if (worksheet[`${column}${row}`]) worksheet[`${column}${row}`].z = '0.00';
     }
   }
@@ -140,7 +138,6 @@ export function createProductWorkbook(products = [], includeInstructions = false
       ['Como preencher'],
       ['SKU', 'Identificador único do produto no workspace.'],
       ['Nome', 'Nome interno do produto.'],
-      ['Descrição', 'Informação opcional para identificar o produto.'],
       ['Custo (R$)', 'Custo unitário do produto. Use valor numérico.'],
       ['Imposto (%)', 'Alíquota aplicada sobre a venda. Exemplo: 7,25.'],
       ['Outros custos variáveis (R$)', 'Embalagem e outros custos unitários.'],

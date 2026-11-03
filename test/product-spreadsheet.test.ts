@@ -15,7 +15,6 @@ test('planilha de produtos preserva os campos do catalogo', () => {
   const workbook = createProductWorkbook([{
     sku: 'MESA-180',
     name: 'Mesa dobrável',
-    description: 'Preta',
     cost: 153.45,
     taxRate: 7.25,
     variableCost: 3.5,
@@ -25,7 +24,6 @@ test('planilha de produtos preserva os campos do catalogo', () => {
     rowNumber: 2,
     sku: 'MESA-180',
     name: 'Mesa dobrável',
-    description: 'Preta',
     cost: 153.45,
     taxRate: 7.25,
     variableCost: 3.5,
@@ -36,15 +34,14 @@ test('planilha de produtos preserva os campos do catalogo', () => {
 test('planilha interpreta moeda e percentual no formato brasileiro', () => {
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, utils.aoa_to_sheet([
-    ['SKU', 'Nome', 'Descrição', 'Custo (R$)', 'Imposto (%)', 'Outros custos variáveis (R$)', 'Status'],
-    ['KIT-01', 'Kit completo', '', 'R$ 1.234,56', '12,5%', '8,90', 'Ativo'],
-    ['', '', '', '', '', '', '']
+    ['SKU', 'Nome', 'Custo (R$)', 'Imposto (%)', 'Outros custos variáveis (R$)', 'Status'],
+    ['KIT-01', 'Kit completo', 'R$ 1.234,56', '12,5%', '8,90', 'Ativo'],
+    ['', '', '', '', '', '']
   ]), 'Produtos');
   assert.deepEqual(parseProductWorkbook(buffer(workbook)), [{
     rowNumber: 2,
     sku: 'KIT-01',
     name: 'Kit completo',
-    description: '',
     cost: 1234.56,
     taxRate: 12.5,
     variableCost: 8.9,
@@ -57,6 +54,18 @@ test('planilha sem o contrato oficial e rejeitada antes do envio', () => {
   utils.book_append_sheet(workbook, utils.aoa_to_sheet([
     ['SKU', 'Nome', 'Custo'],
     ['MESA-01', 'Mesa', 100]
+  ]), 'Produtos');
+  assert.throws(
+    () => parseProductWorkbook(buffer(workbook)),
+    (error: unknown) => error instanceof ProductSpreadsheetError && error.code === 'product_spreadsheet_headers'
+  );
+});
+
+test('planilha com descrição legada não pertence ao contrato atual', () => {
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, utils.aoa_to_sheet([
+    ['SKU', 'Nome', 'Descrição', 'Custo (R$)', 'Imposto (%)', 'Outros custos variáveis (R$)', 'Status'],
+    ['MESA-01', 'Mesa', 'Legado', 100, 5, 0, 'Ativo']
   ]), 'Produtos');
   assert.throws(
     () => parseProductWorkbook(buffer(workbook)),
