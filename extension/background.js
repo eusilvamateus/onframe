@@ -46,6 +46,12 @@ async function handleRemoteMessage(message) {
   if (action === 'app-overview') return requestPlatform('/v1/app/overview');
   if (action === 'app-release') return requestPlatform('/v1/app/release');
   if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
+  if (action === 'products') return requestPlatform(productsPath(message.query));
+  if (action === 'product-create') return requestPlatform('/v1/app/products', { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'product-update') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
+  if (action === 'product-archive') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'DELETE' });
+  if (action === 'product-link-create') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}/links`, { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'product-link-delete') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}/links/${encodeURIComponent(String(message.linkId || ''))}`, { method: 'DELETE' });
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'workspace-leave') return leaveWorkspace();
@@ -83,6 +89,17 @@ function itemEditHistoryPath(query) {
   }
   const search = params.toString();
   return `/v1/app/item-edit-history${search ? `?${search}` : ''}`;
+}
+
+function productsPath(query) {
+  const source = query && typeof query === 'object' ? query : {};
+  const params = new URLSearchParams();
+  for (const key of ['q', 'status', 'page', 'limit']) {
+    const value = String(source[key] === undefined || source[key] === null ? '' : source[key]).trim();
+    if (value) params.set(key, value);
+  }
+  const search = params.toString();
+  return `/v1/app/products${search ? `?${search}` : ''}`;
 }
 
 async function loadAccountSecurity() {
