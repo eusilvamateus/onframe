@@ -13,7 +13,7 @@ const background = readFileSync(join(root, 'extension/background.js'), 'utf8');
 const commerce = readFileSync(join(root, 'extension/modules/commerce/module.js'), 'utf8');
 
 test('catalogo de produtos usa apenas componentes do design system', () => {
-  for (const component of ['Table', 'NumberField', 'SearchInput', 'Switch', 'Drawer', 'Modal', 'Pagination', 'Chip', 'Popover', 'MenuPanel', 'Tooltip']) {
+  for (const component of ['Table', 'NumberField', 'SearchInput', 'Switch', 'Drawer', 'Modal', 'Pagination', 'Chip', 'Popover', 'MenuPanel', 'Tooltip', 'ButtonGroup', 'ToggleButton']) {
     assert.match(products, new RegExp(`<${component}\\b`, 'u'));
   }
   assert.match(products, /startAddon="R\$"/u);
@@ -22,12 +22,13 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(spreadsheetModal, /<Stepper\b/u);
   assert.match(spreadsheetModal, /<Table\b/u);
   assert.doesNotMatch(`${products}\n${spreadsheetModal}`, /<input\b|<textarea\b|<select\b/u);
-  assert.doesNotMatch(products, /Textarea|Descrição|nome ou descrição|product\.description/u);
-  assert.doesNotMatch(spreadsheet, /Descrição|description/u);
+  assert.doesNotMatch(products, /Textarea|nome ou descrição|product\.description|variableCost|Outros custos/u);
+  assert.doesNotMatch(spreadsheet, /variableCost|Outros custos variáveis/u);
   assert.match(products, /<Drawer[^]*title=\{current \? \(admin \? 'Editar produto'[^]*side="right"/u);
   assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Situação/u);
   assert.match(products, /onframe-product-form-fields[^]*<Input label="Nome"[^]*<Input label="SKU"/u);
   assert.match(products, /<Switch[^]*checked=\{values\.status === 'active'\}[^]*onChange=\{\(checked\) => setField\('status'/u);
+  assert.match(products, /Custos personalizados[^]*Adicionar custo[^]*Descrição do custo[^]*value="fixed">R\$[^]*value="percentage">%/u);
   assert.match(spreadsheetModal, /steps=\{\[\{ label: 'Arquivo' \}, \{ label: 'Revisão' \}, \{ label: 'Resultado' \}\]\}/u);
   assert.match(spreadsheetModal, /disabled=\{busy \|\| !selectedFile\}[^]*Revisar planilha/u);
 });

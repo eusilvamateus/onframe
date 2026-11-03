@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
+  ButtonGroup,
   Chip,
   Drawer,
   EmptyState,
@@ -17,6 +18,7 @@ import {
   Switch,
   Table,
   Tooltip,
+  ToggleButton,
   toast
 } from '@onblide/ui';
 import { sendRemoteMessage, userError } from '../shared/runtime';
@@ -36,8 +38,12 @@ const SORT_FILTERS = [
   { value: 'updated', label: 'Data de atualização' }
 ];
 const EMPTY_FORM = {
-  sku: '', name: '', cost: 0, taxRate: 0, variableCost: 0, status: 'active'
+  sku: '', name: '', cost: 0, taxRate: 0, customCosts: [], status: 'active'
 };
+
+function customCostKey() {
+  return globalThis.crypto?.randomUUID?.() || `cost-${Date.now()}-${Math.random()}`;
+}
 
 function money(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
@@ -101,7 +107,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
     name: product.name,
     cost: product.cost,
     taxRate: product.taxRate,
-    variableCost: product.variableCost,
+    customCosts: (product.customCosts || []).map((cost) => ({ ...cost, key: customCostKey() })),
     status: product.status
   } : EMPTY_FORM);
   const [current, setCurrent] = useState(product);
@@ -110,17 +116,38 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
   const locked = busy || actionBusy;
 
   const setField = (field, value) => setValues((state) => ({ ...state, [field]: value }));
+  const addCustomCost = () => setValues((state) => ({
+    ...state,
+    customCosts: [...state.customCosts, { key: customCostKey(), description: '', type: 'fixed', value: 0 }]
+  }));
+  const updateCustomCost = (key, field, value) => setValues((state) => ({
+    ...state,
+    customCosts: state.customCosts.map((cost) => cost.key === key ? { ...cost, [field]: value } : cost)
+  }));
+  const removeCustomCost = (key) => setValues((state) => ({
+    ...state,
+    customCosts: state.customCosts.filter((cost) => cost.key !== key)
+  }));
 
   async function save() {
     if (!values.sku.trim() || !values.name.trim()) {
       setError('Informe o SKU e o nome do produto.');
       return;
     }
+    if (values.customCosts.some((cost) => !cost.description.trim())) {
+      setError('Informe a descrição de todos os custos personalizados.');
+      return;
+    }
     setError('');
     setActionBusy(true);
     let closeAfterSave = false;
     try {
-      const payload = { ...values, sku: values.sku.trim(), name: values.name.trim() };
+      const payload = {
+        ...values,
+        sku: values.sku.trim(),
+        name: values.name.trim(),
+        customCosts: values.customCosts.map(({ description, type, value }) => ({ description: description.trim(), type, value }))
+      };
       const result = await sendRemoteMessage(current ? 'product-update' : 'product-create', {
         productId: current?.id,
         payload
@@ -164,10 +191,43 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
           <h3>Custos</h3>
           <div className="onframe-product-cost-grid">
             <NumberField label="Custo do produto" value={values.cost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('cost', value ?? 0)} />
-            <NumberField label="Outros custos variáveis" value={values.variableCost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('variableCost', value ?? 0)} />
-            <div className="onframe-product-tax-field">
-              <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value ?? 0)} />
+            <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value ?? 0)} />
+          </div>
+          <div className="onframe-product-custom-costs">
+            <div className="onframe-product-custom-costs-header">
+              <strong>Custos personalizados</strong>
+              {admin && <Button kind="secondary" size="sm" disabled={locked} icon={<Ph n="plus" size={15} />} onClick={addCustomCost}>Adicionar custo</Button>}
             </div>
+            {values.customCosts.length === 0 && <p className="onframe-product-custom-costs-empty">Nenhum custo personalizado.</p>}
+            {values.customCosts.map((cost, index) => <div className="onframe-product-custom-cost" key={cost.key}>
+              <Input
+                label={`Descrição do custo ${index + 1}`}
+                value={cost.description}
+                maxLength={120}
+                disabled={!admin || locked}
+                onChange={(event) => updateCustomCost(cost.key, 'description', event.target.value)}
+              />
+              <div className="onframe-product-custom-cost-value">
+                <ButtonGroup selection="single" value={cost.type} onChange={(value) => updateCustomCost(cost.key, 'type', value)} ariaLabel={`Tipo do custo ${index + 1}`} disabled={!admin || locked}>
+                  <ToggleButton value="fixed">R$</ToggleButton>
+                  <ToggleButton value="percentage">%</ToggleButton>
+                </ButtonGroup>
+                <NumberField
+                  label="Valor"
+                  value={cost.value}
+                  min={0}
+                  max={cost.type === 'percentage' ? 100 : undefined}
+                  decimals={2}
+                  step={0.01}
+                  controls="none"
+                  startAddon={cost.type === 'fixed' ? 'R$' : undefined}
+                  endAddon={cost.type === 'percentage' ? '%' : undefined}
+                  disabled={!admin || locked}
+                  onChange={(value) => updateCustomCost(cost.key, 'value', value ?? 0)}
+                />
+                {admin && <Button kind="quiet" tone="danger" iconOnly aria-label={`Remover custo ${index + 1}`} disabled={locked} icon={<Ph n="trash" size={17} />} onClick={() => removeCustomCost(cost.key)} />}
+              </div>
+            </div>)}
           </div>
         </section>
 
@@ -300,7 +360,6 @@ export function Products({ admin, onHeaderActionsChange }) {
     { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
     { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
-    { key: 'variableCost', label: 'Outros custos', width: 145, render: (value) => money(value) },
     { key: 'actions', label: '', width: 56, render: (_, product) => <div className="onframe-product-action-menu">
       <Popover
         placement="bottom"

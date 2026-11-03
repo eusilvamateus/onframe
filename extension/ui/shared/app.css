@@ -283,7 +283,13 @@ button, input { font: inherit; }
 .onframe-product-form-section h3 { margin: 0; color: var(--ob-fg-mute); font-family: var(--ob-font-mono); font-size: var(--ob-fs-xs); font-weight: var(--ob-w-medium); letter-spacing: 0; text-transform: uppercase; }
 .onframe-product-form-fields { display: flex; flex-direction: column; gap: var(--ob-s-4); }
 .onframe-product-cost-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ob-s-4); }
-.onframe-product-tax-field { grid-column: 1 / -1; }
+.onframe-product-custom-costs { display: flex; flex-direction: column; gap: var(--ob-s-3); padding-top: var(--ob-s-2); }
+.onframe-product-custom-costs-header { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-3); }
+.onframe-product-custom-costs-header > strong { color: var(--ob-fg-strong); font-size: var(--ob-fs-sm); font-weight: var(--ob-w-semibold); }
+.onframe-product-custom-costs-empty { margin: 0; padding: var(--ob-s-4) 0; color: var(--ob-fg-mute); font-size: var(--ob-fs-sm); text-align: center; }
+.onframe-product-custom-cost { display: flex; flex-direction: column; gap: var(--ob-s-3); padding: var(--ob-s-4) 0; border-top: 1px solid var(--ob-border); }
+.onframe-product-custom-cost-value { display: grid; grid-template-columns: auto minmax(0, 1fr) 40px; align-items: end; gap: var(--ob-s-2); }
+.onframe-product-custom-cost-value > [role="radiogroup"] { margin-bottom: 0; }
 .onframe-product-status-row { display: flex; align-items: center; justify-content: space-between; gap: var(--ob-s-4); }
 .onframe-product-status-row > strong { color: var(--ob-fg-strong); font-size: var(--ob-fs-sm); font-weight: var(--ob-w-semibold); }
 .onframe-product-import { gap: var(--ob-s-5); }
@@ -320,7 +326,6 @@ button, input { font: inherit; }
   .onframe-history-change-context { grid-column: 2; padding: 0; border: 0; }
   .onframe-history-event-metadata { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .onframe-product-cost-grid { grid-template-columns: 1fr; }
-  .onframe-product-tax-field { grid-column: auto; }
   .onframe-products-search { flex-basis: 100%; width: 100%; }
   .onframe-products-header-actions { justify-content: flex-start; }
 }
