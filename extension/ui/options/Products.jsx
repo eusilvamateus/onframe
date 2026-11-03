@@ -155,8 +155,8 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
         <section className="onframe-product-form-section">
           <h3>Identificação</h3>
           <div className="onframe-product-form-fields">
-            <Input label="SKU" value={values.sku} maxLength={80} disabled={!admin || locked} onChange={(event) => setField('sku', event.target.value)} />
             <Input label="Nome" value={values.name} maxLength={160} disabled={!admin || locked} onChange={(event) => setField('name', event.target.value)} />
+            <Input label="SKU" value={values.sku} maxLength={80} disabled={!admin || locked} onChange={(event) => setField('sku', event.target.value)} />
           </div>
         </section>
 
@@ -296,8 +296,8 @@ export function Products({ admin, onHeaderActionsChange }) {
   }
 
   const columns = [
-    { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
     { key: 'name', label: 'Produto', bold: true, render: (value) => <p className="onframe-list-title">{value}</p> },
+    { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
     { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
     { key: 'variableCost', label: 'Outros custos', width: 145, render: (value) => money(value) },

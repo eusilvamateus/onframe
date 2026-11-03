@@ -26,6 +26,7 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.doesNotMatch(spreadsheet, /Descrição|description/u);
   assert.match(products, /<Drawer[^]*title=\{current \? \(admin \? 'Editar produto'[^]*side="right"/u);
   assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Situação/u);
+  assert.match(products, /onframe-product-form-fields[^]*<Input label="Nome"[^]*<Input label="SKU"/u);
   assert.match(products, /<Switch[^]*checked=\{values\.status === 'active'\}[^]*onChange=\{\(checked\) => setField\('status'/u);
   assert.match(spreadsheetModal, /steps=\{\[\{ label: 'Arquivo' \}, \{ label: 'Revisão' \}, \{ label: 'Resultado' \}\]\}/u);
   assert.match(spreadsheetModal, /disabled=\{busy \|\| !selectedFile\}[^]*Revisar planilha/u);
@@ -54,6 +55,7 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(products, /function ProductSku[^]*navigator\.clipboard\.writeText\(sku\)[^]*label="Copiar SKU"[^]*onframe-product-sku-value[^]*<Ph n="copy"/u);
   assert.match(products, /fontFamily: 'var\(--ob-font-mono\)', fontSize: 'var\(--ob-fs-xs\)'/u);
   assert.match(products, /key: 'sku', label: 'SKU', width: 220/u);
+  assert.match(products, /const columns = \[[^]*key: 'name', label: 'Produto'[^]*key: 'sku', label: 'SKU'/u);
   assert.match(sharedStyles, /\.onframe-product-sku-value\s*\{[^}]*overflow-wrap: anywhere;/u);
   assert.doesNotMatch(sharedStyles, /\.onframe-product-sku-value\s*\{[^}]*white-space: nowrap;/u);
   assert.match(sharedStyles, /\.onframe-products-table \.onframe-list-title\s*\{[^}]*font-size: var\(--ob-fs-xs\);/u);
