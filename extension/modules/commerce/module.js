@@ -59,6 +59,7 @@
       PRE_NEGOTIATED: 'Campanha de coparticipação',
       UNHEALTHY_STOCK: 'Liquidação de estoque Full',
       LIGHTNING: 'Campanha rápida com estoque reservado',
+      SMART_LIGHTNING: 'Campanha relâmpago cofinanciada',
       DOD: 'Campanha de um dia',
       VOLUME: 'Desconto por quantidade',
       PRICE_DISCOUNT: 'Desconto do anúncio',
@@ -1290,10 +1291,16 @@
       );
       const draft = state.promotionDraftValues[key] || {};
       const showPriceField = fields.includes('deal_price') && !readOnly;
+      const showStockField = fields.includes('stock') && !readOnly;
       const draftPrice = Object.prototype.hasOwnProperty.call(draft, 'deal_price')
         ? draft.deal_price
         : defaultFieldValue('deal_price', entry);
-      const validationError = showPriceField ? promotionManagerPriceError(entry, draftPrice) : '';
+      const draftStock = Object.prototype.hasOwnProperty.call(draft, 'stock')
+        ? draft.stock
+        : defaultFieldValue('stock', entry);
+      const priceError = showPriceField ? promotionManagerPriceError(entry, draftPrice) : '';
+      const stockError = showStockField ? promotionManagerStockError(entry, draftStock) : '';
+      const validationError = priceError || stockError;
       const displayPrice = promotionDisplayPrice(entry);
       const originalPrice = promotionManagerOriginalPrice(entry);
       const discount = discountPercent(originalPrice, displayPrice);
@@ -1343,9 +1350,14 @@
         formAction,
         readOnly,
         showPriceField,
+        showStockField,
         draftPrice,
+        draftStock,
+        priceError,
+        stockError,
         validationError,
         priceHint: promotionManagerPriceHint(originalPrice, draftPrice),
+        stockHint: promotionManagerStockHint(entry),
         canBulk: canUseBulkActions(),
         bulkEnabled: state.promotionBulkEnabled,
         busy: state.busy,
@@ -1379,6 +1391,30 @@
       const discount = discountPercent(originalPrice, price);
       if (!originalPrice || !discount) return '';
       return `${discount}% OFF sobre o preço original ${CommerceModel.formatMoney(originalPrice, itemCurrency())}`;
+    }
+
+    function promotionManagerStockRange(entry) {
+      const stock = entry && entry.stock || entry && entry.raw && entry.raw.stock || {};
+      const min = positiveIntegerOrNull(stock.min);
+      const max = positiveIntegerOrNull(stock.max);
+      return { min, max };
+    }
+
+    function promotionManagerStockError(entry, value) {
+      const stock = positiveIntegerOrNull(value);
+      if (stock === null) return 'Informe um estoque válido.';
+      const range = promotionManagerStockRange(entry);
+      if (range.min !== null && stock < range.min) return `O estoque mínimo é ${range.min}.`;
+      if (range.max !== null && stock > range.max) return `O estoque máximo é ${range.max}.`;
+      return '';
+    }
+
+    function promotionManagerStockHint(entry) {
+      const range = promotionManagerStockRange(entry);
+      if (range.min !== null && range.max !== null) return `Entre ${range.min} e ${range.max} unidades.`;
+      if (range.min !== null) return `A partir de ${range.min} unidades.`;
+      if (range.max !== null) return `Até ${range.max} unidades.`;
+      return '';
     }
 
     function promotionManagerMetrics(estimate) {
@@ -2520,9 +2556,13 @@
           const current = state.promotionEstimates[key];
           if (!current || current.requestId !== requestId || current.hash !== hash) return;
           const data = estimates[index];
-          state.promotionEstimates[key] = data
+          state.promotionEstimates[key] = data && !data.error
             ? { status: 'ready', hash, data }
-            : { status: 'error', hash, message: 'Valores indisponíveis.' };
+            : {
+              status: 'error',
+              hash,
+              message: data && data.error ? CommerceModel.friendlyError(data.error.code || data.error.message) : 'Valores indisponíveis.'
+            };
         });
       } catch (err) {
         candidates.forEach(({ key, hash }) => {
@@ -3085,7 +3125,10 @@
         const priceState = state.priceSummary ? CommerceModel.getPriceState(state.priceSummary) : null;
         return moneyInputValue(priceState && priceState.amount);
       }
-      if (field === 'stock') return '1';
+      if (field === 'stock') {
+        const range = promotionManagerStockRange(entry);
+        return String(range.min || 1);
+      }
       if (field === 'start_date') return isoDateOnly(entry && entry.start_date) || dateOffset(0);
       if (field === 'finish_date') return isoDateOnly(entry && (entry.end_date || entry.finish_date)) || dateOffset(7);
       return '';
@@ -3101,6 +3144,13 @@
       const percentage = Number(value);
       if (!Number.isFinite(percentage) || percentage <= 0 || percentage >= 100) return '';
       return String(Math.round(percentage * 100) / 100).replace('.', ',');
+    }
+
+    function positiveIntegerOrNull(value) {
+      const text = String(value || '').trim();
+      if (!/^\d+$/.test(text)) return null;
+      const parsed = Number(text);
+      return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
     }
 
     function itemApiPath(suffix, params = {}) {

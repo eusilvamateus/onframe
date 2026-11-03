@@ -316,6 +316,8 @@
     if (text.includes('item_closed') || text.includes('status:closed')) return 'Anúncio encerrado.';
     if (text.includes('promotion_missing_deal_price')) return 'Informe o preço promocional.';
     if (text.includes('promotion_missing_stock')) return 'Informe o estoque.';
+    if (text.includes('promotion_invalid_stock')) return 'Informe um estoque válido.';
+    if (text.includes('promotion_stock_out_of_range')) return 'Informe um estoque dentro da faixa da campanha.';
     if (text.includes('promotion_missing_offer_id')) return 'Oferta não identificada. Atualize e tente de novo.';
     if (text.includes('promotion_change_not_confirmed')) return 'Alteração enviada. O Mercado Livre ainda está confirmando o novo estado.';
     if (text.includes('start and finish dates must be in local format')) return 'Use datas sem fuso horário. Atualize e tente de novo.';
@@ -360,7 +362,9 @@
   }
 
   function parseInteger(value) {
-    const parsed = Number(String(value || '').replace(/[^\d]/g, ''));
+    const text = String(value || '').trim();
+    if (!/^\d+$/.test(text)) return null;
+    const parsed = Number(text);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }
 

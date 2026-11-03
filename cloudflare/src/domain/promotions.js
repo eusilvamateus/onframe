@@ -12,6 +12,7 @@ const PROMOTION_TYPES = Object.freeze({
   PRE_NEGOTIATED: 'PRE_NEGOTIATED',
   SELLER_CAMPAIGN: 'SELLER_CAMPAIGN',
   SMART: 'SMART',
+  SMART_LIGHTNING: 'SMART_LIGHTNING',
   PRICE_MATCHING: 'PRICE_MATCHING',
   PRICE_MATCHING_MELI_ALL: 'PRICE_MATCHING_MELI_ALL',
   UNHEALTHY_STOCK: 'UNHEALTHY_STOCK',
@@ -114,6 +115,14 @@ const ADAPTERS = Object.freeze({
     offerUpdate: [],
     offerDelete: ['promotion_id', 'offer_id']
   }),
+  [PROMOTION_TYPES.SMART_LIGHTNING]: adapter({
+    type: PROMOTION_TYPES.SMART_LIGHTNING,
+    label: 'Oferta relâmpago cofinanciada',
+    offerCreate: ['promotion_id', 'offer_id', 'stock'],
+    offerUpdate: [],
+    offerDelete: ['promotion_id', 'offer_id'],
+    activeDeletePolicy: 'cannot_delete_started'
+  }),
   [PROMOTION_TYPES.PRICE_MATCHING]: adapter({
     type: PROMOTION_TYPES.PRICE_MATCHING,
     label: 'Preço competitivo',
@@ -196,7 +205,7 @@ async function createOffer(client, itemId, input = {}) {
   assertActionSupported(promotionAdapter, 'offerCreate');
   assertRequired(input, promotionAdapter.offerCreate);
   const payload = buildOfferPayload(input, promotionAdapter);
-  await assertPromotionPriceInRange(client, item.id, payload);
+  await assertPromotionOfferConstraints(client, item.id, payload);
   const response = await client.createPromotionOffer(item.id, payload);
   await confirmOfferMutation(client, item.id, 'create', payload, response);
   return response;
@@ -226,7 +235,13 @@ async function estimatePromotionImpacts(client, itemId, inputs = []) {
     return baseProjections.get(key);
   };
 
-  return Promise.all(inputs.map((input) => estimatePromotionImpactForContext(client, item, current, input, getBaseProjection)));
+  return Promise.all(inputs.map(async (input) => {
+    try {
+      return await estimatePromotionImpactForContext(client, item, current, input, getBaseProjection);
+    } catch (err) {
+      return buildPromotionEstimateFailure(input, err);
+    }
+  }));
 }
 
 async function estimatePromotionImpactForContext(client, item, current, input = {}, getBaseProjection = null) {
@@ -305,6 +320,20 @@ function buildPromotionEstimateResult(item, estimate, projection) {
     complete: projection.costBreakdown.complete,
     missing: projection.costBreakdown.missing,
     warnings: estimate.warnings
+  };
+}
+
+function buildPromotionEstimateFailure(input, error) {
+  return {
+    error: {
+      code: error && error.message ? error.message : 'promotion_estimate_failed',
+      statusCode: Number(error && error.statusCode) || null
+    },
+    promotion: {
+      id: input && (input.promotionId || input.promotion_id) || null,
+      offer_id: input && (input.offerId || input.offer_id) || null,
+      type: normalizePromotionType(input && (input.promotionType || input.promotion_type)) || null
+    }
   };
 }
 
@@ -488,7 +517,7 @@ async function updateOffer(client, itemId, input = {}) {
   assertActionSupported(promotionAdapter, 'offerUpdate');
   assertRequired(input, promotionAdapter.offerUpdate);
   const payload = buildOfferPayload(input, promotionAdapter);
-  await assertPromotionPriceInRange(client, item.id, payload);
+  await assertPromotionOfferConstraints(client, item.id, payload);
   const response = await client.updatePromotionOffer(item.id, payload);
   await confirmOfferMutation(client, item.id, 'update', payload, response);
   return response;
@@ -618,7 +647,7 @@ async function previewOfferAction(client, itemId, action, input = {}) {
     assertActionSupported(promotionAdapter, normalizedAction === 'create' ? 'offerCreate' : 'offerUpdate');
     assertRequired(input, normalizedAction === 'create' ? promotionAdapter.offerCreate : promotionAdapter.offerUpdate);
     const payload = buildOfferPayload(input, promotionAdapter);
-    await assertPromotionPriceInRange(client, item.id, payload);
+    await assertPromotionOfferConstraints(client, item.id, payload);
     const estimate = await estimatePromotionImpact(client, item.id, input);
     return Object.assign({ ok: true, action: normalizedAction }, estimate);
   }
@@ -698,6 +727,16 @@ function adapter(config) {
 }
 
 function buildOfferPayload(input, promotionAdapter) {
+  if (promotionAdapter.type === PROMOTION_TYPES.SMART_LIGHTNING) {
+    const payload = { promotion_type: promotionAdapter.type };
+    copy(input, payload, 'promotion_id');
+    copy(input, payload, 'offer_id');
+    copy(input, payload, 'stock');
+    copyAlias(input, payload, 'promotionId', 'promotion_id');
+    copyAlias(input, payload, 'offerId', 'offer_id');
+    return normalizeOfferStock(payload);
+  }
+
   const payload = { promotion_type: promotionAdapter.type };
   copy(input, payload, 'promotion_id');
   copy(input, payload, 'offer_id');
@@ -710,7 +749,19 @@ function buildOfferPayload(input, promotionAdapter) {
   copyAliases(input, payload);
   normalizeLocalDateField(payload, 'start_date', 'start');
   normalizeLocalDateField(payload, 'finish_date', 'finish');
-  return payload;
+  return normalizeOfferStock(payload);
+}
+
+function normalizeOfferStock(payload) {
+  if (payload.stock === undefined) return payload;
+  const stock = positiveIntegerOrNull(payload.stock);
+  if (stock !== null) {
+    payload.stock = stock;
+    return payload;
+  }
+  const err = new Error('promotion_invalid_stock');
+  err.statusCode = 400;
+  throw err;
 }
 
 function buildOfferDeleteParams(input, promotionAdapter) {
@@ -721,25 +772,39 @@ function buildOfferDeleteParams(input, promotionAdapter) {
   return params;
 }
 
-async function assertPromotionPriceInRange(client, itemId, payload) {
+async function assertPromotionOfferConstraints(client, itemId, payload) {
   const dealPrice = numberOrNull(payload.deal_price);
-  if (!dealPrice || !client || typeof client.getItemPromotions !== 'function') return;
+  const stock = positiveIntegerOrNull(payload.stock);
+  if ((!dealPrice && stock === null) || !client || typeof client.getItemPromotions !== 'function') return;
 
   const current = await optional(() => client.getItemPromotions(itemId), [400, 404]);
   const match = findPromotionEntryForPayload(current, payload);
   if (!match) return;
 
-  const min = numberOrNull(match.min_discounted_price || match.min_price);
-  const max = numberOrNull(match.max_discounted_price || match.max_price);
-  if ((min && dealPrice < min) || (max && dealPrice > max)) {
-    const suggested = numberOrNull(match.suggested_discounted_price || match.suggested_price);
-    const err = new Error('promotion_price_out_of_range');
+  if (dealPrice) {
+    const min = numberOrNull(match.min_discounted_price || match.min_price);
+    const max = numberOrNull(match.max_discounted_price || match.max_price);
+    if ((min && dealPrice < min) || (max && dealPrice > max)) {
+      const suggested = numberOrNull(match.suggested_discounted_price || match.suggested_price);
+      const err = new Error('promotion_price_out_of_range');
+      err.statusCode = 400;
+      err.body = {
+        min_discounted_price: min,
+        max_discounted_price: max,
+        suggested_discounted_price: suggested
+      };
+      throw err;
+    }
+  }
+
+  const stockRange = summarizePromotionStock(match.stock);
+  if (stock !== null && stockRange && (
+    stockRange.min !== null && stock < stockRange.min ||
+    stockRange.max !== null && stock > stockRange.max
+  )) {
+    const err = new Error('promotion_stock_out_of_range');
     err.statusCode = 400;
-    err.body = {
-      min_discounted_price: min,
-      max_discounted_price: max,
-      suggested_discounted_price: suggested
-    };
+    err.body = { min_stock: stockRange.min, max_stock: stockRange.max };
     throw err;
   }
 }
@@ -841,6 +906,11 @@ function copyAliases(input, output) {
   }
 }
 
+function copyAlias(input, output, from, to) {
+  if (output[to] !== undefined) return;
+  if (input[from] !== undefined && input[from] !== null && input[from] !== '') output[to] = input[from];
+}
+
 function copy(input, output, field) {
   if (input[field] !== undefined && input[field] !== null && input[field] !== '') output[field] = input[field];
 }
@@ -882,6 +952,7 @@ function normalizePromotionEntry(value) {
     payment_method: value.payment_method || null,
     sub_type: value.sub_type || null,
     coupon: summarizeSellerCoupon(value, type),
+    stock: summarizePromotionStock(value.stock),
     start_date: value.start_date || null,
     end_date: value.end_date || value.finish_date || null,
     candidate: status === 'candidate',
@@ -893,6 +964,14 @@ function normalizePromotionEntry(value) {
     boost: summarizeBoost(value),
     raw: value
   };
+}
+
+function summarizePromotionStock(value) {
+  if (!value || typeof value !== 'object') return null;
+  const min = positiveIntegerOrNull(value.min);
+  const max = positiveIntegerOrNull(value.max);
+  if (min === null && max === null) return null;
+  return { min, max };
 }
 
 function promotionEntryKey(entry) {
@@ -1231,7 +1310,8 @@ function fieldAliases(field) {
 function assertStartedDeletePolicyDoesNotApply(input, promotionAdapter, current) {
   if (promotionAdapter.activeDeletePolicy !== 'cannot_delete_started') return;
   const entries = extractEntries(current);
-  const matching = entries.find((entry) => normalizePromotionType(entry.type || entry.promotion_type) === promotionAdapter.type);
+  const payload = buildOfferDeleteParams(input, promotionAdapter);
+  const matching = entries.find((entry) => promotionEntryMatchesPayload(entry, payload));
   if (!matching || !['started', 'active'].includes(String(matching.status || '').toLowerCase())) return;
   const err = new Error(`${promotionAdapter.type.toLowerCase()}_started_cannot_delete`);
   err.statusCode = 409;
@@ -1270,6 +1350,11 @@ function requireAdapter(type) {
 
 function normalizePromotionType(value) {
   return String(value || '').trim().toUpperCase();
+}
+
+function positiveIntegerOrNull(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 function extractEntries(source) {

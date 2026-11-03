@@ -136,8 +136,25 @@ function EditPanel({ row, actions }) {
                 }}
                 startAddon="R$"
                 inputMode="decimal"
-                error={row.validationError || undefined}
+                error={row.priceError || undefined}
                 hint={row.priceHint || undefined}
+                disabled={row.busy || row.readOnly}
+              />
+            )}
+            {row.showStockField && (
+              <Input
+                label="Estoque reservado"
+                value={row.draftStock}
+                onChange={(event) => actions.onDraftChange(row.key, 'stock', event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    confirm();
+                  }
+                }}
+                inputMode="numeric"
+                error={row.stockError || undefined}
+                hint={row.stockHint || undefined}
                 disabled={row.busy || row.readOnly}
               />
             )}

@@ -739,6 +739,7 @@ test('modal de promoções comunica o tipo comercial de cada campanha', () => {
     PRE_NEGOTIATED: 'Campanha de coparticipação',
     UNHEALTHY_STOCK: 'Liquidação de estoque Full',
     LIGHTNING: 'Campanha rápida com estoque reservado',
+    SMART_LIGHTNING: 'Campanha relâmpago cofinanciada',
     DOD: 'Campanha de um dia',
     VOLUME: 'Desconto por quantidade',
     PRICE_DISCOUNT: 'Desconto do anúncio',
@@ -767,7 +768,8 @@ test('campo de preço promocional valida faixa e limpa o erro pela view React', 
   assert.match(source, /const rangeWarning = promotionRangeWarning\(entry, price\)/);
   assert.match(source, /function updatePromotionManagerDraft/);
   assert.match(source, /state\.actionError = '';/);
-  assert.match(view, /error=\{row\.validationError \|\| undefined\}/);
+  assert.match(view, /error=\{row\.priceError \|\| undefined\}/);
+  assert.match(view, /label="Estoque reservado"[\s\S]*error=\{row\.stockError \|\| undefined\}/);
   assert.match(view, /onChange=\{\(event\) => actions\.onDraftChange\(row\.key, 'deal_price', event\.target\.value\)\}/);
   assert.match(source, /showToast\('success', promotionActionSuccessLabel\(action\)\)/);
   assert.doesNotMatch(source, /updatePromotionPriceFieldFeedback|savePromotionFieldDraft|onframe-commerce-alert/);
@@ -1418,6 +1420,77 @@ test('promotion adapter exige estoque em oferta relampago e monta payload', asyn
   });
 });
 
+test('promotion adapter cria oferta relampago cofinanciada sem reenviar preco ou datas', async () => {
+  await assert.rejects(
+    () => createOffer({
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      createPromotionOffer: async () => ({})
+    }, 'MLB1234567890', {
+      promotionType: 'SMART_LIGHTNING',
+      promotionId: 'P-MLB1',
+      offerId: 'CANDIDATE-MLB1'
+    }),
+    /promotion_missing_stock/
+  );
+
+  let payload = null;
+  const result = await createOffer({
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+    createPromotionOffer: async (itemId, body) => {
+      payload = { itemId, body };
+      return { ok: true };
+    }
+  }, 'MLB1234567890', {
+    promotionType: 'SMART_LIGHTNING',
+    promotionId: 'P-MLB1',
+    offerId: 'CANDIDATE-MLB1',
+    stock: 5,
+    dealPrice: 80,
+    startDate: '2026-11-03',
+    finishDate: '2026-11-04'
+  });
+
+  assert.deepStrictEqual(result, { ok: true });
+  assert.deepStrictEqual(payload, {
+    itemId: 'MLB1234567890',
+    body: {
+      promotion_type: 'SMART_LIGHTNING',
+      promotion_id: 'P-MLB1',
+      offer_id: 'CANDIDATE-MLB1',
+      stock: 5
+    }
+  });
+});
+
+test('promotion adapter valida a faixa de estoque da oferta relampago cofinanciada', async () => {
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+    getItemPromotions: async () => ({
+      results: [{
+        id: 'P-MLB1',
+        type: 'SMART_LIGHTNING',
+        ref_id: 'CANDIDATE-MLB1',
+        status: 'candidate',
+        stock: { min: 5, max: 10 }
+      }]
+    }),
+    createPromotionOffer: async () => ({ ok: true })
+  };
+
+  await assert.rejects(
+    () => createOffer(client, 'MLB1234567890', {
+      promotionType: 'SMART_LIGHTNING',
+      promotionId: 'P-MLB1',
+      offerId: 'CANDIDATE-MLB1',
+      stock: 4
+    }),
+    /promotion_stock_out_of_range/
+  );
+});
+
 test('promotion offer normaliza datas para formato local antes da API', async () => {
   let payload = null;
   await createOffer({
@@ -1650,6 +1723,93 @@ test('promotion estimates reutiliza item, promocoes e custos para preco repetido
   assert.strictEqual(promotionCalls, 1);
   assert.strictEqual(listingCalls, 1);
   assert.strictEqual(shippingCalls, 1);
+});
+
+test('promotion estimates preserva resultados validos quando um tipo nao e suportado', async () => {
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async () => ({
+      id: 'MLB1234567890',
+      seller_id: 123,
+      site_id: 'MLB',
+      category_id: 'MLB1055',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      listing_type_id: 'gold_special',
+      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+      condition: 'new',
+      pictures: []
+    }),
+    getItemPromotions: async () => ({
+      results: [{
+        id: 'P-MLB1',
+        type: 'SMART_LIGHTNING',
+        ref_id: 'CANDIDATE-MLB1',
+        name: 'Oferta cofinanciada',
+        price: 80,
+        original_price: 100,
+        stock: { min: 5, max: 10 }
+      }]
+    }),
+    getListingPrices: async () => ([{
+      listing_type_id: 'gold_special',
+      sale_fee_amount: 10,
+      sale_fee_details: { percentage_fee: 12.5 }
+    }]),
+    getSellerShippingCost: async () => ({
+      coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } }
+    })
+  };
+
+  const results = await estimatePromotionImpacts(client, 'MLB1234567890', [
+    {
+      promotionType: 'SMART_LIGHTNING',
+      promotionId: 'P-MLB1',
+      offerId: 'CANDIDATE-MLB1',
+      dealPrice: 80,
+      stock: ''
+    },
+    { promotionType: 'FUTURE_PROMOTION', promotionId: 'P-MLB2', dealPrice: 70 }
+  ]);
+
+  assert.strictEqual(results.length, 2);
+  assert.strictEqual(results[0].promotion.type, 'SMART_LIGHTNING');
+  assert.strictEqual(results[0].youReceive, 65);
+  assert.deepStrictEqual(results[1], {
+    error: { code: 'promotion_type_not_supported', statusCode: 400 },
+    promotion: { id: 'P-MLB2', offer_id: null, type: 'FUTURE_PROMOTION' }
+  });
+});
+
+test('promotion summary expoe contrato e faixa de estoque da oferta relampago cofinanciada', async () => {
+  const summary = await buildPromotionSummary({
+    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+    getItem: async () => ({
+      id: 'MLB1234567890',
+      seller_id: 123,
+      site_id: 'MLB',
+      price: 100,
+      currency_id: 'BRL'
+    }),
+    getItemPromotions: async () => ([{
+      id: 'P-MLB1',
+      type: 'SMART_LIGHTNING',
+      status: 'candidate',
+      ref_id: 'CANDIDATE-MLB1',
+      price: 80,
+      original_price: 100,
+      stock: { min: 5, max: 10 }
+    }]),
+    getSellerPromotions: async () => ({ results: [] })
+  }, 'MLB1234567890');
+
+  const offer = summary.offers.eligible[0];
+  assert.deepStrictEqual(offer.stock, { min: 5, max: 10 });
+  assert.deepStrictEqual(offer.capabilities.offerCreate, ['promotion_id', 'offer_id', 'stock']);
+  assert.strictEqual(offer.capabilities.offerUpdate.length, 0);
+  assert.deepStrictEqual(offer.capabilities.offerDelete, ['promotion_id', 'offer_id']);
+  assert.ok(summary.adapters.some((entry) => entry.type === 'SMART_LIGHTNING'));
 });
 
 test('promotion summary enriquece campanhas com dados do item', async () => {
