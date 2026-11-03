@@ -12,6 +12,15 @@ import { IdentitySecurityError, requireIdentitySession } from './identity-securi
 import { accountSecurity, revokeProviderSessions } from './account-security';
 import { listItemEditHistory } from './item-edit-history';
 import { latestOnFrameRelease } from './releases';
+import {
+  ProductRequestError,
+  archiveProduct,
+  createProduct,
+  createProductLink,
+  deleteProductLink,
+  listProducts,
+  updateProduct
+} from './products';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -1794,6 +1803,31 @@ export default {
         return json(await listItemEditHistory(env, actor, url));
       }
 
+      if (url.pathname === '/v1/app/products') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'GET') return json(await listProducts(env, actor, url));
+        if (request.method === 'POST') return json(await createProduct(request, env, actor, requestId), 201);
+      }
+
+      const productPath = /^\/v1\/app\/products\/([^/]+)$/u.exec(url.pathname);
+      if (productPath) {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'PATCH') return json(await updateProduct(request, env, actor, productPath[1], requestId));
+        if (request.method === 'DELETE') return json(await archiveProduct(env, actor, productPath[1], requestId));
+      }
+
+      const productLinksPath = /^\/v1\/app\/products\/([^/]+)\/links$/u.exec(url.pathname);
+      if (productLinksPath && request.method === 'POST') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await createProductLink(request, env, actor, productLinksPath[1], requestId), 201);
+      }
+
+      const productLinkPath = /^\/v1\/app\/products\/([^/]+)\/links\/([^/]+)$/u.exec(url.pathname);
+      if (productLinkPath && request.method === 'DELETE') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await deleteProductLink(env, actor, productLinkPath[1], productLinkPath[2], requestId));
+      }
+
       if (url.pathname === '/v1/security' && request.method === 'GET') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await accountSecurity(env, actor.subject, actor.authSessionId));
@@ -1933,7 +1967,7 @@ export default {
 
       return json({ error: 'not_found', requestId }, 404);
     } catch (error) {
-      if (error instanceof RequestError || error instanceof SupabaseAuthError || error instanceof IdentitySecurityError) {
+      if (error instanceof RequestError || error instanceof ProductRequestError || error instanceof SupabaseAuthError || error instanceof IdentitySecurityError) {
         return json({ error: error.code, requestId }, error.status);
       }
 
