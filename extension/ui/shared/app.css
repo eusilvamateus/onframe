@@ -245,7 +245,7 @@ input {
 .onframe-profile-layout {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 480px);
-  gap: var(--ob-space-48);
+  gap: var(--ob-space-24);
   align-items: start;
 }
 .onframe-profile-fields {
