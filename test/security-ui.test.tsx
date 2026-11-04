@@ -125,7 +125,15 @@ async function harness(
   };
   let renderer: ReturnType<typeof create>;
   await act(async () => {
-    renderer = create(render(), { createNodeMock: () => ({}) });
+    renderer = create(render(), {
+      createNodeMock: (element) =>
+        element.type === 'div'
+          ? {
+              querySelector: () => null,
+              children: []
+            }
+          : {}
+    });
   });
   return {
     renderer: renderer!,

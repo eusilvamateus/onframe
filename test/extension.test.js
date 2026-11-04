@@ -190,6 +190,10 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
+  const commercePromotionsBundle = fs.readFileSync(
+    path.join(extensionRoot, 'core', 'commerce-promotions-view.js'),
+    'utf8'
+  );
   const extensionBuild = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const securityBuild = fs.readFileSync(path.join(root, 'scripts', 'build', 'security-ui.js'), 'utf8');
   const themeSync = fs.readFileSync(path.join(extensionRoot, 'core', 'theme-sync.js'), 'utf8');
@@ -204,6 +208,8 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(control, /value: 'system'/);
   assert.match(control, /<Chip[\s\S]*selected=\{preference === option\.value\}/);
   assert.match(control, /<Tabs[\s\S]*variant="pill"[\s\S]*active=\{preference\}/);
+  assert.match(commercePromotionsBundle, /data-indicador/);
+  assert.match(commercePromotionsBundle, /--ob-dur-base\) var\(--ob-ease-out/);
   assert.match(
     control,
     /tabs=\{THEME_OPTIONS\.map\(\(option\) => \(\{ id: option\.value, label: option\.label, icon: option\.icon \}\)\)\}/
