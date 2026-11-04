@@ -44,9 +44,13 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     workspace_invitation_delivery_failed: 'Não foi possível enviar o convite agora. Tente novamente.',
     product_access_forbidden: 'Somente administradores podem alterar o catálogo de produtos.',
     product_invalid_payload: 'Revise os dados do produto e tente novamente.',
+    product_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',
     product_sku_conflict: 'Já existe um produto ativo com este SKU.',
     product_not_found: 'Este produto não está mais disponível.',
     product_import_invalid_payload: 'A planilha deve conter entre 1 e 2.000 produtos.',
+    tax_configuration_invalid_payload: 'Revise as alíquotas informadas e tente novamente.',
+    tax_configuration_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',
+    tax_configuration_forbidden: 'Somente administradores podem alterar as configurações de imposto.',
     extension_session_unauthorized: 'Sua sessão expirou. Entre novamente para continuar.'
   };
   return messages[code] || String(error?.message || fallback);

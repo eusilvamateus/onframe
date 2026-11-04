@@ -1313,6 +1313,7 @@
         : null;
       const metrics = promotionManagerMetrics(estimate);
       const calculation = promotionManagerCalculation(entry, estimate);
+      const margin = promotionContributionMargin(estimate);
       return {
         key,
         group: available ? 'available' : 'applied',
@@ -1343,6 +1344,7 @@
           },
         metrics,
         calculation,
+        margin,
         canUpdate,
         canDelete,
         createAction: canCreate,
@@ -1420,24 +1422,89 @@
     function promotionManagerMetrics(estimate) {
       if (!estimate) return [];
       const currency = estimate.currency_id || itemCurrency();
-      return promotionEstimateMetrics(estimate, currency)
+      const metrics = promotionEstimateMetrics(estimate, currency)
         .filter((metric) => ['Você recebe', 'Tarifa de venda', 'Crédito promocional', 'Frete'].includes(metric.label))
         .map((metric) => ({
           label: metric.label,
           value: metric.value,
           tone: metric.label === 'Você recebe' ? 'success' : ''
         }));
+      const margin = estimate.contributionMargin;
+      if (margin && margin.complete && Number.isFinite(Number(margin.amount))) {
+        metrics.push({
+          label: 'Margem de contribuição',
+          value: `${CommerceModel.formatMoney(margin.amount, currency)} · ${formatContributionPercent(margin.percentage)}`,
+          tone: margin.amount >= 0 ? 'success' : 'danger'
+        });
+      }
+      return metrics;
     }
 
     function promotionManagerCalculation(entry, estimate) {
       if (!estimate) return [];
       const currency = estimate.currency_id || itemCurrency();
-      return promotionResultPopoverRows(entry, estimate, currency).map((item) => ({
+      const rows = promotionResultPopoverRows(entry, estimate, currency).map((item) => ({
         label: item.label,
         value: item.value,
         description: item.description,
         tone: item.tone === 'total' ? 'success' : ''
       }));
+      const margin = estimate.contributionMargin;
+      if (!margin || !margin.complete) return rows;
+      rows.push({ label: 'Custo do produto', value: formatContributionCost(margin.productCost, currency), description: '', tone: '' });
+      rows.push({
+        label: 'Impostos',
+        value: formatContributionCost(margin.taxAmount, currency),
+        description: `${formatContributionPercent(margin.taxRate)} sobre o preço promocional · ${promotionTaxSourceLabel(margin.taxSource)}`,
+        tone: ''
+      });
+      (margin.customCosts || []).forEach((cost) => rows.push({
+        label: cost.description,
+        value: formatContributionCost(cost.amount, currency),
+        description: cost.type === 'percentage' ? `${formatContributionPercent(cost.value)} sobre o preço promocional` : 'Custo fixo por unidade',
+        tone: ''
+      }));
+      rows.push({
+        label: 'Margem de contribuição',
+        value: CommerceModel.formatMoney(margin.amount, currency),
+        description: formatContributionPercent(margin.percentage),
+        tone: margin.amount >= 0 ? 'success' : 'danger'
+      });
+      return rows;
+    }
+
+    function promotionContributionMargin(estimate) {
+      const margin = estimate && estimate.contributionMargin;
+      if (!margin) return null;
+      if (margin.complete) return { available: true, message: '' };
+      const missing = Array.isArray(margin.missing) ? margin.missing : [];
+      const message = missing.includes('product')
+        ? 'Margem indisponível: nenhum produto ativo foi encontrado para o SKU deste anúncio.'
+        : missing.includes('tax_rate')
+          ? 'Margem indisponível: configure uma alíquota no produto, na conta ou no workspace.'
+          : missing.includes('you_receive')
+            ? 'Margem indisponível: o Mercado Livre não retornou o valor líquido desta promoção.'
+            : 'Margem indisponível: revise os dados financeiros deste produto.';
+      return { available: false, message };
+    }
+
+    function promotionTaxSourceLabel(source) {
+      return {
+        product_account: 'exceção do produto para esta conta',
+        product: 'configuração do produto',
+        account: 'configuração da conta',
+        workspace: 'padrão do workspace'
+      }[source] || 'configuração tributária';
+    }
+
+    function formatContributionCost(amount, currency) {
+      const value = Number(amount);
+      return Number.isFinite(value) && value >= 0 ? `-${CommerceModel.formatMoney(value, currency)}` : '—';
+    }
+
+    function formatContributionPercent(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? `${number.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%` : '—';
     }
 
     function formatPromotionManagerPeriod(entry) {

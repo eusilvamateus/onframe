@@ -43,12 +43,14 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       db.prepare("INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at, identity_version) VALUES ('user-2', 'subject-2', 'colaborador@example.com', 'Colaborador', 1, 1, 1)"),
       db.prepare("INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'user-1', 1, 1)"),
       db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"),
-      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator', 1, 1)")
+      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator', 1, 1)"),
+      db.prepare("INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '310458346', 'LOJA', 1, 1, 1)")
     ]);
     const env = { ONFRAME_DB: db };
     const payload = {
       sku: ' Mesa-180 ', name: 'Mesa dobrável 1,80 m',
       cost: 152.35, taxRate: 7.25,
+      accountTaxRates: [{ sellerAccountId: 'account-1', taxRate: 9.5 }],
       customCosts: [{ description: 'Embalagem', type: 'fixed', value: 4.5 }], status: 'active'
     };
 
@@ -57,6 +59,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(created.sku, 'Mesa-180');
     assert.equal(created.cost, 152.35);
     assert.equal(created.taxRate, 7.25);
+    assert.deepEqual(created.accountTaxRates, [{ sellerAccountId: 'account-1', accountUserId: '310458346', taxRate: 9.5 }]);
     assert.deepEqual(created.customCosts, [{ description: 'Embalagem', type: 'fixed', value: 4.5 }]);
     assert.equal('variableCost' in created, false);
     assert.equal('description' in created, false);
@@ -105,7 +108,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     ]);
     const importRows = [
       { rowNumber: 2, ...payload, sku: 'MESA-180', cost: 170 },
-      { rowNumber: 3, sku: 'BANCO-01', name: 'Banco portátil', cost: 55.9, taxRate: 3.5, customCosts: [{ description: 'Embalagem', type: 'fixed', value: 1 }], status: 'active' },
+      { rowNumber: 3, sku: 'BANCO-01', name: 'Banco portátil', cost: 55.9, taxRate: 3.5, accountTaxRates: [{ accountUserId: '310458346', taxRate: 6 }], customCosts: [{ description: 'Embalagem', type: 'fixed', value: 1 }], status: 'active' },
       { rowNumber: 4, sku: chair.sku, name: chair.name, cost: chair.cost, taxRate: chair.taxRate, customCosts: chair.customCosts, status: chair.status },
       { rowNumber: 5, sku: 'DUP-01', name: 'Duplicado A', cost: 10, taxRate: 1, customCosts: [], status: 'active' },
       { rowNumber: 6, sku: 'dup-01', name: 'Duplicado B', cost: 11, taxRate: 1, customCosts: [], status: 'active' },
@@ -126,6 +129,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     const importedProducts = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?limit=100'));
     assert.equal(importedProducts.products.find((entry) => entry.sku === 'MESA-180')?.cost, 170);
     assert.equal(importedProducts.products.some((entry) => entry.sku === 'BANCO-01'), true);
+    assert.deepEqual(importedProducts.products.find((entry) => entry.sku === 'BANCO-01')?.accountTaxRates, [{ sellerAccountId: 'account-1', accountUserId: '310458346', taxRate: 6 }]);
     assert.equal(importedProducts.products.some((entry) => entry.sku === 'DUP-01'), false);
     assert.equal((await db.prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?').bind(created.id).first<{ total: number }>())?.total, 3);
 

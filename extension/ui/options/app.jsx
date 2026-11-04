@@ -14,6 +14,7 @@ import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName, trustedLogo } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
 import { Products } from './Products';
+import { TaxSettings } from './TaxSettings';
 import { formatDate, initials, manifestVersion, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
@@ -31,6 +32,7 @@ const SETTINGS_OPTIONS = [
   { tab: 'account', page: 'security', category: 'Conta', label: 'Segurança e login', description: 'Senha, e-mail de acesso e sessões.', icon: 'shield-check', keywords: 'senha email login credenciais seguranca' },
   { tab: 'workspace', page: 'general', category: 'Workspace', label: 'Geral', description: 'Nome e informações do workspace.', icon: 'buildings', keywords: 'nome informacoes empresa' },
   { tab: 'workspace', page: 'people', category: 'Workspace', label: 'Pessoas', description: 'Acessos, permissões e convites.', icon: 'users-three', keywords: 'membros colaboradores administradores convite permissao' },
+  { tab: 'workspace', page: 'margin', category: 'Workspace', label: 'Margem de contribuição', description: 'Impostos usados no cálculo das promoções.', icon: 'percent', keywords: 'margem imposto aliquota produto conta promocao' },
   { tab: 'application', page: 'appearance', category: 'Aplicativo', label: 'Aparência', description: 'Tema claro, escuro ou definido pelo sistema.', icon: 'circle-half', keywords: 'aparencia tema claro escuro sistema' },
   { tab: 'application', page: 'updates', category: 'Aplicativo', label: 'Atualizações', description: 'Versão instalada e atualizador da extensão.', icon: 'arrow-clockwise', keywords: 'versao atualizar atualizador extensao' }
 ];
@@ -53,7 +55,8 @@ const SETTINGS_PAGE_META = {
   },
   workspace: {
     general: { title: 'Geral', icon: 'buildings' },
-    people: { title: 'Pessoas', icon: 'users-three' }
+    people: { title: 'Pessoas', icon: 'users-three' },
+    margin: { title: 'Margem de contribuição', icon: 'percent' }
   },
   application: {
     appearance: { title: 'Aparência', icon: 'circle-half' },
@@ -84,6 +87,7 @@ function activityLabel(operation) {
     product_updated: 'Produto atualizado',
     product_archived: 'Produto arquivado',
     product_import_committed: 'Produtos importados por planilha',
+    tax_configuration_updated: 'Configurações de imposto atualizadas',
     profile_updated: 'Perfil atualizado'
   }[operation] || 'Atividade no workspace';
 }
@@ -460,6 +464,7 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
       {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && <PasskeySettings profile={profile} securityOverview={securityOverview} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && <WorkspacePeople members={members} invitations={invitations} currentUserId={profile?.user?.id} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} onLeave={onLeave} />}
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && <TaxSettings workspaceId={workspace.id} />}
       {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
     </div>
@@ -957,7 +962,7 @@ function OptionsApp() {
             {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
             {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
             {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'products' && <Products admin={admin} onHeaderActionsChange={setProductHeaderActions} />}
+            {view === 'products' && <Products accounts={accounts} admin={admin} onHeaderActionsChange={setProductHeaderActions} />}
             {view === 'history' && <ItemEditHistory accounts={accounts} members={members} currentUser={connection.user} admin={admin} onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined} />}
             {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
           </div>

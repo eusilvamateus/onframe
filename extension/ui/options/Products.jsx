@@ -14,6 +14,7 @@ import {
   Ph,
   Popover,
   SearchInput,
+  Select,
   Spinner,
   Switch,
   Table,
@@ -38,11 +39,23 @@ const SORT_FILTERS = [
   { value: 'updated', label: 'Data de atualização' }
 ];
 const EMPTY_FORM = {
-  sku: '', name: '', cost: 0, taxRate: null, customCosts: [], status: 'active'
+  sku: '', name: '', cost: 0, taxRate: null, accountTaxRates: [], customCosts: [], status: 'active'
 };
 
 function customCostKey() {
   return globalThis.crypto?.randomUUID?.() || `cost-${Date.now()}-${Math.random()}`;
+}
+
+function accountTaxRateKey() {
+  return globalThis.crypto?.randomUUID?.() || `tax-${Date.now()}-${Math.random()}`;
+}
+
+function productAccountName(account) {
+  return account.displayName || account.nickname || `Conta ${account.userId || ''}`.trim();
+}
+
+function productAccountOptionLabel(account) {
+  return `${productAccountName(account)} (${account.userId})`;
 }
 
 function money(value) {
@@ -108,12 +121,13 @@ function ProductSku({ sku }) {
   </Tooltip>;
 }
 
-function ProductForm({ product, admin, busy, onClose, onSaved }) {
+function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
   const [values, setValues] = useState(() => product ? {
     sku: product.sku,
     name: product.name,
     cost: product.cost,
     taxRate: product.taxRate,
+    accountTaxRates: (product.accountTaxRates || []).map((rate) => ({ ...rate, key: accountTaxRateKey() })),
     customCosts: (product.customCosts || []).map((cost) => ({ ...cost, key: customCostKey() })),
     status: product.status
   } : EMPTY_FORM);
@@ -144,6 +158,22 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
     setSelectedCustomCostKey((selected) => selected === key ? null : selected);
   };
   const selectedCustomCost = values.customCosts.find((cost) => cost.key === selectedCustomCostKey) || null;
+  const addAccountTaxRate = () => {
+    const account = accounts.find((candidate) => !values.accountTaxRates.some((rate) => rate.sellerAccountId === candidate.id));
+    if (!account) return;
+    setValues((state) => ({
+      ...state,
+      accountTaxRates: [...state.accountTaxRates, { key: accountTaxRateKey(), sellerAccountId: account.id, accountUserId: account.userId, taxRate: 0 }]
+    }));
+  };
+  const updateAccountTaxRate = (key, field, value) => setValues((state) => ({
+    ...state,
+    accountTaxRates: state.accountTaxRates.map((rate) => rate.key === key ? { ...rate, [field]: value } : rate)
+  }));
+  const removeAccountTaxRate = (key) => setValues((state) => ({
+    ...state,
+    accountTaxRates: state.accountTaxRates.filter((rate) => rate.key !== key)
+  }));
 
   async function save() {
     if (!values.sku.trim() || !values.name.trim()) {
@@ -154,6 +184,10 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
       setError('Informe a descrição de todos os custos personalizados.');
       return;
     }
+    if (new Set(values.accountTaxRates.map((rate) => rate.sellerAccountId)).size !== values.accountTaxRates.length) {
+      setError('Cada conta pode ter apenas uma alíquota específica.');
+      return;
+    }
     setError('');
     setActionBusy(true);
     let closeAfterSave = false;
@@ -162,6 +196,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
         ...values,
         sku: values.sku.trim(),
         name: values.name.trim(),
+        accountTaxRates: values.accountTaxRates.map(({ sellerAccountId, taxRate }) => ({ sellerAccountId, taxRate })),
         customCosts: values.customCosts.map(({ description, type, value }) => ({ description: description.trim(), type, value }))
       };
       const result = await sendRemoteMessage(current ? 'product-update' : 'product-create', {
@@ -207,7 +242,6 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
           <h3>Custos</h3>
           <div className="onframe-product-cost-grid">
             <NumberField label="Custo do produto" value={values.cost} min={0} decimals={2} step={0.01} controls="none" startAddon="R$" disabled={!admin || locked} onChange={(value) => setField('cost', value ?? 0)} />
-            <NumberField label="Alíquota de imposto" value={values.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => setField('taxRate', value)} />
           </div>
           <div className="onframe-product-custom-costs">
             <div className="onframe-product-custom-costs-header">
@@ -267,6 +301,55 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
         </section>
 
         <section className="onframe-product-form-section">
+          <h3>Impostos</h3>
+          <div className="onframe-product-tax-default">
+            <NumberField
+              label="Alíquota específica do produto"
+              hint="Deixe vazio para herdar a alíquota da conta ou do workspace."
+              value={values.taxRate}
+              min={0}
+              max={100}
+              decimals={2}
+              step={0.01}
+              controls="none"
+              endAddon="%"
+              disabled={!admin || locked}
+              onChange={(value) => setField('taxRate', value)}
+            />
+          </div>
+          <div className="onframe-product-account-taxes">
+            <div className="onframe-product-custom-costs-header">
+              <div>
+                <strong>Exceções por conta</strong>
+                <p>Substituem a alíquota geral deste produto somente na conta escolhida.</p>
+              </div>
+              {admin && accounts.length > values.accountTaxRates.length && <Button kind="quiet" tone="primary" size="sm" disabled={locked} icon={<Ph n="plus-circle" size={15} />} onClick={addAccountTaxRate}>Adicionar exceção</Button>}
+            </div>
+            {values.accountTaxRates.length === 0 && <p className="onframe-product-custom-costs-empty">Nenhuma exceção configurada.</p>}
+            {values.accountTaxRates.map((rate) => {
+              const selectedAccount = accounts.find((account) => account.id === rate.sellerAccountId);
+              const accountOptions = accounts
+                .filter((account) => account.id === rate.sellerAccountId || !values.accountTaxRates.some((entry) => entry.sellerAccountId === account.id))
+                .map((account) => ({ label: productAccountOptionLabel(account), id: account.id }));
+              return <div className="onframe-product-account-tax-row" key={rate.key}>
+                <Select
+                  label="Conta"
+                  options={accountOptions}
+                  value={selectedAccount ? productAccountOptionLabel(selectedAccount) : null}
+                  disabled={!admin || locked}
+                  onChange={(label) => {
+                    const account = accounts.find((candidate) => productAccountOptionLabel(candidate) === label);
+                    if (account) updateAccountTaxRate(rate.key, 'sellerAccountId', account.id);
+                  }}
+                />
+                <NumberField label="Alíquota" value={rate.taxRate} min={0} max={100} decimals={2} step={0.01} controls="none" endAddon="%" disabled={!admin || locked} onChange={(value) => updateAccountTaxRate(rate.key, 'taxRate', value ?? 0)} />
+                {admin && <Button kind="quiet" tone="danger" size="sm" iconOnly aria-label={`Remover exceção de ${selectedAccount ? productAccountName(selectedAccount) : 'conta'}`} disabled={locked} icon={<Ph n="trash" size={16} />} onClick={() => removeAccountTaxRate(rate.key)} />}
+              </div>;
+            })}
+          </div>
+        </section>
+
+        <section className="onframe-product-form-section">
           <h3>Situação</h3>
           <div className="onframe-product-status-row">
             <strong>Produto ativo</strong>
@@ -283,7 +366,7 @@ function ProductForm({ product, admin, busy, onClose, onSaved }) {
   );
 }
 
-export function Products({ admin, onHeaderActionsChange }) {
+export function Products({ accounts = [], admin, onHeaderActionsChange }) {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [query, setQuery] = useState('');
@@ -394,7 +477,7 @@ export function Products({ admin, onHeaderActionsChange }) {
     { key: 'name', label: 'Produto', bold: true, render: (value) => <p className="onframe-list-title">{value}</p> },
     { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
     { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
-    { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => value === null ? '—' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
+    { key: 'taxRate', label: 'Imposto', width: 105, render: (value) => value === null ? 'Herdado' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%` },
     { key: 'actions', label: '', width: 56, render: (_, product) => <div className="onframe-product-action-menu">
       <Popover
         placement="bottom"
@@ -461,7 +544,7 @@ export function Products({ admin, onHeaderActionsChange }) {
       <span>{pagination.total} produtos</span>
       <Pagination page={pagination.page} total={pagination.totalPages} onChange={(page) => void load(page)} />
     </div>}
-    {dialog?.type === 'product' && <ProductForm key={dialog.product?.id || 'new'} product={dialog.product} admin={admin} busy={loading} onClose={() => setDialog(null)} onSaved={reflectProduct} />}
+    {dialog?.type === 'product' && <ProductForm key={dialog.product?.id || 'new'} product={dialog.product} accounts={accounts} admin={admin} busy={loading} onClose={() => setDialog(null)} onSaved={reflectProduct} />}
     {dialog?.type === 'import' && <ProductSpreadsheetModal onClose={() => setDialog(null)} onImported={imported} />}
     <Modal
       open={dialog?.type === 'archive'}

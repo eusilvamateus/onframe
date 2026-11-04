@@ -11,6 +11,7 @@ const spreadsheet = readFileSync(join(root, 'extension/ui/options/product-spread
 const options = readFileSync(join(root, 'extension/ui/options/app.jsx'), 'utf8');
 const background = readFileSync(join(root, 'extension/background.js'), 'utf8');
 const commerce = readFileSync(join(root, 'extension/modules/commerce/module.js'), 'utf8');
+const taxSettings = readFileSync(join(root, 'extension/ui/options/TaxSettings.jsx'), 'utf8');
 
 test('catalogo de produtos usa apenas componentes do design system', () => {
   for (const component of ['Table', 'NumberField', 'SearchInput', 'Switch', 'Drawer', 'Modal', 'Pagination', 'Chip', 'Popover', 'MenuPanel', 'Tooltip', 'ButtonGroup', 'ToggleButton']) {
@@ -25,16 +26,17 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.doesNotMatch(products, /Textarea|nome ou descrição|product\.description|variableCost|Outros custos/u);
   assert.doesNotMatch(spreadsheet, /variableCost|Outros custos variáveis/u);
   assert.match(products, /<Drawer[^]*title=\{current \? \(admin \? 'Editar produto'[^]*side="right"/u);
-  assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Situação/u);
+  assert.match(products, /onframe-product-form-section[^]*Identificação[^]*onframe-product-form-section[^]*Custos[^]*onframe-product-form-section[^]*Impostos[^]*onframe-product-form-section[^]*Situação/u);
   assert.match(products, /onframe-product-form-fields[^]*<Input label="Nome"[^]*<Input label="SKU"/u);
   assert.match(products, /<Switch[^]*checked=\{values\.status === 'active'\}[^]*onChange=\{\(checked\) => setField\('status'/u);
-  assert.match(products, /taxRate: null[^]*label="Alíquota de imposto"[^]*onChange=\{\(value\) => setField\('taxRate', value\)\}/u);
+  assert.match(products, /taxRate: null[^]*label="Alíquota específica do produto"[^]*onChange=\{\(value\) => setField\('taxRate', value\)\}/u);
+  assert.match(products, /Exceções por conta[^]*Adicionar exceção[^]*<Select[^]*label="Conta"[^]*label="Alíquota"/u);
   assert.match(products, /function customCostSummary[^]*Novo custo[^]*Custos personalizados[^]*Adicionar custo[^]*onframe-product-custom-cost-chips[^]*<Chip[^]*onframe-product-custom-cost-chip-name[^]*summary\.description[^]*onframe-product-custom-cost-chip-value[^]*summary\.value[^]*aria-label=\{`Editar custo[^]*selected=\{selectedCustomCostKey === cost\.key\}[^]*removable=\{admin\}[^]*onRemove=/u);
   assert.doesNotMatch(products, /\$\{description\} · \$\{value\}/u);
   assert.match(products, /selectedCustomCost &&[^]*Descrição do custo[^]*selection="single"[^>]*>[^]*value="fixed" appearance="ghost" tone="primary">R\$[^]*value="percentage" appearance="ghost" tone="primary">%/u);
   assert.match(products, /const key = customCostKey\(\)[^]*setSelectedCustomCostKey\(key\)/u);
   assert.doesNotMatch(products, /<ButtonGroup[^>]*(?:appearance|tone|attached=\{false\})/u);
-  assert.doesNotMatch(products, /aria-label=\{`Remover custo|<Ph n="trash"/u);
+  assert.doesNotMatch(products, /aria-label=\{`Remover custo/u);
   assert.match(products, /kind="quiet" tone="primary"[^]*n="plus-circle"[^]*Adicionar custo/u);
   assert.match(products, /n="plus-circle" size=\{17\}[^]*Criar produto/u);
   assert.doesNotMatch(products, /<Ph n="plus"/u);
@@ -57,7 +59,7 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
 test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(options, /id: 'products', label: 'Produtos', icon: 'package'/u);
   assert.match(options, /view === 'products' && <Products/u);
-  for (const action of ['products', 'product-create', 'product-update', 'product-archive', 'product-import-preview', 'product-import-commit']) {
+  for (const action of ['products', 'product-create', 'product-update', 'product-archive', 'product-import-preview', 'product-import-commit', 'tax-configuration', 'tax-configuration-update']) {
     assert.match(background, new RegExp(`action === '${action}'`, 'u'));
   }
   assert.doesNotMatch(`${products}\n${background}`, /product-link|Anúncios vinculados|Vincular/u);
@@ -83,11 +85,15 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.doesNotMatch(sharedStyles, /\.onframe-product-sku-value\s*\{[^}]*white-space: nowrap;/u);
   assert.match(sharedStyles, /\.onframe-products-table \.onframe-list-title\s*\{[^}]*font-size: var\(--ob-fs-xs\);/u);
   assert.match(options, /actions=\{pageHeaderActions\}/u);
-  assert.match(options, /<Products admin=\{admin\} onHeaderActionsChange=\{setProductHeaderActions\}/u);
+  assert.match(options, /<Products accounts=\{accounts\} admin=\{admin\} onHeaderActionsChange=\{setProductHeaderActions\}/u);
   assert.match(sharedStyles, /\.onframe-products-header-actions\s*\{[^}]*justify-content: flex-end;/u);
   assert.match(sharedStyles, /\.onframe-products-search\s*\{[^}]*width: 50%;/u);
   assert.match(sharedStyles, /\.onframe-product-import-upload button\[aria-label\^="Remover "\]\s*\{[^}]*var\(--ob-danger\)/u);
   assert.match(commerce, /variation_id: state\.context && state\.context\.selectedVariationId/u);
   assert.match(commerce, /function promotionEstimateHash\(payload\)/u);
   assert.match(commerce, /hash: promotionEstimateHash\(payload\)/u);
+  assert.match(commerce, /Margem de contribuição[^]*promotionTaxSourceLabel[^]*configure uma alíquota no produto, na conta ou no workspace/u);
+  assert.match(options, /page: 'margin'[^]*label: 'Margem de contribuição'/u);
+  assert.match(taxSettings, /tax-configuration-update/u);
+  assert.match(taxSettings, /Alíquota padrão[^]*Exceções por conta/u);
 });

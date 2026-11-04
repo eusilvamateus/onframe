@@ -3,7 +3,7 @@ import test from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
-import { resolveProductTaxRate } from '../src/tax-configuration.ts';
+import { getTaxConfiguration, resolveProductTaxRate, updateTaxConfiguration } from '../src/tax-configuration.ts';
 
 async function testDatabase(lastMigration: string | null = null) {
   const simulator = new Miniflare({ workers: [{ config: {
@@ -95,6 +95,35 @@ test('nao resolve produto e conta que pertencem a workspaces diferentes', async 
       db.prepare("INSERT INTO product_account_tax_rates (workspace_id, product_id, seller_account_id, tax_rate_bps, created_at, updated_at) VALUES ('workspace-1', 'product-1', 'account-2', 500, 1, 1)").run(),
       /FOREIGN KEY constraint failed/u
     );
+  } finally {
+    await simulator.dispose();
+  }
+});
+
+test('administrador mantem padroes do workspace e das contas', async () => {
+  const { simulator, db } = await testDatabase();
+  try {
+    await db.batch([
+      db.prepare("INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at, identity_version) VALUES ('user-1', 'subject-1', 'admin@example.com', 'Admin', 1, 1, 1)"),
+      db.prepare("INSERT INTO users (id, identity_subject, email, display_name, created_at, updated_at, identity_version) VALUES ('user-2', 'subject-2', 'colaborador@example.com', 'Colaborador', 1, 1, 1)"),
+      db.prepare("INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'user-1', 1, 1)"),
+      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"),
+      db.prepare("INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator', 1, 1)"),
+      db.prepare("INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '1001', 'LOJA', 1, 1, 1)")
+    ]);
+    const env = { ONFRAME_DB: db };
+    const admin = { userId: 'user-1', workspaceId: 'workspace-1', workspaceRole: 'admin' } as const;
+    const collaborator = { userId: 'user-2', workspaceId: 'workspace-1', workspaceRole: 'collaborator' } as const;
+    const request = new Request('https://onframe.onblide.com/v1/app/tax-configuration', {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ workspaceTaxRate: 6.5, accounts: [{ sellerAccountId: 'account-1', taxRate: 8.25 }] })
+    });
+    await assert.rejects(getTaxConfiguration(env, collaborator), { code: 'tax_configuration_forbidden' });
+    const configuration = await updateTaxConfiguration(request, env, admin, 'request-tax');
+    assert.equal(configuration.workspaceTaxRate, 6.5);
+    assert.equal(configuration.accounts[0].taxRate, 8.25);
+    assert.equal(configuration.base, 'sale_price');
+    assert.equal((await db.prepare("SELECT operation FROM audit_events WHERE request_id = 'request-tax'").first<{ operation: string }>())?.operation, 'tax_configuration_updated');
   } finally {
     await simulator.dispose();
   }

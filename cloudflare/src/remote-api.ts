@@ -2,6 +2,7 @@ import { decryptValue, encryptValue, importAesGcmKeyBase64 } from './token-ciphe
 import { recordConfirmedItemEdits } from './item-edit-history';
 import { matchProductForPromotionItem } from './products';
 import { enrichPromotionEstimateWithProduct } from './product-margin';
+import { resolveProductTaxRate } from './tax-configuration';
 import {
   handleResolve,
   handleResolveQuick,
@@ -187,12 +188,19 @@ export async function handleRemoteApiRequest(input: {
   });
   const matchPromotionProduct = async (client: RemoteMeliClient, itemId: string) => {
     try {
-      return await matchProductForPromotionItem(
+      const productMatch = await matchProductForPromotionItem(
         input.env,
         input.actor,
         client.historySnapshots(itemId).latest,
         input.url.searchParams.get('variation_id')
       );
+      if (productMatch.status !== 'matched' || !productMatch.product?.id) return productMatch;
+      const tax = await resolveProductTaxRate(input.env, {
+        workspaceId: input.actor.workspaceId,
+        sellerAccountId: client.historyAccount().id,
+        productId: productMatch.product.id
+      });
+      return { ...productMatch, tax };
     } catch (error) {
       console.error(JSON.stringify({ event: 'promotion_product_match_failed', itemId, requestId: input.requestId, error: sanitizeError(error) }));
       return { status: 'unavailable', sku: null, source: null, variationId: null, reason: 'catalog_unavailable', product: null };

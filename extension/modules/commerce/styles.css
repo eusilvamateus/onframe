@@ -1247,6 +1247,15 @@ body:has(:is(
   margin: 12px 0 0;
 }
 
+.onframe-promotion-manager-margin-alert {
+  margin-top: 12px;
+}
+
+.onframe-promotion-manager-metric.danger strong,
+.onframe-promotion-manager-calculation > div.danger strong {
+  color: var(--ob-danger);
+}
+
 .onframe-promotion-manager-bulk {
   margin-top: 14px;
 }

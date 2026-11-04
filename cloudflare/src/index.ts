@@ -21,6 +21,11 @@ import {
   previewProductImport,
   updateProduct
 } from './products';
+import {
+  TaxConfigurationError,
+  getTaxConfiguration,
+  updateTaxConfiguration
+} from './tax-configuration';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -1809,6 +1814,12 @@ export default {
         if (request.method === 'POST') return json(await createProduct(request, env, actor, requestId), 201);
       }
 
+      if (url.pathname === '/v1/app/tax-configuration') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'GET') return json(await getTaxConfiguration(env, actor));
+        if (request.method === 'PUT') return json(await updateTaxConfiguration(request, env, actor, requestId));
+      }
+
       if (url.pathname === '/v1/app/products/import/preview' && request.method === 'POST') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await previewProductImport(request, env, actor));
@@ -1965,7 +1976,7 @@ export default {
 
       return json({ error: 'not_found', requestId }, 404);
     } catch (error) {
-      if (error instanceof RequestError || error instanceof ProductRequestError || error instanceof SupabaseAuthError || error instanceof IdentitySecurityError) {
+      if (error instanceof RequestError || error instanceof ProductRequestError || error instanceof TaxConfigurationError || error instanceof SupabaseAuthError || error instanceof IdentitySecurityError) {
         return json({ error: error.code, requestId }, error.status);
       }
 

@@ -24,6 +24,18 @@ type ProductCustomCost = {
   value_scaled: number;
 };
 
+type ProductAccountTaxRate = {
+  sellerAccountId: string;
+  accountUserId: string;
+  taxRateBps: number;
+};
+
+type ProductAccountTaxRateInput = {
+  sellerAccountId: string | null;
+  accountUserId: string | null;
+  taxRateBps: number;
+};
+
 type ProductData = {
   sku: string;
   normalizedSku: string;
@@ -32,6 +44,8 @@ type ProductData = {
   taxRateBps: number | null;
   customCosts: ProductCustomCost[];
   customCostsJson: string;
+  accountTaxRateInputs: ProductAccountTaxRateInput[];
+  accountTaxRates: ProductAccountTaxRate[];
   status: 'active' | 'inactive';
 };
 
@@ -49,10 +63,12 @@ type ProductImportPlanRow = {
     cost: number;
     taxRate: number | null;
     customCosts: Array<{ description: string; type: 'fixed' | 'percentage'; value: number }>;
+    accountTaxRates: Array<{ sellerAccountId: string; accountUserId: string; taxRate: number }>;
     status: 'active' | 'inactive';
   } | null;
   data?: ProductData;
   existing?: ProductRow;
+  existingAccountTaxRates?: ProductAccountTaxRate[];
 };
 
 type ProductSkuResolution = {
@@ -111,6 +127,28 @@ function parseCustomCosts(value: unknown): ProductCustomCost[] {
       value_scaled: decimalToInteger(cost.value, 100, type === 'percentage' ? 10_000 : 9_999_999_999)
     };
   });
+}
+
+function parseAccountTaxRates(value: unknown): ProductAccountTaxRateInput[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 100) throw new ProductRequestError('product_invalid_payload', 400);
+  const rates = value.map((entry) => {
+    const rate = recordValue(entry);
+    if (!rate) throw new ProductRequestError('product_invalid_payload', 400);
+    const sellerAccountId = asText(rate.sellerAccountId, 120) || null;
+    const accountUserId = asText(rate.accountUserId, 40) || null;
+    if ((!sellerAccountId && !accountUserId) || (sellerAccountId && accountUserId)) {
+      throw new ProductRequestError('product_invalid_payload', 400);
+    }
+    return {
+      sellerAccountId,
+      accountUserId,
+      taxRateBps: decimalToInteger(rate.taxRate, 100, 10_000)
+    };
+  });
+  const references = rates.map((rate) => rate.sellerAccountId ? `id:${rate.sellerAccountId}` : `user:${rate.accountUserId}`);
+  if (new Set(references).size !== references.length) throw new ProductRequestError('product_invalid_payload', 400);
+  return rates;
 }
 
 function storedCustomCosts(value: string): ProductCustomCost[] {
@@ -213,7 +251,7 @@ export async function matchProductForPromotionItem(
   };
 }
 
-function productPayload(row: ProductRow) {
+function productPayload(row: ProductRow, accountTaxRates: ProductAccountTaxRate[] = []) {
   return {
     id: row.id,
     sku: row.sku,
@@ -221,10 +259,91 @@ function productPayload(row: ProductRow) {
     cost: row.current_cost_cents / 100,
     taxRate: row.tax_rate_bps === null ? null : row.tax_rate_bps / 100,
     customCosts: customCostsPayload(row.custom_costs_json),
+    accountTaxRates: accountTaxRates.map((rate) => ({
+      sellerAccountId: rate.sellerAccountId,
+      accountUserId: rate.accountUserId,
+      taxRate: rate.taxRateBps / 100
+    })),
     status: row.status,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString()
   };
+}
+
+async function workspaceAccountLookup(env: ProductEnv, workspaceId: string) {
+  const accounts = await env.ONFRAME_DB.prepare(`
+    SELECT id, meli_user_id FROM seller_accounts WHERE workspace_id = ?
+  `).bind(workspaceId).all<{ id: string; meli_user_id: string }>();
+  return {
+    byId: new Map(accounts.results.map((account) => [account.id, account])),
+    byUserId: new Map(accounts.results.map((account) => [account.meli_user_id, account]))
+  };
+}
+
+function resolveAccountTaxRates(
+  inputs: ProductAccountTaxRateInput[],
+  accounts: Awaited<ReturnType<typeof workspaceAccountLookup>>
+): ProductAccountTaxRate[] {
+  const resolved = inputs.map((input) => {
+    const account = input.sellerAccountId
+      ? accounts.byId.get(input.sellerAccountId)
+      : accounts.byUserId.get(input.accountUserId || '');
+    if (!account) throw new ProductRequestError('product_account_not_found', 400);
+    return { sellerAccountId: account.id, accountUserId: account.meli_user_id, taxRateBps: input.taxRateBps };
+  });
+  if (new Set(resolved.map((rate) => rate.sellerAccountId)).size !== resolved.length) {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  return resolved.sort((left, right) => left.sellerAccountId.localeCompare(right.sellerAccountId));
+}
+
+async function productAccountTaxRates(env: ProductEnv, actor: ProductActor) {
+  const rows = await env.ONFRAME_DB.prepare(`
+    SELECT rate.product_id, rate.seller_account_id, seller.meli_user_id, rate.tax_rate_bps
+    FROM product_account_tax_rates rate
+    JOIN seller_accounts seller
+      ON seller.id = rate.seller_account_id AND seller.workspace_id = rate.workspace_id
+    WHERE rate.workspace_id = ?
+      AND (
+        ? = 'admin'
+        OR EXISTS (
+          SELECT 1 FROM account_members membership
+          WHERE membership.seller_account_id = rate.seller_account_id AND membership.user_id = ?
+        )
+      )
+    ORDER BY rate.seller_account_id
+  `).bind(actor.workspaceId, actor.workspaceRole, actor.userId).all<{
+    product_id: string;
+    seller_account_id: string;
+    meli_user_id: string;
+    tax_rate_bps: number;
+  }>();
+  const rates = new Map<string, ProductAccountTaxRate[]>();
+  for (const row of rows.results) {
+    const productRates = rates.get(row.product_id) || [];
+    productRates.push({ sellerAccountId: row.seller_account_id, accountUserId: row.meli_user_id, taxRateBps: row.tax_rate_bps });
+    rates.set(row.product_id, productRates);
+  }
+  return rates;
+}
+
+function accountTaxRateStatements(
+  env: ProductEnv,
+  actor: ProductActor,
+  productId: string,
+  rates: ProductAccountTaxRate[],
+  timestamp: number
+): D1PreparedStatement[] {
+  return [
+    env.ONFRAME_DB.prepare(`
+      DELETE FROM product_account_tax_rates WHERE workspace_id = ? AND product_id = ?
+    `).bind(actor.workspaceId, productId),
+    ...rates.map((rate) => env.ONFRAME_DB.prepare(`
+      INSERT INTO product_account_tax_rates (
+        workspace_id, product_id, seller_account_id, tax_rate_bps, updated_by_user_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(actor.workspaceId, productId, rate.sellerAccountId, rate.taxRateBps, actor.userId, timestamp, timestamp))
+  ];
 }
 
 async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> {
@@ -289,8 +408,9 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
     FROM products WHERE ${clause}
     ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `).bind(...bindings, limit, (page - 1) * limit).all<ProductRow>();
+  const accountRates = await productAccountTaxRates(env, actor);
   return {
-    products: rows.results.map(productPayload),
+    products: rows.results.map((row) => productPayload(row, accountRates.get(row.id))),
     pagination: { page, limit, total, totalPages }
   };
 }
@@ -301,6 +421,7 @@ function parseProductBody(body: Record<string, unknown>): ProductData {
   const status = body.status ?? 'active';
   if (status !== 'active' && status !== 'inactive') throw new ProductRequestError('product_invalid_payload', 400);
   const customCosts = parseCustomCosts(body.customCosts);
+  const accountTaxRateInputs = parseAccountTaxRates(body.accountTaxRates);
   return {
     sku,
     normalizedSku: normalizeSku(sku),
@@ -309,6 +430,8 @@ function parseProductBody(body: Record<string, unknown>): ProductData {
     taxRateBps: optionalDecimalToInteger(body.taxRate, 100, 10_000),
     customCosts,
     customCostsJson: JSON.stringify(customCosts),
+    accountTaxRateInputs,
+    accountTaxRates: [],
     status
   };
 }
@@ -360,6 +483,11 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
         cost: data.costCents / 100,
         taxRate: data.taxRateBps === null ? null : data.taxRateBps / 100,
         customCosts: data.customCosts.map((cost) => ({ description: cost.description, type: cost.type, value: cost.value_scaled / 100 })),
+        accountTaxRates: data.accountTaxRateInputs.map((rate) => ({
+          sellerAccountId: rate.sellerAccountId || '',
+          accountUserId: rate.accountUserId || '',
+          taxRate: rate.taxRateBps / 100
+        })),
         status: data.status
       },
       data
@@ -369,12 +497,13 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
   }
 }
 
-function productMatchesImport(product: ProductRow, data: ProductData): boolean {
+function productMatchesImport(product: ProductRow, data: ProductData, accountTaxRates: ProductAccountTaxRate[]): boolean {
   return product.sku === data.sku
     && product.name === data.name
     && product.current_cost_cents === data.costCents
     && product.tax_rate_bps === data.taxRateBps
     && JSON.stringify(storedCustomCosts(product.custom_costs_json)) === data.customCostsJson
+    && JSON.stringify(accountTaxRates) === JSON.stringify(data.accountTaxRates)
     && product.status === data.status;
 }
 
@@ -385,9 +514,27 @@ async function buildProductImportPlan(request: Request, env: ProductEnv, actor: 
     throw new ProductRequestError('product_import_invalid_payload', 400);
   }
   const plan = body.rows.map(importRowPlan);
+  const accounts = await workspaceAccountLookup(env, actor.workspaceId);
   const counts = new Map<string, number>();
   for (const row of plan) {
     if (row.data) counts.set(row.data.normalizedSku, (counts.get(row.data.normalizedSku) || 0) + 1);
+  }
+  for (const row of plan) {
+    if (!row.data) continue;
+    try {
+      row.data.accountTaxRates = resolveAccountTaxRates(row.data.accountTaxRateInputs, accounts);
+      if (row.values) {
+        row.values.accountTaxRates = row.data.accountTaxRates.map((rate) => ({
+          sellerAccountId: rate.sellerAccountId,
+          accountUserId: rate.accountUserId,
+          taxRate: rate.taxRateBps / 100
+        }));
+      }
+    } catch {
+      row.action = 'error';
+      row.errors = ['Uma das contas informadas para imposto não pertence a este workspace.'];
+      delete row.data;
+    }
   }
   for (const row of plan) {
     if (row.data && (counts.get(row.data.normalizedSku) || 0) > 1) {
@@ -401,13 +548,15 @@ async function buildProductImportPlan(request: Request, env: ProductEnv, actor: 
     FROM products WHERE workspace_id = ? AND archived_at IS NULL
   `).bind(actor.workspaceId).all<ProductRow & { normalized_sku: string }>();
   const productsBySku = new Map(existing.results.map((product) => [product.normalized_sku, product]));
+  const existingAccountRates = await productAccountTaxRates(env, actor);
   for (const row of plan) {
     if (!row.data) continue;
     const product = productsBySku.get(row.data.normalizedSku);
     if (!product) continue;
     row.existing = product;
+    row.existingAccountTaxRates = existingAccountRates.get(product.id) || [];
     row.productId = product.id;
-    row.action = productMatchesImport(product, row.data) ? 'unchanged' : 'update';
+    row.action = productMatchesImport(product, row.data, row.existingAccountTaxRates) ? 'unchanged' : 'update';
   }
   return plan;
 }
@@ -467,6 +616,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
           INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
           SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
         `).bind(crypto.randomUUID(), data.costCents, timestamp, actor.userId, timestamp, productId, actor.workspaceId));
+        statements.push(...accountTaxRateStatements(env, actor, productId, data.accountTaxRates, timestamp));
       } else {
         references.push({ row, statementIndex: statements.length, result: 'updated' });
         statements.push(env.ONFRAME_DB.prepare(`
@@ -480,6 +630,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
           `).bind(crypto.randomUUID(), data.costCents, timestamp, actor.userId, timestamp, row.productId, actor.workspaceId));
         }
+        statements.push(...accountTaxRateStatements(env, actor, row.productId!, data.accountTaxRates, timestamp));
       }
     }
     try {
@@ -520,6 +671,7 @@ function mapWriteError(error: unknown): never {
 export async function createProduct(request: Request, env: ProductEnv, actor: ProductActor, requestId: string) {
   await assertAdmin(env, actor);
   const data = parseProductBody(await requestBody(request));
+  data.accountTaxRates = resolveAccountTaxRates(data.accountTaxRateInputs, await workspaceAccountLookup(env, actor.workspaceId));
   const timestamp = Date.now();
   const id = crypto.randomUUID();
   try {
@@ -533,19 +685,21 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
       env.ONFRAME_DB.prepare(`
         INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(crypto.randomUUID(), id, data.costCents, timestamp, actor.userId, timestamp)
+      `).bind(crypto.randomUUID(), id, data.costCents, timestamp, actor.userId, timestamp),
+      ...accountTaxRateStatements(env, actor, id, data.accountTaxRates, timestamp)
     ]);
   } catch (error) {
     mapWriteError(error);
   }
   await audit(env, actor, requestId, 'product_created', 'product', id, 201);
-  return productPayload(await assertProduct(env, actor, id));
+  return productPayload(await assertProduct(env, actor, id), data.accountTaxRates);
 }
 
 export async function updateProduct(request: Request, env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {
   await assertAdmin(env, actor);
   const current = await assertProduct(env, actor, productId);
   const data = parseProductBody(await requestBody(request));
+  data.accountTaxRates = resolveAccountTaxRates(data.accountTaxRateInputs, await workspaceAccountLookup(env, actor.workspaceId));
   const timestamp = Date.now();
   const statements = [env.ONFRAME_DB.prepare(`
     UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
@@ -558,13 +712,14 @@ export async function updateProduct(request: Request, env: ProductEnv, actor: Pr
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(crypto.randomUUID(), productId, data.costCents, timestamp, actor.userId, timestamp));
   }
+  statements.push(...accountTaxRateStatements(env, actor, productId, data.accountTaxRates, timestamp));
   try {
     await env.ONFRAME_DB.batch(statements);
   } catch (error) {
     mapWriteError(error);
   }
   await audit(env, actor, requestId, 'product_updated', 'product', productId, 200);
-  return productPayload(await assertProduct(env, actor, productId));
+  return productPayload(await assertProduct(env, actor, productId), data.accountTaxRates);
 }
 
 export async function archiveProduct(env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {

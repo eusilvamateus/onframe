@@ -47,6 +47,8 @@ async function handleRemoteMessage(message) {
   if (action === 'app-release') return requestPlatform('/v1/app/release');
   if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
   if (action === 'products') return requestPlatform(productsPath(message.query));
+  if (action === 'tax-configuration') return requestPlatform('/v1/app/tax-configuration');
+  if (action === 'tax-configuration-update') return requestPlatform('/v1/app/tax-configuration', { method: 'PUT', body: JSON.stringify(message.payload || {}) });
   if (action === 'product-create') return requestPlatform('/v1/app/products', { method: 'POST', body: JSON.stringify(message.payload || {}) });
   if (action === 'product-update') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
   if (action === 'product-archive') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'DELETE' });

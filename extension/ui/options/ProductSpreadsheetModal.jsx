@@ -184,6 +184,7 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
           <li><Ph n="plus-circle" size={16} /><span>SKU novo cria o produto.</span></li>
           <li><Ph n="arrows-clockwise" size={16} /><span>SKU já cadastrado atualiza os dados do produto.</span></li>
           <li><Ph n="currency-circle-dollar" size={16} /><span>Custos personalizados ficam na aba Custos.</span></li>
+          <li><Ph n="percent" size={16} /><span>Exceções tributárias ficam na aba Impostos por conta.</span></li>
           <li><Ph n="stack" size={16} /><span>Até 2.000 produtos por vez.</span></li>
         </ul>
         <div className="onframe-product-import-upload">

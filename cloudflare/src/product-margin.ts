@@ -44,10 +44,14 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const estimate = recordOrNull(estimateValue);
   const productMatch = recordOrNull(productMatchValue);
   const product = productMatch?.status === 'matched' ? recordOrNull(productMatch.product) : null;
+  const tax = recordOrNull(productMatch?.tax);
   const salePriceCents = centsOrNull(estimate?.dealPrice);
   const youReceiveCents = centsOrNull(estimate?.youReceive);
   const productCostCents = centsOrNull(product?.cost);
-  const taxRate = numberOrNull(product?.taxRate);
+  const taxRate = tax?.configured === true ? numberOrNull(tax.rate) : null;
+  const taxBase = tax?.configured === true && tax.base === 'sale_price' ? 'sale_price' : null;
+  const taxSource = tax?.configured === true && typeof tax.source === 'string' ? tax.source : null;
+  const taxSourceId = tax?.configured === true && typeof tax.sourceId === 'string' ? tax.sourceId : null;
   const calculatedCustomCosts = product ? customCosts(product.customCosts, salePriceCents) : null;
   const missing: string[] = [];
 
@@ -56,7 +60,7 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   if (youReceiveCents === null || youReceiveCents < 0) missing.push('you_receive');
   if (product && (productCostCents === null || productCostCents < 0)) missing.push('product_cost');
   if (product && calculatedCustomCosts === null) missing.push('custom_costs');
-  if (product && (taxRate === null || taxRate < 0 || taxRate > 100)) missing.push('tax_rate');
+  if (product && (taxRate === null || taxRate < 0 || taxRate > 100 || taxBase !== 'sale_price')) missing.push('tax_rate');
 
   const complete = missing.length === 0;
   const taxRateBps = complete ? Math.round(taxRate! * 100) : null;
@@ -77,6 +81,9 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
     youReceive: moneyFromCents(youReceiveCents),
     productCost: moneyFromCents(productCostCents),
     taxRate,
+    taxBase,
+    taxSource,
+    taxSourceId,
     taxAmount: moneyFromCents(taxAmountCents),
     customCosts: calculatedCustomCosts?.map(({ amountCents: _amountCents, ...cost }) => cost) || [],
     customCost: moneyFromCents(customCostCents),

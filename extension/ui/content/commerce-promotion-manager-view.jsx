@@ -93,8 +93,8 @@ function Calculation({ row }) {
     <div>
       <div className="onframe-promotion-manager-kicker">Como o valor é calculado</div>
       <div className="onframe-promotion-manager-calculation">
-        {row.calculation.map((item) => (
-          <div key={item.label} className={item.tone || ''}>
+        {row.calculation.map((item, index) => (
+          <div key={`${item.label}-${index}`} className={item.tone || ''}>
             <span>{item.label}{item.description && <small>{item.description}</small>}</span>
             <strong>{item.value}</strong>
           </div>
@@ -163,6 +163,7 @@ function EditPanel({ row, actions }) {
                 ? [0, 1, 2].map((item) => <Skeleton key={item} width="72%" height={38} radius={6} />)
                 : row.metrics.map((metric) => <Metric key={metric.label} {...metric} />)}
             </div>
+            {row.margin && !row.margin.available && <div className="onframe-promotion-manager-margin-alert"><Alert tone="info">{row.margin.message}</Alert></div>}
           </div>
         )}
         <div>

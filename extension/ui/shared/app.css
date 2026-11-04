@@ -59,6 +59,38 @@ button, input { font: inherit; }
   padding: 0 var(--ob-s-6);
   background: var(--ob-surface);
 }
+
+.onframe-product-tax-default { max-width: 320px; }
+.onframe-product-account-taxes { display: flex; flex-direction: column; gap: var(--ob-s-3); }
+.onframe-product-custom-costs-header > div { display: flex; min-width: 0; flex-direction: column; gap: var(--ob-s-1); }
+.onframe-product-custom-costs-header > div > p { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-xs); line-height: var(--ob-lh-normal); }
+.onframe-product-account-tax-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 32px; align-items: end; gap: var(--ob-s-2); }
+.onframe-product-account-tax-row > button { margin-bottom: 2px; }
+.onframe-tax-settings-loading { display: flex; min-height: 160px; align-items: center; justify-content: center; }
+.onframe-tax-settings { max-width: 880px; }
+.onframe-tax-settings-section { display: grid; grid-template-columns: minmax(0, 1fr) 240px; align-items: start; gap: var(--ob-s-6); padding: var(--ob-s-5) 0; border-top: 1px solid var(--ob-border); }
+.onframe-tax-settings-section--accounts { grid-template-columns: minmax(220px, .7fr) minmax(320px, 1.3fr); }
+.onframe-tax-settings-copy { display: flex; flex-direction: column; gap: var(--ob-s-1); }
+.onframe-tax-settings-copy h3 { margin: 0; color: var(--ob-fg-strong); font-size: var(--ob-fs-sm); font-weight: var(--ob-w-semibold); }
+.onframe-tax-settings-copy p { margin: 0; color: var(--ob-fg-soft); font-size: var(--ob-fs-sm); line-height: var(--ob-lh-normal); }
+.onframe-tax-account-list { display: flex; flex-direction: column; border: 1px solid var(--ob-border); border-radius: var(--ob-r-surface); }
+.onframe-tax-account-row { display: grid; grid-template-columns: minmax(0, 1fr) 180px; align-items: center; gap: var(--ob-s-4); padding: var(--ob-s-3) var(--ob-s-4); }
+.onframe-tax-account-row + .onframe-tax-account-row { border-top: 1px solid var(--ob-border); }
+.onframe-tax-account-row > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.onframe-tax-account-row strong { overflow: hidden; color: var(--ob-fg-strong); font-size: var(--ob-fs-sm); font-weight: var(--ob-w-semibold); text-overflow: ellipsis; white-space: nowrap; }
+.onframe-tax-account-row span { color: var(--ob-fg-mute); font-family: var(--ob-font-mono); font-size: var(--ob-fs-xs); }
+.onframe-tax-settings-actions { display: flex; justify-content: flex-end; padding-top: var(--ob-s-2); }
+
+@media (max-width: 767px) {
+  .onframe-product-account-tax-row { grid-template-columns: minmax(0, 1fr) 120px 32px; }
+  .onframe-tax-settings-section, .onframe-tax-settings-section--accounts { grid-template-columns: 1fr; gap: var(--ob-s-4); }
+}
+
+@media (max-width: 560px) {
+  .onframe-product-account-tax-row, .onframe-tax-account-row { grid-template-columns: 1fr; align-items: stretch; }
+  .onframe-product-account-tax-row > button { justify-self: end; }
+  .onframe-tax-settings-actions > button { width: 100%; }
+}
 .onframe-options--collapsed .onframe-settings-action-bar { left: 72px; }
 .onframe-settings-action-bar-content {
   width: min(100%, var(--ob-max-w-xl));

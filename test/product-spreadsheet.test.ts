@@ -21,6 +21,7 @@ test('planilha de produtos preserva os campos do catalogo', () => {
       { description: 'Embalagem', type: 'fixed', value: 3.5 },
       { description: 'Comissão comercial', type: 'percentage', value: 2.25 }
     ],
+    accountTaxRates: [{ accountUserId: '310458346', taxRate: 9.5 }],
     status: 'inactive'
   }]);
   assert.deepEqual(parseProductWorkbook(buffer(workbook)), [{
@@ -33,6 +34,7 @@ test('planilha de produtos preserva os campos do catalogo', () => {
       { description: 'Embalagem', type: 'fixed', value: 3.5 },
       { description: 'Comissão comercial', type: 'percentage', value: 2.25 }
     ],
+    accountTaxRates: [{ accountUserId: '310458346', taxRate: 9.5 }],
     status: 'inactive'
   }]);
 });
@@ -49,6 +51,10 @@ test('planilha interpreta moeda e percentual no formato brasileiro', () => {
     ['KIT-01', 'Embalagem', 'R$', '8,90'],
     ['KIT-01', 'Comissão', '%', '2,5%']
   ]), 'Custos');
+  utils.book_append_sheet(workbook, utils.aoa_to_sheet([
+    ['SKU', 'ID da conta Mercado Livre', 'Imposto (%)'],
+    ['KIT-01', '310458346', '8,75%']
+  ]), 'Impostos por conta');
   assert.deepEqual(parseProductWorkbook(buffer(workbook)), [{
     rowNumber: 2,
     sku: 'KIT-01',
@@ -59,6 +65,7 @@ test('planilha interpreta moeda e percentual no formato brasileiro', () => {
       { description: 'Embalagem', type: 'fixed', value: 8.9 },
       { description: 'Comissão', type: 'percentage', value: 2.5 }
     ],
+    accountTaxRates: [{ accountUserId: '310458346', taxRate: 8.75 }],
     status: 'active'
   }]);
 });
