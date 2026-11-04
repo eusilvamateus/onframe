@@ -20,8 +20,6 @@
     );
     if (!hasPhotosView) throw new Error('Interface de fotos indisponível.');
     const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
-    const EDITOR_MORPH_OPEN_DURATION = 900;
-    const EDITOR_MORPH_CLOSE_DURATION = 950;
     const AUTH_REQUIRED_MESSAGE = 'Entre na extensão do OnFrame para editar anúncios.';
 
     const state = {
@@ -743,7 +741,7 @@
         tile.style.transition = 'none';
         tile.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
         requestAnimationFrame(() => {
-          tile.style.transition = 'transform 160ms var(--ob-ease)';
+          tile.style.transition = 'transform var(--ob-dur-base) var(--ob-ease)';
           tile.style.transform = '';
         });
         tile.addEventListener(
@@ -982,6 +980,7 @@
       const targetRadius = modalStyle.borderRadius;
       const targetShadow = modalStyle.boxShadow;
       const targetScrim = backdropStyle.backgroundColor;
+      const motion = editorMotionTokens();
       modal.classList.add('is-editor-morphing', 'is-editor-opening');
       backdrop.classList.add('is-editor-morphing', 'is-editor-opening');
       tray.classList.add('is-editor-leaving');
@@ -990,18 +989,18 @@
         animateEditorElement(
           modal,
           [
-            { transform, borderRadius: '8px', boxShadow: 'none' },
+            { transform, borderRadius: motion.radiusSm, boxShadow: 'none' },
             { transform: 'none', borderRadius: targetRadius, boxShadow: targetShadow }
           ],
           {
-            duration: EDITOR_MORPH_OPEN_DURATION,
-            easing: 'cubic-bezier(0.22, 0.78, 0.18, 1)',
+            duration: motion.spin,
+            easing: motion.standardOut,
             fill: 'both'
           }
         ),
         animateEditorElement(backdrop, [{ backgroundColor: 'transparent' }, { backgroundColor: targetScrim }], {
-          duration: 620,
-          easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
+          duration: motion.spin,
+          easing: motion.standard,
           fill: 'both'
         }),
         animateEditorElement(
@@ -1011,15 +1010,15 @@
             { opacity: 0, transform: 'translateX(-50%) translateY(10px)' }
           ],
           {
-            duration: 180,
-            easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)',
+            duration: motion.base,
+            easing: motion.standard,
             fill: 'both'
           }
         ),
-        ...animateEditorChildren(modal, 'open')
+        ...animateEditorChildren(modal, 'open', motion)
       ].filter(Boolean);
 
-      await waitForEditorAnimations(animations, EDITOR_MORPH_OPEN_DURATION);
+      await waitForEditorAnimations(animations, motion.spin);
       if (state.editorTransition !== transition) return;
       hideTrayForEditor();
       modal.classList.remove('is-editor-morphing', 'is-editor-opening');
@@ -1054,6 +1053,7 @@
       const modalStyle = getComputedStyle(modal);
       const backdropStyle = getComputedStyle(backdrop);
       const targetTransform = getEditorMorphTransform(modal, dockRect);
+      const motion = editorMotionTokens();
       modal.classList.add('is-editor-morphing', 'is-editor-closing');
       backdrop.classList.add('is-editor-morphing', 'is-editor-closing');
 
@@ -1062,12 +1062,12 @@
           modal,
           [
             { transform: 'none', borderRadius: modalStyle.borderRadius, boxShadow: modalStyle.boxShadow },
-            { transform: targetTransform, borderRadius: '8px', boxShadow: 'none' }
+            { transform: targetTransform, borderRadius: motion.radiusSm, boxShadow: 'none' }
           ],
           {
-            duration: 800,
-            delay: 100,
-            easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+            duration: motion.spin,
+            delay: motion.fast,
+            easing: motion.standardInOut,
             fill: 'both'
           }
         ),
@@ -1075,15 +1075,15 @@
           backdrop,
           [{ backgroundColor: backdropStyle.backgroundColor }, { backgroundColor: 'transparent' }],
           {
-            duration: 760,
-            easing: 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+            duration: motion.spin,
+            easing: motion.standardInOut,
             fill: 'both'
           }
         ),
-        ...animateEditorChildren(modal, 'close')
+        ...animateEditorChildren(modal, 'close', motion)
       ].filter(Boolean);
 
-      await waitForEditorAnimations(animations, EDITOR_MORPH_CLOSE_DURATION);
+      await waitForEditorAnimations(animations, motion.spin + motion.fast);
       if (state.editorTransition !== transition) return;
       state.qualityDialog = null;
       restoreTrayAfterDialog();
@@ -1092,7 +1092,7 @@
       state.editorTransition = null;
     }
 
-    function animateEditorChildren(modal, direction) {
+    function animateEditorChildren(modal, direction, motion) {
       return Array.from(modal.children)
         .map((child, index, children) => {
           const opening = direction === 'open';
@@ -1109,9 +1109,9 @@
                   { opacity: 0, transform: 'translateY(14px)' }
                 ],
             {
-              duration: opening ? 360 : 200,
-              delay: opening ? 220 + sequenceIndex * 55 : sequenceIndex * 18,
-              easing: opening ? 'cubic-bezier(0.16, 1, 0.3, 1)' : 'cubic-bezier(0.4, 0, 0.7, 0.2)',
+              duration: opening ? motion.slow : motion.base,
+              delay: opening ? motion.base + sequenceIndex * (motion.fast / 2) : sequenceIndex * (motion.fast / 6),
+              easing: opening ? motion.standardOut : motion.standardInOut,
               fill: 'both'
             }
           );
@@ -1130,6 +1130,22 @@
       }
     }
 
+    function editorMotionTokens() {
+      const styles = getComputedStyle(document.documentElement);
+      const value = (name) => styles.getPropertyValue(name).trim();
+      const duration = (name) => Number.parseFloat(value(name)) || 0;
+      return {
+        fast: duration('--ob-dur-fast'),
+        base: duration('--ob-dur-base'),
+        slow: duration('--ob-dur-slow'),
+        spin: duration('--ob-dur-spin'),
+        standard: value('--ob-ease'),
+        standardOut: value('--ob-ease-out'),
+        standardInOut: value('--ob-ease-in-out'),
+        radiusSm: value('--ob-r-sm')
+      };
+    }
+
     function waitForEditorAnimations(animations, fallbackDuration) {
       return new Promise((resolve) => {
         let settled = false;
@@ -1143,7 +1159,7 @@
         };
 
         state.editorTransitionResolve = complete;
-        state.editorTransitionTimer = setTimeout(complete, fallbackDuration + 250);
+        state.editorTransitionTimer = setTimeout(complete, fallbackDuration + editorMotionTokens().base);
         if (animations.length) {
           Promise.all(animations.map((animation) => animation.finished.catch(() => null))).then(complete);
         }

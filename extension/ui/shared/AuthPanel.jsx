@@ -99,7 +99,7 @@ export function VerificationFrame({ title, children, headingLevel = 2 }) {
   const Heading = headingLevel === 1 ? 'h1' : 'h2';
   return (
     <div className="onframe-auth-panel onframe-security-verification">
-      <Card padding={24}>
+      <Card padding="var(--ob-space-24)">
         <div className="onframe-auth-content">
           <Heading className="onframe-auth-title">{title}</Heading>
           {children}
@@ -425,7 +425,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   return (
     <div className="onframe-auth-panel">
       <AuthBrand />
-      <Card padding={32}>
+      <Card padding="var(--ob-space-32)">
         <div className="onframe-auth-content">
           {!secondFactor && ['signin', 'magic'].includes(mode) && phase !== 'sent' && (
             <nav className="onframe-auth-methods" aria-label="Método de acesso">

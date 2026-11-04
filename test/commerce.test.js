@@ -396,7 +396,7 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
     view,
     /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/
   );
-  assert.match(view, /<Card padding=\{12\} elevation="shadow">/);
+  assert.match(view, /<Card padding="var\(--ob-space-12\)" elevation="shadow">/);
   assert.match(view, /globalThis\.OnFrameCommercePriceView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
   assert.match(build, /commerce-price-view\.jsx/);
@@ -520,7 +520,7 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(styles, /\.onframe-commerce-listing-controls\s*\{/);
   assert.match(
     styles,
-    /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: 3;[\s\S]*pointer-events: auto !important;/
+    /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: var\(--ob-z-raised\);[\s\S]*pointer-events: auto !important;/
   );
   assert.match(
     styles,
@@ -668,7 +668,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   );
   assert.match(
     styles,
-    /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: 1px;[\s\S]*margin-top: 2px;/s
+    /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: var\(--ob-space-2\);[\s\S]*margin-top: var\(--ob-space-2\);/s
   );
   assert.match(styles, /\.onframe-promotion-manager-meta > small\s*\{[\s\S]*margin-top: 0;/s);
   assert.match(
@@ -873,7 +873,7 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
     view,
     /import \{ Accordion, Alert, Badge, Button, Card, Ph, ScrollArea, Spinner, Tabs \} from '@onblide\/ui'/
   );
-  assert.match(view, /<Card padding=\{12\} elevation="shadow">/);
+  assert.match(view, /<Card padding="var\(--ob-space-12\)" elevation="shadow">/);
   assert.match(view, /globalThis\.OnFrameCommercePromotionsView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
   assert.match(build, /commerce-promotions-view\.jsx/);

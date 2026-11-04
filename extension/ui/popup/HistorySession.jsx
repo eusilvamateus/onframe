@@ -11,7 +11,7 @@ function LoadingHistory() {
     <div className="onframe-popup-loading-list" aria-label="Carregando histórico">
       {[0, 1, 2].map((item) => (
         <div className="onframe-popup-loading-row" key={item}>
-          <Skeleton width={44} height={44} radius={6} />
+          <Skeleton width={44} height={44} radius="var(--ob-r-xs)" />
           <div>
             <Skeleton width={220} height={13} />
             <Skeleton width={150} height={10} />
@@ -97,7 +97,7 @@ export function HistorySession({ connection, onBack, onOpenFullHistory, footer, 
           {loading ? (
             <LoadingHistory />
           ) : events.length === 0 ? (
-            <Card padding={16}>
+            <Card padding="var(--ob-space-16)">
               <div className="onframe-popup-empty-state">
                 <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success">
                   <Ph n="clock-counter-clockwise" size={18} />

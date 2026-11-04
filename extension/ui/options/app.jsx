@@ -181,7 +181,7 @@ function activityLabel(operation) {
 function PageHeader({ meta, actions, reserveContextSpace = false }) {
   return (
     <header className="onframe-page-header">
-      <div className="onframe-stack" style={{ gap: 'var(--ob-s-1)' }}>
+      <div className="onframe-stack" style={{ gap: 'var(--ob-space-4)' }}>
         {reserveContextSpace && <div className="onframe-page-context-spacer" aria-hidden="true" />}
         <div>
           {meta.eyebrow && <p className="onframe-eyebrow">{meta.eyebrow}</p>}
@@ -228,7 +228,7 @@ function Home({
         }
       />
       {emptyAccounts && (
-        <Card padding={24}>
+        <Card padding="var(--ob-space-24)">
           <SectionHeader
             eyebrow="PRÓXIMA AÇÃO"
             title={admin ? 'Conecte uma conta do Mercado Livre' : 'Aguarde uma conta ser atribuída'}
@@ -248,7 +248,7 @@ function Home({
         </Card>
       )}
       {pendingInvitations > 0 && (
-        <Card padding={24}>
+        <Card padding="var(--ob-space-24)">
           <SectionHeader
             eyebrow="PRÓXIMA AÇÃO"
             title={`${pendingInvitations} ${pendingInvitations === 1 ? 'convite pendente' : 'convites pendentes'}`}
@@ -262,7 +262,7 @@ function Home({
         </Card>
       )}
       {!emptyAccounts && (
-        <Card padding={24}>
+        <Card padding="var(--ob-space-24)">
           <div className="onframe-stack">
             <SectionHeader
               eyebrow="INTEGRAÇÃO"
@@ -295,7 +295,7 @@ function Home({
           </div>
         </Card>
       )}
-      <Card padding={24}>
+      <Card padding="var(--ob-space-24)">
         <div className="onframe-stack">
           <SectionHeader eyebrow="ATIVIDADE" title="Atividade recente" />
           {activity.length === 0 ? (
@@ -356,7 +356,7 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove
         </div>
       )}
       {accounts.length === 0 ? (
-        <Card padding={24}>
+        <Card padding="var(--ob-space-24)">
           <SectionHeader
             eyebrow="ESTADO"
             title={admin ? 'Nenhuma conta conectada' : 'Nenhuma conta atribuída'}
@@ -1260,12 +1260,12 @@ function OptionsApp() {
           </div>
           <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
             <AuthBrand />
-            <Card padding={24}>
+            <Card padding="var(--ob-space-24)">
               <div className="onframe-stack">
-                <Skeleton width="32%" height={10} radius={5} />
-                <Skeleton width="68%" height={20} radius={6} />
-                <Skeleton width="100%" height={14} radius={6} />
-                <Skeleton width="100%" height={42} radius={10} />
+                <Skeleton width="32%" height={10} radius="var(--ob-r-xs)" />
+                <Skeleton width="68%" height={20} radius="var(--ob-r-xs)" />
+                <Skeleton width="100%" height={14} radius="var(--ob-r-xs)" />
+                <Skeleton width="100%" height={42} radius="var(--ob-r-md)" />
               </div>
             </Card>
           </div>

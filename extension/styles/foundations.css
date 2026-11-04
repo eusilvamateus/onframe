@@ -71,25 +71,44 @@
   --ob-lh-normal: 1.45;
   --ob-lh-relaxed: 1.6;
   --ob-tracking-wide: 0.04em;
-  --ob-s-1: 4px;
-  --ob-s-2: 8px;
-  --ob-s-3: 12px;
-  --ob-s-4: 16px;
-  --ob-s-5: 24px;
-  --ob-s-6: 32px;
-  --ob-s-7: 48px;
-  --ob-gap-xs: var(--ob-s-1);
-  --ob-gap-sm: var(--ob-s-2);
-  --ob-gap-md: var(--ob-s-4);
-  --ob-gap-lg: var(--ob-s-5);
-  --ob-pad-card: var(--ob-s-5);
-  --ob-pad-page: var(--ob-s-6);
+  --ob-space-2: 2px;
+  --ob-space-4: 4px;
+  --ob-space-6: 6px;
+  --ob-space-8: 8px;
+  --ob-space-10: 10px;
+  --ob-space-12: 12px;
+  --ob-space-16: 16px;
+  --ob-space-20: 20px;
+  --ob-space-24: 24px;
+  --ob-space-32: 32px;
+  --ob-space-40: 40px;
+  --ob-space-48: 48px;
+  --ob-space-64: 64px;
+  --ob-space-96: 96px;
+  --ob-space-128: 128px;
+  --ob-gap-xs: var(--ob-space-4);
+  --ob-gap-sm: var(--ob-space-8);
+  --ob-gap-md: var(--ob-space-16);
+  --ob-gap-lg: var(--ob-space-24);
+  --ob-pad-card: var(--ob-space-24);
+  --ob-pad-page: var(--ob-space-32);
+  --ob-stack-sm: var(--ob-space-12);
+  --ob-stack-md: var(--ob-space-24);
+  --ob-focus-ring-width: 3px;
+  --ob-opacity-hover: 0.08;
+  --ob-opacity-focus: 0.32;
+  --ob-opacity-scrim: 0.45;
+  --ob-opacity-muted: 0.4;
+  --ob-opacity-disabled: 0.45;
+  --ob-opacity-strong: 0.75;
+  --ob-r-2xs: 2px;
   --ob-r-xs: 4px;
   --ob-r-sm: 8px;
   --ob-r-md: 12px;
   --ob-r-lg: 16px;
   --ob-r-xl: 20px;
   --ob-r-pill: 999px;
+  --ob-r-circle: 50%;
   --ob-r-control: var(--ob-r-sm);
   --ob-r-surface: var(--ob-r-md);
   --ob-r-overlay: var(--ob-r-lg);
@@ -100,6 +119,7 @@
   --ob-z-overlay: 300;
   --ob-z-modal: 400;
   --ob-z-toast: 500;
+  --ob-z-drag: 600;
   --ob-z-system: 9000;
   --ob-z-extension-popover: 2147483644;
   --ob-z-extension-overlay: 2147483645;
@@ -107,9 +127,24 @@
   --ob-z-extension-toast: 2147483647;
   --ob-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --ob-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ob-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ob-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ob-dur-fast: 120ms;
   --ob-dur-base: 200ms;
+  --ob-dur-slow: 400ms;
+  --ob-dur-spin: 800ms;
+  --ob-dur-loop: 1400ms;
   color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ob-dur-fast: 0ms;
+    --ob-dur-base: 0ms;
+    --ob-dur-slow: 0ms;
+    --ob-dur-spin: 0ms;
+    --ob-dur-loop: 0ms;
+  }
 }
 
 :where(

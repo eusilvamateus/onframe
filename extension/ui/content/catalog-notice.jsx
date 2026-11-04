@@ -3,7 +3,7 @@ import { Card, Ph } from '@onblide/ui';
 const containerStyle = {
   display: 'flex',
   alignItems: 'flex-start',
-  gap: 'var(--ob-s-2)',
+  gap: 'var(--ob-space-8)',
   width: '100%',
   boxSizing: 'border-box',
   color: 'var(--ob-fg)',
@@ -14,7 +14,7 @@ const containerStyle = {
 };
 
 const iconStyle = {
-  marginTop: 1,
+  marginTop: 'var(--ob-space-2)',
   color: 'var(--ob-blue-600)'
 };
 
@@ -30,7 +30,7 @@ const titleStyle = {
 
 export function CatalogNotice({ children }) {
   return (
-    <Card padding="var(--ob-s-3)" elevation="border" style={{ width: '100%', boxSizing: 'border-box' }}>
+    <Card padding="var(--ob-space-12)" elevation="border" style={{ width: '100%', boxSizing: 'border-box' }}>
       <div role="note" aria-label="Anúncio de catálogo" style={containerStyle}>
         <Ph n="info" size={16} weight="fill" style={iconStyle} />
         <p style={copyStyle}>

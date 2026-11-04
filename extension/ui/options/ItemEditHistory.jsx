@@ -324,9 +324,9 @@ function LoadingHistory() {
   return (
     <div className="onframe-history-list" aria-label="Carregando histórico">
       {[0, 1, 2].map((item) => (
-        <Card padding={16} key={item}>
+        <Card padding="var(--ob-space-16)" key={item}>
           <div className="onframe-history-loading-row">
-            <Skeleton width={48} height={48} radius={6} />
+            <Skeleton width={48} height={48} radius="var(--ob-r-xs)" />
             <div>
               <Skeleton width={280} height={14} />
               <Skeleton width={180} height={11} />
@@ -486,7 +486,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
       {loading ? (
         <LoadingHistory />
       ) : events.length === 0 && !error ? (
-        <Card padding={24}>
+        <Card padding="var(--ob-space-24)">
           <div className="onframe-history-empty">
             <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success">
               <Ph n="clock-counter-clockwise" size={18} />

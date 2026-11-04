@@ -113,7 +113,7 @@ function FailureList({ failures }) {
 function EditorFooter({ model, actions }) {
   return (
     <section className="onframe-characteristics-footer" aria-label="Ações da edição de características">
-      <Card padding="var(--ob-s-3)">
+      <Card padding="var(--ob-space-12)">
         <div className="onframe-characteristics-footer-content">
           <div className="onframe-characteristics-footer-head">
             <strong>Editando características</strong>
@@ -243,7 +243,7 @@ function PackageDimensions({ model, actions }) {
   if (!model.fields.length) return null;
   return (
     <section className="onframe-characteristics-package" aria-label="Dimensões do pacote">
-      <Card padding="var(--ob-s-4)">
+      <Card padding="var(--ob-space-16)">
         <div className="onframe-characteristics-package-content">
           <div className="onframe-characteristics-package-head">
             <Ph n="package" size={20} />

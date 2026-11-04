@@ -111,6 +111,80 @@ test('interfaces usam apenas a escala mobile-first do design system', () => {
   assert.doesNotMatch(commerceModule, /innerWidth\s*(?:<=|<|>=|>)\s*\d+/u);
 });
 
+test('interfaces usam as fundacoes do design system sem valores soltos', () => {
+  const ignored = new Set(['ui/options/app.css', 'ui/options/app.js', 'ui/popup/app.css', 'ui/popup/app.js']);
+  const sourceFiles = fs
+    .readdirSync(extensionRoot, { recursive: true })
+    .map((file) => String(file).replaceAll('\\', '/'))
+    .filter((file) => /\.(?:css|js|jsx|ts|tsx)$/u.test(file))
+    .filter((file) => !file.startsWith('core/') && !file.startsWith('vendor/') && !ignored.has(file));
+  const foundationsFile = 'styles/foundations.css';
+  const foundations = fs.readFileSync(path.join(extensionRoot, foundationsFile), 'utf8');
+  const spacingScale = [2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 96, 128];
+  const fixedRules = [
+    [/(?<![\w.$-])\d*\.?\d+(?:ms|s)(?![\w-])/gu, 'duração'],
+    [/cubic-bezier\(/gu, 'curva'],
+    [/border-?[rR]adius['"]?\s*[:=]\s*['"`]?(?!0(?![\d.])|var\(|calc\(var)[\d.]+(?:px|%)?/gu, 'raio'],
+    [/z-?[iI]ndex['"]?\s*[:=]\s*[^,;}]*?(?<![\w-])(?:[3-9]|\d{2,})(?![\w.])/gu, 'camada'],
+    [/(?<![\w-])opacity['"]?\s*[:=]\s*[^,;}]*?(?<![\w.-])0?\.\d+/gu, 'opacidade'],
+    [/0 0 0 [\d.]+px var\(--ob-focus-ring\)|outline['"]?\s*:\s*['"`]?[\d.]+px solid/gu, 'foco'],
+    [/[bB]ox-?[sS]hadow['"]?\s*[:=][^;}]*?(?:rgba?\(|#[0-9a-fA-F]{3,8}\b)/gu, 'sombra']
+  ];
+  const spacingProperty = /^\s*(?:gap|row-gap|column-gap|padding(?:-[a-z]+)?|margin(?:-[a-z]+)?)\s*:\s*([^;]+)/u;
+  const inlineSpacingProperty =
+    /(?<![\w-])(gap|rowGap|columnGap|padding(?:Top|Bottom|Left|Right|Inline|Block)?|margin(?:Top|Bottom|Left|Right|Inline|Block)?)\s*:\s*([^,}\n]*)/gu;
+  const fixedPixels = /(?<![\w.$-])(-?\d+(?:\.\d+)?)px/gu;
+  const quotedValue = /(['"`])((?:(?!\1).)*)\1/gu;
+  const fixedNumber = /(?<![\w.$*/+-]|[*/+-])(-?\d+(?:\.\d+)?)(?![\w.%(]|\s*[*/+-])/gu;
+
+  for (const value of spacingScale) assert.match(foundations, new RegExp(`--ob-space-${value}:\\s*${value}px`, 'u'));
+  assert.match(foundations, /--ob-focus-ring-width:\s*3px/u);
+  assert.match(foundations, /--ob-r-circle:\s*50%/u);
+  assert.match(foundations, /--ob-z-drag:\s*600/u);
+  assert.match(foundations, /@media \(prefers-reduced-motion: reduce\)[\s\S]*--ob-dur-fast:\s*0ms/u);
+
+  for (const relativeFile of sourceFiles) {
+    const source = fs
+      .readFileSync(path.join(extensionRoot, relativeFile), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//gu, '')
+      .replace(/(^|[^:'"`])\/\/[^\n]*/gmu, '$1');
+    assert.doesNotMatch(source, /--ob-s-\d+/u, `${relativeFile} usa a escala de espaçamento antiga.`);
+    if (relativeFile === foundationsFile) continue;
+
+    for (const [pattern, foundation] of fixedRules) {
+      assert.doesNotMatch(source, pattern, `${relativeFile} usa ${foundation} sem token.`);
+    }
+
+    source.split('\n').forEach((line, index) => {
+      if (relativeFile.endsWith('.css')) {
+        const declaration = line.match(spacingProperty);
+        if (!declaration) return;
+        for (const match of declaration[1].matchAll(fixedPixels)) {
+          const value = Math.abs(Number(match[1]));
+          assert.equal(value, 0, `${relativeFile}:${index + 1} usa espaçamento fixo de ${match[0]}.`);
+        }
+        return;
+      }
+
+      if (/^\s*import /u.test(line)) return;
+      for (const declaration of line.matchAll(inlineSpacingProperty)) {
+        const [, property, rawValue] = declaration;
+        for (const quoted of rawValue.matchAll(quotedValue)) {
+          const text = quoted[2].replace(/\$\{[^}]*\}/gu, '');
+          for (const match of text.matchAll(fixedPixels)) {
+            assert.fail(`${relativeFile}:${index + 1} usa ${property} fixo de ${match[0]}.`);
+          }
+        }
+        const unquoted = rawValue.replace(quotedValue, '').replace(/\$\{[^}]*\}/gu, '');
+        for (const match of unquoted.matchAll(fixedNumber)) {
+          const value = Math.abs(Number(match[1]));
+          assert.equal(value, 0, `${relativeFile}:${index + 1} usa ${property} fixo de ${match[0]}.`);
+        }
+      }
+    });
+  }
+});
+
 test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const control = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'ThemeControl.jsx'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
@@ -772,7 +846,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   );
   assert.match(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--ob-border\);/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*border:\s*1px/);
-  assert.match(optionsCss, /\.onframe-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-s-3\);/);
+  assert.match(optionsCss, /\.onframe-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-space-12\);/);
   assert.match(
     optionsCss,
     /\.onframe-popup-integration-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/
@@ -797,15 +871,15 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
     /\.onframe-auth-methods,\s*\.onframe-auth-methods > div,\s*\.onframe-auth-methods > div > div\s*\{[^}]*width:\s*100%/
   );
   assert.match(optionsCss, /\.onframe-auth-methods button\s*\{[^}]*flex:\s*1;[^}]*justify-content:\s*center/);
-  assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-s-1\)/);
+  assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-space-4\)/);
   assert.match(
     optionsCss,
     /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/
   );
-  assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-s-5\);[^}]*min-width:\s*0/);
+  assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-space-24\);[^}]*min-width:\s*0/);
   assert.match(
     optionsCss,
-    /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-s-2\)/
+    /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-space-8\)/
   );
   assert.match(optionsCss, /\.onframe-auth-code-scroll\s*\{[^}]*display:\s*flex/);
   assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
@@ -870,9 +944,12 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-options-sidebar\s*\{[^}]*z-index: var\(--ob-z-raised\);/);
   assert.match(
     optionsCss,
-    /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-s-4\);[^}]*left: calc\(var\(--ob-s-6\) \+ var\(--ob-s-2\)\);/
+    /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-space-16\);[^}]*left: calc\(var\(--ob-space-32\) \+ var\(--ob-space-8\)\);/
   );
-  assert.match(optionsCss, /\.onframe-options-main\s*\{[^}]*padding: var\(--ob-s-7\) var\(--ob-s-6\) var\(--ob-s-6\);/);
+  assert.match(
+    optionsCss,
+    /\.onframe-options-main\s*\{[^}]*padding: var\(--ob-space-48\) var\(--ob-space-32\) var\(--ob-space-32\);/
+  );
   assert.match(optionsCss, /\.onframe-page-title\s*\{[^}]*font-size: var\(--ob-fs-lg\);/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
   assert.match(options, /\{isIndex && \(\s*<>/);

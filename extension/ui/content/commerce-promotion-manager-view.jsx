@@ -85,7 +85,7 @@ function Result({ row }) {
     <div className="onframe-promotion-manager-result">
       <span>Você recebe</span>
       {row.result.loading ? (
-        <Skeleton width={110} height={20} radius={6} style={{ marginTop: 4 }} />
+        <Skeleton width={110} height={20} style={{ marginTop: 'var(--ob-space-4)' }} />
       ) : (
         <strong className="success">{row.result.primary || '—'}</strong>
       )}
@@ -170,7 +170,7 @@ function EditPanel({ row, actions }) {
             )}
             <div className="onframe-promotion-manager-editor-metrics">
               {row.result.loading
-                ? [0, 1, 2].map((item) => <Skeleton key={item} width="72%" height={38} radius={6} />)
+                ? [0, 1, 2].map((item) => <Skeleton key={item} width="72%" height={38} radius="var(--ob-r-xs)" />)
                 : row.metrics.map((metric) => <Metric key={metric.label} {...metric} />)}
             </div>
             {row.margin && !row.margin.available && (

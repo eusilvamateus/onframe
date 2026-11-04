@@ -27,7 +27,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
     view,
     /<CatalogNotice>[\s\S]*?As características são definidas pelo catálogo\.[\s\S]*?<\/CatalogNotice>/
   );
-  assert.match(view, /<Card padding="var\(--ob-s-3\)"/);
+  assert.match(view, /<Card padding="var\(--ob-space-12\)"/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
   assert.match(view, /function PackageDimensions/);
@@ -122,11 +122,11 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   );
   assert.match(
     styles,
-    /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;[^}]*padding-bottom: 8px !important;/
+    /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: var\(--ob-space-8\) !important;[^}]*padding-bottom: var\(--ob-space-8\) !important;/
   );
   assert.match(
     styles,
-    /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*overflow: visible !important;[^}]*height: auto !important;[^}]*padding-top: 8px !important;/
+    /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*overflow: visible !important;[^}]*height: auto !important;[^}]*padding-top: var\(--ob-space-8\) !important;/
   );
   assert.match(styles, /\.onframe-characteristics-inline-control \{[^}]*margin-block: auto;[^}]*align-self: center;/);
   assert.match(
@@ -144,7 +144,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
     /\.onframe-characteristics-extra-status \{[^}]*display: inline-flex;[^}]*position: absolute;[^}]*top: 0;[^}]*right: 12px;[^}]*transform: translateY\(-50%\);/
   );
   assert.doesNotMatch(styles, /\.onframe-characteristics-extra-status \{[^}]*padding/);
-  assert.match(styles, /\.onframe-characteristics-action-root--modal,[\s\S]*?margin-bottom: var\(--ob-s-3\);/);
+  assert.match(styles, /\.onframe-characteristics-action-root--modal,[\s\S]*?margin-bottom: var\(--ob-space-12\);/);
   assert.match(styles, /\.onframe-characteristics-composite-source \{\s*display: none !important;/);
   assert.doesNotMatch(styles, /\.onframe-characteristics-composite-control|\.onframe-characteristics-select-menu/);
 

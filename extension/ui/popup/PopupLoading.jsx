@@ -16,14 +16,14 @@ export function PopupLoading() {
           </div>
         </div>
         <div className="onframe-popup-actions">
-          <Skeleton width={40} height={22} radius={999} />
+          <Skeleton width={40} height={22} radius="var(--ob-r-pill)" />
           <Skeleton width={32} height={32} />
         </div>
       </header>
       <div className="onframe-popup-home-loading-list" aria-hidden="true">
         {[0, 1, 2].map((item) => (
           <div className="onframe-popup-home-loading-row" key={item}>
-            <Skeleton width={36} height={36} radius={8} />
+            <Skeleton width={36} height={36} radius="var(--ob-r-sm)" />
             <div className="onframe-popup-skeleton-copy">
               <Skeleton width={104 + item * 12} height={12} />
               <Skeleton width={190 + item * 16} height={9} />
@@ -33,8 +33,8 @@ export function PopupLoading() {
         ))}
       </div>
       <footer className="onframe-popup-footer" aria-hidden="true">
-        <Skeleton width={82} height={32} radius={6} />
-        <Skeleton width={104} height={32} radius={6} />
+        <Skeleton width={82} height={32} radius="var(--ob-r-xs)" />
+        <Skeleton width={104} height={32} radius="var(--ob-r-xs)" />
       </footer>
     </main>
   );

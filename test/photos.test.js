@@ -390,18 +390,22 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(view, /import \{[^}]*FileUpload/);
   assert.match(source, /function beginEditorOpenTransition\(\)/);
   assert.match(source, /function beginEditorCloseTransition\(\)/);
-  assert.match(source, /EDITOR_MORPH_OPEN_DURATION = 900/);
-  assert.match(source, /EDITOR_MORPH_CLOSE_DURATION = 950/);
-  assert.match(source, /function animateEditorChildren\(modal, direction\)/);
+  assert.match(source, /function editorMotionTokens\(\)/);
+  assert.match(source, /duration\('--ob-dur-spin'\)/);
+  assert.match(source, /value\('--ob-ease-in-out'\)/);
+  assert.match(source, /function animateEditorChildren\(modal, direction, motion\)/);
   assert.match(source, /element\.animate\(keyframes, options\)/);
-  assert.match(source, /delay: opening \? 220 \+ sequenceIndex \* 55/);
+  assert.match(source, /delay: opening \? motion\.base \+ sequenceIndex \* \(motion\.fast \/ 2\)/);
   assert.match(
     source,
     /const preservedEditorDialog =\s*state\.qualityDialog && state\.qualityDialog\.mode === 'editor'/
   );
   assert.match(source, /state\.qualityDialog = preservedEditorDialog;/);
   assert.match(source, /if \(!state\.editorTransition\) restoreTrayAfterDialog\(\);/);
-  assert.match(source, /state\.editorTransitionTimer = setTimeout\(complete, fallbackDuration \+ 250\)/);
+  assert.match(
+    source,
+    /state\.editorTransitionTimer = setTimeout\(complete, fallbackDuration \+ editorMotionTokens\(\)\.base\)/
+  );
   assert.match(source, /catch \(_err\) \{\s+return null;/);
   assert.match(source, /if \(state\.tray && !state\.tray\.isConnected\)/);
   assert.match(source, /if \(state\.dialogRoot && !state\.dialogRoot\.isConnected\)/);

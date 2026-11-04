@@ -7,7 +7,7 @@ const notice = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'co
 
 test('aviso de catálogo é compacto, compartilhado e usa o design system', () => {
   assert.match(notice, /import \{ Card, Ph \} from '@onblide\/ui'/);
-  assert.match(notice, /<Card padding="var\(--ob-s-3\)" elevation="border"/);
+  assert.match(notice, /<Card padding="var\(--ob-space-12\)" elevation="border"/);
   assert.match(notice, /role="note" aria-label="Anúncio de catálogo"/);
   assert.match(notice, /<Ph n="info" size=\{16\} weight="fill"/);
   assert.match(notice, /fontFamily: 'var\(--ob-font\)'/);

@@ -225,7 +225,7 @@ function PromotionSummary({ model }) {
 
 function CommercePromotionsPopover({ model, actions }) {
   return (
-    <Card padding={12} elevation="shadow">
+    <Card padding="var(--ob-space-12)" elevation="shadow">
       <section
         className="onframe-commerce-promotions-view"
         aria-label="Promoções"

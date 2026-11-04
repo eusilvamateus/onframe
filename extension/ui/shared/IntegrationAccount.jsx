@@ -179,7 +179,7 @@ export function IntegrationAccount({ account, admin, mode, loading, onUpdate, on
       : compact
         ? 'onframe-popup-integration-list-item'
         : 'onframe-integration-list-item';
-  const padding = compact ? 12 : mode === 'cards' ? 20 : 16;
+  const padding = compact ? 'var(--ob-space-12)' : mode === 'cards' ? 'var(--ob-space-20)' : 'var(--ob-space-16)';
   const content = (
     <div className={accountClass}>
       {identity}

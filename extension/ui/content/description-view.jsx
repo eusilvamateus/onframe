@@ -124,7 +124,7 @@ function DescriptionTextField({ model, onChange }) {
 function DescriptionEditor({ model, actions }) {
   return (
     <section className="onframe-description-editor" aria-label="Editar descrição">
-      <Card padding="var(--ob-s-4)">
+      <Card padding="var(--ob-space-16)">
         <div className="onframe-description-editor-content">
           <div className="onframe-description-editor-head">
             <strong>Editar descrição</strong>

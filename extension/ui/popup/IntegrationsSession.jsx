@@ -163,7 +163,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
           {loading ? (
             <LoadingAccounts />
           ) : accounts.length === 0 ? (
-            <Card padding={16}>
+            <Card padding="var(--ob-space-16)">
               <div className="onframe-popup-empty-state">
                 <span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning">
                   <Ph n="storefront" size={18} />

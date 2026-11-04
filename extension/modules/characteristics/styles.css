@@ -1,7 +1,7 @@
 .onframe-characteristics-root {
   display: grid;
   gap: var(--ob-gap-md);
-  margin: 16px 0 0;
+  margin: var(--ob-space-16) 0 0;
   color: var(--ob-fg);
   font-family: var(--ob-font);
 }
@@ -14,7 +14,7 @@
   display: inline-flex !important;
   position: relative !important;
   z-index: 2;
-  margin: 8px 0 0;
+  margin: var(--ob-space-8) 0 0;
   pointer-events: auto !important;
 }
 
@@ -22,7 +22,7 @@
   display: inline-flex;
   position: relative;
   z-index: 2;
-  margin: 8px 0 0;
+  margin: var(--ob-space-8) 0 0;
 }
 
 .onframe-characteristics-action-root .onframe-section-edit-tooltip .onframe-characteristics-action {
@@ -31,18 +31,18 @@
 
 .onframe-characteristics-action-root .onframe-section-edit-tooltip:focus-visible {
   border-radius: var(--ob-r-control);
-  box-shadow: 0 0 0 3px var(--ob-focus-ring);
+  box-shadow: 0 0 0 var(--ob-focus-ring-width) var(--ob-focus-ring);
   outline: none;
 }
 
 .onframe-characteristics-action-root--modal,
 .onframe-characteristics-catalog-notice--modal {
-  margin-bottom: var(--ob-s-3);
+  margin-bottom: var(--ob-space-12);
 }
 
 .onframe-characteristics-catalog-notice {
   max-width: min(560px, 100%);
-  margin-top: var(--ob-s-1);
+  margin-top: var(--ob-space-4);
 }
 
 .onframe-characteristics-is-editing .onframe-characteristics-action-root {
@@ -76,8 +76,8 @@
   position: relative !important;
   height: auto !important;
   min-height: 48px !important;
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
+  padding-top: var(--ob-space-8) !important;
+  padding-bottom: var(--ob-space-8) !important;
   vertical-align: middle !important;
 }
 
@@ -87,8 +87,8 @@
   overflow: visible !important;
   height: auto !important;
   min-height: 48px !important;
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
+  padding-top: var(--ob-space-8) !important;
+  padding-bottom: var(--ob-space-8) !important;
   vertical-align: middle !important;
 }
 
@@ -212,7 +212,7 @@
   top: 0;
   right: 12px;
   background: var(--ob-surface);
-  border-radius: 999px;
+  border-radius: var(--ob-r-pill);
   line-height: 1;
   transform: translateY(-50%);
 }
@@ -326,11 +326,11 @@
 
 .onframe-characteristics-failure-list {
   margin: 0;
-  padding-left: var(--ob-s-4);
+  padding-left: var(--ob-space-16);
 }
 
 .onframe-characteristics-failure-list li + li {
-  margin-top: var(--ob-s-1);
+  margin-top: var(--ob-space-4);
 }
 
 .onframe-characteristics-bulk-switch {

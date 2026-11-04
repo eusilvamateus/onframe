@@ -35,7 +35,7 @@ function ModalTitle({ basePrice }) {
 }
 
 function ResultValue({ loading, value }) {
-  if (loading) return <Skeleton width={72} height={16} radius={4} />;
+  if (loading) return <Skeleton width={72} height={16} radius="var(--ob-r-xs)" />;
   return <>{value || '—'}</>;
 }
 

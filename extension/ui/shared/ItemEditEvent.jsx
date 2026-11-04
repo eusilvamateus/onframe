@@ -512,5 +512,5 @@ export function ItemEditEventCard({ event, compact = false, onOpenActor }) {
   );
 
   if (compact) return <article className="onframe-popup-history-row">{content}</article>;
-  return <Card padding={16}>{content}</Card>;
+  return <Card padding="var(--ob-space-16)">{content}</Card>;
 }

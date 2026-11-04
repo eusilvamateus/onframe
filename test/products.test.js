@@ -92,7 +92,7 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
     /onframe-product-import-summary-success[^}]*var\(--ob-green\)[^]*onframe-product-import-summary-primary[^}]*var\(--ob-blue\)[^]*onframe-product-import-summary-danger[^}]*var\(--ob-danger\)/u
   );
   assert.match(sharedStyles, /\.onframe-product-custom-cost-chips\s*\{[^}]*flex-wrap: wrap;/u);
-  assert.match(sharedStyles, /\.onframe-product-custom-cost-chip-name\s*\{[^}]*opacity: (?:0)?\.72;/u);
+  assert.match(sharedStyles, /\.onframe-product-custom-cost-chip-name\s*\{[^}]*opacity: var\(--ob-opacity-strong\);/u);
   assert.match(
     sharedStyles,
     /\.onframe-product-custom-cost-chip-value\s*\{[^}]*font-family: var\(--ob-font-mono\);[^}]*font-variant-numeric: tabular-nums;/u

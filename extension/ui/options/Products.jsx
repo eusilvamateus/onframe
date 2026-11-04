@@ -84,7 +84,7 @@ function ProductChipFilter({ ariaLabel, icon, options, value, selected, width, o
       placement="bottom"
       align="start"
       width={width}
-      padding={12}
+      padding="var(--ob-space-12)"
       closeButton={false}
       trigger={<Chip icon={icon} label={current.label} size="md" selected={selected} />}
     >
@@ -131,7 +131,7 @@ function ProductSku({ sku }) {
           minHeight: 24,
           maxWidth: '100%',
           justifyContent: 'flex-start',
-          gap: 4,
+          gap: 'var(--ob-space-4)',
           padding: 0,
           fontFamily: 'var(--ob-font-mono)',
           fontSize: 'var(--ob-fs-xs)'

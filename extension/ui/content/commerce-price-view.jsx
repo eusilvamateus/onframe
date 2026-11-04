@@ -257,7 +257,7 @@ function PriceEditor({ model, actions }) {
 
 function CommercePricePopover({ model, actions }) {
   return (
-    <Card padding={12} elevation="shadow">
+    <Card padding="var(--ob-space-12)" elevation="shadow">
       <section
         className="onframe-commerce-price-view"
         aria-label={model.title}

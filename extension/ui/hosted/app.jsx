@@ -34,7 +34,7 @@ function HostedLayout({ children }) {
 function HostedSurface({ eyebrow, title, description, children }) {
   return (
     <section className="onframe-hosted-surface" aria-live="polite">
-      <Card padding={24} elevation="shadow">
+      <Card padding="var(--ob-space-24)" elevation="shadow">
         <div className="onframe-hosted-stack">
           <div className="onframe-hosted-intro">
             <p className="onframe-hosted-eyebrow">{eyebrow}</p>
