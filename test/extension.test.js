@@ -83,6 +83,34 @@ test('interfaces React não reintroduzem controles HTML ou folhas legadas', () =
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'shell.css')), false);
 });
 
+test('interfaces usam apenas a escala mobile-first do design system', () => {
+  const generatedCss = new Set(['ui/options/app.css', 'ui/popup/app.css']);
+  const allowedBreakpoints = new Set([768, 1024, 1280, 1440]);
+  const cssFiles = fs
+    .readdirSync(extensionRoot, { recursive: true })
+    .map((file) => String(file).replaceAll('\\', '/'))
+    .filter((file) => file.endsWith('.css'))
+    .filter((file) => !file.startsWith('vendor/') && !generatedCss.has(file));
+
+  for (const relativeFile of cssFiles) {
+    const source = fs.readFileSync(path.join(extensionRoot, relativeFile), 'utf8');
+    const mediaQueries = Array.from(source.matchAll(/@media\s*([^{]+)\{/gu), (match) => match[1]);
+
+    assert.doesNotMatch(source, /--ob-max-w-/u, `${relativeFile} usa um token legado de container.`);
+
+    for (const query of mediaQueries) {
+      assert.doesNotMatch(query, /\(\s*max-width\s*:/u, `${relativeFile} usa max-width em @media.`);
+      for (const match of query.matchAll(/\(\s*min-width\s*:\s*(\d+)px\s*\)/gu)) {
+        const width = Number(match[1]);
+        assert.ok(allowedBreakpoints.has(width), `${relativeFile} usa o breakpoint não oficial ${width}px.`);
+      }
+    }
+  }
+
+  const commerceModule = fs.readFileSync(path.join(extensionRoot, 'modules', 'commerce', 'module.js'), 'utf8');
+  assert.doesNotMatch(commerceModule, /innerWidth\s*(?:<=|<|>=|>)\s*\d+/u);
+});
+
 test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const control = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'ThemeControl.jsx'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');

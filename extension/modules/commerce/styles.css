@@ -668,7 +668,7 @@
 
 .onframe-commerce-direct-discount-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 150px);
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -707,7 +707,7 @@
 }
 
 .onframe-commerce-direct-discount-field > div {
-  width: 160px;
+  width: 150px;
   min-width: 0;
   justify-self: end;
 }
@@ -734,7 +734,7 @@
 
 .onframe-commerce-direct-discount-date-range > div {
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+  grid-template-columns: 72px minmax(0, 1fr);
   align-items: start;
   gap: 12px !important;
 }
@@ -746,7 +746,7 @@
 }
 
 .onframe-commerce-direct-discount-date-range > div > div {
-  width: 290px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -1013,7 +1013,7 @@ body:has(
 .onframe-promotion-manager {
   display: flex;
   flex-direction: column;
-  min-height: min(680px, calc(88vh - 156px));
+  min-height: calc(100vh - 156px);
   margin: -12px -24px -20px;
   font-family: var(--ob-font);
   font-weight: var(--ob-w-regular);
@@ -1082,24 +1082,30 @@ body:has(
 }
 
 .onframe-promotion-manager-toolbar-line {
+  align-items: stretch;
+  flex-direction: column;
   justify-content: flex-end;
   gap: 12px;
 }
 
 .onframe-promotion-manager-search-line {
+  align-items: stretch;
+  flex-direction: column;
   justify-content: flex-start;
   gap: 12px;
 }
 
 .onframe-promotion-manager-search {
-  flex: 1 1 533px;
+  flex: 1 1 auto;
   min-width: 0;
-  width: 533px;
-  max-width: 533px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .onframe-promotion-manager-filter-controls {
+  align-items: stretch;
   flex: none;
+  flex-direction: column;
 }
 
 .onframe-promotion-manager-filter-group {
@@ -1200,11 +1206,16 @@ body:has(
 
 .onframe-promotion-manager-card {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
   min-height: 64px;
   padding: 12px 14px 12px 16px;
+}
+
+.onframe-promotion-manager-card > :nth-child(2),
+.onframe-promotion-manager-card > :nth-child(3) {
+  grid-column: 1 / -1;
 }
 
 .onframe-promotion-manager-name {
@@ -1306,7 +1317,7 @@ body:has(
 
 .onframe-promotion-manager-editor {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: 1fr;
   gap: 22px;
   padding: 16px 18px;
   border-top: 1px solid var(--ob-line-soft);
@@ -1324,7 +1335,7 @@ body:has(
 
 .onframe-promotion-manager-editor-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 12px;
   padding: 12px 14px;
@@ -1412,79 +1423,60 @@ body:has(
   white-space: nowrap;
 }
 
-@media (max-width: 860px) {
-  .onframe-promotion-manager-card {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .onframe-promotion-manager-card > :nth-child(2),
-  .onframe-promotion-manager-card > :nth-child(3) {
-    grid-column: 1 / -1;
-  }
-
-  .onframe-promotion-manager-editor {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 639px) {
+@media (min-width: 768px) {
   .onframe-promotion-manager {
-    min-height: calc(100vh - 156px);
+    min-height: min(680px, calc(88vh - 156px));
   }
 
   .onframe-promotion-manager-toolbar-line,
   .onframe-promotion-manager-search-line {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .onframe-promotion-manager-toolbar-actions {
-    justify-content: flex-end;
+    align-items: center;
+    flex-direction: row;
   }
 
   .onframe-promotion-manager-filter-controls {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
   }
 
   .onframe-promotion-manager-search {
-    width: 100%;
-    max-width: 100%;
+    flex: 1 1 533px;
+    width: 533px;
+    max-width: 533px;
   }
 
   .onframe-promotion-manager-editor-metrics {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .onframe-commerce-popover-root {
-    left: 12px !important;
-    right: 12px;
-    width: auto;
-  }
-
-  .onframe-commerce-popover-root.promotions {
-    width: auto;
-  }
-
-  .onframe-commerce-popover-root.price-summary {
-    width: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .onframe-commerce-direct-discount-line {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 150px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
   }
 
   .onframe-commerce-direct-discount-field > div {
-    width: 150px;
+    width: 160px;
   }
 
   .onframe-commerce-direct-discount-date-range > div {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
   }
 
   .onframe-commerce-direct-discount-date-range > div > div {
-    width: 100%;
+    width: 290px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .onframe-promotion-manager-card {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+  }
+
+  .onframe-promotion-manager-card > :nth-child(2),
+  .onframe-promotion-manager-card > :nth-child(3) {
+    grid-column: auto;
+  }
+
+  .onframe-promotion-manager-editor {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }

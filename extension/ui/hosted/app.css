@@ -23,11 +23,11 @@ body {
 
 .onframe-hosted-header {
   display: flex;
-  min-height: 64px;
+  min-height: 56px;
   align-items: center;
   justify-content: space-between;
   gap: var(--ob-s-4);
-  padding: var(--ob-s-4) max(var(--ob-s-5), calc((100vw - 1120px) / 2));
+  padding: var(--ob-s-3) var(--ob-s-4);
   border-bottom: 1px solid var(--ob-border);
   background: var(--ob-surface);
 }
@@ -53,8 +53,9 @@ body {
 
 .onframe-hosted-main {
   display: grid;
-  place-items: center;
-  padding: var(--ob-s-7) var(--ob-s-5);
+  align-items: start;
+  justify-items: center;
+  padding: var(--ob-s-5) var(--ob-s-4);
 }
 
 .onframe-hosted-surface {
@@ -126,14 +127,14 @@ body {
   text-align: center;
 }
 
-@media (max-width: 480px) {
+@media (min-width: 768px) {
   .onframe-hosted-header {
-    min-height: 56px;
-    padding: var(--ob-s-3) var(--ob-s-4);
+    min-height: 64px;
+    padding: var(--ob-s-4) max(var(--ob-s-5), calc((100vw - 1120px) / 2));
   }
 
   .onframe-hosted-main {
-    align-items: start;
-    padding: var(--ob-s-5) var(--ob-s-4);
+    align-items: center;
+    padding: var(--ob-s-7) var(--ob-s-5);
   }
 }

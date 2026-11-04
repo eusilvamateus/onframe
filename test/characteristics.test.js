@@ -17,7 +17,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
 
   assert.match(
     view,
-    /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Divider, Input, Ph, Select, Spinner, Tooltip \} from '@onblide\/ui'/
+    /import \{[\s\S]*Accordion,[\s\S]*Alert,[\s\S]*Badge,[\s\S]*Button,[\s\S]*Card,[\s\S]*Checkbox,[\s\S]*Divider,[\s\S]*Input,[\s\S]*Ph,[\s\S]*Select,[\s\S]*Spinner,[\s\S]*Tooltip[\s\S]*\} from '@onblide\/ui'/
   );
   assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*size="sm"[\s\S]*Editar características/);
   assert.doesNotMatch(view, /onframe-characteristics-action"[\s\S]*?fill=\{false\}/);
@@ -39,7 +39,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
     /<CharacteristicStatusBadge className="onframe-characteristics-extra-status" status=\{model\.status\} \/>/
   );
   assert.match(view, /<Input[\s\S]*inputMode="decimal"/);
-  assert.match(view, /endAddon=\{\([\s\S]*<Select[\s\S]*embedded[\s\S]*ariaLabel="Unidade"/);
+  assert.match(view, /endAddon=\{[\s\S]*<Select[\s\S]*embedded[\s\S]*ariaLabel="Unidade"/);
   assert.match(view, /onframe-characteristics-react-field/);
   assert.match(view, /actions\.onFieldChange\(model\.id, 'valueId'/);
   assert.match(view, /actions\.onFieldChange\(model\.id, 'valueName'/);
@@ -51,7 +51,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.doesNotMatch(controller, /LOGÍSTICA|packageDimensions\.badge/);
   assert.match(
     view,
-    /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount \}\)/
+    /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{[\s\S]*renderAction,[\s\S]*renderCatalogNotice,[\s\S]*renderFooter,[\s\S]*renderPackageDimensions,[\s\S]*renderInlineField,[\s\S]*renderSyntheticFieldLabel,[\s\S]*renderSyntheticFieldValue,[\s\S]*unmount[\s\S]*\}\)/
   );
 
   assert.match(controller, /const CharacteristicsView = rootScope\.OnFrameCharacteristicsView/);
@@ -107,8 +107,9 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
     controller,
     /function renderCompositeFieldControls|function renderCustomSelectControl|data-action="characteristics-select"/
   );
-  assert.match(styles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /grid-template-columns: 1fr/);
+  assert.match(styles, /@media \(min-width: 768px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(min-width: 1024px\)[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(styles, /grid-template-columns: minmax\(0, 1fr\) 112px/);
   assert.match(styles, /\.onframe-characteristics-package-control input:focus-visible/);
   assert.match(

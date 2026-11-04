@@ -807,9 +807,13 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   );
   assert.match(
     styles,
-    /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s
+    /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 150px\)/s
   );
-  assert.match(styles, /\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 160px;/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 150px;/s);
+  assert.match(
+    styles,
+    /@media \(min-width: 768px\)[\s\S]*\.onframe-commerce-direct-discount-line\s*{[\s\S]*minmax\(0, 160px\)[\s\S]*\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 160px;/s
+  );
   assert.match(
     styles,
     /\.onframe-commerce-direct-discount-date-range input\[type=['"]text['"]\]:focus-visible\s*{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s

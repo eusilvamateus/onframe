@@ -3331,7 +3331,7 @@
       const isSummaryPopover = state.popover === 'promotions' || state.popover === 'price';
       const preferredWidth = isSummaryPopover ? 400 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
-      const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
+      const width = Math.min(preferredWidth, availableWidth);
       const centeredLeft = rect.left + (rect.width - width) / 2;
       const left = Math.max(12, Math.min(centeredLeft, window.innerWidth - width - 12));
       const top = isListingPopover ? rect.bottom + 8 : Math.max(12, rect.bottom + 8);

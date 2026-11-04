@@ -770,54 +770,103 @@
   top: 8px;
 }
 
-@media (max-width: 640px) {
+.onblide-ml-dock-content {
+  width: min(100%, calc(100vw - 36px));
+  padding: 10px 12px;
+}
+
+.onblide-ml-dock-state {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+.onblide-ml-dock-state-actions {
+  grid-column: 1;
+  justify-content: flex-end;
+}
+
+.onblide-ml-dock-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  max-width: none;
+}
+
+.onblide-ml-dock-identity {
+  flex-basis: auto;
+}
+
+.onblide-ml-dock-main .onblide-ml-strip {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+}
+
+.onblide-ml-editor-actions {
+  justify-content: flex-start;
+  max-width: none;
+  margin-left: 0;
+}
+
+.onblide-ml-review-item {
+  grid-template-columns: 22px 1fr 48px;
+}
+
+.onblide-ml-review-preview {
+  display: none;
+}
+
+.onblide-ml-result-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
   .onblide-ml-dock-content {
-    width: min(100%, calc(100vw - 36px));
-    padding: 10px 12px;
+    width: max-content;
+    padding: 12px 14px;
   }
 
   .onblide-ml-dock-state {
-    grid-template-columns: minmax(0, 1fr);
-    width: 100%;
+    grid-template-columns: minmax(280px, 1fr) auto;
+    width: min(760px, calc(100vw - 64px));
   }
 
   .onblide-ml-dock-state-actions {
-    grid-column: 1;
-    justify-content: flex-end;
+    grid-column: 2;
+    justify-content: flex-start;
   }
 
   .onblide-ml-dock-main {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    max-width: none;
+    display: flex;
+    grid-template-columns: none;
+    max-width: calc(100vw - 64px);
   }
 
   .onblide-ml-dock-identity {
-    flex-basis: auto;
+    flex-basis: 150px;
   }
 
   .onblide-ml-dock-main .onblide-ml-strip {
-    grid-column: 1 / -1;
-    width: 100%;
-    max-width: none;
+    grid-column: auto;
+    width: max-content;
+    max-width: calc(100vw - 64px);
   }
 
   .onblide-ml-editor-actions {
-    justify-content: flex-start;
-    max-width: none;
-    margin-left: 0;
+    justify-content: flex-end;
+    max-width: 360px;
+    margin-left: auto;
   }
 
   .onblide-ml-review-item {
-    grid-template-columns: 22px 1fr 48px;
+    grid-template-columns: 22px minmax(130px, 1fr) auto 54px;
   }
 
   .onblide-ml-review-preview {
-    display: none;
+    display: grid;
   }
 
   .onblide-ml-result-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 }
