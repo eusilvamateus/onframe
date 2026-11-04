@@ -88,7 +88,7 @@ function CommerceActions({ model, actions }) {
 
 function ListingBadge() {
   return (
-    <Badge tone="green" variant="subtle" dot size="sm">
+    <Badge tone="success" appearance="soft" dot size="sm">
       Seu anúncio
     </Badge>
   );

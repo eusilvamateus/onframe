@@ -59,7 +59,7 @@ test('commerce model resume estado de preco e bloqueios', () => {
     restrictions: []
   });
   assert.strictEqual(promoted.label, 'Com promoção');
-  assert.strictEqual(promoted.tone, 'green');
+  assert.strictEqual(promoted.tone, 'success');
 
   const blocked = commerceModel.getPriceState({
     item: { price: 100, currency_id: 'BRL' },
@@ -302,7 +302,7 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   assert.match(source, /CommerceActionsView\.render\(state\.inline, buildInlineActionsViewModel\(\)/);
   assert.match(source, /CommerceActionsView\.render\(record\.controls, buildListingActionsViewModel\(record\)/);
   assert.match(source, /function commercePriceActionTone\(tone\) \{\s*return tone === 'warn' \? 'danger' : 'neutral';\s*\}/);
-  assert.match(source, /if \(tone === 'green'\) return 'success';\s*if \(tone === 'orange'\) return 'warning';\s*if \(tone === 'blue'\) return 'primary';\s*if \(tone === 'warn'\) return 'danger';\s*return 'neutral';/);
+  assert.match(source, /if \(tone === 'success'\) return 'success';\s*if \(tone === 'warning'\) return 'warning';\s*if \(tone === 'primary'\) return 'primary';\s*if \(tone === 'warn'\) return 'danger';\s*return 'neutral';/);
   assert.match(source, /function listingPromotionTone\(record\) \{[\s\S]*const state = CommerceModel\.getPromotionState\(record\.promotionSummary\);\s*return state\.tone;/);
   assert.doesNotMatch(source, /function buildInlineMarkup|function bindInlineEvents|function listingControlButton/);
   assert.doesNotMatch(source, /onframe-commerce-chip|onframe-commerce-chipbar/);
@@ -419,7 +419,7 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(source, /onframe-commerce-listing-badge/);
   assert.match(source, /badge\.className = 'onframe-commerce-listing-badge'/);
   assert.match(source, /CommerceActionsView\.renderBadge\(badge/);
-  assert.match(view, /<Badge tone="green" variant="subtle" dot size="sm">/);
+  assert.match(view, /<Badge tone="success" appearance="soft" dot size="sm">/);
   assert.doesNotMatch(source, /ob-badge/);
   assert.match(view, /Seu anúncio/);
   assert.doesNotMatch(source, /listingReadonly/);
@@ -471,10 +471,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /Modal,[\s\S]*Popover,[\s\S]*SearchInput,[\s\S]*Tabs/s);
   assert.doesNotMatch(view, /<ScrollArea/, 'o Modal já fornece a única região rolável desta tela');
   assert.match(view, /variant="pill" size="sm"/);
-  assert.doesNotMatch(view, /appearance=/);
+  assert.doesNotMatch(view, /<Tabs[^>]*appearance=/);
   assert.match(view, /onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover[\s\S]*<Tabs/s);
-  assert.match(view, /<Badge tone=\{tone\} variant="subtle" size="sm" dot>/);
-  assert.match(view, /status\.id === 'available'[\s\S]*\? 'orange'/);
+  assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
+  assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);
   assert.match(view, /label="Ativas"/);
   assert.match(view, /label="Programadas"/);
@@ -702,7 +702,7 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   assert.match(view, /<ScrollArea maxHeight=\{318\}/);
   assert.match(view, /<Accordion[\s\S]*items=\{currentGroup\.items\}/);
   assert.match(view, /defaultValue=\{model\.expandCampaign && currentGroup\.id === 'campaigns' \? \['campaign'\] : \[\]\}/);
-  assert.match(view, /<Badge tone=\{status\.tone\} variant="subtle" size="sm" dot>/);
+  assert.match(view, /<Badge tone=\{status\.tone\} appearance="soft" size="sm" dot>/);
   assert.match(source, /function promotionPopoverFinancialBenefit/);
   assert.match(source, /value: primary\.amountText \|\| primary\.percentageText/);
   assert.match(source, /Bônus do Mercado Livre/);

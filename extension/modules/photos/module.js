@@ -1690,10 +1690,10 @@
 
   function getQualityBadgeTone(quality) {
     const tone = getQualityTone(quality);
-    if (tone === 'ok') return 'green';
-    if (tone === 'warn') return 'orange';
-    if (tone === 'error') return 'red';
-    return 'grey';
+    if (tone === 'ok') return 'success';
+    if (tone === 'warn') return 'warning';
+    if (tone === 'error') return 'danger';
+    return 'neutral';
   }
 
   function formatPictureQualityScore(quality) {
@@ -1709,9 +1709,9 @@
 
   function getResolutionBadgeTone(resolution) {
     const tone = getResolutionTone(resolution);
-    if (tone === 'ok') return 'green';
-    if (tone === 'warn') return 'orange';
-    return 'grey';
+    if (tone === 'ok') return 'success';
+    if (tone === 'warn') return 'warning';
+    return 'neutral';
   }
 
   function formatDimensions(value) {

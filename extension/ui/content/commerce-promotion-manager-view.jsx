@@ -47,13 +47,13 @@ const icon = (name, size = 16) => <Ph n={name} size={size} />;
 function StatusBadge({ status }) {
   if (!status) return null;
   const tone = status.id === 'active'
-    ? 'green'
+    ? 'success'
     : status.id === 'programmed'
-      ? 'blue'
+      ? 'primary'
       : status.id === 'available'
-        ? 'orange'
-        : 'grey';
-  return <Badge tone={tone} variant="subtle" size="sm" dot>{status.label}</Badge>;
+        ? 'warning'
+        : 'neutral';
+  return <Badge tone={tone} appearance="soft" size="sm" dot>{status.label}</Badge>;
 }
 
 function Metric({ label, value, tone = '' }) {
@@ -310,7 +310,7 @@ function PromotionSection({ definition, rows, actions }) {
   const types = promotionTypeDefinitions.filter((type) => rows.some((row) => row.type === type.id));
   return (
     <section className="onframe-promotion-manager-section">
-      <h2>{definition.title}<Badge tone="grey" variant="numeric" size="sm">{rows.length}</Badge></h2>
+      <h2>{definition.title}<Badge tone="neutral" variant="numeric" size="sm">{rows.length}</Badge></h2>
       <p>{definition.description}</p>
       {types.map((type) => (
         <div className="onframe-promotion-manager-subgroup" key={type.id}>
@@ -394,7 +394,7 @@ function PromotionManager({ model, actions }) {
                     kind="secondary"
                     icon={icon('sliders-horizontal', 18)}
                     count={filterCount || undefined}
-                    countTone="blue"
+                    countTone="primary"
                   >
                     Filtros
                   </Button>

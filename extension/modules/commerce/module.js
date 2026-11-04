@@ -970,9 +970,9 @@
     }
 
     function commerceActionTone(tone) {
-      if (tone === 'green') return 'success';
-      if (tone === 'orange') return 'warning';
-      if (tone === 'blue') return 'primary';
+      if (tone === 'success') return 'success';
+      if (tone === 'warning') return 'warning';
+      if (tone === 'primary') return 'primary';
       if (tone === 'warn') return 'danger';
       return 'neutral';
     }
@@ -1028,7 +1028,7 @@
         return {
           mode: 'loading',
           title: 'Preço',
-          badge: { label: 'Carregando', tone: 'grey' },
+          badge: { label: 'Carregando', tone: 'neutral' },
           error: ''
         };
       }
@@ -1037,7 +1037,7 @@
         return {
           mode: 'error',
           title: 'Preço',
-          badge: { label: 'Aviso', tone: 'orange' },
+          badge: { label: 'Aviso', tone: 'warning' },
           error: shortMessage(state.priceError)
         };
       }
@@ -1079,7 +1079,7 @@
       if (state.promotionLoading) {
         return {
           mode: 'loading',
-          badge: { label: 'Carregando', tone: 'grey' },
+          badge: { label: 'Carregando', tone: 'neutral' },
           error: ''
         };
       }
@@ -1087,7 +1087,7 @@
       if (state.promotionError) {
         return {
           mode: 'error',
-          badge: { label: 'Aviso', tone: 'orange' },
+          badge: { label: 'Aviso', tone: 'warning' },
           error: shortMessage(state.promotionError)
         };
       }
@@ -2054,9 +2054,9 @@
 
     function promotionDisplayTone(entry) {
       const status = String(entry && entry.display_status || '').toLowerCase();
-      if (status === 'active') return 'green';
-      if (status === 'programmed') return 'blue';
-      if (status === 'available') return 'orange';
+      if (status === 'active') return 'success';
+      if (status === 'programmed') return 'primary';
+      if (status === 'available') return 'warning';
       return 'muted';
     }
 
@@ -2234,10 +2234,10 @@
     }
 
     function priceBadgeTone(tone) {
-      if (tone === 'green') return 'green';
-      if (tone === 'blue') return 'blue';
-      if (tone === 'orange' || tone === 'warn') return 'orange';
-      return 'grey';
+      if (tone === 'success') return 'success';
+      if (tone === 'primary') return 'primary';
+      if (tone === 'warning' || tone === 'warn') return 'warning';
+      return 'neutral';
     }
 
     function buildPriceBulkStatus() {

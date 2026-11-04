@@ -296,7 +296,7 @@ test('opcoes filtram e paginam o historico detalhado', async () => {
   assert.equal(filterPopover.props.trigger.props.size, 'md');
   assert.equal(filterPopover.props.trigger.props.children, 'Filtros');
   assert.equal(filterPopover.props.trigger.props.count, undefined);
-  assert.equal(filterPopover.props.trigger.props.countTone, 'blue');
+  assert.equal(filterPopover.props.trigger.props.countTone, 'primary');
   let filterRenderer;
   await act(async () => { filterRenderer = create(filterPopover.props.children(() => {})); });
   const filterSelects = filterRenderer.root.findAllByType(Select);
@@ -318,7 +318,7 @@ test('opcoes mantem o icone do estado vazio em um tile de tamanho fixo', async (
     renderer = create(<ItemEditHistory accounts={[]} members={[]} currentUser={null} admin={false} />);
   });
 
-  const emptyIcon = renderer.root.findByProps({ className: 'onframe-popup-icon-tile onframe-popup-icon-tile--green' });
+  const emptyIcon = renderer.root.findByProps({ className: 'onframe-popup-icon-tile onframe-popup-icon-tile--success' });
   assert.equal(emptyIcon.props.children.props.n, 'clock-counter-clockwise');
   renderer.unmount();
 });

@@ -3,15 +3,15 @@ import { Avatar, Button, Card, Link, Ph, Tooltip } from '@onblide/ui';
 import { formatDate, formatRelativeDate, openExternal } from './runtime';
 
 const TYPE_META = {
-  price: { label: 'Preço', icon: 'currency-circle-dollar', tone: 'green' },
-  description: { label: 'Descrição', icon: 'text-align-left', tone: 'blue' },
-  characteristics: { label: 'Ficha técnica', icon: 'list-checks', tone: 'orange' },
-  promotion: { label: 'Promoção', icon: 'tag', tone: 'red' },
-  pictures: { label: 'Fotos', icon: 'image', tone: 'blue' }
+  price: { label: 'Preço', icon: 'currency-circle-dollar', tone: 'success' },
+  description: { label: 'Descrição', icon: 'text-align-left', tone: 'primary' },
+  characteristics: { label: 'Ficha técnica', icon: 'list-checks', tone: 'warning' },
+  promotion: { label: 'Promoção', icon: 'tag', tone: 'danger' },
+  pictures: { label: 'Fotos', icon: 'image', tone: 'primary' }
 };
 
 export function itemEditTypeMeta(type) {
-  return TYPE_META[type] || { label: 'Alteração', icon: 'pencil-simple', tone: 'grey' };
+  return TYPE_META[type] || { label: 'Alteração', icon: 'pencil-simple', tone: 'neutral' };
 }
 
 export function itemEditTitle(event) {
@@ -184,7 +184,7 @@ function PromotionDetails({ details }) {
 
   return <div className="onframe-history-promotion-details">
     <div className="onframe-history-detail-heading">
-      <span className="onframe-history-type-icon onframe-history-type-icon--red"><Ph n="tag" size={17} /></span>
+      <span className="onframe-history-type-icon onframe-history-type-icon--danger"><Ph n="tag" size={17} /></span>
       <div>
         <span>{readablePromotionType(promotion.type)}</span>
         <strong>{promotion.name || 'Promoção sem nome informado'}</strong>
@@ -225,7 +225,7 @@ function ActorLink({ event, onOpenActor }) {
   return <div className="onframe-history-metadata-item onframe-history-actor-context">
     <Avatar name={actorName} src={event?.actor?.avatarUrl} alt="" size={22} />
     <div><span>Responsável</span>
-      {onOpenActor ? <Link href="#configuracoes-workspace-people" variant="quiet" onClick={(clickEvent) => { clickEvent.preventDefault(); onOpenActor(event.actor); }}>{actorName}</Link> : <strong>{actorName}</strong>}
+      {onOpenActor ? <Link href="#configuracoes-workspace-people" tone="muted" onClick={(clickEvent) => { clickEvent.preventDefault(); onOpenActor(event.actor); }}>{actorName}</Link> : <strong>{actorName}</strong>}
     </div>
   </div>;
 }
@@ -250,7 +250,7 @@ function ItemReference({ event }) {
   if (!event?.item?.permalink) return <span className="onframe-history-item-reference">Anúncio {itemId}</span>;
   return <Link
     href={event.item.permalink}
-    variant="quiet"
+    tone="muted"
     className="onframe-history-item-reference"
     onClick={(clickEvent) => { clickEvent.preventDefault(); openExternal(event.item.permalink); }}
   >

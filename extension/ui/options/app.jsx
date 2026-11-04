@@ -159,7 +159,7 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
                     <p className="onframe-list-title">{accountName(account)}</p>
                     <p className="onframe-list-meta">Mercado Livre</p>
                   </div>
-                  <Badge tone={account.enabled === false ? 'grey' : 'green'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
+                  <Badge tone={account.enabled === false ? 'neutral' : 'success'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
                 </div>
               ))}
             </div>
@@ -362,7 +362,7 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
               strong
               wrap
               description={<>{session.operatingSystem}<br />Última atividade: {formatDate(session.lastSeenAt || session.createdAt)}<br />Conectado desde: {formatDate(session.createdAt)}</>}
-              meta={session.current ? <Badge tone="blue">Sessão atual</Badge> : undefined}
+              meta={session.current ? <Badge tone="primary">Sessão atual</Badge> : undefined}
               trailing={<Button kind="secondary" size="sm" disabled={loading} icon={<Ph n="sign-out" size={16} />} onClick={() => setConfirmation(session)}>Sair</Button>}
             />
           ))}

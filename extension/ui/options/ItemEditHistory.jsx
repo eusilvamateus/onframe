@@ -170,7 +170,7 @@ function HistoryFilters({ accountOptions, peopleOptions, admin, accountId, userI
     width={308}
     align="end"
     onOpenChange={syncDraft}
-    trigger={<Button kind="secondary" size="md" count={activeCount || undefined} countTone="blue" icon={<Ph n="funnel-simple" size={17} />}>Filtros</Button>}
+    trigger={<Button kind="secondary" size="md" count={activeCount || undefined} countTone="primary" icon={<Ph n="funnel-simple" size={17} />}>Filtros</Button>}
   >
     {(close) => <>
       <div className="onframe-history-filter-form" role="group" aria-label="Filtros do histórico" tabIndex={0}>
@@ -353,7 +353,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
     {error && <Alert tone="danger" action="Tentar novamente" onAction={() => void load()}>{error}</Alert>}
     {loading ? <LoadingHistory /> : events.length === 0 && !error ? <Card padding={24}>
       <div className="onframe-history-empty">
-        <span className="onframe-popup-icon-tile onframe-popup-icon-tile--green"><Ph n="clock-counter-clockwise" size={18} /></span>
+        <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success"><Ph n="clock-counter-clockwise" size={18} /></span>
         <div><h3>{hasFilters ? 'Nenhum resultado encontrado' : 'Nenhuma alteração registrada'}</h3><p>{hasFilters ? 'Revise os filtros aplicados.' : 'As próximas edições confirmadas pelo Mercado Livre aparecerão aqui.'}</p></div>
       </div>
     </Card> : events.length > 0 ? <>

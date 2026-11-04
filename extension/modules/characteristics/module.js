@@ -650,7 +650,7 @@
       if (field.pending) {
         return {
           kind: 'pending',
-          tone: 'orange',
+          tone: 'warning',
           label: 'Pendente',
           title: hidden
             ? 'Campo existe no contrato da categoria, ainda não está preenchido e não aparece na ficha pública.'
@@ -662,7 +662,7 @@
       if (showReadOnlyBadge) {
         return {
           kind: 'readonly',
-          tone: 'grey',
+          tone: 'neutral',
           label: 'Leitura',
           title: hidden ? `${readOnlyTitle} Campo não exibido na ficha pública.` : readOnlyTitle
         };
@@ -670,7 +670,7 @@
       if (hidden) {
         return {
           kind: 'hidden',
-          tone: 'blue',
+          tone: 'primary',
           label: 'Oculto',
           title: 'Campo não exibido na ficha pública.'
         };

@@ -30,7 +30,7 @@ function PriceHeader({ title, badge, onClose }) {
     <header className="onframe-commerce-price-view-head">
       <strong>{title}</strong>
       {badge?.label && (
-        <Badge tone={badge.tone} variant="subtle" size="sm" dot>
+        <Badge tone={badge.tone} appearance="soft" size="sm" dot>
           {badge.label}
         </Badge>
       )}
@@ -56,7 +56,7 @@ function PriceSummaryTitle({ field, promoted }) {
         <span>{field?.label || 'Preço atual'}</span>
         <strong>{field?.value || '—'}</strong>
       </span>
-      {promoted && <Badge tone="green" variant="subtle" size="sm" dot>Com promoção</Badge>}
+      {promoted && <Badge tone="success" appearance="soft" size="sm" dot>Com promoção</Badge>}
     </span>
   );
 }

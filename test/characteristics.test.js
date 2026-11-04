@@ -38,7 +38,7 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /actions\.onFieldChange\(model\.id, 'unit'/);
   assert.doesNotMatch(view, /<Select[\s\S]*label="Unidade"/);
   assert.doesNotMatch(view, /model\.badge/);
-  assert.match(view, /<Badge tone=\{status\.tone\} variant="outline" dot size="sm">/);
+  assert.match(view, /<Badge tone=\{status\.tone\} appearance="outline" dot size="sm">/);
   assert.doesNotMatch(controller, /LOGÍSTICA|packageDimensions\.badge/);
   assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount \}\)/);
 

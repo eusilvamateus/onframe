@@ -92,7 +92,7 @@ function EditorDiagnostics({ diagnostics }) {
         <span>{item.dimensions}</span>
       </div>
       <span className="onblide-ml-diagnostic-score">
-        <Badge tone={item.badgeTone} variant="subtle" dot={false} size="sm">
+        <Badge tone={item.badgeTone} appearance="soft" dot={false} size="sm">
           {item.score}
         </Badge>
       </span>
@@ -204,7 +204,7 @@ function OptimizeReviewItem({ item, onToggle }) {
         <span><Ph n="arrows-clockwise" size={14} /></span>
         <img src={item.url} alt="" />
       </div>
-      <Badge tone={item.badgeTone} variant="subtle" dot={false} size="sm">
+      <Badge tone={item.badgeTone} appearance="soft" dot={false} size="sm">
         {item.score}
       </Badge>
     </div>
@@ -272,7 +272,7 @@ function OptimizeResultItem({ item }) {
           <figcaption>Original · {item.originalDimensions}</figcaption>
           {item.beforeScore && (
             <span className="onblide-ml-result-score">
-              <Badge tone="orange" variant="subtle" dot={false} size="sm">
+              <Badge tone="warning" appearance="soft" dot={false} size="sm">
                 {item.beforeScore}
               </Badge>
             </span>
@@ -282,7 +282,7 @@ function OptimizeResultItem({ item }) {
           <img src={item.afterUrl} alt={`Imagem ${item.index + 1} otimizada`} />
           <figcaption>Otimizada · {item.optimizedDimensions}</figcaption>
           <span className="onblide-ml-result-score">
-            <Badge tone="green" variant="subtle" dot={false} size="sm">100%</Badge>
+            <Badge tone="success" appearance="soft" dot={false} size="sm">100%</Badge>
           </span>
         </figure>
       </div>
@@ -401,7 +401,7 @@ function PictureTile({ picture, actions }) {
       <span className="onblide-ml-order">{picture.index + 1}</span>
       {picture.quality && (
         <span className="onblide-ml-quality-indicator" aria-hidden="true">
-          <Badge tone={picture.quality.badgeTone} variant="solid" dot={false} size="sm">
+          <Badge tone={picture.quality.badgeTone} appearance="solid" dot={false} size="sm">
             {picture.quality.label}
           </Badge>
         </span>

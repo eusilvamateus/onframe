@@ -47,9 +47,9 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
   assert.match(spreadsheetModal, /Trocar arquivo[^]*Nada para importar/u);
   assert.match(spreadsheetModal, /key: 'name', label: 'Produto'[^]*key: 'sku', label: 'SKU'[^]*label: result \? 'Resultado' : 'Ação'/u);
   assert.match(spreadsheetModal, /disabled=\{busy \|\| actionable === 0\}[^]*Importar \$\{actionable\}/u);
-  assert.match(spreadsheetModal, /\['Novos', values\.create, 'green'\][^]*\['Atualizações', values\.update, 'blue'\][^]*\['Sem alteração', values\.unchanged, 'grey'\][^]*\['Com erro', values\.error, 'red'\]/u);
+  assert.match(spreadsheetModal, /\['Novos', values\.create, 'success'\][^]*\['Atualizações', values\.update, 'primary'\][^]*\['Sem alteração', values\.unchanged, 'neutral'\][^]*\['Com erro', values\.error, 'danger'\]/u);
   assert.match(spreadsheetModal, /onframe-product-import-summary-\$\{tone\}[^]*onframe-product-import-summary-marker/u);
-  assert.match(sharedStyles, /onframe-product-import-summary-green[^}]*var\(--ob-green\)[^]*onframe-product-import-summary-blue[^}]*var\(--ob-blue\)[^]*onframe-product-import-summary-red[^}]*var\(--ob-danger\)/u);
+  assert.match(sharedStyles, /onframe-product-import-summary-success[^}]*var\(--ob-green\)[^]*onframe-product-import-summary-primary[^}]*var\(--ob-blue\)[^]*onframe-product-import-summary-danger[^}]*var\(--ob-danger\)/u);
   assert.match(sharedStyles, /\.onframe-product-custom-cost-chips\s*\{[^}]*flex-wrap: wrap;/u);
   assert.match(sharedStyles, /\.onframe-product-custom-cost-chip-name\s*\{[^}]*opacity: \.72;/u);
   assert.match(sharedStyles, /\.onframe-product-custom-cost-chip-value\s*\{[^}]*font-family: var\(--ob-font-mono\);[^}]*font-variant-numeric: tabular-nums;/u);

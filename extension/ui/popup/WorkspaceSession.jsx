@@ -11,7 +11,7 @@ function memberAccess(member) {
   return `Colaborador · ${count === 0 ? 'Nenhuma conta' : `${count} ${count === 1 ? 'conta' : 'contas'}`}`;
 }
 
-function PopupIcon({ name, tone = 'blue' }) {
+function PopupIcon({ name, tone = 'primary' }) {
   return <span className={`onframe-popup-icon-tile onframe-popup-icon-tile--${tone}`}><Ph n={name} size={18} /></span>;
 }
 
@@ -186,7 +186,7 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
                   strong
                   onClick={self ? undefined : () => setDialog({ type: 'member', member })}
                   trailing={self
-                    ? <Badge tone="blue">Você</Badge>
+                    ? <Badge tone="primary">Você</Badge>
                     : <><Tooltip label="Remover pessoa" placement="left"><Button kind="quiet" tone="danger" size="sm" iconOnly disabled={busy} aria-label={`Remover ${member.name || member.email}`} onClick={(event) => { event.stopPropagation(); setDialog({ type: 'member-delete', member }); }} icon={<Ph n="trash" size={16} />} /></Tooltip><Ph n="caret-right" size={16} /></>}
                 />;
               })}
@@ -201,7 +201,7 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
               {invitations.map((invitation) => <ListItem
                 key={invitation.id}
                 className="onframe-popup-card-row"
-                leading={<PopupIcon name="envelope-simple" tone="orange" />}
+                leading={<PopupIcon name="envelope-simple" tone="warning" />}
                 title={invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
                 description={`${invitation.role === 'admin' ? 'Administrador' : 'Colaborador'} · expira ${formatDate(invitation.expiresAt)}`}
                 wrap
@@ -216,7 +216,7 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
               <ListItem
                 className="onframe-popup-card-row"
                 tone="danger"
-                leading={<PopupIcon name="sign-out" tone="red" />}
+                leading={<PopupIcon name="sign-out" tone="danger" />}
                 title="Sair do workspace"
                 description={canLeave ? 'Seu acesso será encerrado.' : 'Outro administrador é necessário para sair.'}
                 disabled={!canLeave || busy}

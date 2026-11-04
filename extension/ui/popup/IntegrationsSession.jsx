@@ -114,7 +114,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
 
           {loading ? <LoadingAccounts /> : accounts.length === 0 ? <Card padding={16}>
             <div className="onframe-popup-empty-state">
-              <span className="onframe-popup-icon-tile onframe-popup-icon-tile--orange"><Ph n="storefront" size={18} /></span>
+              <span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning"><Ph n="storefront" size={18} /></span>
               <div><h3>{admin ? 'Nenhuma conta conectada' : 'Nenhuma conta atribuída'}</h3><p>{admin ? 'Conecte uma conta para disponibilizá-la neste workspace.' : 'Um administrador precisa atribuir uma conta ao seu acesso.'}</p></div>
               {admin && <Button size="sm" disabled={busy} icon={<Ph n="plus-circle" size={17} />} onClick={() => void connectAccount()}>Conectar</Button>}
             </div>

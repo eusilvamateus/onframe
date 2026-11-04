@@ -15,7 +15,7 @@ export function WorkspacePeople({ members, invitations, currentUserId, loading, 
       key: 'name', label: 'Pessoa', bold: true,
       render: (_, member) => <div className="onframe-row"><Avatar name={member.name || member.email} src={member.avatarUrl} alt="" size={32} /><div><p className="onframe-list-title">{member.name || member.email}{member.id === currentUserId ? ' (você)' : ''}</p><p className="onframe-list-meta">{member.email}</p></div></div>
     },
-    { key: 'role', label: 'Permissão', render: (_, member) => <Badge tone={member.role === 'admin' ? 'blue' : 'grey'}>{member.role === 'admin' ? 'Administrador' : 'Colaborador'}</Badge> },
+    { key: 'role', label: 'Permissão', render: (_, member) => <Badge tone={member.role === 'admin' ? 'primary' : 'neutral'}>{member.role === 'admin' ? 'Administrador' : 'Colaborador'}</Badge> },
     { key: 'accounts', label: 'Contas', render: (_, member) => accountAssignments(member) },
     { key: 'actions', label: '', width: 210, render: (_, member) => member.id === currentUserId ? null : <div className="onframe-actions"><Button kind="secondary" size="sm" disabled={loading} onClick={() => onEdit(member)}>Gerenciar</Button><Button kind="ghost" size="sm" disabled={loading} onClick={() => onRemove(member)}>Remover</Button></div> }
   ];

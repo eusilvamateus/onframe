@@ -24,7 +24,7 @@ export function SecuritySettings({ profile, securityOverview, loading, onOpenSec
       </section>
       <section className="onframe-stack" aria-label="Proteção da conta">
         <SectionHeader title="Proteção da conta" />
-        <List as="nav" dividers ariaLabel="Proteção da conta"><ListItem leading={<Ph n="shield-check" size={20} />} title="Verificação em duas etapas" description="Código de um aplicativo autenticador." meta={ready ? <Badge tone={securityOverview.factors.length ? 'green' : 'grey'}>{securityOverview.factors.length ? 'Ativada' : 'Não ativada'}</Badge> : unavailable} {...navigation('#settings-account-mfa', onOpenMfa)} /></List>
+        <List as="nav" dividers ariaLabel="Proteção da conta"><ListItem leading={<Ph n="shield-check" size={20} />} title="Verificação em duas etapas" description="Código de um aplicativo autenticador." meta={ready ? <Badge tone={securityOverview.factors.length ? 'success' : 'neutral'}>{securityOverview.factors.length ? 'Ativada' : 'Não ativada'}</Badge> : unavailable} {...navigation('#settings-account-mfa', onOpenMfa)} /></List>
       </section>
       <section className="onframe-stack" aria-label="Sessões">
         <SectionHeader title="Sessões ativas" copy="Revogue navegadores que não precisam mais acessar sua conta." />

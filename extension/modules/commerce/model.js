@@ -48,7 +48,7 @@
       detail: hasPromotion ? 'Preço com promoção ativa.' : 'Preço padrão editável.',
       label: hasPromotion ? 'Com promoção' : 'Editável',
       blocker: null,
-      tone: 'green'
+      tone: 'success'
     };
   }
 
@@ -67,7 +67,7 @@
         eligibleCount,
         scheduledCount,
         label: activeCount === 1 ? 'Promoção ativa' : `${activeCount} ativas`,
-        tone: 'green',
+        tone: 'success',
         summary: activeCount === 1 ? 'Existe promoção em vigor.' : `${activeCount} promoções em vigor.`
       };
     }
@@ -79,7 +79,7 @@
         eligibleCount,
         scheduledCount,
         label: 'Programada',
-        tone: 'blue',
+        tone: 'primary',
         summary: 'Promoção programada.'
       };
     }
@@ -91,7 +91,7 @@
         eligibleCount,
         scheduledCount,
         label: 'Elegível',
-        tone: 'orange',
+        tone: 'warning',
         summary: `${eligibleCount} oportunidade${eligibleCount === 1 ? '' : 's'} disponível${eligibleCount === 1 ? '' : 'is'}.`
       };
     }

@@ -29,7 +29,7 @@ function PromotionsHeader({ badge, onClose }) {
   return (
     <header className="onframe-commerce-promotions-view-head">
       <strong>Promoções</strong>
-      {badge?.label && <Badge tone={badge.tone} variant="subtle" size="sm">{badge.label}</Badge>}
+      {badge?.label && <Badge tone={badge.tone} appearance="soft" size="sm">{badge.label}</Badge>}
       <Button
         kind="neutral"
         size="sm"
@@ -53,7 +53,7 @@ function SummaryTitle({ icon, tone, title, subtitle, status }) {
         {subtitle && <span>{subtitle}</span>}
       </span>
       {status?.label && (
-        <Badge tone={status.tone} variant="subtle" size="sm" dot>
+        <Badge tone={status.tone} appearance="soft" size="sm" dot>
           {status.label}
         </Badge>
       )}

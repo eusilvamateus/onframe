@@ -4,26 +4,26 @@ import { sendRemoteMessage, userError } from '../shared/runtime';
 import { downloadProductTemplate, parseProductSpreadsheetFile } from './product-spreadsheet';
 
 const ACTION_META = {
-  create: { label: 'Novo produto', tone: 'green' },
-  update: { label: 'Será atualizado', tone: 'blue' },
-  unchanged: { label: 'Nenhuma mudança', tone: 'grey' },
-  error: { label: 'Requer revisão', tone: 'red' },
-  created: { label: 'Criado', tone: 'green' },
-  updated: { label: 'Atualizado', tone: 'blue' },
-  rejected: { label: 'Rejeitado', tone: 'red' }
+  create: { label: 'Novo produto', tone: 'success' },
+  update: { label: 'Será atualizado', tone: 'primary' },
+  unchanged: { label: 'Nenhuma mudança', tone: 'neutral' },
+  error: { label: 'Requer revisão', tone: 'danger' },
+  created: { label: 'Criado', tone: 'success' },
+  updated: { label: 'Atualizado', tone: 'primary' },
+  rejected: { label: 'Rejeitado', tone: 'danger' }
 };
 
 function Summary({ values, result = false }) {
   const entries = result ? [
-    ['Criados', values.created, 'green'],
-    ['Atualizados', values.updated, 'blue'],
-    ['Sem alteração', values.unchanged, 'grey'],
-    ['Rejeitados', values.rejected, 'red']
+    ['Criados', values.created, 'success'],
+    ['Atualizados', values.updated, 'primary'],
+    ['Sem alteração', values.unchanged, 'neutral'],
+    ['Rejeitados', values.rejected, 'danger']
   ] : [
-    ['Novos', values.create, 'green'],
-    ['Atualizações', values.update, 'blue'],
-    ['Sem alteração', values.unchanged, 'grey'],
-    ['Com erro', values.error, 'red']
+    ['Novos', values.create, 'success'],
+    ['Atualizações', values.update, 'primary'],
+    ['Sem alteração', values.unchanged, 'neutral'],
+    ['Com erro', values.error, 'danger']
   ];
   const total = Number(values.total || 0);
   return <div className="onframe-product-import-summary" role="status">

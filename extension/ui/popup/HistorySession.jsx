@@ -61,7 +61,7 @@ export function HistorySession({ connection, onBack, onOpenFullHistory, footer, 
           </div>
           {loading ? <LoadingHistory /> : events.length === 0 ? <Card padding={16}>
             <div className="onframe-popup-empty-state">
-              <span className="onframe-popup-icon-tile onframe-popup-icon-tile--green"><Ph n="clock-counter-clockwise" size={18} /></span>
+              <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success"><Ph n="clock-counter-clockwise" size={18} /></span>
               <div><h3>Nenhuma alteração registrada</h3><p>As próximas edições confirmadas aparecerão aqui.</p></div>
             </div>
           </Card> : <div className="onframe-popup-history-list">

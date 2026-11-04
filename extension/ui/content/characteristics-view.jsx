@@ -147,7 +147,7 @@ function CharacteristicStatusBadge({ status, className }) {
   if (!status) return null;
   return (
     <span className={className} title={status.title}>
-      <Badge tone={status.tone} variant="outline" dot size="sm">
+      <Badge tone={status.tone} appearance="outline" dot size="sm">
         {status.label}
       </Badge>
     </span>

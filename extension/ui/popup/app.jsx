@@ -218,7 +218,7 @@ function Popup() {
       <List className="onframe-popup-home-list" ariaLabel="Sessões da extensão">
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"
-          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--blue"><Ph n="users-three" size={18} /></span>}
+          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--primary"><Ph n="users-three" size={18} /></span>}
           title="Workspace"
           description={workspaceSummary(overview, connection.workspace.role)}
           strong
@@ -227,7 +227,7 @@ function Popup() {
         />
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"
-          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--orange"><Ph n="storefront" size={18} /></span>}
+          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning"><Ph n="storefront" size={18} /></span>}
           title="Integrações"
           description={integrationsSummary(overview)}
           strong
@@ -236,7 +236,7 @@ function Popup() {
         />
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"
-          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--green"><Ph n="clock-counter-clockwise" size={18} /></span>}
+          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--success"><Ph n="clock-counter-clockwise" size={18} /></span>}
           title="Histórico"
           description={historySummary(overview)}
           strong
