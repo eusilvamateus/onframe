@@ -25,10 +25,11 @@ test('normaliza a última release oficial e aplica cache à consulta', async () 
 });
 
 test('rejeita resposta externa ou sem versão semântica válida', async () => {
-  const fetcher = (async () => Response.json({
-    tag_name: 'latest',
-    html_url: 'https://example.com/release'
-  })) as typeof fetch;
+  const fetcher = (async () =>
+    Response.json({
+      tag_name: 'latest',
+      html_url: 'https://example.com/release'
+    })) as typeof fetch;
 
   await assert.rejects(() => latestOnFrameRelease(fetcher), /release_payload_invalid/);
 });

@@ -52,9 +52,11 @@ function ConnectionPage({ config }) {
   const context = useMemo(() => readConnectionContext(location.href), []);
   const recovery = context.type === 'recovery';
   const [phase, setPhase] = useState(recovery ? 'recovery' : 'loading');
-  const [notice, setNotice] = useState(!context.flow || !context.accessToken
-    ? { tone: 'danger', message: 'Abra a extensão OnFrame para iniciar o acesso.' }
-    : null);
+  const [notice, setNotice] = useState(
+    !context.flow || !context.accessToken
+      ? { tone: 'danger', message: 'Abra a extensão OnFrame para iniciar o acesso.' }
+      : null
+  );
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -83,7 +85,12 @@ function ConnectionPage({ config }) {
       clearConnectionFragment();
       void synchronize()
         .then(() => setNotice({ tone: 'success', message: 'E-mail confirmado. Volte à extensão e entre novamente.' }))
-        .catch(() => setNotice({ tone: 'danger', message: 'Não foi possível verificar a alteração. Volte à extensão e entre novamente.' }))
+        .catch(() =>
+          setNotice({
+            tone: 'danger',
+            message: 'Não foi possível verificar a alteração. Volte à extensão e entre novamente.'
+          })
+        )
         .finally(() => setPhase('done'));
       return;
     }
@@ -105,7 +112,10 @@ function ConnectionPage({ config }) {
         clearConnectionFragment();
         setNotice({ tone: 'success', message: 'Acesso confirmado. Volte à extensão para continuar.' });
       } catch {
-        setNotice({ tone: 'danger', message: 'Não foi possível concluir o acesso. Solicite um novo link pela extensão.' });
+        setNotice({
+          tone: 'danger',
+          message: 'Não foi possível concluir o acesso. Solicite um novo link pela extensão.'
+        });
       } finally {
         setPhase('done');
       }
@@ -141,7 +151,11 @@ function ConnectionPage({ config }) {
       setPassword('');
       setConfirmation('');
       setPhase('done');
-      try { await synchronize(); } catch { /* O acesso antigo será recusado na próxima requisição autenticada. */ }
+      try {
+        await synchronize();
+      } catch {
+        /* O acesso antigo será recusado na próxima requisição autenticada. */
+      }
       setNotice({ tone: 'success', message: 'Senha atualizada. Volte à extensão e entre novamente.' });
     } catch {
       setNotice({ tone: 'danger', message: 'Não foi possível atualizar a senha. Solicite um novo link.' });
@@ -173,7 +187,10 @@ function ConnectionPage({ config }) {
             error={passwordError}
             disabled={busy}
             autoFocus
-            onChange={(event) => { setPassword(event.target.value); setPasswordError(''); }}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setPasswordError('');
+            }}
           />
           <Input
             label="Confirme a nova senha"
@@ -183,7 +200,10 @@ function ConnectionPage({ config }) {
             value={confirmation}
             error={confirmationError}
             disabled={busy}
-            onChange={(event) => { setConfirmation(event.target.value); setConfirmationError(''); }}
+            onChange={(event) => {
+              setConfirmation(event.target.value);
+              setConfirmationError('');
+            }}
           />
           <Button
             type="submit"
@@ -223,7 +243,13 @@ function InvitationPage({ config }) {
 
 function HostedApp({ config }) {
   if (!config) {
-    return <HostedLayout><HostedSurface eyebrow="ONFRAME" title="Página indisponível"><Alert tone="danger">Não foi possível carregar esta página.</Alert></HostedSurface></HostedLayout>;
+    return (
+      <HostedLayout>
+        <HostedSurface eyebrow="ONFRAME" title="Página indisponível">
+          <Alert tone="danger">Não foi possível carregar esta página.</Alert>
+        </HostedSurface>
+      </HostedLayout>
+    );
   }
   return (
     <HostedLayout>

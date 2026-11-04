@@ -69,14 +69,24 @@ function CommerceActions({ model, actions }) {
       onClick={containClick}
     >
       <Chip
-        label={<><Ph n="currency-dollar" size={13} /><span>{model.price.label}</span></>}
+        label={
+          <>
+            <Ph n="currency-dollar" size={13} />
+            <span>{model.price.label}</span>
+          </>
+        }
         size="sm"
         tone={model.price.tone}
         selected={model.active === 'price'}
         onToggle={() => actions.onChange(model.active === 'price' ? null : 'price')}
       />
       <Chip
-        label={<><Ph n="tag" size={13} /><span>{model.promotions.label}</span></>}
+        label={
+          <>
+            <Ph n="tag" size={13} />
+            <span>{model.promotions.label}</span>
+          </>
+        }
         size="sm"
         tone={model.promotions.tone}
         selected={model.active === 'promotions'}
@@ -106,10 +116,13 @@ function getRoot(host) {
 function render(host, model, actions = {}) {
   getRoot(host).render(
     <CommerceActionsViewBoundary onError={actions.onError || (() => {})}>
-      <CommerceActions model={model} actions={{
-        onChange: actions.onChange || (() => {}),
-        onReload: actions.onReload || (() => {})
-      }} />
+      <CommerceActions
+        model={model}
+        actions={{
+          onChange: actions.onChange || (() => {}),
+          onReload: actions.onReload || (() => {})
+        }}
+      />
     </CommerceActionsViewBoundary>
   );
 }

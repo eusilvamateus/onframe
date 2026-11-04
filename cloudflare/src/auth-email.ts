@@ -100,9 +100,9 @@ function normalizeEmail(value: unknown): string | null {
 }
 
 function sha256Hex(value: string): Promise<string> {
-  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)).then((digest) => (
-    Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-  ));
+  return crypto.subtle
+    .digest('SHA-256', new TextEncoder().encode(value))
+    .then((digest) => Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join(''));
 }
 
 function requiredText(value: string | undefined, code: string): string {
@@ -144,7 +144,12 @@ function tokenHashFor(data: EmailData, key: 'token_hash' | 'token_hash_new' = 't
   return hash;
 }
 
-function verificationUrl(env: AuthEmailRuntimeEnv, actionType: string, tokenHash: string, redirectTo: string | undefined): string {
+function verificationUrl(
+  env: AuthEmailRuntimeEnv,
+  actionType: string,
+  tokenHash: string,
+  redirectTo: string | undefined
+): string {
   const baseUrl = requiredText(env.SUPABASE_URL, 'auth_email_hook_unconfigured');
   let url: URL;
   try {
@@ -291,12 +296,7 @@ ${options.warning ? plainNote('Não foi você?', options.warning) : ''}`;
   });
 }
 
-function notificationEmail(options: {
-  title: string;
-  eyebrow: string;
-  description: string;
-  note: string;
-}): string {
+function notificationEmail(options: { title: string; eyebrow: string; description: string; note: string }): string {
   return emailShell({
     title: options.title,
     eyebrow: options.eyebrow,
@@ -306,19 +306,23 @@ function notificationEmail(options: {
   });
 }
 
-function createActionDelivery(env: AuthEmailRuntimeEnv, event: AuthEmailEvent, options: {
-  actionType: string;
-  recipient: string;
-  title: string;
-  eyebrow: string;
-  preview: string;
-  description: string;
-  buttonLabel: string;
-  note: string;
-  warning?: string;
-  token?: string;
-  tokenHash?: string;
-}): AuthEmailDelivery {
+function createActionDelivery(
+  env: AuthEmailRuntimeEnv,
+  event: AuthEmailEvent,
+  options: {
+    actionType: string;
+    recipient: string;
+    title: string;
+    eyebrow: string;
+    preview: string;
+    description: string;
+    buttonLabel: string;
+    note: string;
+    warning?: string;
+    token?: string;
+    tokenHash?: string;
+  }
+): AuthEmailDelivery {
   const data = event.email_data ?? {};
   const token = options.token ?? tokenFor(data);
   const tokenHash = options.tokenHash ?? tokenHashFor(data);
@@ -331,17 +335,21 @@ function createActionDelivery(env: AuthEmailRuntimeEnv, event: AuthEmailEvent, o
   };
 }
 
-function createLinkDelivery(env: AuthEmailRuntimeEnv, event: AuthEmailEvent, options: {
-  actionType: string;
-  recipient: string;
-  title: string;
-  eyebrow: string;
-  preview: string;
-  description: string;
-  buttonLabel: string;
-  note: string;
-  warning?: string;
-}): AuthEmailDelivery {
+function createLinkDelivery(
+  env: AuthEmailRuntimeEnv,
+  event: AuthEmailEvent,
+  options: {
+    actionType: string;
+    recipient: string;
+    title: string;
+    eyebrow: string;
+    preview: string;
+    description: string;
+    buttonLabel: string;
+    note: string;
+    warning?: string;
+  }
+): AuthEmailDelivery {
   const data = event.email_data ?? {};
   const verification = verificationUrl(env, options.actionType, tokenHashFor(data), data.redirect_to);
   return {
@@ -356,20 +364,24 @@ function emailChangeDeliveries(env: AuthEmailRuntimeEnv, event: AuthEmailEvent):
   const data = event.email_data ?? {};
   const currentEmail = recipientFor(event);
   const newEmail = normalizeEmail(event.user?.new_email);
-  const hasSecureChangePair = Boolean(newEmail && nonEmptyString(data.token_new) && nonEmptyString(data.token_hash_new));
+  const hasSecureChangePair = Boolean(
+    newEmail && nonEmptyString(data.token_new) && nonEmptyString(data.token_hash_new)
+  );
 
   if (!hasSecureChangePair) {
-    return [createActionDelivery(env, event, {
-      actionType: 'email_change',
-      recipient: newEmail ?? currentEmail,
-      title: 'Confirme seu novo e-mail',
-      eyebrow: 'ALTERAÇÃO DE E-MAIL',
-      preview: 'Confirme o novo e-mail da sua conta OnFrame.',
-      description: 'Use o código abaixo ou o botão para confirmar o novo e-mail da sua conta.',
-      buttonLabel: 'Confirmar novo e-mail',
-      note: 'Se você não solicitou esta alteração, não confirme este código.',
-      warning: 'Ignore este e-mail se você não solicitou alterar o endereço da conta.'
-    })];
+    return [
+      createActionDelivery(env, event, {
+        actionType: 'email_change',
+        recipient: newEmail ?? currentEmail,
+        title: 'Confirme seu novo e-mail',
+        eyebrow: 'ALTERAÇÃO DE E-MAIL',
+        preview: 'Confirme o novo e-mail da sua conta OnFrame.',
+        description: 'Use o código abaixo ou o botão para confirmar o novo e-mail da sua conta.',
+        buttonLabel: 'Confirmar novo e-mail',
+        note: 'Se você não solicitou esta alteração, não confirme este código.',
+        warning: 'Ignore este e-mail se você não solicitou alterar o endereço da conta.'
+      })
+    ];
   }
 
   if (!newEmail) throw new AuthEmailHookError('auth_email_payload_invalid', 400);
@@ -404,13 +416,16 @@ function emailChangeDeliveries(env: AuthEmailRuntimeEnv, event: AuthEmailEvent):
   ];
 }
 
-function notificationDelivery(event: AuthEmailEvent, options: {
-  actionType: string;
-  title: string;
-  eyebrow: string;
-  description: string;
-  note: string;
-}): AuthEmailDelivery {
+function notificationDelivery(
+  event: AuthEmailEvent,
+  options: {
+    actionType: string;
+    title: string;
+    eyebrow: string;
+    description: string;
+    note: string;
+  }
+): AuthEmailDelivery {
   return {
     actionType: options.actionType,
     recipient: recipientFor(event),
@@ -426,167 +441,213 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
   switch (actionType) {
     case 'signup':
     case 'email':
-      return [createLinkDelivery(env, event, {
-        actionType,
-        recipient,
-        title: 'Confirme seu e-mail',
-        eyebrow: 'CONTA ONFRAME',
-        preview: 'Confirme seu endereço para ativar a conta OnFrame.',
-        description: 'Use o link abaixo para confirmar seu endereço de e-mail.',
-        buttonLabel: 'Confirmar e-mail',
-        note: 'Se você não criou esta conta, ignore este e-mail.',
-        warning: 'Nenhuma conta será ativada sem confirmar este endereço.'
-      })];
+      return [
+        createLinkDelivery(env, event, {
+          actionType,
+          recipient,
+          title: 'Confirme seu e-mail',
+          eyebrow: 'CONTA ONFRAME',
+          preview: 'Confirme seu endereço para ativar a conta OnFrame.',
+          description: 'Use o link abaixo para confirmar seu endereço de e-mail.',
+          buttonLabel: 'Confirmar e-mail',
+          note: 'Se você não criou esta conta, ignore este e-mail.',
+          warning: 'Nenhuma conta será ativada sem confirmar este endereço.'
+        })
+      ];
     case 'invite':
-      return [createActionDelivery(env, event, {
-        actionType,
-        recipient,
-        title: 'Você recebeu um convite',
-        eyebrow: 'ACESSO COMPARTILHADO',
-        preview: 'Você foi convidado para acessar um workspace no OnFrame.',
-        description: 'Use o código abaixo ou o botão para aceitar seu convite para o OnFrame.',
-        buttonLabel: 'Aceitar convite',
-        note: 'Se você não esperava este convite, ignore este e-mail.',
-        warning: 'O convite só será aceito depois da sua confirmação.'
-      })];
+      return [
+        createActionDelivery(env, event, {
+          actionType,
+          recipient,
+          title: 'Você recebeu um convite',
+          eyebrow: 'ACESSO COMPARTILHADO',
+          preview: 'Você foi convidado para acessar um workspace no OnFrame.',
+          description: 'Use o código abaixo ou o botão para aceitar seu convite para o OnFrame.',
+          buttonLabel: 'Aceitar convite',
+          note: 'Se você não esperava este convite, ignore este e-mail.',
+          warning: 'O convite só será aceito depois da sua confirmação.'
+        })
+      ];
     case 'magiclink':
       if (event.email_data?.redirect_to === 'https://onframe.onblide.com/connect?verification=login') {
-        return [{
-          actionType, recipient, subject: 'Seu código de acesso ao OnFrame',
-          html: emailShell({
-            title: 'Seu código de acesso', eyebrow: 'ACESSO À CONTA',
-            preview: 'Use este código para entrar no OnFrame.',
-            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela de login.</p>${codeInput(tokenFor(event.email_data))}${plainNote('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não solicitou o acesso.')}`,
-            note: 'Este código é de uso único.'
-          })
-        }];
+        return [
+          {
+            actionType,
+            recipient,
+            subject: 'Seu código de acesso ao OnFrame',
+            html: emailShell({
+              title: 'Seu código de acesso',
+              eyebrow: 'ACESSO À CONTA',
+              preview: 'Use este código para entrar no OnFrame.',
+              content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela de login.</p>${codeInput(tokenFor(event.email_data))}${plainNote('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não solicitou o acesso.')}`,
+              note: 'Este código é de uso único.'
+            })
+          }
+        ];
       }
       if (event.email_data?.redirect_to === 'https://onframe.onblide.com/connect?verification=email') {
-        return [{
-          actionType, recipient, subject: 'Confirme seu e-mail no OnFrame',
-          html: emailShell({
-            title: 'Confirme seu e-mail', eyebrow: 'VERIFICAÇÃO DE IDENTIDADE',
-            preview: 'Use este código na tela de segurança do OnFrame.',
-            content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela em que você iniciou a verificação.</p>${codeInput(tokenFor(event.email_data))}${plainNote('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.')}`,
-            note: 'Este código é de uso único e permite verificar o acesso à sua conta.'
-          })
-        }];
+        return [
+          {
+            actionType,
+            recipient,
+            subject: 'Confirme seu e-mail no OnFrame',
+            html: emailShell({
+              title: 'Confirme seu e-mail',
+              eyebrow: 'VERIFICAÇÃO DE IDENTIDADE',
+              preview: 'Use este código na tela de segurança do OnFrame.',
+              content: `<p style="margin:0;color:#545454;font-size:16px;line-height:1.6;">Informe este código na tela em que você iniciou a verificação.</p>${codeInput(tokenFor(event.email_data))}${plainNote('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.')}`,
+              note: 'Este código é de uso único e permite verificar o acesso à sua conta.'
+            })
+          }
+        ];
       }
-      return [createLinkDelivery(env, event, {
-        actionType,
-        recipient,
-        title: 'Seu link de acesso',
-        eyebrow: 'LOGIN SEGURO',
-        preview: 'Use este link para entrar no OnFrame.',
-        description: 'Use o link abaixo para entrar na sua conta.',
-        buttonLabel: 'Entrar no OnFrame',
-        note: 'Se você não solicitou este acesso, ignore este e-mail.',
-        warning: 'Nenhum acesso será concedido sem usar este link.'
-      })];
+      return [
+        createLinkDelivery(env, event, {
+          actionType,
+          recipient,
+          title: 'Seu link de acesso',
+          eyebrow: 'LOGIN SEGURO',
+          preview: 'Use este link para entrar no OnFrame.',
+          description: 'Use o link abaixo para entrar na sua conta.',
+          buttonLabel: 'Entrar no OnFrame',
+          note: 'Se você não solicitou este acesso, ignore este e-mail.',
+          warning: 'Nenhum acesso será concedido sem usar este link.'
+        })
+      ];
     case 'recovery':
-      return [createLinkDelivery(env, event, {
-        actionType,
-        recipient,
-        title: 'Redefina sua senha',
-        eyebrow: 'RECUPERAÇÃO DE CONTA',
-        preview: 'Use este link para redefinir a senha da sua conta OnFrame.',
-        description: 'Use o link abaixo para definir uma nova senha.',
-        buttonLabel: 'Redefinir senha',
-        note: 'Se você não solicitou esta recuperação, ignore este e-mail. Sua senha não será alterada.',
-        warning: 'Nenhuma senha será alterada sem usar este link.'
-      })];
+      return [
+        createLinkDelivery(env, event, {
+          actionType,
+          recipient,
+          title: 'Redefina sua senha',
+          eyebrow: 'RECUPERAÇÃO DE CONTA',
+          preview: 'Use este link para redefinir a senha da sua conta OnFrame.',
+          description: 'Use o link abaixo para definir uma nova senha.',
+          buttonLabel: 'Redefinir senha',
+          note: 'Se você não solicitou esta recuperação, ignore este e-mail. Sua senha não será alterada.',
+          warning: 'Nenhuma senha será alterada sem usar este link.'
+        })
+      ];
     case 'reauthentication':
-      return [createActionDelivery(env, event, {
-        actionType,
-        recipient,
-        title: 'Confirme esta ação',
-        eyebrow: 'VERIFICAÇÃO DE SEGURANÇA',
-        preview: 'Use este código para confirmar uma ação sensível no OnFrame.',
-        description: 'Informe este código na tela de verificação para continuar.',
-        buttonLabel: 'Confirmar ação',
-        note: 'Se você não iniciou esta ação, ignore este e-mail.',
-        warning: 'O código não concede acesso à sua conta por conta própria.'
-      })];
+      return [
+        createActionDelivery(env, event, {
+          actionType,
+          recipient,
+          title: 'Confirme esta ação',
+          eyebrow: 'VERIFICAÇÃO DE SEGURANÇA',
+          preview: 'Use este código para confirmar uma ação sensível no OnFrame.',
+          description: 'Informe este código na tela de verificação para continuar.',
+          buttonLabel: 'Confirmar ação',
+          note: 'Se você não iniciou esta ação, ignore este e-mail.',
+          warning: 'O código não concede acesso à sua conta por conta própria.'
+        })
+      ];
     case 'email_change':
       return emailChangeDeliveries(env, event);
     case 'password_changed_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'Sua senha foi alterada',
-        eyebrow: 'SEGURANÇA DA CONTA',
-        description: 'A senha da sua conta OnFrame foi alterada.',
-        note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'Sua senha foi alterada',
+          eyebrow: 'SEGURANÇA DA CONTA',
+          description: 'A senha da sua conta OnFrame foi alterada.',
+          note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
+        })
+      ];
     case 'email_changed_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'O e-mail da sua conta foi alterado',
-        eyebrow: 'SEGURANÇA DA CONTA',
-        description: `O endereço de e-mail da sua conta foi atualizado${nonEmptyString(event.email_data?.old_email) ? ` a partir de ${nonEmptyString(event.email_data?.old_email)}.` : '.'}`,
-        note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'O e-mail da sua conta foi alterado',
+          eyebrow: 'SEGURANÇA DA CONTA',
+          description: `O endereço de e-mail da sua conta foi atualizado${nonEmptyString(event.email_data?.old_email) ? ` a partir de ${nonEmptyString(event.email_data?.old_email)}.` : '.'}`,
+          note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
+        })
+      ];
     case 'phone_changed_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'O telefone da sua conta foi alterado',
-        eyebrow: 'SEGURANÇA DA CONTA',
-        description: 'O telefone associado à sua conta OnFrame foi atualizado.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'O telefone da sua conta foi alterado',
+          eyebrow: 'SEGURANÇA DA CONTA',
+          description: 'O telefone associado à sua conta OnFrame foi atualizado.',
+          note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
+        })
+      ];
     case 'mfa_factor_enrolled_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'Um método de verificação foi adicionado',
-        eyebrow: 'AUTENTICAÇÃO EM DUAS ETAPAS',
-        description: 'Um novo método de verificação em duas etapas foi adicionado à sua conta.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'Um método de verificação foi adicionado',
+          eyebrow: 'AUTENTICAÇÃO EM DUAS ETAPAS',
+          description: 'Um novo método de verificação em duas etapas foi adicionado à sua conta.',
+          note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
+        })
+      ];
     case 'mfa_factor_unenrolled_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'Um método de verificação foi removido',
-        eyebrow: 'AUTENTICAÇÃO EM DUAS ETAPAS',
-        description: 'Um método de verificação em duas etapas foi removido da sua conta.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'Um método de verificação foi removido',
+          eyebrow: 'AUTENTICAÇÃO EM DUAS ETAPAS',
+          description: 'Um método de verificação em duas etapas foi removido da sua conta.',
+          note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
+        })
+      ];
     case 'identity_linked_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'Um método de acesso foi conectado',
-        eyebrow: 'SEGURANÇA DA CONTA',
-        description: 'Um método adicional de acesso foi conectado à sua conta OnFrame.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'Um método de acesso foi conectado',
+          eyebrow: 'SEGURANÇA DA CONTA',
+          description: 'Um método adicional de acesso foi conectado à sua conta OnFrame.',
+          note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
+        })
+      ];
     case 'identity_unlinked_notification':
-      return [notificationDelivery(event, {
-        actionType,
-        title: 'Um método de acesso foi removido',
-        eyebrow: 'SEGURANÇA DA CONTA',
-        description: 'Um método de acesso foi removido da sua conta OnFrame.',
-        note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
-      })];
+      return [
+        notificationDelivery(event, {
+          actionType,
+          title: 'Um método de acesso foi removido',
+          eyebrow: 'SEGURANÇA DA CONTA',
+          description: 'Um método de acesso foi removido da sua conta OnFrame.',
+          note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
+        })
+      ];
     default:
       throw new AuthEmailHookError('auth_email_action_unsupported', 400);
   }
 }
 
-async function reserveDelivery(env: AuthEmailRuntimeEnv, webhookId: string, delivery: AuthEmailDelivery): Promise<ReservedDelivery> {
+async function reserveDelivery(
+  env: AuthEmailRuntimeEnv,
+  webhookId: string,
+  delivery: AuthEmailDelivery
+): Promise<ReservedDelivery> {
   const recipientHash = await sha256Hex(delivery.recipient);
   const id = await sha256Hex(`${webhookId}:${recipientHash}`);
   const timestamp = now();
-  const inserted = await env.ONFRAME_DB.prepare(`
+  const inserted = await env.ONFRAME_DB.prepare(
+    `
     INSERT OR IGNORE INTO auth_email_deliveries (
       id, webhook_id, recipient_hash, email_action_type, status, attempt_count, created_at, updated_at, lease_expires_at
     ) VALUES (?, ?, ?, ?, 'sending', 1, ?, ?, ?)
-  `).bind(id, webhookId, recipientHash, delivery.actionType, timestamp, timestamp, timestamp + DELIVERY_LEASE_MS).run();
+  `
+  )
+    .bind(id, webhookId, recipientHash, delivery.actionType, timestamp, timestamp, timestamp + DELIVERY_LEASE_MS)
+    .run();
 
   if (inserted.meta.changes === 1) return { id, recipientHash, state: 'reserved' };
 
-  const existing = await env.ONFRAME_DB.prepare(`
+  const existing = await env.ONFRAME_DB.prepare(
+    `
     SELECT status, lease_expires_at
     FROM auth_email_deliveries
     WHERE id = ?
-  `).bind(id).first<{ status: string; lease_expires_at: number | null }>();
+  `
+  )
+    .bind(id)
+    .first<{ status: string; lease_expires_at: number | null }>();
 
   if (existing?.status === 'sent') return { id, recipientHash, state: 'sent' };
 
@@ -594,32 +655,48 @@ async function reserveDelivery(env: AuthEmailRuntimeEnv, webhookId: string, deli
     return { id, recipientHash, state: 'sending' };
   }
 
-  const claimed = await env.ONFRAME_DB.prepare(`
+  const claimed = await env.ONFRAME_DB.prepare(
+    `
     UPDATE auth_email_deliveries
     SET attempt_count = attempt_count + 1, updated_at = ?, lease_expires_at = ?
     WHERE id = ? AND status = 'sending' AND lease_expires_at <= ?
-  `).bind(timestamp, timestamp + DELIVERY_LEASE_MS, id, timestamp).run();
+  `
+  )
+    .bind(timestamp, timestamp + DELIVERY_LEASE_MS, id, timestamp)
+    .run();
 
   return { id, recipientHash, state: claimed.meta.changes === 1 ? 'reserved' : 'sending' };
 }
 
 async function markDeliverySent(env: AuthEmailRuntimeEnv, id: string): Promise<void> {
   const timestamp = now();
-  await env.ONFRAME_DB.prepare(`
+  await env.ONFRAME_DB.prepare(
+    `
     UPDATE auth_email_deliveries
     SET status = 'sent', sent_at = ?, updated_at = ?, lease_expires_at = NULL
     WHERE id = ?
-  `).bind(timestamp, timestamp, id).run();
+  `
+  )
+    .bind(timestamp, timestamp, id)
+    .run();
 }
 
 async function releaseDelivery(env: AuthEmailRuntimeEnv, id: string): Promise<void> {
-  await env.ONFRAME_DB.prepare(`
+  await env.ONFRAME_DB.prepare(
+    `
     DELETE FROM auth_email_deliveries
     WHERE id = ? AND status = 'sending'
-  `).bind(id).run();
+  `
+  )
+    .bind(id)
+    .run();
 }
 
-async function sendWithResend(env: AuthEmailRuntimeEnv, delivery: AuthEmailDelivery, idempotencyKey: string): Promise<void> {
+async function sendWithResend(
+  env: AuthEmailRuntimeEnv,
+  delivery: AuthEmailDelivery,
+  idempotencyKey: string
+): Promise<void> {
   const apiKey = requiredText(env.RESEND_API_KEY, 'auth_email_sender_unconfigured');
   const from = requiredText(env.AUTH_EMAIL_FROM, 'auth_email_sender_unconfigured');
   let response: Response;
@@ -651,14 +728,16 @@ async function sendWithResend(env: AuthEmailRuntimeEnv, delivery: AuthEmailDeliv
 }
 
 function hookErrorResponse(error: unknown): Response {
-  const hookError = error instanceof AuthEmailHookError
-    ? error
-    : new AuthEmailHookError('auth_email_delivery_unavailable', 503, true);
+  const hookError =
+    error instanceof AuthEmailHookError ? error : new AuthEmailHookError('auth_email_delivery_unavailable', 503, true);
   const headers = hookError.retryable ? { 'retry-after': '2' } : undefined;
   return json({ error: { message: hookError.code } }, hookError.status, headers);
 }
 
-async function verifyEvent(request: Request, env: AuthEmailRuntimeEnv): Promise<{ event: AuthEmailEvent; webhookId: string }> {
+async function verifyEvent(
+  request: Request,
+  env: AuthEmailRuntimeEnv
+): Promise<{ event: AuthEmailEvent; webhookId: string }> {
   if (request.method !== 'POST') throw new AuthEmailHookError('method_not_allowed', 405);
   if (!request.headers.get('content-type')?.toLowerCase().includes('application/json')) {
     throw new AuthEmailHookError('invalid_content_type', 400);
@@ -678,7 +757,10 @@ async function verifyEvent(request: Request, env: AuthEmailRuntimeEnv): Promise<
   if (!webhookId || webhookId.length > 128) throw new AuthEmailHookError('auth_email_signature_invalid', 401);
 
   try {
-    const event = new Webhook(hookSecret(env.SUPABASE_SEND_EMAIL_HOOK_SECRET)).verify(payload, Object.fromEntries(request.headers));
+    const event = new Webhook(hookSecret(env.SUPABASE_SEND_EMAIL_HOOK_SECRET)).verify(
+      payload,
+      Object.fromEntries(request.headers)
+    );
     if (!isRecord(event)) throw new AuthEmailHookError('auth_email_payload_invalid', 400);
     return { event: event as AuthEmailEvent, webhookId };
   } catch (error) {
@@ -709,20 +791,24 @@ export async function handleSupabaseSendEmailHook(request: Request, env: AuthEma
       }
     }
 
-    console.log(JSON.stringify({
-      event: 'auth_email_sent',
-      webhookId,
-      actionType: emailActionType(event),
-      deliveryCount: deliveries.length
-    }));
+    console.log(
+      JSON.stringify({
+        event: 'auth_email_sent',
+        webhookId,
+        actionType: emailActionType(event),
+        deliveryCount: deliveries.length
+      })
+    );
     return json({});
   } catch (error) {
     const response = hookErrorResponse(error);
-    console.error(JSON.stringify({
-      event: 'auth_email_failed',
-      code: error instanceof AuthEmailHookError ? error.code : 'auth_email_delivery_unavailable',
-      status: response.status
-    }));
+    console.error(
+      JSON.stringify({
+        event: 'auth_email_failed',
+        code: error instanceof AuthEmailHookError ? error.code : 'auth_email_delivery_unavailable',
+        status: response.status
+      })
+    );
     return response;
   }
 }

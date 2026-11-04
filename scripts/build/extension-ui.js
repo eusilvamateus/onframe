@@ -13,14 +13,7 @@ const reactAliases = {
 };
 const designSystemStylesPath = require.resolve('@onblide/ui/styles.css');
 const designSystemSourceRoot = path.dirname(designSystemStylesPath);
-const phosphorSourceRoot = path.join(
-  designSystemSourceRoot,
-  '..',
-  'node_modules',
-  '@phosphor-icons',
-  'web',
-  'src'
-);
+const phosphorSourceRoot = path.join(designSystemSourceRoot, '..', 'node_modules', '@phosphor-icons', 'web', 'src');
 const phosphorTargetRoot = path.join(root, 'extension', 'vendor', 'phosphor');
 const compactPhosphorWeights = [
   { directory: 'regular', className: 'ph', family: 'Phosphor', file: 'Phosphor.woff2' },
@@ -30,199 +23,233 @@ const compactPhosphorWeights = [
 
 prepareCompactPhosphorAssets();
 
-const entries = [
-  path.join(root, 'extension', 'ui', 'options'),
-  path.join(root, 'extension', 'ui', 'popup')
-];
+const entries = [path.join(root, 'extension', 'ui', 'options'), path.join(root, 'extension', 'ui', 'popup')];
 
-fs.copyFileSync(
-  require.resolve('@onblide/ui/theme-init'),
-  path.join(root, 'extension', 'core', 'theme-init.js')
-);
+fs.copyFileSync(require.resolve('@onblide/ui/theme-init'), path.join(root, 'extension', 'core', 'theme-init.js'));
 
 const builds = entries.map((directory) => {
   fs.rmSync(path.join(directory, 'assets'), { recursive: true, force: true });
   fs.rmSync(path.join(directory, 'app.js'), { force: true });
   fs.rmSync(path.join(directory, 'app.css'), { force: true });
-  return esbuild.build({
-    entryPoints: [path.join(directory, 'app.jsx')],
-    outdir: directory,
+  return esbuild
+    .build({
+      entryPoints: [path.join(directory, 'app.jsx')],
+      outdir: directory,
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      plugins: [compactDesignSystemStylesPlugin()],
+      external: ['/fonts/*', '/vendor/phosphor/*'],
+      assetNames: 'assets/[name]-[hash]',
+      loader: {
+        '.ttf': 'file',
+        '.woff': 'file',
+        '.woff2': 'file',
+        '.svg': 'file'
+      },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact);
+});
+
+fs.rmSync(path.join(root, 'extension', 'core', 'period.js'), { force: true });
+builds.push(
+  esbuild.build({
+    entryPoints: [path.join(root, 'extension', 'ui', 'shared', 'period-global.js')],
+    outfile: path.join(root, 'extension', 'core', 'period.js'),
     bundle: true,
     format: 'iife',
     platform: 'browser',
     target: ['chrome110'],
-    jsx: 'automatic',
-    minify: true,
-    alias: reactAliases,
-    plugins: [compactDesignSystemStylesPlugin()],
-    external: ['/fonts/*', '/vendor/phosphor/*'],
-    assetNames: 'assets/[name]-[hash]',
-    loader: {
-      '.ttf': 'file',
-      '.woff': 'file',
-      '.woff2': 'file',
-      '.svg': 'file'
-    },
-    logLevel: 'info',
-    metafile: true
-  }).then(assertSingleReact);
-});
-
-fs.rmSync(path.join(root, 'extension', 'core', 'period.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'shared', 'period-global.js')],
-  outfile: path.join(root, 'extension', 'core', 'period.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  treeShaking: true,
-  logLevel: 'info'
-}));
+    treeShaking: true,
+    logLevel: 'info'
+  })
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'toast.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'toast-bridge.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'toast.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'toast-bridge.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'toast.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'photos-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'photos-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'photos-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'photos-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'photos-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'description-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'description-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'description-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'description-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'description-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'characteristics-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'characteristics-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'characteristics-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'characteristics-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'characteristics-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'commerce-price-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-price-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'commerce-price-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-price-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'commerce-price-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'commerce-actions-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-actions-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'commerce-actions-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-actions-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'commerce-actions-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'commerce-promotions-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-promotions-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'commerce-promotions-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-promotions-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'commerce-promotions-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'commerce-promotion-manager-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'commerce-promotion-manager-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'commerce-promotion-manager-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 fs.rmSync(path.join(root, 'extension', 'core', 'commerce-direct-discount-view.js'), { force: true });
-builds.push(esbuild.build({
-  entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx')],
-  outfile: path.join(root, 'extension', 'core', 'commerce-direct-discount-view.js'),
-  bundle: true,
-  format: 'iife',
-  platform: 'browser',
-  target: ['chrome110'],
-  jsx: 'automatic',
-  minify: true,
-  alias: reactAliases,
-  loader: { '.svg': 'text' },
-  logLevel: 'info',
-  metafile: true
-}).then(assertSingleReact));
+builds.push(
+  esbuild
+    .build({
+      entryPoints: [path.join(root, 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx')],
+      outfile: path.join(root, 'extension', 'core', 'commerce-direct-discount-view.js'),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['chrome110'],
+      jsx: 'automatic',
+      minify: true,
+      alias: reactAliases,
+      loader: { '.svg': 'text' },
+      logLevel: 'info',
+      metafile: true
+    })
+    .then(assertSingleReact)
+);
 
 runBuilds();
 
@@ -251,9 +278,7 @@ function compactDesignSystemStylesPlugin() {
     setup(build) {
       build.onLoad({ filter: /styles\.css$/ }, (args) => {
         if (path.resolve(args.path) !== path.resolve(designSystemStylesPath)) return null;
-        const tokens = stripFontFaces(
-          fs.readFileSync(path.join(designSystemSourceRoot, 'tokens.css'), 'utf8')
-        );
+        const tokens = stripFontFaces(fs.readFileSync(path.join(designSystemSourceRoot, 'tokens.css'), 'utf8'));
         const phosphor = fs.readFileSync(path.join(phosphorTargetRoot, 'phosphor.css'), 'utf8');
         return {
           contents: `${compactFontFaces()}\n${compactPhosphorFontFaces('/vendor/phosphor/')}\n${phosphor}\n${tokens}`,
@@ -277,13 +302,17 @@ function prepareCompactPhosphorAssets() {
 }
 
 function compactPhosphorFontFaces(assetPrefix) {
-  return compactPhosphorWeights.map(({ family, file }) => `@font-face {
+  return compactPhosphorWeights
+    .map(
+      ({ family, file }) => `@font-face {
   font-family: '${family}';
   src: url('${assetPrefix}${file}') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: block;
-}`).join('\n');
+}`
+    )
+    .join('\n');
 }
 
 function compactFontFaces() {
@@ -296,13 +325,17 @@ function compactFontFaces() {
     ['JetBrains Mono', 'JetBrainsMono-Medium.ttf', 500, 'normal'],
     ['Playfair Display', 'PlayfairDisplay-MediumItalic.ttf', 500, 'italic']
   ];
-  return faces.map(([family, file, weight, fontStyle]) => `@font-face {
+  return faces
+    .map(
+      ([family, file, weight, fontStyle]) => `@font-face {
   font-family: '${family}';
   src: url('/fonts/${file}') format('truetype');
   font-weight: ${weight};
   font-style: ${fontStyle};
   font-display: swap;
-}`).join('\n');
+}`
+    )
+    .join('\n');
 }
 
 function stripFontFaces(source) {

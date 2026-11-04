@@ -1,8 +1,4 @@
-const {
-  getCharacteristics,
-  updateCharacteristics,
-  updateCharacteristicsFamily
-} = require('../characteristics');
+const { getCharacteristics, updateCharacteristics, updateCharacteristicsFamily } = require('../characteristics');
 
 async function handleCharacteristicsGet({ client, itemId }) {
   return getCharacteristics(client, itemId);

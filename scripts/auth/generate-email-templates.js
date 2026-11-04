@@ -74,7 +74,7 @@ const templates = {
   'identity-unlinked.html': `
 <h2>Um método de acesso foi removido da sua conta OnFrame</h2>
 <p>O método {{ .Provider }} foi removido.</p>
-<p>Se você não fez esta alteração, revise a segurança da sua conta.</p>`,
+<p>Se você não fez esta alteração, revise a segurança da sua conta.</p>`
 };
 
 const check = process.argv.includes('--check');

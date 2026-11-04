@@ -20,14 +20,14 @@ npm ci
 
 ## Validação
 
-| Objetivo | Comando |
-| --- | --- |
-| Testes padrão | `npm test` |
-| Suíte nomeada | `npm run test:all` |
-| Consistência de versão | `npm run version:check` |
-| Pacote de release | `npm run package:release` |
-| Worker | `npm run check` dentro de `cloudflare/` |
-| Validação completa de release | `npm run release:check` |
+| Objetivo                      | Comando                                 |
+| ----------------------------- | --------------------------------------- |
+| Testes padrão                 | `npm test`                              |
+| Suíte nomeada                 | `npm run test:all`                      |
+| Consistência de versão        | `npm run version:check`                 |
+| Pacote de release             | `npm run package:release`               |
+| Worker                        | `npm run check` dentro de `cloudflare/` |
+| Validação completa de release | `npm run release:check`                 |
 
 Use `npm run test:all` antes de entregar alterações de comportamento. A
 validação de release executa verificação de versão, auditoria de dependências,

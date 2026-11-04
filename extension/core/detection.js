@@ -17,13 +17,15 @@
 
   function createPageItemKey(identity, href) {
     const source = identity || {};
-    return source.denounceItemId ||
+    return (
+      source.denounceItemId ||
       source.pdpFilterItemId ||
       source.urlItemId ||
       source.urlUserProductId ||
       source.canonicalItemId ||
       source.catalogProductId ||
-      normalizeUrlForSignature(href);
+      normalizeUrlForSignature(href)
+    );
   }
 
   function createSelectionKey(documentRef, href) {
@@ -63,13 +65,11 @@
   function collectVisibleSelectedValues(documentRef) {
     const values = [];
     const documentLike = documentRef || {};
-    const textRoot = firstElement(documentLike, [
-      '.ui-pdp-container',
-      '.ui-pdp',
-      'main'
-    ]);
+    const textRoot = firstElement(documentLike, ['.ui-pdp-container', '.ui-pdp', 'main']);
     const scopedText = elementText(textRoot || documentLike.body || '');
-    const matches = scopedText.matchAll(/\b(?:Cor(?:\s+[^:\n\r]{1,40})?|Nome do desenho|Estampa|Modelo|Voltagem)\s*:\s*([^\n\r]+)/gi);
+    const matches = scopedText.matchAll(
+      /\b(?:Cor(?:\s+[^:\n\r]{1,40})?|Nome do desenho|Estampa|Modelo|Voltagem)\s*:\s*([^\n\r]+)/gi
+    );
     for (const match of matches) values.push(normalizeText(match[1]));
 
     const selectors = [
@@ -113,10 +113,17 @@
     const candidates = [];
     const documentLike = documentRef || {};
 
-    addItemCandidates(candidates, href, /produto\.mercadolivre\.com\.br\/[^"'<>]*?\b(MLB-?\d{9,13})\b/ig, null, { skipExcludedContext: false });
-    addItemCandidates(candidates, href, /[?&]pdp_filters=([^&]+)/ig, extractItemIdFromEncodedFilter, { skipExcludedContext: false });
+    addItemCandidates(candidates, href, /produto\.mercadolivre\.com\.br\/[^"'<>]*?\b(MLB-?\d{9,13})\b/gi, null, {
+      skipExcludedContext: false
+    });
+    addItemCandidates(candidates, href, /[?&]pdp_filters=([^&]+)/gi, extractItemIdFromEncodedFilter, {
+      skipExcludedContext: false
+    });
 
-    for (const element of queryAll(documentLike, 'link[rel="canonical"], meta[property="og:url"], meta[name="twitter:url"]')) {
+    for (const element of queryAll(
+      documentLike,
+      'link[rel="canonical"], meta[property="og:url"], meta[name="twitter:url"]'
+    )) {
       addItemCandidatesFromElement(candidates, element);
     }
 
@@ -127,8 +134,12 @@
     if (options.includeScripts !== false) {
       for (const script of queryAll(documentLike, 'script')) {
         const text = elementText(script);
-        addItemCandidates(candidates, text, /"item_?id"\s*:\s*"?(MLB-?\d{9,13})"?/ig, null, { skipExcludedContext: false });
-        addItemCandidates(candidates, text, /"id"\s*:\s*"(MLB-?\d{9,13})"/ig, (context) => /\b(item|product|listing|permalink|produto\.mercadolivre)\b/i.test(context));
+        addItemCandidates(candidates, text, /"item_?id"\s*:\s*"?(MLB-?\d{9,13})"?/gi, null, {
+          skipExcludedContext: false
+        });
+        addItemCandidates(candidates, text, /"id"\s*:\s*"(MLB-?\d{9,13})"/gi, (context) =>
+          /\b(item|product|listing|permalink|produto\.mercadolivre)\b/i.test(context)
+        );
       }
     }
 
@@ -138,8 +149,10 @@
   function collectPageIdentity(documentRef, href, options = {}) {
     const documentLike = documentRef || {};
     const url = String(href || '');
-    const canonicalValues = queryAll(documentLike, 'link[rel="canonical"], meta[property="og:url"], meta[name="twitter:url"]')
-      .flatMap(elementCandidateValues);
+    const canonicalValues = queryAll(
+      documentLike,
+      'link[rel="canonical"], meta[property="og:url"], meta[name="twitter:url"]'
+    ).flatMap(elementCandidateValues);
     const identity = {
       denounceItemId: extractDenounceItemId(documentLike),
       urlItemId: extractItemIdFromProductUrl(url),
@@ -162,15 +175,20 @@
     if (options.includeScripts !== false) {
       for (const script of queryAll(documentLike, 'script')) {
         const text = elementText(script);
-        addItemCandidates(candidates, text, /"item_?id"\s*:\s*"?(MLB-?\d{9,13})"?/ig, null, { skipExcludedContext: false });
-        addItemCandidates(candidates, text, /"id"\s*:\s*"(MLB-?\d{9,13})"/ig, (context) => /\b(item|product|listing|permalink|produto\.mercadolivre)\b/i.test(context));
+        addItemCandidates(candidates, text, /"item_?id"\s*:\s*"?(MLB-?\d{9,13})"?/gi, null, {
+          skipExcludedContext: false
+        });
+        addItemCandidates(candidates, text, /"id"\s*:\s*"(MLB-?\d{9,13})"/gi, (context) =>
+          /\b(item|product|listing|permalink|produto\.mercadolivre)\b/i.test(context)
+        );
       }
     }
-    return unique(candidates).filter((candidate) => ![
-      extractItemIdFromProductUrl(href),
-      extractPdpFilterItemId(href),
-      extractProductTriggerItemId(href)
-    ].includes(candidate));
+    return unique(candidates).filter(
+      (candidate) =>
+        ![extractItemIdFromProductUrl(href), extractPdpFilterItemId(href), extractProductTriggerItemId(href)].includes(
+          candidate
+        )
+    );
   }
 
   function collectWeakUserProductCandidatesFromPage(documentLike, href, options = {}) {
@@ -237,9 +255,13 @@
 
   function addItemCandidatesFromElement(candidates, element) {
     for (const value of elementCandidateValues(element)) {
-      addItemCandidates(candidates, value, /produto\.mercadolivre\.com\.br\/[^"'<>]*?\b(MLB-?\d{9,13})\b/ig, null, { skipExcludedContext: false });
-      addItemCandidates(candidates, value, /[?&]pdp_filters=([^&]+)/ig, extractItemIdFromEncodedFilter, { skipExcludedContext: false });
-      addItemCandidates(candidates, value, /\b(MLB-?\d{9,13})\b/ig, null, { skipExcludedContext: false });
+      addItemCandidates(candidates, value, /produto\.mercadolivre\.com\.br\/[^"'<>]*?\b(MLB-?\d{9,13})\b/gi, null, {
+        skipExcludedContext: false
+      });
+      addItemCandidates(candidates, value, /[?&]pdp_filters=([^&]+)/gi, extractItemIdFromEncodedFilter, {
+        skipExcludedContext: false
+      });
+      addItemCandidates(candidates, value, /\b(MLB-?\d{9,13})\b/gi, null, { skipExcludedContext: false });
     }
   }
 
@@ -266,7 +288,13 @@
   function addItemCandidates(candidates, text, pattern, contextGuard, options = {}) {
     for (const match of String(text || '').matchAll(pattern)) {
       const context = String(text || '').slice(Math.max(0, match.index - 80), match.index + match[0].length + 80);
-      if (options.skipExcludedContext !== false && /\b(category_id|categoryId|domain_id|domainId|family_id|familyId|catalog_product_id|catalogProductId|picture_id|pictureId|thumbnail|secure_url|pictures?)\b/i.test(context)) continue;
+      if (
+        options.skipExcludedContext !== false &&
+        /\b(category_id|categoryId|domain_id|domainId|family_id|familyId|catalog_product_id|catalogProductId|picture_id|pictureId|thumbnail|secure_url|pictures?)\b/i.test(
+          context
+        )
+      )
+        continue;
       if (contextGuard && typeof contextGuard === 'function') {
         const guarded = contextGuard(context, match);
         if (guarded === false) continue;
@@ -282,7 +310,7 @@
   }
 
   function addUserProductCandidates(candidates, value) {
-    for (const match of String(value || '').matchAll(/\bMLBU\d{6,}\b/ig)) {
+    for (const match of String(value || '').matchAll(/\bMLBU\d{6,}\b/gi)) {
       candidates.push(match[0].toUpperCase());
     }
   }
@@ -323,14 +351,11 @@
   }
 
   function extractDenounceItemId(documentLike) {
-    const selectors = [
-      'a[href*="/noindex/denounce"][href*="item_id=MLB"]',
-      '#denounce',
-      '.ui-vpp-denounce'
-    ];
+    const selectors = ['a[href*="/noindex/denounce"][href*="item_id=MLB"]', '#denounce', '.ui-vpp-denounce'];
     for (const selector of selectors) {
       for (const element of queryAll(documentLike, selector)) {
-        const fromHref = extractDenounceItemIdFromHref(element && element.href) ||
+        const fromHref =
+          extractDenounceItemIdFromHref(element && element.href) ||
           extractDenounceItemIdFromHref(getAttribute(element, 'href'));
         if (fromHref) return fromHref;
 
@@ -381,19 +406,27 @@
 
   function firstUserProductIdFromValues(values) {
     for (const value of values || []) {
-      const match = String(value || '').toUpperCase().match(/\bMLBU\d{6,}\b/);
+      const match = String(value || '')
+        .toUpperCase()
+        .match(/\bMLBU\d{6,}\b/);
       if (match) return match[0];
     }
     return null;
   }
 
   function normalizeItemId(value) {
-    const match = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').match(/MLB\d{9,13}/);
+    const match = String(value || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .match(/MLB\d{9,13}/);
     return match ? match[0] : null;
   }
 
   function normalizeStrongItemId(value) {
-    const match = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').match(/MLB\d{6,13}/);
+    const match = String(value || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .match(/MLB\d{6,13}/);
     return match ? match[0] : null;
   }
 
@@ -407,10 +440,12 @@
   }
 
   function isProductPageUrl(value) {
-    return /produto\.mercadolivre\.com\.br\/MLB-?\d{9,13}/i.test(value) ||
+    return (
+      /produto\.mercadolivre\.com\.br\/MLB-?\d{9,13}/i.test(value) ||
       /mercadolivre\.com\.br\/[^?#]+\/p\/MLB\d+/i.test(value) ||
       /mercadolivre\.com\.br\/[^?#]+\/up\/MLBU\d+/i.test(value) ||
-      /[?&]pdp_filters=[^&]*item_id/i.test(value);
+      /[?&]pdp_filters=[^&]*item_id/i.test(value)
+    );
   }
 
   function normalizeUrlForSignature(href) {

@@ -23,7 +23,10 @@
       typeof CharacteristicsView.unmount === 'function'
     );
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
-    const toUserError = (err) => CharacteristicsModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame características] detalhe tecnico:' }));
+    const toUserError = (err) =>
+      CharacteristicsModel.friendlyError(
+        Shared.toUserError(err, { logPrefix: '[OnFrame características] detalhe tecnico:' })
+      );
 
     const state = {
       context: null,
@@ -134,7 +137,8 @@
 
       const context = update && update.context ? update.context : null;
       const nextItemId = context && context.item && context.item.id ? String(context.item.id) : '';
-      const nextOwnerUserId = context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
+      const nextOwnerUserId =
+        context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
       const changedItem = nextItemId && state.itemId && nextItemId !== String(state.itemId);
 
       if (changedItem) closeEditor();
@@ -185,8 +189,9 @@
     function getCharacteristicsModalElements() {
       const dialogs = Array.from(document.querySelectorAll('.andes-modal[role="dialog"]')).reverse();
       for (const dialog of dialogs) {
-        const title = Array.from(dialog.querySelectorAll('.andes-modal__title, [role="heading"]'))
-          .find((node) => normalizeHeading(node.textContent) === 'caracteristicas do produto');
+        const title = Array.from(dialog.querySelectorAll('.andes-modal__title, [role="heading"]')).find(
+          (node) => normalizeHeading(node.textContent) === 'caracteristicas do produto'
+        );
         const content = dialog.querySelector('.andes-modal__content');
         if (!title || !content || !content.querySelector('.ui-vpp-highlighted-specs__striped-specs')) continue;
         return {
@@ -202,10 +207,12 @@
     }
 
     function getCharacteristicsPageElements() {
-      const title = Array.from(document.querySelectorAll('h2, h3'))
-        .find((node) => normalizeHeading(node.textContent) === 'caracteristicas do produto');
+      const title = Array.from(document.querySelectorAll('h2, h3')).find(
+        (node) => normalizeHeading(node.textContent) === 'caracteristicas do produto'
+      );
       if (!title) return {};
-      const section = title.closest('#highlighted_specs_attrs') ||
+      const section =
+        title.closest('#highlighted_specs_attrs') ||
         title.closest('.ui-vpp-highlighted-specs') ||
         title.closest('section') ||
         title.closest('.ui-pdp-container__row') ||
@@ -229,10 +236,14 @@
       }
       actionRoot.classList.toggle('onframe-characteristics-action-root--modal', elements.surface === 'modal');
       placeSurfaceRoot(elements, actionRoot);
-      CharacteristicsView.renderAction(actionRoot, { disabled }, {
-        onEdit: () => void openEditor(),
-        onError: handleCharacteristicsViewFailure
-      });
+      CharacteristicsView.renderAction(
+        actionRoot,
+        { disabled },
+        {
+          onEdit: () => void openEditor(),
+          onError: handleCharacteristicsViewFailure
+        }
+      );
     }
 
     function injectCatalogNotice(elements) {
@@ -265,7 +276,14 @@
     }
 
     async function openEditor() {
-      if (!state.visible || !state.itemId || state.loading || state.saving || !CharacteristicsModel.canEditCharacteristics(state.context)) return;
+      if (
+        !state.visible ||
+        !state.itemId ||
+        state.loading ||
+        state.saving ||
+        !CharacteristicsModel.canEditCharacteristics(state.context)
+      )
+        return;
       const elements = getCharacteristicsElements();
       if (!elements.section || isCharacteristicsCollapsed(elements.section)) return;
       state.editing = true;
@@ -350,11 +368,13 @@
     function findFooterAnchor(elements) {
       const section = elements && elements.section ? elements.section : null;
       if (!section) return null;
-      return section.querySelector('.ui-pdp-container__row--technical-specifications') ||
+      return (
+        section.querySelector('.ui-pdp-container__row--technical-specifications') ||
         section.querySelector('.ui-vpp-highlighted-specs__striped-specs') ||
         section.querySelector('.ui-pdp-collapsable') ||
         elements.titleRow ||
-        elements.title;
+        elements.title
+      );
     }
 
     function buildFooterViewModel() {
@@ -362,9 +382,10 @@
       const canBulk = CharacteristicsModel.canBulkEditCharacteristics(state.context);
       if (!canBulk) state.bulkEnabled = false;
       const result = state.bulkResult;
-      const failures = result && Array.isArray(result.targets)
-        ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
-        : [];
+      const failures =
+        result && Array.isArray(result.targets)
+          ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
+          : [];
       return {
         disabled,
         saving: state.saving,
@@ -381,7 +402,8 @@
     }
 
     function buildPackageDimensionsViewModel(disabled) {
-      const packageDimensions = state.snapshot && state.snapshot.packageDimensions ? state.snapshot.packageDimensions : null;
+      const packageDimensions =
+        state.snapshot && state.snapshot.packageDimensions ? state.snapshot.packageDimensions : null;
       const fields = getPackageDimensionFields();
       return {
         label: packageDimensions && packageDimensions.label ? String(packageDimensions.label) : 'Dimensões do pacote',
@@ -412,19 +434,25 @@
       if (!hasEditableGroupField && !hasEditablePackageField) {
         return 'O Mercado Livre não expôs campos editáveis para este anúncio.';
       }
-      if (!state.inlineEditableCount && !state.inlineMissingCount && !hasEditablePackageField) return 'Nenhuma característica editável está visível nesta ficha.';
+      if (!state.inlineEditableCount && !state.inlineMissingCount && !hasEditablePackageField)
+        return 'Nenhuma característica editável está visível nesta ficha.';
       return '';
     }
 
     function getPackageDimensionFields() {
-      const packageDimensions = state.snapshot && state.snapshot.packageDimensions ? state.snapshot.packageDimensions : null;
+      const packageDimensions =
+        state.snapshot && state.snapshot.packageDimensions ? state.snapshot.packageDimensions : null;
       return packageDimensions && Array.isArray(packageDimensions.fields) ? packageDimensions.fields : [];
     }
 
     function renderInlineFields(section, disabled) {
       const groups = state.snapshot && Array.isArray(state.snapshot.groups) ? state.snapshot.groups : [];
-      const fieldsById = new Map((state.snapshot && Array.isArray(state.snapshot.fields) ? state.snapshot.fields : [])
-        .map((field) => [field.id, field]));
+      const fieldsById = new Map(
+        (state.snapshot && Array.isArray(state.snapshot.fields) ? state.snapshot.fields : []).map((field) => [
+          field.id,
+          field
+        ])
+      );
       removeSyntheticRows();
       const targets = collectRenderedFieldTargets(section);
       const groupTargets = collectRenderedGroupTargets(section);
@@ -540,10 +568,7 @@
 
     function findRenderedFieldTarget(targets, usedTargets, group, field) {
       const fieldLabel = normalizeHeading(field.label);
-      const groupLabels = [
-        group && group.label,
-        field.groupName
-      ].map(normalizeHeading).filter(Boolean);
+      const groupLabels = [group && group.label, field.groupName].map(normalizeHeading).filter(Boolean);
       const candidates = targets.filter((target) => target.fieldLabel === fieldLabel && !usedTargets.has(target.key));
       const exact = candidates.find((target) => groupLabels.includes(target.groupLabel));
       const target = exact || (candidates.length === 1 ? candidates[0] : null);
@@ -570,12 +595,11 @@
     }
 
     function isRenderedGroupMatch(target, group, field) {
-      const labels = [
-        group && group.label,
-        field && field.groupName
-      ].map(normalizeHeading).filter(Boolean);
+      const labels = [group && group.label, field && field.groupName].map(normalizeHeading).filter(Boolean);
       if (!labels.length || !target || !target.groupLabel) return true;
-      return labels.some((label) => label === target.groupLabel || label.includes(target.groupLabel) || target.groupLabel.includes(label));
+      return labels.some(
+        (label) => label === target.groupLabel || label.includes(target.groupLabel) || target.groupLabel.includes(label)
+      );
     }
 
     function isCompositeHeading(label) {
@@ -584,19 +608,20 @@
 
     function splitCompositeHeading(label) {
       return normalizeHeading(label)
-        .split(/\s+(?:x|e)\s+|[\/+,]/)
+        .split(/\s+(?:x|e)\s+|[/+,]/)
         .map((part) => part.trim())
         .filter(Boolean);
     }
 
     function findRenderedGroupTarget(groupTargets, group, field) {
-      const labels = [
-        group && group.label,
-        field && field.groupName
-      ].map(normalizeHeading).filter(Boolean);
+      const labels = [group && group.label, field && field.groupName].map(normalizeHeading).filter(Boolean);
       const exact = groupTargets.find((target) => labels.includes(target.groupLabel));
       if (exact) return exact;
-      const partial = groupTargets.find((target) => target.groupLabel && labels.some((label) => target.groupLabel.includes(label) || label.includes(target.groupLabel)));
+      const partial = groupTargets.find(
+        (target) =>
+          target.groupLabel &&
+          labels.some((label) => target.groupLabel.includes(label) || label.includes(target.groupLabel))
+      );
       return partial || groupTargets[0] || null;
     }
 
@@ -608,7 +633,8 @@
       row.dataset.characteristicsExtraFieldId = field.id;
 
       const header = document.createElement('th');
-      header.className = 'andes-table__header andes-table__header--left ui-vpp-striped-specs__row__column ui-vpp-striped-specs__row__column--id';
+      header.className =
+        'andes-table__header andes-table__header--left ui-vpp-striped-specs__row__column ui-vpp-striped-specs__row__column--id';
       header.scope = 'row';
       const labelRoot = document.createElement('div');
       labelRoot.className = 'andes-table__header__container onframe-characteristics-extra-label';
@@ -616,31 +642,39 @@
       header.appendChild(labelRoot);
 
       const cell = document.createElement('td');
-      cell.className = 'andes-table__column andes-table__column--left andes-table__column--vertical-align-center ui-vpp-striped-specs__row__column';
+      cell.className =
+        'andes-table__column andes-table__column--left andes-table__column--vertical-align-center ui-vpp-striped-specs__row__column';
       row.append(header, cell);
-      const beforeNode = placement.beforeNode && placement.beforeNode.parentElement === target.body
-        ? placement.beforeNode
-        : null;
+      const beforeNode =
+        placement.beforeNode && placement.beforeNode.parentElement === target.body ? placement.beforeNode : null;
       target.body.insertBefore(row, beforeNode);
       state.inlineSyntheticRows.push(row);
 
-      CharacteristicsView.renderSyntheticFieldLabel(labelRoot, {
-        label: field.label
-      }, { onError: handleCharacteristicsViewFailure });
+      CharacteristicsView.renderSyntheticFieldLabel(
+        labelRoot,
+        {
+          label: field.label
+        },
+        { onError: handleCharacteristicsViewFailure }
+      );
 
       cell.dataset.onframeCharacteristicsRoot = 'true';
       if (field.editable) {
         cell.classList.add('onframe-characteristics-inline-cell');
       }
-      CharacteristicsView.renderSyntheticFieldValue(cell, {
-        editable: field.editable,
-        displayValue: field.displayValue || field.valueName || '-',
-        field: field.editable ? buildInlineFieldViewModel(field, disabled) : null,
-        status: buildCharacteristicStatusViewModel(field)
-      }, {
-        onFieldChange: updateDraftField,
-        onError: handleCharacteristicsViewFailure
-      });
+      CharacteristicsView.renderSyntheticFieldValue(
+        cell,
+        {
+          editable: field.editable,
+          displayValue: field.displayValue || field.valueName || '-',
+          field: field.editable ? buildInlineFieldViewModel(field, disabled) : null,
+          status: buildCharacteristicStatusViewModel(field)
+        },
+        {
+          onFieldChange: updateDraftField,
+          onError: handleCharacteristicsViewFailure
+        }
+      );
       return true;
     }
 
@@ -680,11 +714,13 @@
 
     function buildCharacteristicStatusViewModel(field) {
       const status = getCharacteristicStatus(field);
-      return status ? {
-        label: status.label,
-        title: status.title,
-        tone: status.tone
-      } : null;
+      return status
+        ? {
+            label: status.label,
+            title: status.title,
+            tone: status.tone
+          }
+        : null;
     }
 
     function buildInlineFieldViewModel(field, disabled) {
@@ -750,8 +786,12 @@
     }
 
     function restoreInlineCells() {
-      const fieldsById = new Map((state.snapshot && Array.isArray(state.snapshot.fields) ? state.snapshot.fields : [])
-        .map((field) => [field.id, field]));
+      const fieldsById = new Map(
+        (state.snapshot && Array.isArray(state.snapshot.fields) ? state.snapshot.fields : []).map((field) => [
+          field.id,
+          field
+        ])
+      );
       removeSyntheticRows();
       for (const [fieldId, record] of Array.from(state.inlineCellRecords.entries())) {
         restoreInlineCell(record, fieldsById.get(fieldId));
@@ -790,7 +830,9 @@
 
     function isInlineControlActive() {
       const active = document.activeElement;
-      return Boolean(active && typeof active.closest === 'function' && active.closest('.onframe-characteristics-inline-control'));
+      return Boolean(
+        active && typeof active.closest === 'function' && active.closest('.onframe-characteristics-inline-control')
+      );
     }
 
     function updateDraftField(id, part, value) {
@@ -805,7 +847,8 @@
     }
 
     async function saveCharacteristics() {
-      if (!state.itemId || state.saving || state.loading || !CharacteristicsModel.canEditCharacteristics(state.context)) return;
+      if (!state.itemId || state.saving || state.loading || !CharacteristicsModel.canEditCharacteristics(state.context))
+        return;
       const updates = buildChangedUpdates();
       if (!updates.length) {
         state.error = 'Altere ao menos uma característica.';
@@ -948,7 +991,9 @@
       }
       if (field.valueType === 'list' || field.valueType === 'boolean') {
         const valueId = CharacteristicsModel.normalizeFieldText(draft.valueId);
-        const option = (Array.isArray(field.options) ? field.options : []).find((candidate) => String(candidate.id) === valueId);
+        const option = (Array.isArray(field.options) ? field.options : []).find(
+          (candidate) => String(candidate.id) === valueId
+        );
         return option && option.name ? String(option.name) : valueId;
       }
       return CharacteristicsModel.normalizeFieldText(draft.valueName);
@@ -990,19 +1035,24 @@
 
     function removeInjectedActions() {
       restoreInlineCells();
-      document.querySelectorAll('.onframe-characteristics-action-root, .onframe-characteristics-catalog-notice').forEach((node) => {
-        CharacteristicsView.unmount(node);
-        node.remove();
-      });
+      document
+        .querySelectorAll('.onframe-characteristics-action-root, .onframe-characteristics-catalog-notice')
+        .forEach((node) => {
+          CharacteristicsView.unmount(node);
+          node.remove();
+        });
       unmountEditorViews();
-      document.querySelectorAll('.onframe-characteristics-is-editing').forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
+      document
+        .querySelectorAll('.onframe-characteristics-is-editing')
+        .forEach((node) => node.classList.remove('onframe-characteristics-is-editing'));
       if (state.editorRoot) state.editorRoot.remove();
       state.editorRoot = null;
     }
 
     function unmountEditorViews() {
       if (!state.editorRoot) return;
-      state.editorRoot.querySelectorAll('.onframe-characteristics-package-root, .onframe-characteristics-footer-root')
+      state.editorRoot
+        .querySelectorAll('.onframe-characteristics-package-root, .onframe-characteristics-footer-root')
         .forEach((node) => CharacteristicsView.unmount(node));
     }
 
@@ -1047,17 +1097,23 @@
     function createDraft(snapshot) {
       const draft = {};
       const fields = snapshot && Array.isArray(snapshot.fields) ? snapshot.fields : [];
-      fields.filter((field) => field.editable).forEach((field) => {
-        draft[field.id] = readFieldDraft(field);
-      });
+      fields
+        .filter((field) => field.editable)
+        .forEach((field) => {
+          draft[field.id] = readFieldDraft(field);
+        });
       return draft;
     }
 
     function readFieldDraft(field) {
       if (field.valueType === 'number_unit') {
         return {
-          number: field.valueStruct && field.valueStruct.number !== undefined ? String(field.valueStruct.number) : extractNumber(field.displayValue || field.valueName),
-          unit: field.valueStruct && field.valueStruct.unit ? String(field.valueStruct.unit) : collectUnits(field)[0] || ''
+          number:
+            field.valueStruct && field.valueStruct.number !== undefined
+              ? String(field.valueStruct.number)
+              : extractNumber(field.displayValue || field.valueName),
+          unit:
+            field.valueStruct && field.valueStruct.unit ? String(field.valueStruct.unit) : collectUnits(field)[0] || ''
         };
       }
       if (field.multivalued) {
@@ -1068,8 +1124,13 @@
       if (field.valueType === 'list' || field.valueType === 'boolean') {
         if (field.pending && !field.valueId && !field.valueName && !field.displayValue) return { valueId: '' };
         const options = Array.isArray(field.options) ? field.options : [];
-        const matched = options.find((option) => option.id === field.valueId) ||
-          options.find((option) => normalizeText(option.name).toLowerCase() === normalizeText(field.valueName || field.displayValue).toLowerCase()) ||
+        const matched =
+          options.find((option) => option.id === field.valueId) ||
+          options.find(
+            (option) =>
+              normalizeText(option.name).toLowerCase() ===
+              normalizeText(field.valueName || field.displayValue).toLowerCase()
+          ) ||
           {};
         return { valueId: matched.id || '' };
       }

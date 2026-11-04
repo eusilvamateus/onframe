@@ -1,5 +1,4 @@
 (function (root) {
-
   function createApi(options = {}) {
     const offlineMessage = options.offlineMessage || 'Entre na extensão do OnFrame para continuar.';
 
@@ -25,31 +24,33 @@
   function callViaRuntimeBridge(path, requestOptions, offlineMessage) {
     return new Promise((resolve, reject) => {
       try {
-        root.chrome.runtime.sendMessage({
-          type: 'onframe:api',
-          path,
-          options: serializeRequestOptions(requestOptions)
-        }, (response) => {
-          const runtimeError = root.chrome.runtime.lastError;
-          if (runtimeError) {
-            const friendly = new Error(offlineMessage);
-            friendly.technicalError = runtimeError.message || String(runtimeError);
-            reject(friendly);
-            return;
+        root.chrome.runtime.sendMessage(
+          {
+            type: 'onframe:api',
+            path,
+            options: serializeRequestOptions(requestOptions)
+          },
+          (response) => {
+            const runtimeError = root.chrome.runtime.lastError;
+            if (runtimeError) {
+              const friendly = new Error(offlineMessage);
+              friendly.technicalError = runtimeError.message || String(runtimeError);
+              reject(friendly);
+              return;
+            }
+            if (!response || response.ok !== true) {
+              const friendly = new Error(response && response.error ? response.error : offlineMessage);
+              friendly.status = response && response.status ? response.status : 0;
+              friendly.code = response && response.code ? response.code : '';
+              friendly.requestId = response && response.requestId ? response.requestId : '';
+              friendly.technicalError =
+                response && response.technicalError ? response.technicalError : friendly.code || friendly.message;
+              reject(friendly);
+              return;
+            }
+            resolve(response.body || {});
           }
-          if (!response || response.ok !== true) {
-            const friendly = new Error(response && response.error ? response.error : offlineMessage);
-            friendly.status = response && response.status ? response.status : 0;
-            friendly.code = response && response.code ? response.code : '';
-            friendly.requestId = response && response.requestId ? response.requestId : '';
-            friendly.technicalError = response && response.technicalError
-              ? response.technicalError
-              : (friendly.code || friendly.message);
-            reject(friendly);
-            return;
-          }
-          resolve(response.body || {});
-        });
+        );
       } catch (err) {
         const friendly = new Error(offlineMessage);
         friendly.technicalError = err && err.message ? err.message : String(err);

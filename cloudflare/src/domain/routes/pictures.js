@@ -57,9 +57,8 @@ async function handlePictureFixSize({ req, client, itemId, readJson }) {
   }
 
   const downloaded = bestImage.downloaded;
-  const originalDimensions = extractImageDimensionsFromBase64(downloaded.base64) ||
-    bestImage.dimensions ||
-    extractOfficialDimensions(picture);
+  const originalDimensions =
+    extractImageDimensionsFromBase64(downloaded.base64) || bestImage.dimensions || extractOfficialDimensions(picture);
   const optimizedDimensions = originalDimensions
     ? calculateOptimizedDimensions(originalDimensions.width, originalDimensions.height, OFFICIAL_TARGET_SIZE)
     : null;
@@ -103,10 +102,17 @@ async function handlePictureCommit({ req, client, itemId, readJson }) {
 }
 
 function logEvent(event, data) {
-  console.log(JSON.stringify(Object.assign({
-    time: new Date().toISOString(),
-    event
-  }, data || {})));
+  console.log(
+    JSON.stringify(
+      Object.assign(
+        {
+          time: new Date().toISOString(),
+          event
+        },
+        data || {}
+      )
+    )
+  );
 }
 
 module.exports = {

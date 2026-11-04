@@ -8,12 +8,7 @@ const CONCURRENCY_WRITE = 2;
 const EDITABLE_VALUE_TYPES = new Set(['string', 'number', 'number_unit', 'boolean', 'list']);
 const BLOCKED_HIERARCHIES = new Set(['PARENT_PK', 'CHILD_PK']);
 const PENDING_BLOCKED_HIERARCHIES = new Set(['PARENT_PK', 'CHILD_PK', 'PRODUCT_IDENTIFIER']);
-const BLOCKED_TAGS = new Set([
-  'fixed',
-  'read_only',
-  'variation_attribute',
-  'allow_variations'
-]);
+const BLOCKED_TAGS = new Set(['fixed', 'read_only', 'variation_attribute', 'allow_variations']);
 const CONTEXTUAL_BLOCKED_TAGS = new Set(['hidden', 'multivalued']);
 const SELLER_PACKAGE_ATTRIBUTE_IDS = new Set([
   'SELLER_PACKAGE_HEIGHT',
@@ -105,7 +100,9 @@ async function updateCharacteristicsFamily(client, itemId, input = {}) {
   }
 
   const targets = await resolveFamilyTargets(client, itemId, input);
-  const prepared = await mapLimit(targets.items, CONCURRENCY_READ, async (target) => prepareCharacteristicsTarget(client, target));
+  const prepared = await mapLimit(targets.items, CONCURRENCY_READ, async (target) =>
+    prepareCharacteristicsTarget(client, target)
+  );
   const editableTargets = prepared.filter((target) => target.eligible);
   const editableVariations = editableTargets.filter((target) => !target.current);
 
@@ -164,13 +161,17 @@ async function buildCharacteristicsSnapshot(client, item) {
     loadCategoryAttributes(client, sourceItem.category_id),
     loadDomainTechnicalSpecs(client, sourceItem.domain_id)
   ]);
-  const schemaById = new Map((Array.isArray(categoryAttributes) ? categoryAttributes : [])
-    .filter((attribute) => attribute && attribute.id)
-    .map((attribute) => [String(attribute.id), attribute]));
+  const schemaById = new Map(
+    (Array.isArray(categoryAttributes) ? categoryAttributes : [])
+      .filter((attribute) => attribute && attribute.id)
+      .map((attribute) => [String(attribute.id), attribute])
+  );
   const itemAttributes = Array.isArray(sourceItem.attributes) ? sourceItem.attributes : [];
-  const itemById = new Map(itemAttributes
-    .filter((attribute) => attribute && attribute.id)
-    .map((attribute) => [String(attribute.id), attribute]));
+  const itemById = new Map(
+    itemAttributes
+      .filter((attribute) => attribute && attribute.id)
+      .map((attribute) => [String(attribute.id), attribute])
+  );
   const groups = buildGroupsFromTechnicalSpecs(technicalSpecs, itemById, schemaById);
   appendUngroupedItemAttributes(groups, itemAttributes, schemaById);
   appendPendingSchemaAttributes(groups, categoryAttributes, itemById, schemaById);
@@ -209,13 +210,15 @@ function buildGroupsFromTechnicalSpecs(technicalSpecs, itemById, schemaById) {
       if (!id || seen.has(id) || !itemById.has(id)) return;
       if (isLogisticsPackageAttribute(id, itemById.get(id), schemaById.get(id))) return;
       seen.add(id);
-      fields.push(buildField(itemById.get(id), schemaById.get(id), {
-        groupId: specGroup.id || specGroup.name || null,
-        groupName: specGroup.label || specGroup.name || specGroup.id || 'Características',
-        componentLabel: component && (component.label || component.name) || null,
-        hierarchy: specAttribute.hierarchy || specAttribute.tags && specAttribute.tags.hierarchy || null,
-        publicField: true
-      }));
+      fields.push(
+        buildField(itemById.get(id), schemaById.get(id), {
+          groupId: specGroup.id || specGroup.name || null,
+          groupName: specGroup.label || specGroup.name || specGroup.id || 'Características',
+          componentLabel: (component && (component.label || component.name)) || null,
+          hierarchy: specAttribute.hierarchy || (specAttribute.tags && specAttribute.tags.hierarchy) || null,
+          publicField: true
+        })
+      );
     });
     if (fields.length) {
       groups.push({
@@ -238,15 +241,18 @@ function appendUngroupedItemAttributes(groups, itemAttributes, schemaById) {
     if (isLogisticsPackageAttribute(id, attribute, schemaById.get(id))) continue;
     const groupName = attribute.attribute_group_name || 'Outros';
     const groupId = attribute.attribute_group_id || normalizeGroupId(groupName);
-    if (!grouped.has(groupId)) grouped.set(groupId, {
-      id: String(groupId),
-      label: String(groupName),
-      attributes: []
-    });
-    grouped.get(groupId).attributes.push(buildField(attribute, schemaById.get(id), {
-      groupId,
-      groupName
-    }));
+    if (!grouped.has(groupId))
+      grouped.set(groupId, {
+        id: String(groupId),
+        label: String(groupName),
+        attributes: []
+      });
+    grouped.get(groupId).attributes.push(
+      buildField(attribute, schemaById.get(id), {
+        groupId,
+        groupName
+      })
+    );
     seen.add(id);
   }
   grouped.forEach((group) => groups.push(group));
@@ -299,7 +305,9 @@ function isPendingSchemaAttribute(schemaAttribute, id) {
   const valueType = String(schema.value_type || '').toLowerCase();
   if (!EDITABLE_VALUE_TYPES.has(valueType)) return false;
   const tags = collectTags(schema.tags);
-  const hierarchy = String(schema.hierarchy || schema.tags && schema.tags.hierarchy || '').trim().toUpperCase();
+  const hierarchy = String(schema.hierarchy || (schema.tags && schema.tags.hierarchy) || '')
+    .trim()
+    .toUpperCase();
   if (PENDING_BLOCKED_HIERARCHIES.has(hierarchy)) return false;
   for (const tag of BLOCKED_TAGS) {
     if (tags.has(tag)) return false;
@@ -310,9 +318,11 @@ function isPendingSchemaAttribute(schemaAttribute, id) {
 }
 
 function buildPackageDimensions(itemAttributes, schemaById) {
-  const byId = new Map((Array.isArray(itemAttributes) ? itemAttributes : [])
-    .filter((attribute) => attribute && isSellerPackageAttribute(attribute.id))
-    .map((attribute) => [normalizeAttributeId(attribute.id), attribute]));
+  const byId = new Map(
+    (Array.isArray(itemAttributes) ? itemAttributes : [])
+      .filter((attribute) => attribute && isSellerPackageAttribute(attribute.id))
+      .map((attribute) => [normalizeAttributeId(attribute.id), attribute])
+  );
   const fields = [
     buildPackageDimensionField('SELLER_PACKAGE_HEIGHT', 'Altura do pacote', byId, schemaById, ['cm']),
     buildPackageDimensionField('SELLER_PACKAGE_WIDTH', 'Largura do pacote', byId, schemaById, ['cm']),
@@ -350,9 +360,13 @@ function buildField(itemAttribute, schema, spec = {}) {
   const attribute = itemAttribute && typeof itemAttribute === 'object' ? itemAttribute : {};
   const schemaAttribute = schema && typeof schema === 'object' ? schema : {};
   const id = normalizeAttributeId(attribute.id || schemaAttribute.id);
-  const valueType = String(schemaAttribute.value_type || attribute.value_type || inferValueType(attribute)).toLowerCase();
+  const valueType = String(
+    schemaAttribute.value_type || attribute.value_type || inferValueType(attribute)
+  ).toLowerCase();
   const tags = collectTags(schemaAttribute.tags, attribute.tags);
-  const hierarchy = String(spec.hierarchy || schemaAttribute.hierarchy || schemaAttribute.tags && schemaAttribute.tags.hierarchy || '').trim();
+  const hierarchy = String(
+    spec.hierarchy || schemaAttribute.hierarchy || (schemaAttribute.tags && schemaAttribute.tags.hierarchy) || ''
+  ).trim();
   const pending = Boolean(spec.pending);
   const editability = resolveFieldEditability({
     attribute,
@@ -439,7 +453,7 @@ function isLogisticsPackageAttribute(id, itemAttribute, schemaAttribute) {
   const normalizedId = normalizeAttributeId(id);
   if (isSellerPackageAttribute(normalizedId) || READONLY_PACKAGE_ATTRIBUTE_IDS.has(normalizedId)) return true;
   const label = normalizeAttributeLabel(
-    itemAttribute && itemAttribute.name || schemaAttribute && schemaAttribute.name || ''
+    (itemAttribute && itemAttribute.name) || (schemaAttribute && schemaAttribute.name) || ''
   );
   return PACKAGE_LOGISTICS_ATTRIBUTE_LABELS.has(label);
 }
@@ -458,8 +472,9 @@ function blocked(reason, message) {
 }
 
 function normalizeAttributeUpdates(inputUpdates, snapshot) {
-  const fields = new Map((snapshot && Array.isArray(snapshot.fields) ? snapshot.fields : [])
-    .map((field) => [field.id, field]));
+  const fields = new Map(
+    (snapshot && Array.isArray(snapshot.fields) ? snapshot.fields : []).map((field) => [field.id, field])
+  );
   const updates = [];
   for (const input of Array.isArray(inputUpdates) ? inputUpdates : []) {
     const id = normalizeAttributeId(input && input.id);
@@ -475,7 +490,10 @@ function normalizeAttributeUpdates(inputUpdates, snapshot) {
 function toPayloadAttribute(input, field) {
   const source = input && typeof input === 'object' ? input : {};
   if (field.multivalued) {
-    const values = normalizeMultivalueInput(source.valueName || source.value_name || field.displayValue || field.valueName, field);
+    const values = normalizeMultivalueInput(
+      source.valueName || source.value_name || field.displayValue || field.valueName,
+      field
+    );
     if (!values.length) throwUserError('characteristics_empty_value', 400);
     return {
       id: field.id,
@@ -530,10 +548,7 @@ function resolveOption(input, field) {
 
 function normalizeMultivalueInput(value, field) {
   const options = Array.isArray(field && field.options) ? field.options : [];
-  const optionsByName = new Map(options.map((option) => [
-    normalizeText(option.name).toLowerCase(),
-    option
-  ]));
+  const optionsByName = new Map(options.map((option) => [normalizeText(option.name).toLowerCase(), option]));
   return String(value === undefined || value === null ? '' : value)
     .split(',')
     .map((item) => normalizeText(item))
@@ -562,7 +577,8 @@ function cleanCurrentAttribute(attribute) {
   const payload = { id: String(attribute.id) };
   if (attribute.value_id !== undefined && attribute.value_id !== null) payload.value_id = attribute.value_id;
   if (attribute.value_name !== undefined && attribute.value_name !== null) payload.value_name = attribute.value_name;
-  if (attribute.value_struct && typeof attribute.value_struct === 'object') payload.value_struct = attribute.value_struct;
+  if (attribute.value_struct && typeof attribute.value_struct === 'object')
+    payload.value_struct = attribute.value_struct;
   if (Array.isArray(attribute.values)) payload.values = attribute.values.map(cleanAttributeValue).filter(Boolean);
   return payload;
 }
@@ -591,7 +607,12 @@ async function prepareCharacteristicsTarget(client, target) {
   try {
     const item = await assertOwnedItem(client, target.itemId);
     if (item.catalog_listing) {
-      return blockedTarget(target, item, 'catalog_listing_characteristics_read_only', 'Catálogo: características bloqueadas pelo Mercado Livre.');
+      return blockedTarget(
+        target,
+        item,
+        'catalog_listing_characteristics_read_only',
+        'Catálogo: características bloqueadas pelo Mercado Livre.'
+      );
     }
 
     return {
@@ -678,7 +699,8 @@ function assertCharacteristicsEditableItem(item) {
 async function loadCategoryAttributes(client, categoryId) {
   if (!categoryId) return [];
   try {
-    if (client && typeof client.getCategoryAttributes === 'function') return await client.getCategoryAttributes(categoryId);
+    if (client && typeof client.getCategoryAttributes === 'function')
+      return await client.getCategoryAttributes(categoryId);
     return await client.request(`/categories/${encodeURIComponent(categoryId)}/attributes`);
   } catch (err) {
     return [];
@@ -688,7 +710,8 @@ async function loadCategoryAttributes(client, categoryId) {
 async function loadDomainTechnicalSpecs(client, domainId) {
   if (!domainId) return null;
   try {
-    if (client && typeof client.getDomainTechnicalSpecs === 'function') return await client.getDomainTechnicalSpecs(domainId);
+    if (client && typeof client.getDomainTechnicalSpecs === 'function')
+      return await client.getDomainTechnicalSpecs(domainId);
     return await client.request(`/domains/${encodeURIComponent(domainId)}/technical_specs`);
   } catch (err) {
     return null;
@@ -717,15 +740,24 @@ function getNestedArray(source, path) {
 function readAttributeValue(attribute) {
   const values = Array.isArray(attribute && attribute.values) ? attribute.values : [];
   const first = values[0] || null;
-  const valueId = attribute && attribute.value_id !== undefined && attribute.value_id !== null
-    ? String(attribute.value_id)
-    : first && first.id !== undefined && first.id !== null ? String(first.id) : '';
-  const valueName = attribute && attribute.value_name !== undefined && attribute.value_name !== null
-    ? String(attribute.value_name)
-    : first && first.name !== undefined && first.name !== null ? String(first.name) : '';
-  const valueStruct = attribute && attribute.value_struct && typeof attribute.value_struct === 'object'
-    ? attribute.value_struct
-    : first && first.struct && typeof first.struct === 'object' ? first.struct : null;
+  const valueId =
+    attribute && attribute.value_id !== undefined && attribute.value_id !== null
+      ? String(attribute.value_id)
+      : first && first.id !== undefined && first.id !== null
+        ? String(first.id)
+        : '';
+  const valueName =
+    attribute && attribute.value_name !== undefined && attribute.value_name !== null
+      ? String(attribute.value_name)
+      : first && first.name !== undefined && first.name !== null
+        ? String(first.name)
+        : '';
+  const valueStruct =
+    attribute && attribute.value_struct && typeof attribute.value_struct === 'object'
+      ? attribute.value_struct
+      : first && first.struct && typeof first.struct === 'object'
+        ? first.struct
+        : null;
   return { valueId, valueName, valueStruct };
 }
 
@@ -764,7 +796,10 @@ function normalizeAllowedUnits(values) {
 }
 
 function normalizeRequestedUnit(value, field) {
-  const requested = normalizeUnit(value) || normalizeUnit(field.valueStruct && field.valueStruct.unit) || normalizeUnit(field.defaultUnit);
+  const requested =
+    normalizeUnit(value) ||
+    normalizeUnit(field.valueStruct && field.valueStruct.unit) ||
+    normalizeUnit(field.defaultUnit);
   const allowed = Array.isArray(field.allowedUnits) ? field.allowedUnits : [];
   if (!requested) return '';
   if (allowed.length && !allowed.includes(requested)) return '';
@@ -776,7 +811,10 @@ function normalizeUnit(value) {
 }
 
 function normalizeAttributeId(value) {
-  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '');
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_]/g, '');
 }
 
 function normalizeAttributeLabel(value) {
@@ -788,7 +826,12 @@ function normalizeAttributeLabel(value) {
 }
 
 function normalizeGroupId(value) {
-  return String(value || 'OTHERS').trim().toUpperCase().replace(/[^A-Z0-9_]+/g, '_') || 'OTHERS';
+  return (
+    String(value || 'OTHERS')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_]+/g, '_') || 'OTHERS'
+  );
 }
 
 function normalizeText(value) {
@@ -798,9 +841,7 @@ function normalizeText(value) {
 function normalizeNumber(value) {
   const raw = String(value === undefined || value === null ? '' : value).trim();
   if (!raw) return NaN;
-  const normalized = raw.includes(',')
-    ? raw.replace(/\./g, '').replace(',', '.')
-    : raw;
+  const normalized = raw.includes(',') ? raw.replace(/\./g, '').replace(',', '.') : raw;
   return Number(normalized);
 }
 
@@ -828,11 +869,15 @@ function collectTags() {
 }
 
 function summarizeItem(item) {
-  const firstPicture = Array.isArray(item.pictures) && item.pictures[0] || null;
+  const firstPicture = (Array.isArray(item.pictures) && item.pictures[0]) || null;
   return {
     id: item.id || null,
     title: item.title || null,
-    thumbnailUrl: item.secure_thumbnail || item.thumbnail || firstPicture && (firstPicture.secure_url || firstPicture.url) || null,
+    thumbnailUrl:
+      item.secure_thumbnail ||
+      item.thumbnail ||
+      (firstPicture && (firstPicture.secure_url || firstPicture.url)) ||
+      null,
     permalink: item.permalink || null,
     sellerId: item.seller_id || null,
     categoryId: item.category_id || null,

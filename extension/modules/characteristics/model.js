@@ -59,11 +59,15 @@
 
   function friendlyError(message) {
     const text = String(message || '');
-    if (/bulk_characteristics_no_editable_variations/i.test(text)) return 'Não há variações editáveis para aplicar em massa.';
-    if (/catalog_listing_characteristics_read_only|attributes is not modifiable on catalog listing item/i.test(text)) return 'Catálogo: características bloqueadas pelo Mercado Livre.';
+    if (/bulk_characteristics_no_editable_variations/i.test(text))
+      return 'Não há variações editáveis para aplicar em massa.';
+    if (/catalog_listing_characteristics_read_only|attributes is not modifiable on catalog listing item/i.test(text))
+      return 'Catálogo: características bloqueadas pelo Mercado Livre.';
     if (/characteristics_missing_updates/i.test(text)) return 'Altere ao menos uma característica.';
-    if (/characteristics_attribute_not_editable/i.test(text)) return 'Essa característica não pode ser editada pelo Mercado Livre.';
-    if (/characteristics_invalid_number_unit|characteristics_invalid_value/i.test(text)) return 'Informe um valor válido para a característica.';
+    if (/characteristics_attribute_not_editable/i.test(text))
+      return 'Essa característica não pode ser editada pelo Mercado Livre.';
+    if (/characteristics_invalid_number_unit|characteristics_invalid_value/i.test(text))
+      return 'Informe um valor válido para a característica.';
     if (/characteristics_empty_value/i.test(text)) return 'Informe o valor da característica.';
     return text || 'Não consegui salvar as características.';
   }

@@ -1,4 +1,4 @@
-.ui-pdp-description__content[data-onframe-description-click="true"] {
+.ui-pdp-description__content[data-onframe-description-click='true'] {
   cursor: text;
 }
 
@@ -44,7 +44,7 @@
   display: none;
 }
 
-.onframe-description-is-editing > [data-testid="action-collapsable-target"] {
+.onframe-description-is-editing > [data-testid='action-collapsable-target'] {
   display: none;
 }
 

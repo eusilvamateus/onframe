@@ -3,10 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
 
-const notice = fs.readFileSync(
-  path.join(__dirname, '..', 'extension', 'ui', 'content', 'catalog-notice.jsx'),
-  'utf8'
-);
+const notice = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'catalog-notice.jsx'), 'utf8');
 
 test('aviso de catálogo é compacto, compartilhado e usa o design system', () => {
   assert.match(notice, /import \{ Card, Ph \} from '@onblide\/ui'/);

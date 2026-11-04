@@ -3,15 +3,8 @@ import test from 'node:test';
 import { storageObjectUrl, storagePublicObjectPath, storageUploadFailureCode } from '../src/avatar-storage.ts';
 
 test('preserva a estrutura do caminho de objeto do Storage', () => {
-  const url = storageObjectUrl(
-    'https://project.supabase.co/',
-    'onframe-avatars',
-    'usr_abc/avatar file.jpg'
-  );
-  assert.equal(
-    url,
-    'https://project.supabase.co/storage/v1/object/onframe-avatars/usr_abc/avatar%20file.jpg'
-  );
+  const url = storageObjectUrl('https://project.supabase.co/', 'onframe-avatars', 'usr_abc/avatar file.jpg');
+  assert.equal(url, 'https://project.supabase.co/storage/v1/object/onframe-avatars/usr_abc/avatar%20file.jpg');
 });
 
 test('recupera somente o caminho de uma URL pública do bucket esperado', () => {

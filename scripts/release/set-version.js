@@ -31,11 +31,17 @@ function main() {
     return json;
   });
 
-  console.log(JSON.stringify({
-    ok: true,
-    version: nextVersion,
-    tag: `v${nextVersion}`
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        version: nextVersion,
+        tag: `v${nextVersion}`
+      },
+      null,
+      2
+    )
+  );
 }
 
 function updateJson(relativePath, updater) {

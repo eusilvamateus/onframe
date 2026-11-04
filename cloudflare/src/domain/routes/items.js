@@ -52,10 +52,12 @@ async function handleResolveQuick({ req, client, store, clientFactory, readJson,
     });
   }
 
-  return withQuickCache(cache, null, pageIdentity, () => resolveQuickItemContext(client, {
-    pageIdentity,
-    ownerUserId: body && body.ownerUserId
-  }));
+  return withQuickCache(cache, null, pageIdentity, () =>
+    resolveQuickItemContext(client, {
+      pageIdentity,
+      ownerUserId: body && body.ownerUserId
+    })
+  );
 }
 
 async function resolveItemContextForConnectedAccounts({ ownerUserId, pageIdentity, store, clientFactory }) {
@@ -104,7 +106,11 @@ async function resolveItemContextForConnectedAccounts({ ownerUserId, pageIdentit
   throw await buildNoConnectedOwnerError({
     rejected,
     disabledAccounts: connectedAccountTokens(allAccounts).filter((account) => account.enabled === false),
-    itemId: pageIdentity.urlItemId || pageIdentity.productTriggerItemId || pageIdentity.pdpFilterItemId || pageIdentity.canonicalItemId,
+    itemId:
+      pageIdentity.urlItemId ||
+      pageIdentity.productTriggerItemId ||
+      pageIdentity.pdpFilterItemId ||
+      pageIdentity.canonicalItemId,
     clientFactory
   });
 }
@@ -116,25 +122,31 @@ async function resolveQuickItemContextForConnectedAccounts({ ownerUserId, pageId
   }
   const accounts = enabledAccountTokens(allAccounts);
   if (!accounts.length) {
-    return withQuickCache(cache, null, pageIdentity, () => resolveQuickItemContext(clientFactory(null), { pageIdentity }));
+    return withQuickCache(cache, null, pageIdentity, () =>
+      resolveQuickItemContext(clientFactory(null), { pageIdentity })
+    );
   }
 
   const ownerAccount = findConnectedAccount(connectedAccountTokens(allAccounts), ownerUserId);
   if (ownerUserId) {
     if (!ownerAccount) throw buildMissingOwnerAccountError();
     if (ownerAccount.enabled === false) throw buildDisabledOwnerAccountError();
-    const context = await withQuickCache(cache, ownerAccount, pageIdentity, () => resolveQuickItemContext(clientFactory(ownerAccount), {
-      pageIdentity,
-      ownerUserId: ownerAccount.user_id
-    }));
+    const context = await withQuickCache(cache, ownerAccount, pageIdentity, () =>
+      resolveQuickItemContext(clientFactory(ownerAccount), {
+        pageIdentity,
+        ownerUserId: ownerAccount.user_id
+      })
+    );
     return withOwnerAccount(context, ownerAccount);
   }
 
   const attempts = accounts.map(async (account) => {
-    const context = await withQuickCache(cache, account, pageIdentity, () => resolveQuickItemContext(clientFactory(account), {
-      pageIdentity,
-      ownerUserId: account.user_id
-    }));
+    const context = await withQuickCache(cache, account, pageIdentity, () =>
+      resolveQuickItemContext(clientFactory(account), {
+        pageIdentity,
+        ownerUserId: account.user_id
+      })
+    );
     return withOwnerAccount(context, account);
   });
   try {
@@ -191,17 +203,22 @@ function stripQuickCacheMetadata(context) {
 function findConnectedAccount(accounts, userId) {
   const normalized = normalizeOwnerUserId(userId);
   if (!normalized) return null;
-  return (Array.isArray(accounts) ? accounts : [])
-    .find((account) => String(account && account.user_id || '') === normalized) || null;
+  return (
+    (Array.isArray(accounts) ? accounts : []).find(
+      (account) => String((account && account.user_id) || '') === normalized
+    ) || null
+  );
 }
 
 function primaryItemId(identity) {
-  return identity.denounceItemId ||
+  return (
+    identity.denounceItemId ||
     identity.pdpFilterItemId ||
     identity.urlItemId ||
     identity.canonicalItemId ||
     identity.productTriggerItemId ||
-    null;
+    null
+  );
 }
 
 async function withQuickCache(cache, account, pageIdentity, loader) {

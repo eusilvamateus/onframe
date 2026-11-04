@@ -9,11 +9,7 @@ const distDir = path.join(root, 'dist');
 const packageDir = path.join(distDir, `onframe-v${version}`);
 const zipPath = path.join(distDir, `onframe-v${version}.zip`);
 
-const entries = [
-  'extension',
-  'scripts/bootstrap',
-  'package.json'
-];
+const entries = ['extension', 'scripts/bootstrap', 'package.json'];
 
 fs.rmSync(packageDir, { recursive: true, force: true });
 fs.rmSync(zipPath, { force: true });
@@ -47,7 +43,8 @@ function copyRecursive(source, destination) {
         child === 'README.md' ||
         child === 'CHANGELOG.md' ||
         child === 'RELEASE.md'
-      ) continue;
+      )
+        continue;
       copyRecursive(path.join(source, child), path.join(destination, child));
     }
     return;

@@ -62,7 +62,7 @@
     return orderedIds
       .map((id) => byId.get(id))
       .filter(Boolean)
-      .map((picture) => picture.id ? { id: picture.id } : { source: picture.source });
+      .map((picture) => (picture.id ? { id: picture.id } : { source: picture.source }));
   }
 
   function getPictureLimitState(options = {}) {

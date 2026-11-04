@@ -7,7 +7,9 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   function normalizeText(value) {
-    return String(value === undefined || value === null ? '' : value).replace(/\r\n/g, '\n').trim();
+    return String(value === undefined || value === null ? '' : value)
+      .replace(/\r\n/g, '\n')
+      .trim();
   }
 
   function resolveDescriptionText(description, fallback = '') {
@@ -74,9 +76,12 @@
   function friendlyError(message) {
     const text = String(message || '');
     if (/description_empty/i.test(text)) return 'Informe a descrição.';
-    if (/bulk_description_no_editable_variations/i.test(text)) return 'Não há variações editáveis para aplicar em massa.';
-    if (/catalog_listing_description_read_only|description is not modifiable on catalog listing item/i.test(text)) return 'Catálogo: descrição bloqueada pelo Mercado Livre.';
-    if (/plain text|item\.description\.type\.invalid/i.test(text)) return 'A descrição deve conter apenas texto simples.';
+    if (/bulk_description_no_editable_variations/i.test(text))
+      return 'Não há variações editáveis para aplicar em massa.';
+    if (/catalog_listing_description_read_only|description is not modifiable on catalog listing item/i.test(text))
+      return 'Catálogo: descrição bloqueada pelo Mercado Livre.';
+    if (/plain text|item\.description\.type\.invalid/i.test(text))
+      return 'A descrição deve conter apenas texto simples.';
     return text || 'Não consegui salvar a descrição.';
   }
 

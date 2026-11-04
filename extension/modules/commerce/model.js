@@ -23,7 +23,7 @@
     const amount = moneyAmount(standard.amount) || moneyAmount(item.price);
     const currency = standard.currency_id || item.currency_id || 'BRL';
     const hasPromotion = Boolean(
-      sale && (sale.promotion || positiveNumber(sale.regular_amount) > positiveNumber(sale.amount)) ||
+      (sale && (sale.promotion || positiveNumber(sale.regular_amount) > positiveNumber(sale.amount))) ||
       positiveNumber(item.original_price) > positiveNumber(item.price)
     );
 
@@ -164,26 +164,33 @@
 
   function programmedOfferCount(entries) {
     const activeProgrammed = list(entries && entries.activeOffers).filter((entry) => {
-      return !isStackablePromotion(entry) && String(entry && entry.display_status || '').toLowerCase() === 'programmed';
+      return (
+        !isStackablePromotion(entry) && String((entry && entry.display_status) || '').toLowerCase() === 'programmed'
+      );
     });
     const scheduled = list(entries && entries.scheduledOffers).filter((entry) => {
-      return !isStackablePromotion(entry) && entry && entry.is_current_price !== true &&
-        String(entry.display_status || '').toLowerCase() === 'programmed';
+      return (
+        !isStackablePromotion(entry) &&
+        entry &&
+        entry.is_current_price !== true &&
+        String(entry.display_status || '').toLowerCase() === 'programmed'
+      );
     });
     return uniquePromotionEntries(activeProgrammed.concat(scheduled)).length;
   }
 
   function isStackablePromotion(entry) {
-    const type = String(entry && entry.type || '').toUpperCase();
-    return entry && entry.is_stackable === true || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN';
+    const type = String((entry && entry.type) || '').toUpperCase();
+    return (entry && entry.is_stackable === true) || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN';
   }
 
   function uniquePromotionEntries(entries) {
     const seen = new Set();
     return list(entries).filter((entry, index) => {
-      const key = entry && (entry.offer_id || entry.ref_id || entry.id)
-        ? `${entry.type || ''}:${entry.offer_id || entry.ref_id || entry.id}`
-        : `index:${index}`;
+      const key =
+        entry && (entry.offer_id || entry.ref_id || entry.id)
+          ? `${entry.type || ''}:${entry.offer_id || entry.ref_id || entry.id}`
+          : `index:${index}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -198,7 +205,9 @@
         style: 'currency',
         currency: currency || 'BRL',
         minimumFractionDigits: 2
-      }).format(amount).replace(/\u00a0/g, ' ');
+      })
+        .format(amount)
+        .replace(/\u00a0/g, ' ');
     } catch (e) {
       return `R$ ${amount.toFixed(2).replace('.', ',')}`;
     }
@@ -214,7 +223,8 @@
     if (entry && entry.offer_id) payload.offerId = entry.offer_id;
 
     for (const field of fields) {
-      if (field === 'promotion_id' && !payload.promotionId && values.promotion_id) payload.promotionId = values.promotion_id;
+      if (field === 'promotion_id' && !payload.promotionId && values.promotion_id)
+        payload.promotionId = values.promotion_id;
       if (field === 'offer_id' && !payload.offerId && values.offer_id) payload.offerId = values.offer_id;
       if (field === 'deal_price') {
         const dealPrice = parseMoneyInput(values.deal_price);
@@ -244,11 +254,17 @@
 
   function buildOfferUpdatePayload(entry, values = {}) {
     const fields = getOfferUpdateFields(entry);
-    return Object.assign(buildOfferPayload(Object.assign({}, entry, {
-      capabilities: Object.assign({}, entry && entry.capabilities, { offerCreate: fields })
-    }), values), {
-      promotionType: entry && entry.type ? entry.type : ''
-    });
+    return Object.assign(
+      buildOfferPayload(
+        Object.assign({}, entry, {
+          capabilities: Object.assign({}, entry && entry.capabilities, { offerCreate: fields })
+        }),
+        values
+      ),
+      {
+        promotionType: entry && entry.type ? entry.type : ''
+      }
+    );
   }
 
   function buildOfferDeletePayload(entry) {
@@ -275,12 +291,16 @@
     if (entry && entry.capabilities && entry.capabilities.readonly) return false;
     const fields = getOfferDeleteFields(entry);
     if (fields.length > 0) return true;
-    return String(entry && entry.type || '').toUpperCase() === 'PRICE_DISCOUNT' &&
-      entry && entry.capabilities && Array.isArray(entry.capabilities.offerDelete);
+    return (
+      String((entry && entry.type) || '').toUpperCase() === 'PRICE_DISCOUNT' &&
+      entry &&
+      entry.capabilities &&
+      Array.isArray(entry.capabilities.offerDelete)
+    );
   }
 
   function isCheckoutCouponPromotion(entry) {
-    return String(entry && entry.type || '').toUpperCase() === 'SELLER_COUPON_CAMPAIGN';
+    return String((entry && entry.type) || '').toUpperCase() === 'SELLER_COUPON_CAMPAIGN';
   }
 
   function canEstimatePromotion(entry) {
@@ -319,9 +339,12 @@
     if (text.includes('promotion_invalid_stock')) return 'Informe um estoque válido.';
     if (text.includes('promotion_stock_out_of_range')) return 'Informe um estoque dentro da faixa da campanha.';
     if (text.includes('promotion_missing_offer_id')) return 'Oferta não identificada. Atualize e tente de novo.';
-    if (text.includes('promotion_change_not_confirmed')) return 'Alteração enviada. O Mercado Livre ainda está confirmando o novo estado.';
-    if (text.includes('start and finish dates must be in local format')) return 'Use datas sem fuso horário. Atualize e tente de novo.';
-    if (text.includes('promotion_missing_start_date') || text.includes('promotion_missing_finish_date')) return 'Informe início e fim.';
+    if (text.includes('promotion_change_not_confirmed'))
+      return 'Alteração enviada. O Mercado Livre ainda está confirmando o novo estado.';
+    if (text.includes('start and finish dates must be in local format'))
+      return 'Use datas sem fuso horário. Atualize e tente de novo.';
+    if (text.includes('promotion_missing_start_date') || text.includes('promotion_missing_finish_date'))
+      return 'Informe início e fim.';
     if (text.includes('promotion_readonly')) return 'Promoção automática.';
     if (text.includes('not_supported')) return 'Ação indisponível.';
     return message || 'Não consegui concluir.';
@@ -332,7 +355,7 @@
   }
 
   function restrictionLabel(restriction) {
-    const code = String(restriction && restriction.code || '');
+    const code = String((restriction && restriction.code) || '');
     if (code === 'pricing_automation_active') return 'Automação ativa';
     if (code === 'price_blocked_by_promotion') return 'Promoção ativa';
     if (code === 'item_closed_with_bids' || code === 'item_closed') return 'Encerrado';
@@ -340,7 +363,7 @@
   }
 
   function restrictionDetail(restriction) {
-    const code = String(restriction && restriction.code || '');
+    const code = String((restriction && restriction.code) || '');
     if (code === 'pricing_automation_active') return 'Desative a automação para editar.';
     if (code === 'price_blocked_by_promotion') return 'Remova a promoção antes de alterar.';
     if (code === 'item_closed_with_bids' || code === 'item_closed') return 'Reative o anúncio para editar.';
@@ -348,9 +371,7 @@
   }
 
   function capabilityFields(entry, key) {
-    const fields = entry && entry.capabilities && Array.isArray(entry.capabilities[key])
-      ? entry.capabilities[key]
-      : [];
+    const fields = entry && entry.capabilities && Array.isArray(entry.capabilities[key]) ? entry.capabilities[key] : [];
     return fields.map((field) => String(field || '')).filter(Boolean);
   }
 

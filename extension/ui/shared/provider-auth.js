@@ -8,7 +8,10 @@ export function providerClient(config) {
 
 export async function restoreProviderSession(config, session) {
   const client = providerClient(config);
-  const { error } = await client.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+  const { error } = await client.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token
+  });
   if (error) throw error;
   return client;
 }

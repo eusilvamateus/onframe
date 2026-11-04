@@ -22,7 +22,7 @@ export async function latestOnFrameRelease(fetcher: typeof fetch = fetch): Promi
 
   if (!response.ok) throw new Error(`release_lookup_failed:${response.status}`);
 
-  const release = await response.json() as GitHubRelease;
+  const release = (await response.json()) as GitHubRelease;
   const version = String(release.tag_name || '').match(VERSION_PATTERN)?.[1];
   const changelogUrl = String(release.html_url || '');
   if (!version || !changelogUrl.startsWith(RELEASE_PAGE_PREFIX)) throw new Error('release_payload_invalid');

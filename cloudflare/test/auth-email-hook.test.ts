@@ -154,7 +154,10 @@ test('aplica a superfície bordered do design system aos e-mails', () => {
   assert.match(delivery.html, /border:1px solid #ececec;border-radius:12px;background:#ffffff;box-shadow:none/);
   assert.doesNotMatch(delivery.html, /background:#f2f0e8/);
   assert.doesNotMatch(delivery.html, /box-shadow:(?!none)/);
-  assert.match(delivery.html, /font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;font-weight:600;letter-spacing:\.04em/);
+  assert.match(
+    delivery.html,
+    /font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;font-weight:600;letter-spacing:\.04em/
+  );
   assert.match(delivery.html, /margin:24px 0 8px/);
   assert.match(delivery.html, /border-radius:10px;color:#ffffff;font-size:14px;font-weight:600/);
   assert.doesNotMatch(delivery.html, /\.action-link \{/);
@@ -169,20 +172,26 @@ test('notificações de segurança usam nota textual sem caixa de alerta', () =>
 });
 
 test('separa as duas confirmações da alteração segura de e-mail', () => {
-  const deliveries = deliveriesForEvent(runtime(new FakeD1()), event('email_change', {
-    user: { email: 'atual@example.com', new_email: 'novo@example.com' },
-    email_data: {
-      token: '11111111',
-      token_hash: 'hash-novo-email',
-      token_new: '22222222',
-      token_hash_new: 'hash-email-atual',
-      redirect_to: 'https://onframe.onblide.com/auth/callback',
-      email_action_type: 'email_change'
-    }
-  }));
+  const deliveries = deliveriesForEvent(
+    runtime(new FakeD1()),
+    event('email_change', {
+      user: { email: 'atual@example.com', new_email: 'novo@example.com' },
+      email_data: {
+        token: '11111111',
+        token_hash: 'hash-novo-email',
+        token_new: '22222222',
+        token_hash_new: 'hash-email-atual',
+        redirect_to: 'https://onframe.onblide.com/auth/callback',
+        email_action_type: 'email_change'
+      }
+    })
+  );
 
   assert.equal(deliveries.length, 2);
-  assert.deepEqual(deliveries.map((delivery) => delivery.recipient), ['atual@example.com', 'novo@example.com']);
+  assert.deepEqual(
+    deliveries.map((delivery) => delivery.recipient),
+    ['atual@example.com', 'novo@example.com']
+  );
   assert.match(deliveries[0].html, /token=hash-email-atual&amp;type=email_change/);
   assert.match(deliveries[1].html, /token=hash-novo-email&amp;type=email_change/);
 });

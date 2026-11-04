@@ -15,12 +15,18 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;
 
-  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Divider, Input, Ph, Select, Spinner, Tooltip \} from '@onblide\/ui'/);
+  assert.match(
+    view,
+    /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Divider, Input, Ph, Select, Spinner, Tooltip \} from '@onblide\/ui'/
+  );
   assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*size="sm"[\s\S]*Editar características/);
   assert.doesNotMatch(view, /onframe-characteristics-action"[\s\S]*?fill=\{false\}/);
   assert.match(view, /<Tooltip label="Expanda esta seção para editar as características\."/);
   assert.match(view, /import \{ CatalogNotice \} from '\.\/catalog-notice'/);
-  assert.match(view, /<CatalogNotice>[\s\S]*?As características são definidas pelo catálogo\.[\s\S]*?<\/CatalogNotice>/);
+  assert.match(
+    view,
+    /<CatalogNotice>[\s\S]*?As características são definidas pelo catálogo\.[\s\S]*?<\/CatalogNotice>/
+  );
   assert.match(view, /<Card padding="var\(--ob-s-3\)"/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
@@ -28,7 +34,10 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(view, /function InlineField/);
   assert.match(view, /function SyntheticFieldLabel/);
   assert.match(view, /function SyntheticFieldValue/);
-  assert.match(view, /<CharacteristicStatusBadge className="onframe-characteristics-extra-status" status=\{model\.status\} \/>/);
+  assert.match(
+    view,
+    /<CharacteristicStatusBadge className="onframe-characteristics-extra-status" status=\{model\.status\} \/>/
+  );
   assert.match(view, /<Input[\s\S]*inputMode="decimal"/);
   assert.match(view, /endAddon=\{\([\s\S]*<Select[\s\S]*embedded[\s\S]*ariaLabel="Unidade"/);
   assert.match(view, /onframe-characteristics-react-field/);
@@ -40,7 +49,10 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.doesNotMatch(view, /model\.badge/);
   assert.match(view, /<Badge tone=\{status\.tone\} appearance="outline" dot size="sm">/);
   assert.doesNotMatch(controller, /LOGÍSTICA|packageDimensions\.badge/);
-  assert.match(view, /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount \}\)/);
+  assert.match(
+    view,
+    /globalThis\.OnFrameCharacteristicsView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount \}\)/
+  );
 
   assert.match(controller, /const CharacteristicsView = rootScope\.OnFrameCharacteristicsView/);
   assert.match(controller, /CharacteristicsView\.renderAction/);
@@ -51,34 +63,85 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(controller, /CharacteristicsView\.renderSyntheticFieldLabel/);
   assert.match(controller, /CharacteristicsView\.renderSyntheticFieldValue/);
   assert.match(controller, /CharacteristicsView\.unmount/);
-  assert.match(controller, /function getCharacteristicsModalElements\(\)[\s\S]*?\.andes-modal\[role="dialog"\][\s\S]*?\.andes-modal__content[\s\S]*?surface: 'modal'/);
-  assert.match(controller, /const modalElements = getCharacteristicsModalElements\(\);\s+if \(modalElements\) return modalElements;/);
+  assert.match(
+    controller,
+    /function getCharacteristicsModalElements\(\)[\s\S]*?\.andes-modal\[role="dialog"\][\s\S]*?\.andes-modal__content[\s\S]*?surface: 'modal'/
+  );
+  assert.match(
+    controller,
+    /const modalElements = getCharacteristicsModalElements\(\);\s+if \(modalElements\) return modalElements;/
+  );
   assert.match(controller, /actionPlacement: 'prepend'[\s\S]*?placeSurfaceRoot\(elements, actionRoot\)/);
-  assert.match(controller, /state\.sectionElement && state\.sectionElement !== elements\.section[\s\S]*?classList\.remove\('onframe-characteristics-is-editing'\)/);
+  assert.match(
+    controller,
+    /state\.sectionElement && state\.sectionElement !== elements\.section[\s\S]*?classList\.remove\('onframe-characteristics-is-editing'\)/
+  );
   assert.doesNotMatch(controller, /setDisabledButtonTooltip\(action|removeDisabledButtonTooltip\(wrapper/);
-  assert.doesNotMatch(controller, /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/);
-  assert.doesNotMatch(controller, /renderPackageDimensionsCard|renderPackageDimensionField|renderPackageNumberUnitControl|renderPackageReadOnlyValue/);
-  assert.match(controller, /if \(!record \|\| !record\.cell\) return;\s+if \(record\.react\) CharacteristicsView\.unmount\(record\.cell\);\s+if \(!record\.cell\.isConnected\) return;/);
+  assert.doesNotMatch(
+    controller,
+    /renderFooterMarkup|renderBulkSwitch|renderBulkFailures|data-action="save-characteristics"|data-action="toggle-characteristics-bulk"/
+  );
+  assert.doesNotMatch(
+    controller,
+    /renderPackageDimensionsCard|renderPackageDimensionField|renderPackageNumberUnitControl|renderPackageReadOnlyValue/
+  );
+  assert.match(
+    controller,
+    /if \(!record \|\| !record\.cell\) return;\s+if \(record\.react\) CharacteristicsView\.unmount\(record\.cell\);\s+if \(!record\.cell\.isConnected\) return;/
+  );
   assert.doesNotMatch(controller, /function renderSyntheticFieldRow|function renderSyntheticFieldValue/);
-  assert.match(controller, /row\.querySelectorAll\('\[data-onframe-characteristics-root="true"\]'\)[\s\S]*?CharacteristicsView\.unmount\(host\)/);
+  assert.match(
+    controller,
+    /row\.querySelectorAll\('\[data-onframe-characteristics-root="true"\]'\)[\s\S]*?CharacteristicsView\.unmount\(host\)/
+  );
   assert.match(controller, /target\.row\.classList\.add\('onframe-characteristics-composite-source'\)/);
-  assert.match(controller, /function splitCompositeFieldTargets[\s\S]*?matches\.forEach\(\(field\) => \{[\s\S]*?insertSyntheticFieldRow\(groupTargets, group, field, disabled, \{ body, beforeNode \}\)/);
-  assert.match(controller, /document\.querySelectorAll\('\.onframe-characteristics-composite-source'\)[\s\S]*?classList\.remove\('onframe-characteristics-composite-source'\)/);
-  assert.doesNotMatch(controller, /function renderCompositeFieldControls|function renderCustomSelectControl|data-action="characteristics-select"/);
+  assert.match(
+    controller,
+    /function splitCompositeFieldTargets[\s\S]*?matches\.forEach\(\(field\) => \{[\s\S]*?insertSyntheticFieldRow\(groupTargets, group, field, disabled, \{ body, beforeNode \}\)/
+  );
+  assert.match(
+    controller,
+    /document\.querySelectorAll\('\.onframe-characteristics-composite-source'\)[\s\S]*?classList\.remove\('onframe-characteristics-composite-source'\)/
+  );
+  assert.doesNotMatch(
+    controller,
+    /function renderCompositeFieldControls|function renderCustomSelectControl|data-action="characteristics-select"/
+  );
   assert.match(styles, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.doesNotMatch(styles, /grid-template-columns: minmax\(0, 1fr\) 112px/);
   assert.match(styles, /\.onframe-characteristics-package-control input:focus-visible/);
-  assert.match(styles, /\.onframe-characteristics-react-field input:focus-visible[\s\S]*?border: 0 !important;[\s\S]*?outline: 0 !important;[\s\S]*?box-shadow: none !important;/);
-  assert.doesNotMatch(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*display: flex !important;/);
-  assert.match(styles, /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;[^}]*padding-bottom: 8px !important;/);
-  assert.match(styles, /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*overflow: visible !important;[^}]*height: auto !important;[^}]*padding-top: 8px !important;/);
+  assert.match(
+    styles,
+    /\.onframe-characteristics-react-field input:focus-visible[\s\S]*?border: 0 !important;[\s\S]*?outline: 0 !important;[\s\S]*?box-shadow: none !important;/
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*display: flex !important;/
+  );
+  assert.match(
+    styles,
+    /\.onframe-characteristics-row-editable > \.andes-table__column \{[^}]*height: auto !important;[^}]*padding-top: 8px !important;[^}]*padding-bottom: 8px !important;/
+  );
+  assert.match(
+    styles,
+    /\.onframe-characteristics-extra-row > \.andes-table__column \{[^}]*overflow: visible !important;[^}]*height: auto !important;[^}]*padding-top: 8px !important;/
+  );
   assert.match(styles, /\.onframe-characteristics-inline-control \{[^}]*margin-block: auto;[^}]*align-self: center;/);
-  assert.match(styles, /\.onframe-characteristics-react-field > div > div:first-of-type \{[^}]*width: 100%;[^}]*min-height: 32px !important;/);
+  assert.match(
+    styles,
+    /\.onframe-characteristics-react-field > div > div:first-of-type \{[^}]*width: 100%;[^}]*min-height: 32px !important;/
+  );
   assert.doesNotMatch(styles, /\.onframe-characteristics-react-field > div > div \{/);
   assert.match(styles, /\.onframe-characteristics-extra-label-text \{[\s\S]*?overflow-wrap: anywhere;/);
-  assert.match(styles, /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/);
-  assert.match(styles, /\.onframe-characteristics-extra-status \{[^}]*display: inline-flex;[^}]*position: absolute;[^}]*top: 0;[^}]*right: 12px;[^}]*transform: translateY\(-50%\);/);
+  assert.match(
+    styles,
+    /\.onframe-characteristics-extra-value > \.andes-table__column--value \{[\s\S]*?overflow-wrap: anywhere;/
+  );
+  assert.match(
+    styles,
+    /\.onframe-characteristics-extra-status \{[^}]*display: inline-flex;[^}]*position: absolute;[^}]*top: 0;[^}]*right: 12px;[^}]*transform: translateY\(-50%\);/
+  );
   assert.doesNotMatch(styles, /\.onframe-characteristics-extra-status \{[^}]*padding/);
   assert.match(styles, /\.onframe-characteristics-action-root--modal,[\s\S]*?margin-bottom: var\(--ob-s-3\);/);
   assert.match(styles, /\.onframe-characteristics-composite-source \{\s*display: none !important;/);
@@ -89,5 +152,8 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
   assert.match(shell, /\.onframe-characteristics-action-root/);
   assert.match(shell, /\.onframe-characteristics-catalog-notice/);
   assert.match(shell, /function isCharacteristicsModalNode\(node\)[\s\S]*?\.ui-vpp-highlighted-specs__see-more__modal/);
-  assert.match(shell, /isCharacteristicsModalNode\(mutation\.target\) \|\| added\.concat\(removed\)\.some\(isCharacteristicsModalNode\)/);
+  assert.match(
+    shell,
+    /isCharacteristicsModalNode\(mutation\.target\) \|\| added\.concat\(removed\)\.some\(isCharacteristicsModalNode\)/
+  );
 });

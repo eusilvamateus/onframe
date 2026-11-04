@@ -26,7 +26,12 @@
     "TURNSTILE_SITEKEY": "0x4AAAAAAFIJHY8iacQ0d-dn"
   },
   "secrets": {
-    "required": ["MELI_TOKEN_CIPHER_KEY_BASE64", "RESEND_API_KEY", "SUPABASE_SEND_EMAIL_HOOK_SECRET", "SUPABASE_SERVICE_ROLE_KEY"]
+    "required": [
+      "MELI_TOKEN_CIPHER_KEY_BASE64",
+      "RESEND_API_KEY",
+      "SUPABASE_SEND_EMAIL_HOOK_SECRET",
+      "SUPABASE_SERVICE_ROLE_KEY"
+    ]
   },
   "routes": [
     {

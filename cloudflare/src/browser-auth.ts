@@ -56,9 +56,8 @@ function identityFromUser(value: unknown): Pick<SupabaseIdentity, 'subject' | 'e
   const email = typeof user.email === 'string' ? user.email.trim().toLowerCase() : '';
   if (!subject || !EMAIL_PATTERN.test(email)) throw new SupabaseAuthError('supabase_identity_invalid', 401);
 
-  const candidateName = typeof user.user_metadata?.display_name === 'string'
-    ? user.user_metadata.display_name.trim()
-    : '';
+  const candidateName =
+    typeof user.user_metadata?.display_name === 'string' ? user.user_metadata.display_name.trim() : '';
   return {
     subject,
     email,
@@ -73,11 +72,16 @@ function bearerToken(request: Request): string {
   return match[1];
 }
 
-export async function authenticateSupabaseRequest(request: Request, env: SupabaseAuthRuntimeEnv & IdentityRuntimeEnv, options: { synchronizeOnly?: boolean } = {}): Promise<SupabaseIdentity> {
+export async function authenticateSupabaseRequest(
+  request: Request,
+  env: SupabaseAuthRuntimeEnv & IdentityRuntimeEnv,
+  options: { synchronizeOnly?: boolean } = {}
+): Promise<SupabaseIdentity> {
   const token = bearerToken(request);
   const { data, error } = await client(env).auth.getUser(token);
   if (error || !data.user) {
-    if (error && (!error.status || error.status >= 500)) throw new SupabaseAuthError('identity_security_unavailable', 503);
+    if (error && (!error.status || error.status >= 500))
+      throw new SupabaseAuthError('identity_security_unavailable', 503);
     throw new SupabaseAuthError('supabase_unauthorized', 401);
   }
   const identity = identityFromUser(data.user);
@@ -86,7 +90,11 @@ export async function authenticateSupabaseRequest(request: Request, env: Supabas
     // getUser acima valida o bearer; nunca confie em um JWT apenas decodificado.
     const claims = JSON.parse(atob(token.split('.')[1].replace(/-/gu, '+').replace(/_/gu, '/')));
     if (claims.sub !== identity.subject) throw new Error('subject_mismatch');
-    if (!options.synchronizeOnly && data.user.factors?.some((factor) => factor.status === 'verified') && claims.aal !== 'aal2') {
+    if (
+      !options.synchronizeOnly &&
+      data.user.factors?.some((factor) => factor.status === 'verified') &&
+      claims.aal !== 'aal2'
+    ) {
       throw new SupabaseAuthError('mfa_required', 403);
     }
     authSessionId = claims.session_id;
@@ -97,6 +105,7 @@ export async function authenticateSupabaseRequest(request: Request, env: Supabas
   if (!validIdentityId(authSessionId)) throw new SupabaseAuthError('supabase_identity_invalid', 401);
   const state = await loadIdentityState(env, identity.subject, authSessionId);
   if (state) await synchronizeIdentity(env, state);
-  if (!state || (!options.synchronizeOnly && !state.sessionActive) || state.email !== identity.email) throw new SupabaseAuthError('identity_session_invalid', 401);
+  if (!state || (!options.synchronizeOnly && !state.sessionActive) || state.email !== identity.email)
+    throw new SupabaseAuthError('identity_session_invalid', 401);
   return { ...identity, email: state.email, authSessionId, identityVersion: state.version };
 }

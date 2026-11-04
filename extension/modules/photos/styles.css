@@ -23,7 +23,7 @@
   background: transparent;
   color: var(--ob-ink);
   font-family: var(--ob-font);
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: 'ss01', 'cv11';
   box-sizing: border-box;
   overflow: visible;
   -webkit-font-smoothing: antialiased;
@@ -85,7 +85,9 @@
   padding: 12px 14px;
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity var(--ob-dur-fast) var(--ob-ease), transform var(--ob-dur-fast) var(--ob-ease);
+  transition:
+    opacity var(--ob-dur-fast) var(--ob-ease),
+    transform var(--ob-dur-fast) var(--ob-ease);
 }
 
 .onblide-ml-dock-panel.is-expanded .onblide-ml-dock-content {
@@ -304,7 +306,9 @@
 }
 
 .onblide-ml-strip.is-sorting .onblide-ml-tile:not(.is-dragging) {
-  transition: transform 160ms var(--ob-ease), border-color var(--ob-dur-fast) var(--ob-ease);
+  transition:
+    transform 160ms var(--ob-ease),
+    border-color var(--ob-dur-fast) var(--ob-ease);
 }
 
 .onblide-ml-tile,
@@ -324,7 +328,9 @@
   cursor: grab;
   touch-action: none;
   user-select: none;
-  transition: opacity var(--ob-dur-fast) var(--ob-ease), border-color var(--ob-dur-fast) var(--ob-ease);
+  transition:
+    opacity var(--ob-dur-fast) var(--ob-ease),
+    border-color var(--ob-dur-fast) var(--ob-ease);
 }
 
 .onblide-ml-tile:hover {

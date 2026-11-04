@@ -25,13 +25,17 @@
   ];
   const style = document.createElement('style');
   style.id = 'onframe-font-faces';
-  style.textContent = faces.map(([family, resource, format, weight, fontStyle, display]) => `
+  style.textContent = faces
+    .map(
+      ([family, resource, format, weight, fontStyle, display]) => `
 @font-face {
   font-family: '${family}';
   src: url('${runtime.getURL(resource)}') format('${format}');
   font-weight: ${weight};
   font-style: ${fontStyle};
   font-display: ${display};
-}`).join('\n');
+}`
+    )
+    .join('\n');
   (document.head || document.documentElement).appendChild(style);
 })(globalThis);

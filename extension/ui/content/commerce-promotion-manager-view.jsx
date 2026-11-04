@@ -46,14 +46,19 @@ const icon = (name, size = 16) => <Ph n={name} size={size} />;
 
 function StatusBadge({ status }) {
   if (!status) return null;
-  const tone = status.id === 'active'
-    ? 'success'
-    : status.id === 'programmed'
-      ? 'primary'
-      : status.id === 'available'
-        ? 'warning'
-        : 'neutral';
-  return <Badge tone={tone} appearance="soft" size="sm" dot>{status.label}</Badge>;
+  const tone =
+    status.id === 'active'
+      ? 'success'
+      : status.id === 'programmed'
+        ? 'primary'
+        : status.id === 'available'
+          ? 'warning'
+          : 'neutral';
+  return (
+    <Badge tone={tone} appearance="soft" size="sm" dot>
+      {status.label}
+    </Badge>
+  );
 }
 
 function Metric({ label, value, tone = '' }) {
@@ -79,9 +84,11 @@ function Result({ row }) {
   return (
     <div className="onframe-promotion-manager-result">
       <span>Você recebe</span>
-      {row.result.loading
-        ? <Skeleton width={110} height={20} radius={6} style={{ marginTop: 4 }} />
-        : <strong className="success">{row.result.primary || '—'}</strong>}
+      {row.result.loading ? (
+        <Skeleton width={110} height={20} radius={6} style={{ marginTop: 4 }} />
+      ) : (
+        <strong className="success">{row.result.primary || '—'}</strong>
+      )}
       {row.result.secondary && <small>{row.result.secondary}</small>}
     </div>
   );
@@ -95,7 +102,10 @@ function Calculation({ row }) {
       <div className="onframe-promotion-manager-calculation">
         {row.calculation.map((item, index) => (
           <div key={`${item.label}-${index}`} className={item.tone || ''}>
-            <span>{item.label}{item.description && <small>{item.description}</small>}</span>
+            <span>
+              {item.label}
+              {item.description && <small>{item.description}</small>}
+            </span>
             <strong>{item.value}</strong>
           </div>
         ))}
@@ -163,7 +173,11 @@ function EditPanel({ row, actions }) {
                 ? [0, 1, 2].map((item) => <Skeleton key={item} width="72%" height={38} radius={6} />)
                 : row.metrics.map((metric) => <Metric key={metric.label} {...metric} />)}
             </div>
-            {row.margin && !row.margin.available && <div className="onframe-promotion-manager-margin-alert"><Alert tone="info">{row.margin.message}</Alert></div>}
+            {row.margin && !row.margin.available && (
+              <div className="onframe-promotion-manager-margin-alert">
+                <Alert tone="info">{row.margin.message}</Alert>
+              </div>
+            )}
           </div>
         )}
         <div>
@@ -184,8 +198,12 @@ function EditPanel({ row, actions }) {
       <div className="onframe-promotion-manager-editor-footer">
         {!row.readOnly && (
           <div className="onframe-promotion-manager-shortcuts" aria-label="Atalhos de teclado">
-            <span><Kbd size="sm">Esc</Kbd> cancela</span>
-            <span><Kbd size="sm">Enter</Kbd> confirma</span>
+            <span>
+              <Kbd size="sm">Esc</Kbd> cancela
+            </span>
+            <span>
+              <Kbd size="sm">Enter</Kbd> confirma
+            </span>
           </div>
         )}
         <div>
@@ -266,14 +284,20 @@ function PromotionCard({ row, actions }) {
   }
 
   return (
-    <Card padding={0} style={{ overflow: 'hidden', borderColor: row.formOpen ? 'var(--ob-blue)' : 'var(--ob-line-soft)' }}>
+    <Card
+      padding={0}
+      style={{ overflow: 'hidden', borderColor: row.formOpen ? 'var(--ob-blue)' : 'var(--ob-line-soft)' }}
+    >
       <div className="onframe-promotion-manager-card">
         <div className="onframe-promotion-manager-name">
           <span className={`onframe-commerce-promotion-type-icon ${row.type}`} aria-hidden="true">
             <Ph n={row.type === 'coupon' ? 'ticket' : row.type === 'payment' ? 'credit-card' : 'tag'} size={20} />
           </span>
           <div>
-            <strong>{row.name}<StatusBadge status={row.status} /></strong>
+            <strong>
+              {row.name}
+              <StatusBadge status={row.status} />
+            </strong>
             <div className="onframe-promotion-manager-meta">
               <small>{row.typeLabel}</small>
               <small>{row.period}</small>
@@ -286,7 +310,9 @@ function PromotionCard({ row, actions }) {
           {row.condition.secondary && <small>{row.condition.secondary}</small>}
         </div>
         <Result row={row} />
-        <div className="onframe-promotion-manager-actions"><CardActions row={row} actions={actions} /></div>
+        <div className="onframe-promotion-manager-actions">
+          <CardActions row={row} actions={actions} />
+        </div>
       </div>
       {row.formOpen && <EditPanel row={row} actions={actions} />}
     </Card>
@@ -310,7 +336,12 @@ function PromotionSection({ definition, rows, actions }) {
   const types = promotionTypeDefinitions.filter((type) => rows.some((row) => row.type === type.id));
   return (
     <section className="onframe-promotion-manager-section">
-      <h2>{definition.title}<Badge tone="neutral" variant="numeric" size="sm">{rows.length}</Badge></h2>
+      <h2>
+        {definition.title}
+        <Badge tone="neutral" variant="numeric" size="sm">
+          {rows.length}
+        </Badge>
+      </h2>
       <p>{definition.description}</p>
       {types.map((type) => (
         <div className="onframe-promotion-manager-subgroup" key={type.id}>
@@ -321,7 +352,11 @@ function PromotionSection({ definition, rows, actions }) {
             </h3>
           )}
           <div className="onframe-promotion-manager-list">
-            {rows.filter((row) => row.type === type.id).map((row) => <PromotionCard key={row.key} row={row} actions={actions} />)}
+            {rows
+              .filter((row) => row.type === type.id)
+              .map((row) => (
+                <PromotionCard key={row.key} row={row} actions={actions} />
+              ))}
           </div>
         </div>
       ))}
@@ -354,13 +389,20 @@ function PromotionManager({ model, actions }) {
       title={<HeaderTitle />}
       width={1080}
       maxHeight="min(88vh, 900px)"
-      footer={<Button kind="neutral" onClick={actions.onClose}>Fechar</Button>}
+      footer={
+        <Button kind="neutral" onClick={actions.onClose}>
+          Fechar
+        </Button>
+      }
     >
       <div className="onframe-promotion-manager">
         <div className="onframe-promotion-manager-toolbar">
           <div className="onframe-promotion-manager-toolbar-line">
             <div className="onframe-promotion-manager-toolbar-actions">
-              <Tooltip label={model.loading ? 'Atualizando…' : 'Atualizado agora · clique para atualizar'} placement="bottom">
+              <Tooltip
+                label={model.loading ? 'Atualizando…' : 'Atualizado agora · clique para atualizar'}
+                placement="bottom"
+              >
                 <Button
                   kind="neutral"
                   iconOnly
@@ -389,7 +431,7 @@ function PromotionManager({ model, actions }) {
             </div>
             <div className="onframe-promotion-manager-filter-controls">
               <Popover
-                trigger={(
+                trigger={
                   <Button
                     kind="secondary"
                     icon={icon('sliders-horizontal', 18)}
@@ -398,26 +440,56 @@ function PromotionManager({ model, actions }) {
                   >
                     Filtros
                   </Button>
-                )}
+                }
                 title="Filtrar promoções"
                 width={280}
                 align="start"
-                footer={filterCount ? <Button kind="ghost" size="sm" onClick={actions.onClearAdvancedFilters}>Limpar filtros</Button> : undefined}
+                footer={
+                  filterCount ? (
+                    <Button kind="ghost" size="sm" onClick={actions.onClearAdvancedFilters}>
+                      Limpar filtros
+                    </Button>
+                  ) : undefined
+                }
               >
                 <div className="onframe-promotion-manager-filter-group">
                   <strong>Estado</strong>
-                  <Checkbox checked={model.statusFilters.includes('active')} onChange={() => actions.onToggleStatus('active')} label="Ativas" />
-                  <Checkbox checked={model.statusFilters.includes('programmed')} onChange={() => actions.onToggleStatus('programmed')} label="Programadas" />
-                  <Checkbox checked={model.statusFilters.includes('available')} onChange={() => actions.onToggleStatus('available')} label="Elegíveis" />
+                  <Checkbox
+                    checked={model.statusFilters.includes('active')}
+                    onChange={() => actions.onToggleStatus('active')}
+                    label="Ativas"
+                  />
+                  <Checkbox
+                    checked={model.statusFilters.includes('programmed')}
+                    onChange={() => actions.onToggleStatus('programmed')}
+                    label="Programadas"
+                  />
+                  <Checkbox
+                    checked={model.statusFilters.includes('available')}
+                    onChange={() => actions.onToggleStatus('available')}
+                    label="Elegíveis"
+                  />
                 </div>
                 <div className="onframe-promotion-manager-filter-group">
                   <strong>Tipo</strong>
-                  <Checkbox checked={model.typeFilters.includes('direct')} onChange={() => actions.onToggleType('direct')} label="Descontos diretos" />
-                  <Checkbox checked={model.typeFilters.includes('payment')} onChange={() => actions.onToggleType('payment')} label="Descontos por pagamento" />
+                  <Checkbox
+                    checked={model.typeFilters.includes('direct')}
+                    onChange={() => actions.onToggleType('direct')}
+                    label="Descontos diretos"
+                  />
+                  <Checkbox
+                    checked={model.typeFilters.includes('payment')}
+                    onChange={() => actions.onToggleType('payment')}
+                    label="Descontos por pagamento"
+                  />
                 </div>
                 <div className="onframe-promotion-manager-filter-group">
                   <strong>Financeiro</strong>
-                  <Checkbox checked={model.financialFilters.includes('fee_reduction')} onChange={() => actions.onToggleFinancial('fee_reduction')} label="Com redução de tarifa" />
+                  <Checkbox
+                    checked={model.financialFilters.includes('fee_reduction')}
+                    onChange={() => actions.onToggleFinancial('fee_reduction')}
+                    label="Com redução de tarifa"
+                  />
                 </div>
               </Popover>
               <Tabs tabs={tabs} active={model.tab} onChange={actions.onTabChange} variant="pill" size="sm" />
@@ -425,7 +497,11 @@ function PromotionManager({ model, actions }) {
           </div>
         </div>
 
-        {model.error && <div className="onframe-promotion-manager-alert"><Alert tone="danger">{model.error}</Alert></div>}
+        {model.error && (
+          <div className="onframe-promotion-manager-alert">
+            <Alert tone="danger">{model.error}</Alert>
+          </div>
+        )}
 
         <div className="onframe-promotion-manager-content">
           {model.loading && !model.rows.length ? (
@@ -438,7 +514,11 @@ function PromotionManager({ model, actions }) {
               icon="magnifying-glass"
               title="Nenhuma promoção encontrada"
               description="Tente outro nome ou limpe a busca e os filtros."
-              action={<Button kind="secondary" size="sm" onClick={actions.onClearFilters}>Limpar filtros</Button>}
+              action={
+                <Button kind="secondary" size="sm" onClick={actions.onClearFilters}>
+                  Limpar filtros
+                </Button>
+              }
             />
           ) : (
             sectionDefinitions.map((definition) => (

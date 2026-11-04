@@ -14,8 +14,14 @@ test('descrição usa uma view React como única rota da interface', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;
 
-  assert.match(view, /import \{ Accordion, Alert, Button, Card, Checkbox, Ph, Spinner, Textarea, Tooltip \} from '@onblide\/ui'/);
-  assert.match(view, /globalThis\.OnFrameDescriptionView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderEditor, unmount \}\)/);
+  assert.match(
+    view,
+    /import \{ Accordion, Alert, Button, Card, Checkbox, Ph, Spinner, Textarea, Tooltip \} from '@onblide\/ui'/
+  );
+  assert.match(
+    view,
+    /globalThis\.OnFrameDescriptionView = Object\.freeze\(\{ renderAction, renderCatalogNotice, renderEditor, unmount \}\)/
+  );
   assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*size="sm"[\s\S]*Editar descrição/);
   assert.doesNotMatch(view, /onframe-description-action"[\s\S]*?fill=\{false\}/);
   assert.match(view, /<Tooltip label="Expanda esta seção para editar a descrição\."/);
@@ -24,7 +30,10 @@ test('descrição usa uma view React como única rota da interface', () => {
   assert.match(view, /<Card[\s\S]*padding="var\(--ob-s-4\)"/);
   assert.match(view, /function DescriptionTextField/);
   assert.match(view, /const maxRowsWithoutInternalScroll = Math\.max\(18, value\.length \+ 1\);/);
-  assert.match(view, /<Textarea[\s\S]*value=\{value\}[\s\S]*autosize[\s\S]*minRows=\{6\}[\s\S]*maxRows=\{maxRowsWithoutInternalScroll\}/);
+  assert.match(
+    view,
+    /<Textarea[\s\S]*value=\{value\}[\s\S]*autosize[\s\S]*minRows=\{6\}[\s\S]*maxRows=\{maxRowsWithoutInternalScroll\}/
+  );
   assert.match(view, /<DescriptionTextField[\s\S]*onChange=\{actions\.onTextChange\}/);
   assert.match(view, /<Checkbox[\s\S]*label="Aplicar a todas as variações"/);
   assert.match(view, /<Accordion[\s\S]*ariaLabel="Variações não alteradas"/);
@@ -37,8 +46,14 @@ test('descrição usa uma view React como única rota da interface', () => {
   assert.match(controller, /DescriptionView\.unmount/);
   assert.match(controller, /state\.text = visibleText;\s+state\.originalText = visibleText;/);
   assert.match(controller, /function closeEditor\(options = \{\}\) \{\s+state\.requestId \+= 1;/);
-  assert.doesNotMatch(controller, /state\.editorRoot\.innerHTML|renderEditorMarkup|renderBulkSwitch|renderBulkFailures|bindEditorEvents/);
-  assert.doesNotMatch(controller, /setDisabledButtonTooltip|removeDisabledButtonTooltip|class="ob-button|class="ob-checkbox/);
+  assert.doesNotMatch(
+    controller,
+    /state\.editorRoot\.innerHTML|renderEditorMarkup|renderBulkSwitch|renderBulkFailures|bindEditorEvents/
+  );
+  assert.doesNotMatch(
+    controller,
+    /setDisabledButtonTooltip|removeDisabledButtonTooltip|class="ob-button|class="ob-checkbox/
+  );
 
   assert.match(build, /description-view\.jsx/);
   assert.ok(scripts.indexOf('core/description-view.js') < scripts.indexOf('modules/description/module.js'));
@@ -54,7 +69,10 @@ test('descrição mantém apenas CSS de composição específico do produto', ()
   assert.match(styles, /\.onframe-description-action-root \{/);
   assert.match(styles, /\.onframe-description-actions \{/);
   assert.doesNotMatch(styles, /var\(--ob-blue-050\)|var\(--ob-blue-100\)/);
-  assert.doesNotMatch(styles, /\.onframe-description-textarea|\.onframe-description-alert|\.onframe-description-failures|\.ob-button|\.ob-checkbox/);
+  assert.doesNotMatch(
+    styles,
+    /\.onframe-description-textarea|\.onframe-description-alert|\.onframe-description-failures|\.ob-button|\.ob-checkbox/
+  );
 });
 
 test('modelo da descrição limita edição em massa à família de user product', () => {

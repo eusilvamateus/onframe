@@ -20,10 +20,13 @@ export function sendRemoteMessage(action, payload = {}) {
 export function userError(error, fallback = 'Não foi possível concluir a ação.') {
   const code = String(error?.code || '');
   const messages = {
-    remote_action_unsupported: 'A extensão ainda está usando um background antigo. Recarregue a extensão e reabra esta tela.',
-    security_backend_unavailable: 'Os novos recursos de segurança ainda não estão disponíveis no servidor conectado. Recarregar a extensão não atualiza o servidor.',
+    remote_action_unsupported:
+      'A extensão ainda está usando um background antigo. Recarregue a extensão e reabra esta tela.',
+    security_backend_unavailable:
+      'Os novos recursos de segurança ainda não estão disponíveis no servidor conectado. Recarregar a extensão não atualiza o servidor.',
     security_data_unavailable: 'Não foi possível carregar os dados de segurança. Tente novamente.',
-    identity_conflict: 'Esta identidade não pôde ser vinculada. Entre em contato com a administração para revisar a conta.',
+    identity_conflict:
+      'Esta identidade não pôde ser vinculada. Entre em contato com a administração para revisar a conta.',
     mfa_required: 'Confirme o código do aplicativo autenticador para entrar.',
     identity_session_invalid: 'Sua sessão foi encerrada após uma alteração de segurança. Entre novamente.',
     identity_security_unconfigured: 'A verificação de segurança do acesso ainda não foi configurada.',
@@ -33,8 +36,10 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     workspace_self_management_forbidden: 'Use a ação Sair do workspace para encerrar sua participação.',
     workspace_already_member: 'Esta pessoa já participa do workspace.',
     avatar_storage_unconfigured: 'O envio de avatar ainda não foi configurado.',
-    avatar_storage_authorization_failed: 'O serviço de imagens não aceitou a configuração atual. Tente novamente mais tarde.',
-    avatar_storage_bucket_unavailable: 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.',
+    avatar_storage_authorization_failed:
+      'O serviço de imagens não aceitou a configuração atual. Tente novamente mais tarde.',
+    avatar_storage_bucket_unavailable:
+      'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.',
     avatar_storage_unavailable: 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.',
     avatar_upload_failed: 'Não foi possível enviar a imagem agora. Tente novamente.',
     avatar_profile_update_failed: 'A imagem foi recebida, mas não foi possível atualizar seu perfil. Tente novamente.',
@@ -60,7 +65,11 @@ export function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
   return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   }).format(date);
 }
 
@@ -79,13 +88,15 @@ export function formatRelativeDate(value, reference = Date.now()) {
 }
 
 export function initials(value) {
-  return String(value || 'OnFrame')
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase() || 'OF';
+  return (
+    String(value || 'OnFrame')
+      .split(/\s+/u)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase() || 'OF'
+  );
 }
 
 export function openUpdater() {

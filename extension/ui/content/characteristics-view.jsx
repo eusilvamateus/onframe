@@ -1,7 +1,20 @@
 import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Accordion, Alert, Badge, Button, Card, Checkbox, Divider, Input, Ph, Select, Spinner, Tooltip } from '@onblide/ui';
+import {
+  Accordion,
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Divider,
+  Input,
+  Ph,
+  Select,
+  Spinner,
+  Tooltip
+} from '@onblide/ui';
 import { CatalogNotice } from './catalog-notice';
 
 const roots = new WeakMap();
@@ -77,20 +90,22 @@ function FailureList({ failures }) {
   return (
     <Accordion
       ariaLabel="Variações não alteradas"
-      items={[{
-        id: 'failures',
-        icon: 'warning-circle',
-        title: `${count} variação${count === 1 ? '' : 'ões'} não alterada${count === 1 ? '' : 's'}`,
-        content: (
-          <ul className="onframe-characteristics-failure-list">
-            {failures.map((failure) => (
-              <li key={`${failure.itemId}:${failure.message}`}>
-                <strong>{failure.itemId}</strong>: {failure.message}
-              </li>
-            ))}
-          </ul>
-        )
-      }]}
+      items={[
+        {
+          id: 'failures',
+          icon: 'warning-circle',
+          title: `${count} variação${count === 1 ? '' : 'ões'} não alterada${count === 1 ? '' : 's'}`,
+          content: (
+            <ul className="onframe-characteristics-failure-list">
+              {failures.map((failure) => (
+                <li key={`${failure.itemId}:${failure.message}`}>
+                  <strong>{failure.itemId}</strong>: {failure.message}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      ]}
     />
   );
 }
@@ -188,13 +203,7 @@ function PackageDimensionField({ field, actions }) {
   useEffect(() => setUnit(field.unit), [field.unit]);
 
   if (!field.editable) {
-    return (
-      <Input
-        label={<PackageFieldLabel field={field} />}
-        value={field.displayValue}
-        readOnly
-      />
-    );
+    return <Input label={<PackageFieldLabel field={field} />} value={field.displayValue} readOnly />;
   }
 
   return (
@@ -212,7 +221,7 @@ function PackageDimensionField({ field, actions }) {
           setNumber(nextValue);
           actions.onFieldChange(field.id, 'number', nextValue);
         }}
-        endAddon={(
+        endAddon={
           <Select
             embedded
             ariaLabel="Unidade"
@@ -224,7 +233,7 @@ function PackageDimensionField({ field, actions }) {
               actions.onFieldChange(field.id, 'unit', nextValue);
             }}
           />
-        )}
+        }
       />
     </div>
   );
@@ -304,7 +313,7 @@ function InlineField({ model, actions }) {
             setNumber(nextValue);
             actions.onFieldChange(model.id, 'number', nextValue);
           }}
-          endAddon={(
+          endAddon={
             <Select
               embedded
               ariaLabel={`Unidade de ${model.label}`}
@@ -316,7 +325,7 @@ function InlineField({ model, actions }) {
                 actions.onFieldChange(model.id, 'unit', nextValue);
               }}
             />
-          )}
+          }
         />
       </div>
     );
@@ -355,46 +364,68 @@ function getRoot(host) {
 function render(host, node, onError) {
   const root = getRoot(host);
   flushSync(() => {
-    root.render(
-      <CharacteristicsViewBoundary onError={onError}>
-        {node}
-      </CharacteristicsViewBoundary>
-    );
+    root.render(<CharacteristicsViewBoundary onError={onError}>{node}</CharacteristicsViewBoundary>);
   });
 }
 
 function renderAction(host, model, actions = {}) {
-  render(host, <EditAction model={model} actions={{ onEdit: actions.onEdit || (() => {}) }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <EditAction model={model} actions={{ onEdit: actions.onEdit || (() => {}) }} />,
+    actions.onError || (() => {})
+  );
 }
 
 function renderCatalogNotice(host, options = {}) {
   render(
     host,
     <CatalogNotice>
-      As características são definidas pelo catálogo. Para editá-las, acesse seu anúncio próprio, como um Anúncio UP ou Anúncio.
+      As características são definidas pelo catálogo. Para editá-las, acesse seu anúncio próprio, como um Anúncio UP ou
+      Anúncio.
     </CatalogNotice>,
     options.onError || (() => {})
   );
 }
 
 function renderFooter(host, model, actions = {}) {
-  render(host, <EditorFooter model={model} actions={{
-    onBulkChange: actions.onBulkChange || (() => {}),
-    onSave: actions.onSave || (() => {}),
-    onCancel: actions.onCancel || (() => {})
-  }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <EditorFooter
+      model={model}
+      actions={{
+        onBulkChange: actions.onBulkChange || (() => {}),
+        onSave: actions.onSave || (() => {}),
+        onCancel: actions.onCancel || (() => {})
+      }}
+    />,
+    actions.onError || (() => {})
+  );
 }
 
 function renderPackageDimensions(host, model, actions = {}) {
-  render(host, <PackageDimensions model={model} actions={{
-    onFieldChange: actions.onFieldChange || (() => {})
-  }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <PackageDimensions
+      model={model}
+      actions={{
+        onFieldChange: actions.onFieldChange || (() => {})
+      }}
+    />,
+    actions.onError || (() => {})
+  );
 }
 
 function renderInlineField(host, model, actions = {}) {
-  render(host, <InlineField model={model} actions={{
-    onFieldChange: actions.onFieldChange || (() => {})
-  }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <InlineField
+      model={model}
+      actions={{
+        onFieldChange: actions.onFieldChange || (() => {})
+      }}
+    />,
+    actions.onError || (() => {})
+  );
 }
 
 function renderSyntheticFieldLabel(host, model, options = {}) {
@@ -402,9 +433,16 @@ function renderSyntheticFieldLabel(host, model, options = {}) {
 }
 
 function renderSyntheticFieldValue(host, model, actions = {}) {
-  render(host, <SyntheticFieldValue model={model} actions={{
-    onFieldChange: actions.onFieldChange || (() => {})
-  }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <SyntheticFieldValue
+      model={model}
+      actions={{
+        onFieldChange: actions.onFieldChange || (() => {})
+      }}
+    />,
+    actions.onError || (() => {})
+  );
 }
 
 function unmount(host) {
@@ -414,4 +452,13 @@ function unmount(host) {
   roots.delete(host);
 }
 
-globalThis.OnFrameCharacteristicsView = Object.freeze({ renderAction, renderCatalogNotice, renderFooter, renderPackageDimensions, renderInlineField, renderSyntheticFieldLabel, renderSyntheticFieldValue, unmount });
+globalThis.OnFrameCharacteristicsView = Object.freeze({
+  renderAction,
+  renderCatalogNotice,
+  renderFooter,
+  renderPackageDimensions,
+  renderInlineField,
+  renderSyntheticFieldLabel,
+  renderSyntheticFieldValue,
+  unmount
+});

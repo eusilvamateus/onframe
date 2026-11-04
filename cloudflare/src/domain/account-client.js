@@ -1,11 +1,9 @@
 function connectedAccountTokens(accounts) {
-  return (Array.isArray(accounts) ? accounts : [])
-    .filter((account) => account && account.refresh_token);
+  return (Array.isArray(accounts) ? accounts : []).filter((account) => account && account.refresh_token);
 }
 
 function enabledAccountTokens(accounts) {
-  return connectedAccountTokens(accounts)
-    .filter((account) => account.enabled !== false);
+  return connectedAccountTokens(accounts).filter((account) => account.enabled !== false);
 }
 
 async function resolveItemClient({ itemId, ownerUserId, store, client, clientFactory }) {
@@ -82,16 +80,23 @@ async function buildNoConnectedOwnerError(input) {
   const disabledAccounts = input && Array.isArray(input.disabledAccounts) ? input.disabledAccounts : [];
   const itemId = input && input.itemId ? input.itemId : '';
   const clientFactory = input && input.clientFactory ? input.clientFactory : null;
-  if (disabledAccounts.length && itemId && clientFactory && await disabledAccountOwnsItem(disabledAccounts, itemId, clientFactory)) {
+  if (
+    disabledAccounts.length &&
+    itemId &&
+    clientFactory &&
+    (await disabledAccountOwnsItem(disabledAccounts, itemId, clientFactory))
+  ) {
     const err = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
     err.statusCode = 403;
     err.disabledAccount = true;
     return err;
   }
   const authErrors = rejected.filter((entry) => Number(entry.err && entry.err.statusCode) === 401);
-  const err = new Error(authErrors.length === rejected.length
-    ? 'Conta desconectada. Clique em Conectar.'
-    : 'Este anúncio não pertence a nenhuma conta conectada no OnFrame.');
+  const err = new Error(
+    authErrors.length === rejected.length
+      ? 'Conta desconectada. Clique em Conectar.'
+      : 'Este anúncio não pertence a nenhuma conta conectada no OnFrame.'
+  );
   err.statusCode = authErrors.length === rejected.length ? 401 : 403;
   err.rejectedAccounts = rejected.map((entry) => ({
     user_id: entry.account && entry.account.user_id ? entry.account.user_id : null,

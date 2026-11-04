@@ -1,6 +1,8 @@
 function sanitizeError(err) {
   if (!err) return 'Erro inesperado.';
-  return String(err.message || err).replace(/APP_USR-[A-Za-z0-9-]+/g, '[REDACTED]').replace(/TG-[A-Za-z0-9-]+/g, '[REDACTED]');
+  return String(err.message || err)
+    .replace(/APP_USR-[A-Za-z0-9-]+/g, '[REDACTED]')
+    .replace(/TG-[A-Za-z0-9-]+/g, '[REDACTED]');
 }
 
 function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err && err.statusCode) {
@@ -8,7 +10,13 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   const bodyText = err && err.body ? JSON.stringify(err.body).toLowerCase() : '';
   const status = Number(statusCode || 0);
 
-  if (text.includes('mercado livre nao autenticado') || status === 401 || text.includes('invalid_token') || text.includes('invalid_grant') || text.includes('unauthorized')) {
+  if (
+    text.includes('mercado livre nao autenticado') ||
+    status === 401 ||
+    text.includes('invalid_token') ||
+    text.includes('invalid_grant') ||
+    text.includes('unauthorized')
+  ) {
     return 'Conta desconectada. Clique em Conectar.';
   }
   if (text.includes('catálogo sem anúncio confirmado') || text.includes('catalogo sem anuncio confirmado')) {
@@ -17,17 +25,21 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('bulk_description_no_editable_variations')) {
     return 'Não há variações editáveis para aplicar em massa.';
   }
-  if (text.includes('catalog_listing_description_read_only') ||
+  if (
+    text.includes('catalog_listing_description_read_only') ||
     text.includes('description is not modifiable on catalog listing item') ||
-    bodyText.includes('description is not modifiable on catalog listing item')) {
+    bodyText.includes('description is not modifiable on catalog listing item')
+  ) {
     return 'Catálogo: descrição bloqueada pelo Mercado Livre.';
   }
   if (text.includes('bulk_characteristics_no_editable_variations')) {
     return 'Não há variações editáveis para aplicar em massa.';
   }
-  if (text.includes('catalog_listing_characteristics_read_only') ||
+  if (
+    text.includes('catalog_listing_characteristics_read_only') ||
     text.includes('attributes is not modifiable on catalog listing item') ||
-    bodyText.includes('attributes is not modifiable on catalog listing item')) {
+    bodyText.includes('attributes is not modifiable on catalog listing item')
+  ) {
     return 'Catálogo: características bloqueadas pelo Mercado Livre.';
   }
   if (text.includes('characteristics_missing_updates')) {
@@ -45,9 +57,11 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('catalog_listing_pictures_read_only') || text.includes('catalogo') || text.includes('catálogo')) {
     return 'Catálogo: fotos bloqueadas pelo Mercado Livre.';
   }
-  if (text.includes('item_closed_with_bids') ||
+  if (
+    text.includes('item_closed_with_bids') ||
     text.includes('item_closed') ||
-    (text.includes('cannot update item') && text.includes('status:closed'))) {
+    (text.includes('cannot update item') && text.includes('status:closed'))
+  ) {
     return 'Anúncio encerrado. Reative antes de editar.';
   }
   if (text.includes('pricing_invalid_amount')) {
@@ -56,15 +70,19 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('description_empty')) {
     return 'Informe a descrição.';
   }
-  if (text.includes('item.description.type.invalid') ||
+  if (
+    text.includes('item.description.type.invalid') ||
     bodyText.includes('item.description.type.invalid') ||
     (text.includes('description') && text.includes('plain text')) ||
-    (bodyText.includes('description') && bodyText.includes('plain text'))) {
+    (bodyText.includes('description') && bodyText.includes('plain text'))
+  ) {
     return 'A descrição deve conter apenas texto simples.';
   }
-  if (text.includes('pricing_automation_active') ||
+  if (
+    text.includes('pricing_automation_active') ||
     text.includes('item.price.not_modifiable') ||
-    text.includes('dynamic pricing')) {
+    text.includes('dynamic pricing')
+  ) {
     return 'Preço automático ativo. Desative a automação para editar.';
   }
   if (text.includes('price_blocked_by_promotion')) {
@@ -103,33 +121,50 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('promotion_missing_sub_type')) {
     return 'Escolha o tipo da campanha.';
   }
-  if (text.includes('promotion_offercreate_not_supported') ||
+  if (
+    text.includes('promotion_offercreate_not_supported') ||
     text.includes('promotion_offerupdate_not_supported') ||
     text.includes('promotion_offerdelete_not_supported') ||
     text.includes('promotion_campaigncreate_not_supported') ||
     text.includes('promotion_campaignupdate_not_supported') ||
-    text.includes('promotion_campaigndelete_not_supported')) {
+    text.includes('promotion_campaigndelete_not_supported')
+  ) {
     return 'Essa ação não existe para esse tipo de promoção.';
   }
   if (text.includes('dod_started_cannot_delete') || text.includes('lightning_started_cannot_delete')) {
     return 'Oferta ativa desse tipo não pode ser removida.';
   }
-  if (text.includes('promotion_price_out_of_range') || text.includes('error_credibility') || text.includes('credibility') || text.includes('discounted_price')) {
+  if (
+    text.includes('promotion_price_out_of_range') ||
+    text.includes('error_credibility') ||
+    text.includes('credibility') ||
+    text.includes('discounted_price')
+  ) {
     return discountRuleError(err) || 'Preço recusado. Atualize as promoções e use o preço sugerido.';
   }
   if (text.includes('version provided is not the current') || text.includes('item.version')) {
     return 'O preço mudou. Atualize e tente novamente.';
   }
-  if (text.includes('onblide_mercadolivre_client_id ausente') || text.includes('onblide_mercadolivre_client_secret ausente')) {
+  if (
+    text.includes('onblide_mercadolivre_client_id ausente') ||
+    text.includes('onblide_mercadolivre_client_secret ausente')
+  ) {
     return 'Conexão indisponível no Onblide Connect.';
   }
   if (text.includes('update_release_lookup_failed')) {
     return 'Não consegui consultar as releases.';
   }
-  if (text.includes('nao foi possivel identificar') || text.includes('item_id da pagina') || text.includes('anúncio não detectado')) {
+  if (
+    text.includes('nao foi possivel identificar') ||
+    text.includes('item_id da pagina') ||
+    text.includes('anúncio não detectado')
+  ) {
     return 'Anúncio não detectado. Recarregue a página.';
   }
-  if (text.includes('não pertence a nenhuma conta conectada') || text.includes('nao pertence a nenhuma conta conectada')) {
+  if (
+    text.includes('não pertence a nenhuma conta conectada') ||
+    text.includes('nao pertence a nenhuma conta conectada')
+  ) {
     return 'Este anúncio não pertence às contas conectadas.';
   }
   if (text.includes('nenhuma conta habilitada')) {
@@ -141,7 +176,12 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('conta conectada não encontrada') || text.includes('conta conectada nao encontrada')) {
     return 'Conta não conectada para este anúncio.';
   }
-  if (text.includes('nao pertence ao seller') || status === 403 || text.includes('forbidden') || text.includes('caller is not authorized')) {
+  if (
+    text.includes('nao pertence ao seller') ||
+    status === 403 ||
+    text.includes('forbidden') ||
+    text.includes('caller is not authorized')
+  ) {
     return 'Conta errada para este anúncio.';
   }
   if (text.includes('foto não encontrada') || text.includes('foto nao encontrada')) {
@@ -156,10 +196,17 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   if (text.includes('payload excede') || status === 413 || text.includes('request entity too large')) {
     return 'Imagem muito grande. Use um arquivo menor.';
   }
-  if (text.includes('imagem vazia') || text.includes('foto precisa conter') || text.includes('referencia de foto invalida')) {
+  if (
+    text.includes('imagem vazia') ||
+    text.includes('foto precisa conter') ||
+    text.includes('referencia de foto invalida')
+  ) {
     return 'Não consegui ler a imagem.';
   }
-  if (text.includes('picture') && (text.includes('invalid') || text.includes('not allowed') || text.includes('validation'))) {
+  if (
+    text.includes('picture') &&
+    (text.includes('invalid') || text.includes('not allowed') || text.includes('validation'))
+  ) {
     return 'Foto recusada pelo Mercado Livre.';
   }
   if (text.includes('maximum') && text.includes('picture')) {
@@ -220,7 +267,9 @@ function formatMoney(value) {
     style: 'currency',
     currency: 'BRL',
     minimumFractionDigits: 2
-  }).format(amount).replace(/\u00a0/g, ' ');
+  })
+    .format(amount)
+    .replace(/\u00a0/g, ' ');
 }
 
 module.exports = {

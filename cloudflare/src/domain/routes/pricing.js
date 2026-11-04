@@ -1,7 +1,4 @@
-const {
-  buildPriceSummary,
-  updateStandardPrice
-} = require('../pricing');
+const { buildPriceSummary, updateStandardPrice } = require('../pricing');
 
 async function handlePriceSummary({ client, itemId }) {
   return buildPriceSummary(client, itemId);

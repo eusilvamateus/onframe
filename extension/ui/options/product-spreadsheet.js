@@ -1,12 +1,6 @@
 import { read, utils, writeFileXLSX } from 'xlsx';
 
-export const PRODUCT_SPREADSHEET_HEADERS = [
-  'SKU',
-  'Nome',
-  'Custo (R$)',
-  'Imposto (%)',
-  'Status'
-];
+export const PRODUCT_SPREADSHEET_HEADERS = ['SKU', 'Nome', 'Custo (R$)', 'Imposto (%)', 'Status'];
 
 export const PRODUCT_COST_SPREADSHEET_HEADERS = ['SKU', 'Descrição', 'Tipo', 'Valor'];
 export const PRODUCT_ACCOUNT_TAX_SPREADSHEET_HEADERS = ['SKU', 'ID da conta Mercado Livre', 'Imposto (%)'];
@@ -36,7 +30,10 @@ function normalizedHeader(value) {
 }
 
 function normalizedSku(value) {
-  return String(value || '').trim().normalize('NFKC').toLocaleUpperCase('pt-BR');
+  return String(value || '')
+    .trim()
+    .normalize('NFKC')
+    .toLocaleUpperCase('pt-BR');
 }
 
 function headerKey(value) {
@@ -51,7 +48,11 @@ function headerKey(value) {
 function spreadsheetNumber(value) {
   if (typeof value === 'number') return value;
   if (value === null || value === undefined || String(value).trim() === '') return '';
-  let normalized = String(value).trim().replace(/R\$/giu, '').replace(/%/gu, '').replace(/[\s\u00a0]/gu, '');
+  let normalized = String(value)
+    .trim()
+    .replace(/R\$/giu, '')
+    .replace(/%/gu, '')
+    .replace(/[\s\u00a0]/gu, '');
   if (normalized.includes(',')) normalized = normalized.replace(/\./gu, '').replace(',', '.');
   if (!/^-?\d+(?:\.\d+)?$/u.test(normalized)) return value;
   const parsed = Number(normalized);
@@ -83,7 +84,10 @@ function sheetIndexes(matrix, keys, headerResolver = headerKey) {
   });
   const missing = keys.filter((key) => !indexes.has(key));
   if (missing.length > 0 || unknownHeaders.length > 0) {
-    throw new ProductSpreadsheetError('product_spreadsheet_headers', 'Use o modelo oficial do OnFrame sem adicionar, remover ou renomear colunas.');
+    throw new ProductSpreadsheetError(
+      'product_spreadsheet_headers',
+      'Use o modelo oficial do OnFrame sem adicionar, remover ou renomear colunas.'
+    );
   }
   return indexes;
 }
@@ -100,31 +104,41 @@ export function parseProductWorkbook(buffer) {
     throw new ProductSpreadsheetError('product_spreadsheet_invalid', 'Não foi possível ler esta planilha.');
   }
   const worksheet = workbook.Sheets.Produtos || workbook.Sheets[workbook.SheetNames[0]];
-  if (!worksheet) throw new ProductSpreadsheetError('product_spreadsheet_empty', 'A planilha não possui uma aba com dados.');
+  if (!worksheet)
+    throw new ProductSpreadsheetError('product_spreadsheet_empty', 'A planilha não possui uma aba com dados.');
   const matrix = utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: '' });
   if (matrix.length === 0) throw new ProductSpreadsheetError('product_spreadsheet_empty', 'A planilha está vazia.');
   const indexes = sheetIndexes(matrix, ['sku', 'name', 'cost', 'taxRate', 'status']);
   const rows = matrix.slice(1).flatMap((row, index) => {
     if (!Array.isArray(row) || !rowHasContent(row)) return [];
     const value = (key) => row[indexes.get(key)];
-    return [{
-      rowNumber: index + 2,
-      sku: String(value('sku') ?? '').trim(),
-      name: String(value('name') ?? '').trim(),
-      cost: spreadsheetNumber(value('cost')),
-      taxRate: spreadsheetNumber(value('taxRate')),
-      customCosts: [],
-      accountTaxRates: [],
-      status: spreadsheetStatus(value('status'))
-    }];
+    return [
+      {
+        rowNumber: index + 2,
+        sku: String(value('sku') ?? '').trim(),
+        name: String(value('name') ?? '').trim(),
+        cost: spreadsheetNumber(value('cost')),
+        taxRate: spreadsheetNumber(value('taxRate')),
+        customCosts: [],
+        accountTaxRates: [],
+        status: spreadsheetStatus(value('status'))
+      }
+    ];
   });
-  if (rows.length === 0) throw new ProductSpreadsheetError('product_spreadsheet_empty', 'A planilha não contém produtos preenchidos.');
-  if (rows.length > 2000) throw new ProductSpreadsheetError('product_spreadsheet_limit', 'Importe no máximo 2.000 produtos por vez.');
+  if (rows.length === 0)
+    throw new ProductSpreadsheetError('product_spreadsheet_empty', 'A planilha não contém produtos preenchidos.');
+  if (rows.length > 2000)
+    throw new ProductSpreadsheetError('product_spreadsheet_limit', 'Importe no máximo 2.000 produtos por vez.');
 
   const costsWorksheet = workbook.Sheets.Custos;
-  if (!costsWorksheet) throw new ProductSpreadsheetError('product_spreadsheet_headers', 'Use o modelo oficial do OnFrame com as abas Produtos, Custos e Impostos por conta.');
+  if (!costsWorksheet)
+    throw new ProductSpreadsheetError(
+      'product_spreadsheet_headers',
+      'Use o modelo oficial do OnFrame com as abas Produtos, Custos e Impostos por conta.'
+    );
   const costsMatrix = utils.sheet_to_json(costsWorksheet, { header: 1, raw: true, defval: '' });
-  const costHeader = (value) => ({ sku: 'sku', descricao: 'description', tipo: 'type', valor: 'value' })[normalizedHeader(value)] || null;
+  const costHeader = (value) =>
+    ({ sku: 'sku', descricao: 'description', tipo: 'type', valor: 'value' })[normalizedHeader(value)] || null;
   const costIndexes = sheetIndexes(costsMatrix, ['sku', 'description', 'type', 'value'], costHeader);
   const productsBySku = new Map(rows.map((row) => [normalizedSku(row.sku), row]));
   for (const row of costsMatrix.slice(1)) {
@@ -135,20 +149,36 @@ export function parseProductWorkbook(buffer) {
     const description = String(value('description') ?? '').trim();
     const type = spreadsheetCostType(value('type'));
     const amount = spreadsheetNumber(value('value'));
-    if (!product || !description || description.length > 120 || !type || typeof amount !== 'number' || amount < 0 || (type === 'percentage' && amount > 100)) {
-      throw new ProductSpreadsheetError('product_spreadsheet_costs', 'Revise SKU, descrição, tipo e valor na aba Custos.');
+    if (
+      !product ||
+      !description ||
+      description.length > 120 ||
+      !type ||
+      typeof amount !== 'number' ||
+      amount < 0 ||
+      (type === 'percentage' && amount > 100)
+    ) {
+      throw new ProductSpreadsheetError(
+        'product_spreadsheet_costs',
+        'Revise SKU, descrição, tipo e valor na aba Custos.'
+      );
     }
     product.customCosts.push({ description, type, value: amount });
   }
 
   const accountTaxesWorksheet = workbook.Sheets['Impostos por conta'];
-  if (!accountTaxesWorksheet) throw new ProductSpreadsheetError('product_spreadsheet_headers', 'Use o modelo oficial do OnFrame com as abas Produtos, Custos e Impostos por conta.');
+  if (!accountTaxesWorksheet)
+    throw new ProductSpreadsheetError(
+      'product_spreadsheet_headers',
+      'Use o modelo oficial do OnFrame com as abas Produtos, Custos e Impostos por conta.'
+    );
   const accountTaxesMatrix = utils.sheet_to_json(accountTaxesWorksheet, { header: 1, raw: true, defval: '' });
-  const accountTaxHeader = (value) => ({
-    sku: 'sku',
-    'id da conta mercado livre': 'accountUserId',
-    imposto: 'taxRate'
-  })[normalizedHeader(value)] || null;
+  const accountTaxHeader = (value) =>
+    ({
+      sku: 'sku',
+      'id da conta mercado livre': 'accountUserId',
+      imposto: 'taxRate'
+    })[normalizedHeader(value)] || null;
   const accountTaxIndexes = sheetIndexes(accountTaxesMatrix, ['sku', 'accountUserId', 'taxRate'], accountTaxHeader);
   const accountKeys = new Set();
   for (const row of accountTaxesMatrix.slice(1)) {
@@ -159,8 +189,18 @@ export function parseProductWorkbook(buffer) {
     const accountUserId = String(value('accountUserId') ?? '').trim();
     const taxRate = spreadsheetNumber(value('taxRate'));
     const key = `${normalizedSku(sku)}:${accountUserId}`;
-    if (!product || !/^\d+$/u.test(accountUserId) || typeof taxRate !== 'number' || taxRate < 0 || taxRate > 100 || accountKeys.has(key)) {
-      throw new ProductSpreadsheetError('product_spreadsheet_account_taxes', 'Revise SKU, ID da conta e imposto na aba Impostos por conta.');
+    if (
+      !product ||
+      !/^\d+$/u.test(accountUserId) ||
+      typeof taxRate !== 'number' ||
+      taxRate < 0 ||
+      taxRate > 100 ||
+      accountKeys.has(key)
+    ) {
+      throw new ProductSpreadsheetError(
+        'product_spreadsheet_account_taxes',
+        'Revise SKU, ID da conta e imposto na aba Impostos por conta.'
+      );
     }
     accountKeys.add(key);
     product.accountTaxRates.push({ accountUserId, taxRate });
@@ -173,13 +213,16 @@ export async function parseProductSpreadsheetFile(file) {
 }
 
 function productsWorksheet(products) {
-  const data = [PRODUCT_SPREADSHEET_HEADERS, ...products.map((product) => [
-    product.sku,
-    product.name,
-    Number(product.cost || 0),
-    product.taxRate === null || product.taxRate === undefined ? '' : Number(product.taxRate),
-    product.status === 'inactive' ? 'Inativo' : 'Ativo'
-  ])];
+  const data = [
+    PRODUCT_SPREADSHEET_HEADERS,
+    ...products.map((product) => [
+      product.sku,
+      product.name,
+      Number(product.cost || 0),
+      product.taxRate === null || product.taxRate === undefined ? '' : Number(product.taxRate),
+      product.status === 'inactive' ? 'Inativo' : 'Ativo'
+    ])
+  ];
   const worksheet = utils.aoa_to_sheet(data);
   worksheet['!cols'] = [{ wch: 20 }, { wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 14 }];
   worksheet['!autofilter'] = { ref: `A1:E${Math.max(1, data.length)}` };
@@ -234,16 +277,28 @@ export function createProductWorkbook(products = [], includeInstructions = false
       ['SKU', 'Identificador único do produto no workspace.'],
       ['Nome', 'Nome interno do produto.'],
       ['Custo (R$)', 'Custo unitário do produto. Use valor numérico.'],
-      ['Imposto (%)', 'Alíquota específica do produto. Deixe vazio para herdar a configuração da conta ou do workspace.'],
-      ['Impostos por conta', 'Na aba Impostos por conta, informe o SKU, o ID numérico da conta do Mercado Livre e a alíquota específica.'],
-      ['Custos', 'Na aba Custos, associe cada custo ao SKU e escolha R$ ou %. Percentuais usam o preço efetivo da venda.'],
+      [
+        'Imposto (%)',
+        'Alíquota específica do produto. Deixe vazio para herdar a configuração da conta ou do workspace.'
+      ],
+      [
+        'Impostos por conta',
+        'Na aba Impostos por conta, informe o SKU, o ID numérico da conta do Mercado Livre e a alíquota específica.'
+      ],
+      [
+        'Custos',
+        'Na aba Custos, associe cada custo ao SKU e escolha R$ ou %. Percentuais usam o preço efetivo da venda.'
+      ],
       ['Status', 'Use Ativo ou Inativo.'],
       ['', 'Não altere os títulos da aba Produtos. O SKU decide se a linha cria ou atualiza um produto.']
     ]);
     instructions['!cols'] = [{ wch: 30 }, { wch: 82 }];
     utils.book_append_sheet(workbook, instructions, 'Instruções');
   }
-  workbook.Props = { Title: products.length ? 'Produtos do OnFrame' : 'Modelo de produtos do OnFrame', Subject: 'Catálogo de produtos' };
+  workbook.Props = {
+    Title: products.length ? 'Produtos do OnFrame' : 'Modelo de produtos do OnFrame',
+    Subject: 'Catálogo de produtos'
+  };
   return workbook;
 }
 

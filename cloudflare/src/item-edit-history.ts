@@ -73,41 +73,47 @@ export async function recordConfirmedItemEdits(input: ConfirmedEditInput): Promi
   const drafts = buildConfirmedEditDrafts(input);
   if (!drafts.length) return;
   const createdAt = Date.now();
-  await input.env.ONFRAME_DB.batch(drafts.map((draft) => {
-    const item = draft.itemSnapshot || {};
-    return input.env.ONFRAME_DB.prepare(`
+  await input.env.ONFRAME_DB.batch(
+    drafts.map((draft) => {
+      const item = draft.itemSnapshot || {};
+      return input.env.ONFRAME_DB.prepare(
+        `
       INSERT OR IGNORE INTO item_edit_events (
         id, workspace_id, seller_account_id, user_id, request_id,
         item_id, item_title, item_thumbnail_url, item_permalink,
         account_name, account_meli_user_id, actor_name, actor_email,
         operation, change_type, action, summary, details_json, details_version, created_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      crypto.randomUUID(),
-      input.actor.workspaceId,
-      input.account.id,
-      input.actor.userId,
-      input.requestId,
-      draft.itemId,
-      stringOrNull(item.title),
-      itemThumbnail(item),
-      stringOrNull(item.permalink),
-      input.account.nickname,
-      input.account.meliUserId,
-      input.actor.displayName || null,
-      input.actor.email || null,
-      draft.operation,
-      draft.changeType,
-      draft.action,
-      draft.summary,
-      JSON.stringify(draft.details),
-      draft.detailsVersion,
-      createdAt
-    );
-  }));
+    `
+      ).bind(
+        crypto.randomUUID(),
+        input.actor.workspaceId,
+        input.account.id,
+        input.actor.userId,
+        input.requestId,
+        draft.itemId,
+        stringOrNull(item.title),
+        itemThumbnail(item),
+        stringOrNull(item.permalink),
+        input.account.nickname,
+        input.account.meliUserId,
+        input.actor.displayName || null,
+        input.actor.email || null,
+        draft.operation,
+        draft.changeType,
+        draft.action,
+        draft.summary,
+        JSON.stringify(draft.details),
+        draft.detailsVersion,
+        createdAt
+      );
+    })
+  );
 }
 
-export function buildConfirmedEditDrafts(input: Pick<ConfirmedEditInput, 'itemId' | 'operation' | 'payload' | 'result' | 'snapshots' | 'promotionSnapshots'>): EditDraft[] {
+export function buildConfirmedEditDrafts(
+  input: Pick<ConfirmedEditInput, 'itemId' | 'operation' | 'payload' | 'result' | 'snapshots' | 'promotionSnapshots'>
+): EditDraft[] {
   const result = objectOrNull(input.result);
   if (!result || result.ok === false) return [];
 
@@ -140,7 +146,11 @@ export function buildConfirmedEditDrafts(input: Pick<ConfirmedEditInput, 'itemId
   return buildSingleDraft({ ...input, origin: { mode: 'single', scope: 'item' } });
 }
 
-export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, url: URL): Promise<Record<string, unknown>> {
+export async function listItemEditHistory(
+  env: HistoryEnv,
+  actor: HistoryActor,
+  url: URL
+): Promise<Record<string, unknown>> {
   const limit = boundedLimit(url.searchParams.get('limit'));
   const cursor = parseCursor(url.searchParams.get('cursor'));
   const pageParam = String(url.searchParams.get('page') || '').trim();
@@ -164,11 +174,15 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
   addTimestampFilter(filters, values, 'events.created_at', '>=', url.searchParams.get('from'));
   addTimestampFilter(filters, values, 'events.created_at', '<=', url.searchParams.get('to'));
 
-  const count = await env.ONFRAME_DB.prepare(`
+  const count = await env.ONFRAME_DB.prepare(
+    `
     SELECT COUNT(*) AS total
     FROM item_edit_events AS events
     WHERE ${filters.join('\n      AND ')}
-  `).bind(...values).first<{ total: number }>();
+  `
+  )
+    .bind(...values)
+    .first<{ total: number }>();
   const total = Number(count?.total) || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const page = paginated ? Math.min(requestedPage, totalPages) : 1;
@@ -178,7 +192,8 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
     values.push(cursor.createdAt, cursor.createdAt, cursor.id);
   }
 
-  const records = await env.ONFRAME_DB.prepare(`
+  const records = await env.ONFRAME_DB.prepare(
+    `
     SELECT events.*,
            COALESCE(events.item_thumbnail_url, (
              SELECT related.item_thumbnail_url
@@ -208,14 +223,19 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
     WHERE ${filters.join('\n      AND ')}
     ORDER BY events.created_at DESC, events.id DESC
     LIMIT ? OFFSET ?
-  `).bind(...values, paginated ? limit : limit + 1, paginated ? (page - 1) * limit : 0).all<HistoryRecord & {
-    current_actor_name: string | null;
-    current_actor_email: string | null;
-    current_actor_avatar_url: string | null;
-    current_account_name: string | null;
-    current_item_thumbnail_url: string | null;
-    current_item_permalink: string | null;
-  }>();
+  `
+  )
+    .bind(...values, paginated ? limit : limit + 1, paginated ? (page - 1) * limit : 0)
+    .all<
+      HistoryRecord & {
+        current_actor_name: string | null;
+        current_actor_email: string | null;
+        current_actor_avatar_url: string | null;
+        current_account_name: string | null;
+        current_item_thumbnail_url: string | null;
+        current_item_permalink: string | null;
+      }
+    >();
   const rows = records.results ?? [];
   const hasMore = paginated ? page < totalPages : rows.length > limit;
   const visible = rows.slice(0, limit);
@@ -230,87 +250,175 @@ export async function listItemEditHistory(env: HistoryEnv, actor: HistoryActor, 
   };
 }
 
-function buildSingleDraft(input: Pick<ConfirmedEditInput, 'itemId' | 'operation' | 'payload' | 'result' | 'snapshots' | 'promotionSnapshots'> & { origin: HistoryOrigin }): EditDraft[] {
+function buildSingleDraft(
+  input: Pick<
+    ConfirmedEditInput,
+    'itemId' | 'operation' | 'payload' | 'result' | 'snapshots' | 'promotionSnapshots'
+  > & { origin: HistoryOrigin }
+): EditDraft[] {
   const result = objectOrNull(input.result) || {};
   const payload = input.payload || {};
   const snapshots = input.snapshots(input.itemId);
   const characteristics = objectOrNull(result.characteristics);
-  const itemSnapshot = objectOrNull(result.item) || objectOrNull(characteristics?.item) || snapshots.latest || snapshots.first;
+  const itemSnapshot =
+    objectOrNull(result.item) || objectOrNull(characteristics?.item) || snapshots.latest || snapshots.first;
 
   if (input.operation === 'pricing.standard.update') {
     const standardPrice = objectOrNull(result.standardPrice) || {};
-    return [draft(input.itemId, itemSnapshot, 'price', 'updated', 'Preço alterado', {
-      before: moneyValue(snapshots.first?.price, snapshots.first?.currency_id),
-      after: moneyValue(standardPrice.amount ?? payload.amount, standardPrice.currency_id ?? snapshots.first?.currency_id)
-    }, input.operation)];
+    return [
+      draft(
+        input.itemId,
+        itemSnapshot,
+        'price',
+        'updated',
+        'Preço alterado',
+        {
+          before: moneyValue(snapshots.first?.price, snapshots.first?.currency_id),
+          after: moneyValue(
+            standardPrice.amount ?? payload.amount,
+            standardPrice.currency_id ?? snapshots.first?.currency_id
+          )
+        },
+        input.operation
+      )
+    ];
   }
 
   if (input.operation === 'description.update') {
     const created = result.created === true;
-    return [draft(input.itemId, itemSnapshot, 'description', created ? 'created' : 'updated', created ? 'Descrição adicionada' : 'Descrição alterada', descriptionDetails(payload, result, created), input.operation)];
+    return [
+      draft(
+        input.itemId,
+        itemSnapshot,
+        'description',
+        created ? 'created' : 'updated',
+        created ? 'Descrição adicionada' : 'Descrição alterada',
+        descriptionDetails(payload, result, created),
+        input.operation
+      )
+    ];
   }
 
   if (input.operation === 'characteristics.update') {
     const changes = characteristicChanges(payload, result, snapshots.first);
-    return [draft(input.itemId, itemSnapshot, 'characteristics', 'updated', characteristicsSummary(changes.length), { changes }, input.operation)];
+    return [
+      draft(
+        input.itemId,
+        itemSnapshot,
+        'characteristics',
+        'updated',
+        characteristicsSummary(changes.length),
+        { changes },
+        input.operation
+      )
+    ];
   }
 
   if (input.operation.startsWith('promotion.offer.')) {
     const action = input.operation.slice('promotion.offer.'.length);
-    const labels: Record<string, string> = { create: 'Promoção adicionada', update: 'Promoção alterada', delete: 'Promoção removida' };
-    return [draft(
-      input.itemId,
-      itemSnapshot,
-      'promotion',
-      action === 'create' ? 'created' : action === 'delete' ? 'removed' : 'updated',
-      labels[action] || 'Promoção alterada',
-      promotionDetails(input.itemId, payload, snapshots, input.promotionSnapshots, input.origin, action),
-      input.operation
-    )];
+    const labels: Record<string, string> = {
+      create: 'Promoção adicionada',
+      update: 'Promoção alterada',
+      delete: 'Promoção removida'
+    };
+    return [
+      draft(
+        input.itemId,
+        itemSnapshot,
+        'promotion',
+        action === 'create' ? 'created' : action === 'delete' ? 'removed' : 'updated',
+        labels[action] || 'Promoção alterada',
+        promotionDetails(input.itemId, payload, snapshots, input.promotionSnapshots, input.origin, action),
+        input.operation
+      )
+    ];
   }
 
   if (input.operation === 'pictures.update') {
-    return [draft(input.itemId, itemSnapshot, 'pictures', 'updated', 'Fotos alteradas', pictureDetails(snapshots.first, objectOrNull(result.item), payload), input.operation)];
+    return [
+      draft(
+        input.itemId,
+        itemSnapshot,
+        'pictures',
+        'updated',
+        'Fotos alteradas',
+        pictureDetails(snapshots.first, objectOrNull(result.item), payload),
+        input.operation
+      )
+    ];
   }
 
   return [];
 }
 
-function characteristicChanges(payload: Record<string, unknown>, result: Record<string, unknown>, beforeItem: ItemSnapshot): Array<Record<string, unknown>> {
+function characteristicChanges(
+  payload: Record<string, unknown>,
+  result: Record<string, unknown>,
+  beforeItem: ItemSnapshot
+): Array<Record<string, unknown>> {
   const requested = Array.isArray(payload.attributes) ? payload.attributes : [];
-  const before = new Map((Array.isArray(beforeItem?.attributes) ? beforeItem.attributes : [])
-    .map(objectOrNull)
-    .filter((entry): entry is Record<string, unknown> => Boolean(entry?.id))
-    .map((entry) => [String(entry.id), entry]));
+  const before = new Map(
+    (Array.isArray(beforeItem?.attributes) ? beforeItem.attributes : [])
+      .map(objectOrNull)
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry?.id))
+      .map((entry) => [String(entry.id), entry])
+  );
   const characteristics = objectOrNull(result.characteristics);
-  const afterFields = new Map((Array.isArray(characteristics?.fields) ? characteristics.fields : [])
+  const afterFields = new Map(
+    (Array.isArray(characteristics?.fields) ? characteristics.fields : [])
+      .map(objectOrNull)
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry?.id))
+      .map((entry) => [String(entry.id), entry])
+  );
+
+  return requested
     .map(objectOrNull)
     .filter((entry): entry is Record<string, unknown> => Boolean(entry?.id))
-    .map((entry) => [String(entry.id), entry]));
-
-  return requested.map(objectOrNull).filter((entry): entry is Record<string, unknown> => Boolean(entry?.id)).map((entry) => {
-    const id = String(entry.id);
-    const previous = before.get(id);
-    const current = afterFields.get(id);
-    return {
-      id,
-      label: stringOrNull(current?.label) || stringOrNull(previous?.name) || id,
-      before: attributeValue(previous),
-      after: stringOrNull(current?.displayValue) || attributeValue(entry)
-    };
-  });
+    .map((entry) => {
+      const id = String(entry.id);
+      const previous = before.get(id);
+      const current = afterFields.get(id);
+      return {
+        id,
+        label: stringOrNull(current?.label) || stringOrNull(previous?.name) || id,
+        before: attributeValue(previous),
+        after: stringOrNull(current?.displayValue) || attributeValue(entry)
+      };
+    });
 }
 
 function attributeValue(value: Record<string, unknown> | null | undefined): string | null {
   if (!value) return null;
   const values = Array.isArray(value.values) ? value.values.map(objectOrNull).filter(Boolean) : [];
-  if (values.length) return values.map((entry) => stringOrNull(entry?.name) || stringOrNull(entry?.value_name) || stringOrNull(entry?.id)).filter(Boolean).join(', ') || null;
+  if (values.length)
+    return (
+      values
+        .map((entry) => stringOrNull(entry?.name) || stringOrNull(entry?.value_name) || stringOrNull(entry?.id))
+        .filter(Boolean)
+        .join(', ') || null
+    );
   const structured = objectOrNull(value.value_struct);
-  if (structured && structured.number !== undefined) return [structured.number, structured.unit].filter((entry) => entry !== undefined && entry !== null && entry !== '').join(' ');
-  return stringOrNull(value.valueName) || stringOrNull(value.value_name) || stringOrNull(value.valueId) || stringOrNull(value.value_id);
+  if (structured && structured.number !== undefined)
+    return [structured.number, structured.unit]
+      .filter((entry) => entry !== undefined && entry !== null && entry !== '')
+      .join(' ');
+  return (
+    stringOrNull(value.valueName) ||
+    stringOrNull(value.value_name) ||
+    stringOrNull(value.valueId) ||
+    stringOrNull(value.value_id)
+  );
 }
 
-function draft(itemId: string, itemSnapshot: ItemSnapshot, changeType: string, action: string, summary: string, details: Record<string, unknown>, operation: string): EditDraft {
+function draft(
+  itemId: string,
+  itemSnapshot: ItemSnapshot,
+  changeType: string,
+  action: string,
+  summary: string,
+  details: Record<string, unknown>,
+  operation: string
+): EditDraft {
   return { itemId, itemSnapshot, changeType, action, summary, details, detailsVersion: 1, operation };
 }
 
@@ -336,11 +444,17 @@ function moneyValue(amount: unknown, currency: unknown): Record<string, unknown>
   return { amount: normalizedAmount, currency: stringOrNull(currency) || 'BRL' };
 }
 
-function descriptionDetails(payload: Record<string, unknown>, result: Record<string, unknown>, created: boolean): Record<string, unknown> {
+function descriptionDetails(
+  payload: Record<string, unknown>,
+  result: Record<string, unknown>,
+  created: boolean
+): Record<string, unknown> {
   const history = objectOrNull(result.history);
   const before = objectOrNull(history?.before);
   const after = objectOrNull(history?.after);
-  const plainText = String(payload.plainText ?? payload.plain_text ?? '').replace(/\r\n/gu, '\n').trim();
+  const plainText = String(payload.plainText ?? payload.plain_text ?? '')
+    .replace(/\r\n/gu, '\n')
+    .trim();
   return {
     before: {
       exists: before?.exists === true || (!before && !created),
@@ -353,7 +467,11 @@ function descriptionDetails(payload: Record<string, unknown>, result: Record<str
   };
 }
 
-function pictureDetails(beforeItem: ItemSnapshot, resultItem: ItemSnapshot, payload: Record<string, unknown>): Record<string, unknown> {
+function pictureDetails(
+  beforeItem: ItemSnapshot,
+  resultItem: ItemSnapshot,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
   const before = pictureRefs(beforeItem?.pictures);
   const afterSource = Array.isArray(resultItem?.pictures) ? resultItem?.pictures : payload.pictures;
   const after = pictureRefs(afterSource);
@@ -398,15 +516,28 @@ function promotionDetails(
   const promotionSnapshots = snapshots ? snapshots(itemId) : { first: null, latest: null };
   const beforeEntry = findPromotionEntry(promotionSnapshots.first, payload);
   const afterEntry = action === 'delete' ? null : findPromotionEntry(promotionSnapshots.latest, payload);
-  const currency = stringOrNull(itemSnapshots.latest?.currency_id) || stringOrNull(itemSnapshots.first?.currency_id) || 'BRL';
+  const currency =
+    stringOrNull(itemSnapshots.latest?.currency_id) || stringOrNull(itemSnapshots.first?.currency_id) || 'BRL';
   const before = promotionState(beforeEntry, payload, currency, false);
   const after = action === 'delete' ? null : promotionState(afterEntry, payload, currency, true);
   return {
     promotion: {
-      type: promotionField(payload, 'promotionType', 'promotion_type') || promotionField(afterEntry, 'type', 'promotion_type') || promotionField(beforeEntry, 'type', 'promotion_type') || '',
-      id: promotionField(payload, 'promotionId', 'promotion_id') || promotionField(afterEntry, 'id', 'promotion_id') || promotionField(beforeEntry, 'id', 'promotion_id'),
-      offerId: promotionField(payload, 'offerId', 'offer_id') || promotionField(afterEntry, 'offerId', 'offer_id', 'ref_id') || promotionField(beforeEntry, 'offerId', 'offer_id', 'ref_id'),
-      name: promotionField(afterEntry, 'name', 'title', 'promotion_name', 'campaign_name') || promotionField(beforeEntry, 'name', 'title', 'promotion_name', 'campaign_name')
+      type:
+        promotionField(payload, 'promotionType', 'promotion_type') ||
+        promotionField(afterEntry, 'type', 'promotion_type') ||
+        promotionField(beforeEntry, 'type', 'promotion_type') ||
+        '',
+      id:
+        promotionField(payload, 'promotionId', 'promotion_id') ||
+        promotionField(afterEntry, 'id', 'promotion_id') ||
+        promotionField(beforeEntry, 'id', 'promotion_id'),
+      offerId:
+        promotionField(payload, 'offerId', 'offer_id') ||
+        promotionField(afterEntry, 'offerId', 'offer_id', 'ref_id') ||
+        promotionField(beforeEntry, 'offerId', 'offer_id', 'ref_id'),
+      name:
+        promotionField(afterEntry, 'name', 'title', 'promotion_name', 'campaign_name') ||
+        promotionField(beforeEntry, 'name', 'title', 'promotion_name', 'campaign_name')
     },
     before,
     after,
@@ -415,46 +546,72 @@ function promotionDetails(
   };
 }
 
-function promotionState(entry: Record<string, unknown> | null, payload: Record<string, unknown>, currency: string, usePayload: boolean): Record<string, unknown> | null {
+function promotionState(
+  entry: Record<string, unknown> | null,
+  payload: Record<string, unknown>,
+  currency: string,
+  usePayload: boolean
+): Record<string, unknown> | null {
   if (!entry && !usePayload) return null;
-  const price = firstNumber(entry, ['price', 'new_price', 'deal_price']) ?? (usePayload ? firstNumber(payload, ['dealPrice', 'deal_price']) : null);
+  const price =
+    firstNumber(entry, ['price', 'new_price', 'deal_price']) ??
+    (usePayload ? firstNumber(payload, ['dealPrice', 'deal_price']) : null);
   const originalPrice = firstNumber(entry, ['original_price', 'regular_amount', 'base_price']);
-  const percentage = firstNumber(entry, ['discount_percentage', 'percentage']) ?? discountPercentage(originalPrice, price);
+  const percentage =
+    firstNumber(entry, ['discount_percentage', 'percentage']) ?? discountPercentage(originalPrice, price);
   return {
     status: promotionStatus(entry),
     price: moneyValue(price, currency),
     discountPercentage: percentage,
     stock: firstNumber(entry, ['stock', 'available_quantity']) ?? (usePayload ? firstNumber(payload, ['stock']) : null),
-    startDate: promotionField(entry, 'start_date', 'startDate') || (usePayload ? promotionField(payload, 'startDate', 'start_date') : null),
-    endDate: promotionField(entry, 'end_date', 'finish_date', 'finishDate') || (usePayload ? promotionField(payload, 'finishDate', 'finish_date') : null)
+    startDate:
+      promotionField(entry, 'start_date', 'startDate') ||
+      (usePayload ? promotionField(payload, 'startDate', 'start_date') : null),
+    endDate:
+      promotionField(entry, 'end_date', 'finish_date', 'finishDate') ||
+      (usePayload ? promotionField(payload, 'finishDate', 'finish_date') : null)
   };
 }
 
-function promotionChangedFields(before: Record<string, unknown> | null, after: Record<string, unknown> | null): string[] {
+function promotionChangedFields(
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null
+): string[] {
   if (!before && !after) return [];
   const fields = ['status', 'price', 'discountPercentage', 'stock', 'startDate', 'endDate'];
   return fields.filter((field) => JSON.stringify(before?.[field] ?? null) !== JSON.stringify(after?.[field] ?? null));
 }
 
-function findPromotionEntry(snapshot: PromotionSnapshot, payload: Record<string, unknown>): Record<string, unknown> | null {
+function findPromotionEntry(
+  snapshot: PromotionSnapshot,
+  payload: Record<string, unknown>
+): Record<string, unknown> | null {
   const type = normalizePromotionType(promotionField(payload, 'promotionType', 'promotion_type'));
   const promotionId = promotionField(payload, 'promotionId', 'promotion_id');
   const offerId = promotionField(payload, 'offerId', 'offer_id');
   const matches = promotionEntries(snapshot).filter((entry) => {
-    if (type && normalizePromotionType(promotionField(entry, 'type', 'promotion_type', 'campaign_type')) !== type) return false;
+    if (type && normalizePromotionType(promotionField(entry, 'type', 'promotion_type', 'campaign_type')) !== type)
+      return false;
     if (promotionId && promotionField(entry, 'id', 'promotion_id') !== promotionId) return false;
     return true;
   });
-  if (offerId) return matches.find((entry) => promotionField(entry, 'offerId', 'offer_id', 'ref_id') === offerId) || matches[0] || null;
+  if (offerId)
+    return (
+      matches.find((entry) => promotionField(entry, 'offerId', 'offer_id', 'ref_id') === offerId) || matches[0] || null
+    );
   return matches[0] || null;
 }
 
 function promotionEntries(snapshot: PromotionSnapshot): Record<string, unknown>[] {
-  if (Array.isArray(snapshot)) return snapshot.map(objectOrNull).filter((entry): entry is Record<string, unknown> => Boolean(entry));
+  if (Array.isArray(snapshot))
+    return snapshot.map(objectOrNull).filter((entry): entry is Record<string, unknown> => Boolean(entry));
   const source = objectOrNull(snapshot);
   if (!source) return [];
   for (const key of ['results', 'promotions', 'offers', 'items']) {
-    if (Array.isArray(source[key])) return (source[key] as unknown[]).map(objectOrNull).filter((entry): entry is Record<string, unknown> => Boolean(entry));
+    if (Array.isArray(source[key]))
+      return (source[key] as unknown[])
+        .map(objectOrNull)
+        .filter((entry): entry is Record<string, unknown> => Boolean(entry));
   }
   return [];
 }
@@ -476,7 +633,9 @@ function promotionStatus(entry: Record<string, unknown> | null): string | null {
 }
 
 function normalizePromotionType(value: unknown): string {
-  return String(value || '').trim().toUpperCase();
+  return String(value || '')
+    .trim()
+    .toUpperCase();
 }
 
 function firstNumber(value: Record<string, unknown> | null, keys: string[]): number | null {
@@ -505,14 +664,25 @@ function characteristicsSummary(count: number): string {
 
 export function itemThumbnail(item: Record<string, unknown>): string | null {
   const first = Array.isArray(item.pictures) ? objectOrNull(item.pictures[0]) : null;
-  return stringOrNull(item.thumbnailUrl)
-    || stringOrNull(item.secure_thumbnail)
-    || stringOrNull(item.thumbnail)
-    || stringOrNull(first?.secure_url)
-    || stringOrNull(first?.url);
+  return (
+    stringOrNull(item.thumbnailUrl) ||
+    stringOrNull(item.secure_thumbnail) ||
+    stringOrNull(item.thumbnail) ||
+    stringOrNull(first?.secure_url) ||
+    stringOrNull(first?.url)
+  );
 }
 
-function toHistoryPayload(record: HistoryRecord & { current_actor_name: string | null; current_actor_email: string | null; current_actor_avatar_url: string | null; current_account_name: string | null; current_item_thumbnail_url: string | null; current_item_permalink: string | null }): Record<string, unknown> {
+function toHistoryPayload(
+  record: HistoryRecord & {
+    current_actor_name: string | null;
+    current_actor_email: string | null;
+    current_actor_avatar_url: string | null;
+    current_account_name: string | null;
+    current_item_thumbnail_url: string | null;
+    current_item_permalink: string | null;
+  }
+): Record<string, unknown> {
   return {
     id: record.id,
     requestId: record.request_id,
@@ -558,7 +728,13 @@ function addFilter(filters: string[], values: unknown[], column: string, value: 
   values.push(normalized);
 }
 
-function addTimestampFilter(filters: string[], values: unknown[], column: string, operator: '>=' | '<=', value: string | null): void {
+function addTimestampFilter(
+  filters: string[],
+  values: unknown[],
+  column: string,
+  operator: '>=' | '<=',
+  value: string | null
+): void {
   const normalized = String(value || '').trim();
   if (!normalized) return;
   const parsed = Number(normalized);
@@ -584,7 +760,7 @@ function parseCursor(value: string | null): { createdAt: number; id: string } | 
 }
 
 function objectOrNull(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function stringOrNull(value: unknown): string | null {

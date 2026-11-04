@@ -77,20 +77,22 @@ function FailureList({ failures }) {
   return (
     <Accordion
       ariaLabel="Variações não alteradas"
-      items={[{
-        id: 'failures',
-        icon: 'warning-circle',
-        title: `${count} variação${count === 1 ? '' : 'ões'} não alterada${count === 1 ? '' : 's'}`,
-        content: (
-          <ul className="onframe-description-failure-list">
-            {failures.map((failure) => (
-              <li key={`${failure.itemId}:${failure.message}`}>
-                <strong>{failure.itemId}</strong>: {failure.message}
-              </li>
-            ))}
-          </ul>
-        )
-      }]}
+      items={[
+        {
+          id: 'failures',
+          icon: 'warning-circle',
+          title: `${count} variação${count === 1 ? '' : 'ões'} não alterada${count === 1 ? '' : 's'}`,
+          content: (
+            <ul className="onframe-description-failure-list">
+              {failures.map((failure) => (
+                <li key={`${failure.itemId}:${failure.message}`}>
+                  <strong>{failure.itemId}</strong>: {failure.message}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      ]}
     />
   );
 }
@@ -121,10 +123,7 @@ function DescriptionTextField({ model, onChange }) {
 
 function DescriptionEditor({ model, actions }) {
   return (
-    <section
-      className="onframe-description-editor"
-      aria-label="Editar descrição"
-    >
+    <section className="onframe-description-editor" aria-label="Editar descrição">
       <Card padding="var(--ob-s-4)">
         <div className="onframe-description-editor-content">
           <div className="onframe-description-editor-head">
@@ -132,11 +131,7 @@ function DescriptionEditor({ model, actions }) {
             <EditorStatus status={model.status} />
           </div>
 
-          <DescriptionTextField
-            key={model.inputKey}
-            model={model}
-            onChange={actions.onTextChange}
-          />
+          <DescriptionTextField key={model.inputKey} model={model} onChange={actions.onTextChange} />
 
           {model.canBulk && (
             <div className="onframe-description-bulk-switch">
@@ -150,9 +145,7 @@ function DescriptionEditor({ model, actions }) {
             </div>
           )}
 
-          {model.error && (
-            <Alert tone="danger">{model.error}</Alert>
-          )}
+          {model.error && <Alert tone="danger">{model.error}</Alert>}
 
           <FailureList failures={model.failures} />
 
@@ -189,16 +182,16 @@ function getRoot(host) {
 function render(host, node, onError) {
   const root = getRoot(host);
   flushSync(() => {
-    root.render(
-      <DescriptionViewBoundary onError={onError}>
-        {node}
-      </DescriptionViewBoundary>
-    );
+    root.render(<DescriptionViewBoundary onError={onError}>{node}</DescriptionViewBoundary>);
   });
 }
 
 function renderAction(host, model, actions = {}) {
-  render(host, <EditAction model={model} actions={{ onEdit: actions.onEdit || (() => {}) }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <EditAction model={model} actions={{ onEdit: actions.onEdit || (() => {}) }} />,
+    actions.onError || (() => {})
+  );
 }
 
 function renderCatalogNotice(host, options = {}) {
@@ -212,12 +205,19 @@ function renderCatalogNotice(host, options = {}) {
 }
 
 function renderEditor(host, model, actions = {}) {
-  render(host, <DescriptionEditor model={model} actions={{
-    onTextChange: actions.onTextChange || (() => {}),
-    onBulkChange: actions.onBulkChange || (() => {}),
-    onSave: actions.onSave || (() => {}),
-    onCancel: actions.onCancel || (() => {})
-  }} />, actions.onError || (() => {}));
+  render(
+    host,
+    <DescriptionEditor
+      model={model}
+      actions={{
+        onTextChange: actions.onTextChange || (() => {}),
+        onBulkChange: actions.onBulkChange || (() => {}),
+        onSave: actions.onSave || (() => {}),
+        onCancel: actions.onCancel || (() => {})
+      }}
+    />,
+    actions.onError || (() => {})
+  );
 }
 
 function unmount(host) {

@@ -51,13 +51,14 @@ export function normalizeInviteDraft(value) {
 
 export function normalizePopupSessionState(value) {
   const state = value && typeof value === 'object' ? value : {};
-  const workspace = state.workspace && typeof state.workspace === 'object'
-    ? {
-        workspaceId: text(state.workspace.workspaceId, 160),
-        inviteOpen: state.workspace.inviteOpen === true,
-        inviteDraft: normalizeInviteDraft(state.workspace.inviteDraft)
-      }
-    : null;
+  const workspace =
+    state.workspace && typeof state.workspace === 'object'
+      ? {
+          workspaceId: text(state.workspace.workspaceId, 160),
+          inviteOpen: state.workspace.inviteOpen === true,
+          inviteDraft: normalizeInviteDraft(state.workspace.inviteDraft)
+        }
+      : null;
 
   return {
     view: POPUP_VIEWS.has(state.view) ? state.view : 'home',

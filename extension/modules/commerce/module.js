@@ -48,7 +48,8 @@
       typeof CommerceDirectDiscountView.unmount === 'function'
     );
     if (!hasCommerceDirectDiscountView) throw new Error('Interface de desconto direto indisponível.');
-    const toUserError = (err) => CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
+    const toUserError = (err) =>
+      CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
       DEAL: 'Campanha com melhor exposição',
@@ -280,8 +281,14 @@
 
     function isSameResolvedItem(context) {
       const nextItemId = context && context.item && context.item.id ? String(context.item.id) : '';
-      const nextOwnerId = context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
-      return Boolean(nextItemId && state.itemId && nextItemId === String(state.itemId) && nextOwnerId === String(state.ownerUserId || ''));
+      const nextOwnerId =
+        context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
+      return Boolean(
+        nextItemId &&
+        state.itemId &&
+        nextItemId === String(state.itemId) &&
+        nextOwnerId === String(state.ownerUserId || '')
+      );
     }
 
     async function loadContext(context) {
@@ -295,9 +302,11 @@
         if (requestId !== state.requestId) return;
         state.context = context;
         state.itemId = context && context.item && context.item.id ? context.item.id : null;
-        state.ownerUserId = context && context.ownerAccount && context.ownerAccount.user_id ? context.ownerAccount.user_id : null;
+        state.ownerUserId =
+          context && context.ownerAccount && context.ownerAccount.user_id ? context.ownerAccount.user_id : null;
         state.loaded = true;
-        state.pageSignature = context && context.page && context.page.signature ? context.page.signature : readPageSignature();
+        state.pageSignature =
+          context && context.page && context.page.signature ? context.page.signature : readPageSignature();
         mountCommerce();
         await loadSummaries(requestId);
       } catch (err) {
@@ -397,7 +406,6 @@
     }
 
     function mountProductCommerce() {
-
       const anchor = findPriceAnchor();
       if (!anchor || !state.loaded || (!state.context && !state.actionError)) {
         removeInline();
@@ -552,7 +560,15 @@
 
     function queueListingResolution(itemId) {
       const current = state.listingCache.get(itemId);
-      if (current && (current.status === 'queued' || current.status === 'loading' || current.status === 'owned' || current.status === 'not-owned' || current.status === 'error')) return;
+      if (
+        current &&
+        (current.status === 'queued' ||
+          current.status === 'loading' ||
+          current.status === 'owned' ||
+          current.status === 'not-owned' ||
+          current.status === 'error')
+      )
+        return;
       state.listingCache.set(itemId, { status: 'queued', context: null });
       state.listingQueue.push(itemId);
       drainListingQueue();
@@ -585,7 +601,8 @@
             pageIdentity: { canonicalItemId: itemId }
           })
         });
-        if (!context || !context.item || String(context.item.id || '') !== itemId) throw new Error('Não foi possível confirmar este anúncio.');
+        if (!context || !context.item || String(context.item.id || '') !== itemId)
+          throw new Error('Não foi possível confirmar este anúncio.');
         entry.status = 'owned';
         entry.context = context;
       } catch (err) {
@@ -762,7 +779,8 @@
       state.popoverAnchor = anchor;
       state.context = record.context;
       state.itemId = record.itemId;
-      state.ownerUserId = record.context.ownerAccount && record.context.ownerAccount.user_id ? record.context.ownerAccount.user_id : null;
+      state.ownerUserId =
+        record.context.ownerAccount && record.context.ownerAccount.user_id ? record.context.ownerAccount.user_id : null;
       state.loaded = true;
       state.busy = false;
       state.priceSummary = record.priceSummary;
@@ -778,7 +796,8 @@
       openPopover(type);
 
       if (type === 'price' && !record.priceSummary && !record.priceLoading) void loadListingSummary(record, 'price');
-      if (type === 'promotions' && !record.promotionSummary && !record.promotionLoading) void loadListingSummary(record, 'promotions');
+      if (type === 'promotions' && !record.promotionSummary && !record.promotionLoading)
+        void loadListingSummary(record, 'promotions');
     }
 
     function loadListingSummary(record, type) {
@@ -877,7 +896,8 @@
 
     function listingItemApiPath(record, suffix) {
       const query = new URLSearchParams();
-      const ownerUserId = record && record.context && record.context.ownerAccount && record.context.ownerAccount.user_id;
+      const ownerUserId =
+        record && record.context && record.context.ownerAccount && record.context.ownerAccount.user_id;
       if (ownerUserId) query.set('owner_user_id', String(ownerUserId));
       const search = query.toString();
       return `/api/items/${encodeURIComponent(record.itemId)}${suffix}${search ? `?${search}` : ''}`;
@@ -919,7 +939,9 @@
     }
 
     function normalizeListingItemId(value) {
-      const normalized = String(value || '').toUpperCase().replace('-', '');
+      const normalized = String(value || '')
+        .toUpperCase()
+        .replace('-', '');
       return /^MLB\d+$/.test(normalized) ? normalized : null;
     }
 
@@ -1130,30 +1152,26 @@
         state.modalRoot.className = 'onframe-commerce-modal-root';
         document.body.appendChild(state.modalRoot);
       }
-      CommercePromotionManagerView.render(
-        state.modalRoot,
-        buildPromotionManagerViewModel(),
-        {
-          onClose: closePromotionModal,
-          onReload: () => void reloadCommerce(),
-          onCreateDiscount: openDirectDiscountForm,
-          onSearchChange: setPromotionManagerSearch,
-          onTabChange: setPromotionManagerTab,
-          onToggleStatus: togglePromotionManagerStatus,
-          onToggleType: togglePromotionManagerType,
-          onToggleFinancial: togglePromotionManagerFinancial,
-          onClearAdvancedFilters: clearPromotionManagerAdvancedFilters,
-          onClearFilters: clearPromotionManagerFilters,
-          onOpen: openPromotionManagerCard,
-          onCancelEdit: cancelPromotionForm,
-          onDraftChange: updatePromotionManagerDraft,
-          onToggleBulk: togglePromotionManagerBulk,
-          onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
-          onRemove: queuePromotionManagerRemoval,
-          onUndoRemove: undoPromotionManagerRemoval,
-          onError: handlePromotionManagerViewError
-        }
-      );
+      CommercePromotionManagerView.render(state.modalRoot, buildPromotionManagerViewModel(), {
+        onClose: closePromotionModal,
+        onReload: () => void reloadCommerce(),
+        onCreateDiscount: openDirectDiscountForm,
+        onSearchChange: setPromotionManagerSearch,
+        onTabChange: setPromotionManagerTab,
+        onToggleStatus: togglePromotionManagerStatus,
+        onToggleType: togglePromotionManagerType,
+        onToggleFinancial: togglePromotionManagerFinancial,
+        onClearAdvancedFilters: clearPromotionManagerAdvancedFilters,
+        onClearFilters: clearPromotionManagerFilters,
+        onOpen: openPromotionManagerCard,
+        onCancelEdit: cancelPromotionForm,
+        onDraftChange: updatePromotionManagerDraft,
+        onToggleBulk: togglePromotionManagerBulk,
+        onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
+        onRemove: queuePromotionManagerRemoval,
+        onUndoRemove: undoPromotionManagerRemoval,
+        onError: handlePromotionManagerViewError
+      });
     }
 
     function renderDirectDiscountModal() {
@@ -1203,8 +1221,8 @@
         basePrice: CommerceModel.formatMoney(entry.original_price, itemCurrency()),
         percentage: draft.discount_percentage || '',
         price: draft.deal_price || '',
-        percentageError: percentageValidation && percentageValidation.message || '',
-        priceError: priceValidation && priceValidation.message || '',
+        percentageError: (percentageValidation && percentageValidation.message) || '',
+        priceError: (priceValidation && priceValidation.message) || '',
         startDate,
         endDate,
         dateError: startDate && endDate && endDate < startDate ? 'A data final deve ser posterior ao início.' : '',
@@ -1217,9 +1235,9 @@
       const record = state.promotionEstimates[key] || null;
       const loading = Boolean(record && record.status === 'loading');
       const estimate = record && record.status === 'ready' ? record.data : null;
-      const currency = estimate && estimate.currency_id || itemCurrency();
-      const commission = estimate && estimate.commission || null;
-      const shipping = estimate && estimate.shipping || null;
+      const currency = (estimate && estimate.currency_id) || itemCurrency();
+      const commission = (estimate && estimate.commission) || null;
+      const shipping = (estimate && estimate.shipping) || null;
       const commissionPercentage = financialPercentage(commission && commission.effective_percentage);
       const value = (amount, sign = '') => {
         const normalized = moneyOrNull(amount);
@@ -1235,7 +1253,10 @@
         message,
         tone: 'danger',
         commission: {
-          label: commissionPercentage === null ? 'Tarifa de venda' : `Tarifa de venda · ${formatPercent(commissionPercentage)}`,
+          label:
+            commissionPercentage === null
+              ? 'Tarifa de venda'
+              : `Tarifa de venda · ${formatPercent(commissionPercentage)}`,
           description: saleFeeDescription(commission, currency),
           value: value(saleFeeAmount(commission), '−')
         },
@@ -1246,9 +1267,7 @@
     }
 
     function buildPromotionManagerViewModel() {
-      const rows = state.promotionSummary
-        ? buildPromotionRows().map(buildPromotionManagerRow)
-        : [];
+      const rows = state.promotionSummary ? buildPromotionRows().map(buildPromotionManagerRow) : [];
       const query = normalizeSearchText(state.promotionSearch);
       const filteredRows = rows.filter((row) => {
         if (state.promotionTab !== 'all' && row.type !== state.promotionTab) return false;
@@ -1277,11 +1296,11 @@
       const { entry, kind, key, status } = row;
       const type = ['campaign', 'coupon', 'direct', 'payment'].includes(row.type) ? row.type : 'campaign';
       const available = status === 'available';
-      const canCreate = available && (
-        kind === 'eligible-offer' ||
-        kind === 'stackable-offer' && isCandidatePromotion(entry) ||
-        kind === 'discount-offer' && isCandidatePromotion(entry)
-      );
+      const canCreate =
+        available &&
+        (kind === 'eligible-offer' ||
+          (kind === 'stackable-offer' && isCandidatePromotion(entry)) ||
+          (kind === 'discount-offer' && isCandidatePromotion(entry)));
       const canUpdate = !available && CommerceModel.canUpdateOffer(entry);
       const canDelete = !available && CommerceModel.canDeleteOffer(entry);
       const formAction = state.promotionFormKey === key ? state.promotionFormAction : '';
@@ -1308,9 +1327,8 @@
       const estimate = estimateRecord && estimateRecord.status === 'ready' ? estimateRecord.data : null;
       const coupon = couponCampaignData(entry);
       const couponMinimum = couponAmount(coupon.min_purchase_amount);
-      const couponMaximum = couponPresentation(entry).subtype === 'FIXED_PERCENTAGE'
-        ? couponAmount(coupon.max_purchase_amount)
-        : null;
+      const couponMaximum =
+        couponPresentation(entry).subtype === 'FIXED_PERCENTAGE' ? couponAmount(coupon.max_purchase_amount) : null;
       const metrics = promotionManagerMetrics(estimate);
       const calculation = promotionManagerCalculation(entry, estimate);
       const margin = promotionContributionMargin(estimate);
@@ -1323,25 +1341,28 @@
         period: formatPromotionManagerPeriod(entry),
         status: { id: status, label: promotionListStatusLabel(status) },
         hasFeeReduction: hasPromotionFeeReduction(entry),
-        condition: type === 'coupon'
-          ? { primary: couponBenefitLabel(entry), secondary: '' }
-          : {
-            primary: displayPrice ? CommerceModel.formatMoney(displayPrice, itemCurrency()) : '—',
-            secondary: discount ? `${discount}% OFF` : ''
-          },
-        result: type === 'coupon'
-          ? {
-            primary: couponMinimum === null ? '—' : formatCouponMoney(couponMinimum),
-            secondary: couponMaximum === null ? '' : formatCouponMoney(couponMaximum),
-            loading: false
-          }
-          : {
-            primary: estimate && moneyOrNull(estimate.youReceive) !== null
-              ? CommerceModel.formatMoney(estimate.youReceive, estimate.currency_id || itemCurrency())
-              : '',
-            secondary: estimateRecord && estimateRecord.status === 'error' ? 'Valores indisponíveis.' : '',
-            loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
-          },
+        condition:
+          type === 'coupon'
+            ? { primary: couponBenefitLabel(entry), secondary: '' }
+            : {
+                primary: displayPrice ? CommerceModel.formatMoney(displayPrice, itemCurrency()) : '—',
+                secondary: discount ? `${discount}% OFF` : ''
+              },
+        result:
+          type === 'coupon'
+            ? {
+                primary: couponMinimum === null ? '—' : formatCouponMoney(couponMinimum),
+                secondary: couponMaximum === null ? '' : formatCouponMoney(couponMaximum),
+                loading: false
+              }
+            : {
+                primary:
+                  estimate && moneyOrNull(estimate.youReceive) !== null
+                    ? CommerceModel.formatMoney(estimate.youReceive, estimate.currency_id || itemCurrency())
+                    : '',
+                secondary: estimateRecord && estimateRecord.status === 'error' ? 'Valores indisponíveis.' : '',
+                loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
+              },
         metrics,
         calculation,
         margin,
@@ -1364,17 +1385,25 @@
         bulkEnabled: state.promotionBulkEnabled,
         busy: state.busy,
         confirmLabel: state.promotionBulkEnabled
-          ? (formAction === 'update' ? 'Alterar em todas as variações' : 'Aplicar em todas as variações')
-          : (formAction === 'update' ? 'Confirmar alteração' : 'Confirmar aplicação'),
+          ? formAction === 'update'
+            ? 'Alterar em todas as variações'
+            : 'Aplicar em todas as variações'
+          : formAction === 'update'
+            ? 'Confirmar alteração'
+            : 'Confirmar aplicação',
         removed: Boolean(state.promotionRemoved[key])
       };
     }
 
     function promotionManagerOriginalPrice(entry) {
-      return moneyOrNull(entry && entry.original_price) ||
-        moneyOrNull(state.priceSummary && state.priceSummary.salePrice && (
-          state.priceSummary.salePrice.regular_amount || state.priceSummary.salePrice.amount
-        ));
+      return (
+        moneyOrNull(entry && entry.original_price) ||
+        moneyOrNull(
+          state.priceSummary &&
+            state.priceSummary.salePrice &&
+            (state.priceSummary.salePrice.regular_amount || state.priceSummary.salePrice.amount)
+        )
+      );
     }
 
     function promotionManagerPriceError(entry, value) {
@@ -1396,7 +1425,7 @@
     }
 
     function promotionManagerStockRange(entry) {
-      const stock = entry && entry.stock || entry && entry.raw && entry.raw.stock || {};
+      const stock = (entry && entry.stock) || (entry && entry.raw && entry.raw.stock) || {};
       const min = positiveIntegerOrNull(stock.min);
       const max = positiveIntegerOrNull(stock.max);
       return { min, max };
@@ -1451,19 +1480,29 @@
       }));
       const margin = estimate.contributionMargin;
       if (!margin || !margin.complete) return rows;
-      rows.push({ label: 'Custo do produto', value: formatContributionCost(margin.productCost, currency), description: '', tone: '' });
+      rows.push({
+        label: 'Custo do produto',
+        value: formatContributionCost(margin.productCost, currency),
+        description: '',
+        tone: ''
+      });
       rows.push({
         label: 'Impostos',
         value: formatContributionCost(margin.taxAmount, currency),
         description: `${formatContributionPercent(margin.taxRate)} sobre o preço promocional · ${promotionTaxSourceLabel(margin.taxSource)}`,
         tone: ''
       });
-      (margin.customCosts || []).forEach((cost) => rows.push({
-        label: cost.description,
-        value: formatContributionCost(cost.amount, currency),
-        description: cost.type === 'percentage' ? `${formatContributionPercent(cost.value)} sobre o preço promocional` : 'Custo fixo por unidade',
-        tone: ''
-      }));
+      (margin.customCosts || []).forEach((cost) =>
+        rows.push({
+          label: cost.description,
+          value: formatContributionCost(cost.amount, currency),
+          description:
+            cost.type === 'percentage'
+              ? `${formatContributionPercent(cost.value)} sobre o preço promocional`
+              : 'Custo fixo por unidade',
+          tone: ''
+        })
+      );
       rows.push({
         label: 'Margem de contribuição',
         value: CommerceModel.formatMoney(margin.amount, currency),
@@ -1489,12 +1528,14 @@
     }
 
     function promotionTaxSourceLabel(source) {
-      return {
-        product_account: 'exceção do produto para esta conta',
-        product: 'configuração do produto',
-        account: 'configuração da conta',
-        workspace: 'padrão do workspace'
-      }[source] || 'configuração tributária';
+      return (
+        {
+          product_account: 'exceção do produto para esta conta',
+          product: 'configuração do produto',
+          account: 'configuração da conta',
+          workspace: 'padrão do workspace'
+        }[source] || 'configuração tributária'
+      );
     }
 
     function formatContributionCost(amount, currency) {
@@ -1508,13 +1549,14 @@
     }
 
     function formatPromotionManagerPeriod(entry) {
-      const start = parseIsoDate(entry && (entry.start_date || entry.startDate)) || parseDateValue(entry && (entry.start_date || entry.startDate));
+      const start =
+        parseIsoDate(entry && (entry.start_date || entry.startDate)) ||
+        parseDateValue(entry && (entry.start_date || entry.startDate));
       const endValue = entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
       const end = parseIsoDate(endValue) || parseDateValue(endValue);
       if (!start && !end) return 'Sem prazo definido';
-      const format = (date) => date
-        ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date).replace('.', '')
-        : '';
+      const format = (date) =>
+        date ? new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date).replace('.', '') : '';
       if (start && end) return `${format(start)} – ${format(end)}`;
       return format(start || end);
     }
@@ -1541,9 +1583,7 @@
     function togglePromotionManagerType(type) {
       const values = state.promotionTypeFilters;
       state.promotionTab = 'all';
-      state.promotionTypeFilters = values.includes(type)
-        ? values.filter((item) => item !== type)
-        : values.concat(type);
+      state.promotionTypeFilters = values.includes(type) ? values.filter((item) => item !== type) : values.concat(type);
       rerenderModal();
     }
 
@@ -1585,7 +1625,9 @@
         schedulePromotionEstimate(key, row.entry, {}, true);
       } else {
         const fields = CommerceModel.getUserFields(
-          action === 'update' ? CommerceModel.getOfferUpdateFields(row.entry) : CommerceModel.getOfferCreateFields(row.entry)
+          action === 'update'
+            ? CommerceModel.getOfferUpdateFields(row.entry)
+            : CommerceModel.getOfferCreateFields(row.entry)
         );
         ensurePromotionDraft(key, row.entry, fields);
         schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key] || {});
@@ -1625,17 +1667,24 @@
       const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
       const directDiscount = buildDiscountEntry();
       const sources = [
-        { kind: 'active-offer', entries: currentPromotionEntries(campaignPromotionEntries(pricePromotionEntries(groups))) },
+        {
+          kind: 'active-offer',
+          entries: currentPromotionEntries(campaignPromotionEntries(pricePromotionEntries(groups)))
+        },
         { kind: 'stackable-offer', entries: stackablePromotionEntries(groups) },
         { kind: 'eligible-offer', entries: promotionOpportunityEntries(groups) },
         { kind: 'discount-offer', entries: directDiscount ? [directDiscount] : [] },
         { kind: 'programmed-offer', entries: programmedPromotionEntries(groups) }
       ];
-      return sources.flatMap(({ kind, entries }) => entries.map((entry, index) => {
-        const status = promotionListStatus(entry, kind);
-        const type = promotionListType(entry);
-        return { entry, kind, index, key: `${kind}:${index}`, status, type };
-      })).sort(comparePromotionRows);
+      return sources
+        .flatMap(({ kind, entries }) =>
+          entries.map((entry, index) => {
+            const status = promotionListStatus(entry, kind);
+            const type = promotionListType(entry);
+            return { entry, kind, index, key: `${kind}:${index}`, status, type };
+          })
+        )
+        .sort(comparePromotionRows);
     }
 
     function comparePromotionRows(left, right) {
@@ -1649,12 +1698,14 @@
     }
 
     function promotionListStatus(entry, kind) {
-      const display = String(entry && entry.display_status || '').toLowerCase();
+      const display = String((entry && entry.display_status) || '').toLowerCase();
       if (display === 'active') return 'active';
       if (display === 'programmed') return 'programmed';
       if (display === 'available') return 'available';
       if (kind === 'discount-offer') {
-        const directStatus = String(entry && (entry.status || entry.api_status || entry.status_bucket || entry.bucket) || '').toLowerCase();
+        const directStatus = String(
+          (entry && (entry.status || entry.api_status || entry.status_bucket || entry.bucket)) || ''
+        ).toLowerCase();
         return ['scheduled', 'programmed', 'pending'].includes(directStatus) ? 'programmed' : 'active';
       }
       if (kind === 'programmed-offer') return 'programmed';
@@ -1669,15 +1720,17 @@
     }
 
     function promotionListType(entry) {
-      const type = String(entry && entry.type || '').toUpperCase();
+      const type = String((entry && entry.type) || '').toUpperCase();
       if (type === 'SELLER_COUPON_CAMPAIGN') return 'coupon';
-      if (type === 'BANK' || String(entry && entry.stackable_context || '') === 'payment_method') return 'payment';
+      if (type === 'BANK' || String((entry && entry.stackable_context) || '') === 'payment_method') return 'payment';
       if (type === 'PRICE_DISCOUNT') return 'direct';
       return 'campaign';
     }
 
     function promotionTypeLabel(entry, type) {
-      const promotionType = String(entry && (entry.type || entry.promotion_type || entry.campaign_type) || '').toUpperCase();
+      const promotionType = String(
+        (entry && (entry.type || entry.promotion_type || entry.campaign_type)) || ''
+      ).toUpperCase();
       if (PROMOTION_TYPE_LABELS[promotionType]) return PROMOTION_TYPE_LABELS[promotionType];
       if (type === 'coupon') return 'Cupom do vendedor';
       if (type === 'payment') return 'Desconto por pagamento';
@@ -1687,7 +1740,8 @@
 
     function promotionResultPopoverRows(entry, estimate, currency) {
       const price = moneyOrNull(estimate.dealPrice);
-      const originalPrice = moneyOrNull(entry && entry.original_price) || moneyOrNull(estimate.item && estimate.item.price);
+      const originalPrice =
+        moneyOrNull(entry && entry.original_price) || moneyOrNull(estimate.item && estimate.item.price);
       const commission = saleFeeAmount(estimate.commission);
       const shipping = moneyOrNull(estimate.shipping && estimate.shipping.amount);
       const rows = [];
@@ -1695,7 +1749,10 @@
       if (price !== null) {
         rows.push({
           label: 'Preço promocional',
-          description: originalPrice !== null && originalPrice !== price ? `Preço original ${CommerceModel.formatMoney(originalPrice, currency)}` : '',
+          description:
+            originalPrice !== null && originalPrice !== price
+              ? `Preço original ${CommerceModel.formatMoney(originalPrice, currency)}`
+              : '',
           value: CommerceModel.formatMoney(price, currency)
         });
       }
@@ -1714,7 +1771,11 @@
           value: formatPromotionCost(shipping, currency)
         });
       }
-      rows.push({ label: 'Você recebe', value: CommerceModel.formatMoney(estimate.youReceive, currency), tone: 'total' });
+      rows.push({
+        label: 'Você recebe',
+        value: CommerceModel.formatMoney(estimate.youReceive, currency),
+        tone: 'total'
+      });
       return rows;
     }
 
@@ -1743,7 +1804,9 @@
 
     function couponPresentation(entry) {
       const coupon = couponCampaignData(entry);
-      const subtype = String(coupon.sub_type || '').trim().toUpperCase();
+      const subtype = String(coupon.sub_type || '')
+        .trim()
+        .toUpperCase();
       if (subtype === 'FIXED_PERCENTAGE') {
         const percentage = couponPositiveNumber(coupon.fixed_percentage);
         return {
@@ -1764,9 +1827,8 @@
     function couponCompactTerms(entry) {
       const coupon = couponCampaignData(entry);
       const minimum = couponAmount(coupon.min_purchase_amount);
-      const maximumRefund = couponPresentation(entry).subtype === 'FIXED_PERCENTAGE'
-        ? couponAmount(coupon.max_purchase_amount)
-        : null;
+      const maximumRefund =
+        couponPresentation(entry).subtype === 'FIXED_PERCENTAGE' ? couponAmount(coupon.max_purchase_amount) : null;
       return [
         minimum === null ? '' : `Mín. ${formatCouponMoney(minimum)}`,
         maximumRefund === null ? '' : `Até ${formatCouponMoney(maximumRefund)}`
@@ -1795,7 +1857,9 @@
           style: 'currency',
           currency: itemCurrency(),
           minimumFractionDigits: 2
-        }).format(amount).replace(/\u00a0/g, ' ');
+        })
+          .format(amount)
+          .replace(/\u00a0/g, ' ');
       } catch (err) {
         return `R$ ${Number(amount).toFixed(2).replace('.', ',')}`;
       }
@@ -1814,7 +1878,11 @@
     }
 
     function normalizeSearchText(value) {
-      return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase('pt-BR')
+        .trim();
     }
 
     function resetPromotionListFilters() {
@@ -1828,11 +1896,13 @@
     function promotionPopoverCampaignEntry(groups) {
       const active = currentPromotionEntry(pricePromotionEntries(groups));
       if (active) return active;
-      const programmed = programmedPromotionEntries(groups).slice().sort((left, right) => {
-        const difference = promotionStartTimestamp(left) - promotionStartTimestamp(right);
-        if (difference) return difference;
-        return String(left && left.label || '').localeCompare(String(right && right.label || ''), 'pt-BR');
-      })[0];
+      const programmed = programmedPromotionEntries(groups)
+        .slice()
+        .sort((left, right) => {
+          const difference = promotionStartTimestamp(left) - promotionStartTimestamp(right);
+          if (difference) return difference;
+          return String((left && left.label) || '').localeCompare(String((right && right.label) || ''), 'pt-BR');
+        })[0];
       if (programmed) return programmed;
       return null;
     }
@@ -1874,12 +1944,15 @@
     function promotionSummaryOriginalPrice(entry) {
       if (entry && entry.original_price) return entry.original_price;
       if (!entry || entry.is_current_price !== true) return null;
-      return moneyOrNull(state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.regular_amount);
+      return moneyOrNull(
+        state.priceSummary && state.priceSummary.salePrice && state.priceSummary.salePrice.regular_amount
+      );
     }
 
     function promotionPopoverFinancialBenefit(entry) {
-      const benefits = promotionFinancialMetrics(entry, { originalPrice: promotionSummaryOriginalPrice(entry) })
-        .filter((metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction');
+      const benefits = promotionFinancialMetrics(entry, { originalPrice: promotionSummaryOriginalPrice(entry) }).filter(
+        (metric) => metric.kind === 'meli-contribution' || metric.kind === 'fee-reduction'
+      );
       if (!benefits.length) return null;
       const primary = benefits[0];
       const description = benefits
@@ -1933,13 +2006,14 @@
       if (discount) return `${discount}% OFF`;
       const sellerPercentage = Number(entry && entry.seller_percentage);
       const meliPercentage = Number(entry && entry.meli_percentage);
-      const percentage = (Number.isFinite(sellerPercentage) && sellerPercentage > 0 ? sellerPercentage : 0) +
+      const percentage =
+        (Number.isFinite(sellerPercentage) && sellerPercentage > 0 ? sellerPercentage : 0) +
         (Number.isFinite(meliPercentage) && meliPercentage > 0 ? meliPercentage : 0);
       if (percentage) return `${formatPercent(percentage)} OFF`;
       const boostedPercentage = Number(entry && (entry.discount_meli_boosted_percentage || entry.percentage));
       if (Number.isFinite(boostedPercentage) && boostedPercentage > 0) return `${formatPercent(boostedPercentage)} OFF`;
       const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
-      const amount = moneyOrNull(entry && entry.discount_amount || raw.discount_amount);
+      const amount = moneyOrNull((entry && entry.discount_amount) || raw.discount_amount);
       return amount === null ? '' : `${CommerceModel.formatMoney(amount, itemCurrency())} OFF`;
     }
 
@@ -1949,12 +2023,20 @@
 
       const raw = entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
       const benefits = entry.benefits || raw.benefits || {};
-      const originalPrice = moneyOrNull(entry.original_price) || moneyOrNull(raw.original_price) || moneyOrNull(options.originalPrice);
+      const originalPrice =
+        moneyOrNull(entry.original_price) || moneyOrNull(raw.original_price) || moneyOrNull(options.originalPrice);
       const meliPercentage = financialPercentage(entry.meli_percentage ?? raw.meli_percentage ?? benefits.meli_percent);
-      const sellerPercentage = financialPercentage(entry.seller_percentage ?? raw.seller_percentage ?? benefits.seller_percent);
+      const sellerPercentage = financialPercentage(
+        entry.seller_percentage ?? raw.seller_percentage ?? benefits.seller_percent
+      );
       const feeReductionAmount = moneyOrNull(entry.discount_meli_boost_amount ?? raw.discount_meli_boost_amount);
-      const feeReductionPercentage = financialPercentage(entry.discount_meli_boosted_percentage ?? raw.discount_meli_boosted_percentage);
-      const boosted = entry.boosted_offer === true || entry.boost && entry.boost.boosted_offer === true || raw.boosted_offer === true;
+      const feeReductionPercentage = financialPercentage(
+        entry.discount_meli_boosted_percentage ?? raw.discount_meli_boosted_percentage
+      );
+      const boosted =
+        entry.boosted_offer === true ||
+        (entry.boost && entry.boost.boosted_offer === true) ||
+        raw.boosted_offer === true;
       return {
         meli_contribution: contributionFromPercentage(meliPercentage, originalPrice),
         seller_contribution: contributionFromPercentage(sellerPercentage, originalPrice),
@@ -1979,7 +2061,9 @@
 
     function hasPromotionFeeReduction(entry) {
       const financial = promotionFinancialFromEntry(entry);
-      return hasPromotionFinancialValue(financial.meli_contribution) || hasPromotionFinancialValue(financial.fee_reduction);
+      return (
+        hasPromotionFinancialValue(financial.meli_contribution) || hasPromotionFinancialValue(financial.fee_reduction)
+      );
     }
 
     function hasPromotionFinancialValue(value) {
@@ -1994,10 +2078,29 @@
       const feeReduction = value.fee_reduction;
 
       if (meli && financialPercentage(meli.percentage) !== null) {
-        metrics.push(buildPromotionBenefitMetric('Com redução de tarifas', meli.amount, meli.percentage, currency, 'meli-contribution'));
+        metrics.push(
+          buildPromotionBenefitMetric(
+            'Com redução de tarifas',
+            meli.amount,
+            meli.percentage,
+            currency,
+            'meli-contribution'
+          )
+        );
       }
-      if (feeReduction && (moneyOrNull(feeReduction.amount) !== null || financialPercentage(feeReduction.percentage) !== null)) {
-        metrics.push(buildPromotionBenefitMetric('Bônus do Mercado Livre', feeReduction.amount, feeReduction.percentage, currency, 'fee-reduction'));
+      if (
+        feeReduction &&
+        (moneyOrNull(feeReduction.amount) !== null || financialPercentage(feeReduction.percentage) !== null)
+      ) {
+        metrics.push(
+          buildPromotionBenefitMetric(
+            'Bônus do Mercado Livre',
+            feeReduction.amount,
+            feeReduction.percentage,
+            currency,
+            'fee-reduction'
+          )
+        );
       }
       return metrics;
     }
@@ -2010,33 +2113,38 @@
     }
 
     function currentPromotionEntries(entries) {
-      return (Array.isArray(entries) ? entries : []).filter((entry) => entry && !isStackablePromotion(entry) && entry.is_current_price === true);
+      return (Array.isArray(entries) ? entries : []).filter(
+        (entry) => entry && !isStackablePromotion(entry) && entry.is_current_price === true
+      );
     }
 
     function programmedPromotionEntries(groups) {
       const activeProgrammed = campaignPromotionEntries(groups.activeOffers).filter((entry) => {
-        return !isStackablePromotion(entry) && String(entry && entry.display_status || '').toLowerCase() === 'programmed';
+        return (
+          !isStackablePromotion(entry) && String((entry && entry.display_status) || '').toLowerCase() === 'programmed'
+        );
       });
       const scheduled = campaignPromotionEntries(groups.scheduledOffers).filter((entry) => {
-        return !isStackablePromotion(entry) && entry && entry.is_current_price !== true &&
-          String(entry.display_status || '').toLowerCase() === 'programmed';
+        return (
+          !isStackablePromotion(entry) &&
+          entry &&
+          entry.is_current_price !== true &&
+          String(entry.display_status || '').toLowerCase() === 'programmed'
+        );
       });
       return uniquePromotionEntries(activeProgrammed.concat(scheduled));
     }
 
     function pricePromotionEntries(groups) {
-      return uniquePromotionEntries([
-        groups && groups.activeOffers,
-        groups && groups.scheduledOffers
-      ].flat());
+      return uniquePromotionEntries([groups && groups.activeOffers, groups && groups.scheduledOffers].flat());
     }
 
     function stackablePromotionEntries(groups) {
-      return uniquePromotionEntries([
-        groups && groups.activeOffers,
-        groups && groups.eligibleOffers,
-        groups && groups.scheduledOffers
-      ].flat().filter(isStackablePromotion));
+      return uniquePromotionEntries(
+        [groups && groups.activeOffers, groups && groups.eligibleOffers, groups && groups.scheduledOffers]
+          .flat()
+          .filter(isStackablePromotion)
+      );
     }
 
     function currentPromotionEntry(entries) {
@@ -2044,7 +2152,7 @@
     }
 
     function promotionDisplayStatusLabel(entry) {
-      const status = String(entry && entry.display_status || '').toLowerCase();
+      const status = String((entry && entry.display_status) || '').toLowerCase();
       if (status === 'active') return 'Ativa';
       if (status === 'programmed') return 'Programada';
       if (status === 'available') return 'Elegível';
@@ -2053,7 +2161,7 @@
     }
 
     function promotionDisplayTone(entry) {
-      const status = String(entry && entry.display_status || '').toLowerCase();
+      const status = String((entry && entry.display_status) || '').toLowerCase();
       if (status === 'active') return 'success';
       if (status === 'programmed') return 'primary';
       if (status === 'available') return 'warning';
@@ -2065,10 +2173,11 @@
       const sale = summary && summary.salePrice ? summary.salePrice : null;
       const currency = itemCurrency();
       const standardAmount = Number(standard.amount || priceState.amount || 0);
-      const saleAmount = Number(sale && sale.amount || 0);
+      const saleAmount = Number((sale && sale.amount) || 0);
       const hasPromotionPrice = saleAmount > 0 && (!standardAmount || saleAmount !== standardAmount);
       const activeAmount = hasPromotionPrice ? saleAmount : standardAmount;
-      const originalPrice = hasPromotionPrice && standardAmount ? CommerceModel.formatMoney(standardAmount, currency) : '';
+      const originalPrice =
+        hasPromotionPrice && standardAmount ? CommerceModel.formatMoney(standardAmount, currency) : '';
       return {
         label: hasPromotionPrice ? 'Preço promocional' : 'Preço atual',
         value: CommerceModel.formatMoney(activeAmount, currency),
@@ -2086,7 +2195,11 @@
       const commission = breakdown.commission || null;
       const shipping = breakdown.shipping || null;
       if (breakdown.complete && moneyOrNull(breakdown.you_receive) !== null) {
-        fields.push({ label: 'Você recebe', value: CommerceModel.formatMoney(breakdown.you_receive, currency), tone: 'success' });
+        fields.push({
+          label: 'Você recebe',
+          value: CommerceModel.formatMoney(breakdown.you_receive, currency),
+          tone: 'success'
+        });
       } else {
         fields.push({ label: 'Custos', value: 'Incompletos', tone: 'warning' });
       }
@@ -2098,7 +2211,10 @@
         });
       }
       if (shipping && moneyOrNull(shipping.amount) !== null) {
-        fields.push({ label: 'Frete', value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency) });
+        fields.push({
+          label: 'Frete',
+          value: CommerceModel.formatMoney(shipping.amount, shipping.currency_id || currency)
+        });
       }
       promotionCreditMetrics(commission, currency).forEach((metric) => fields.push(metric));
       return { fields };
@@ -2106,11 +2222,12 @@
 
     function priceStackableScenarios(summary) {
       const breakdown = summary && summary.costBreakdown ? summary.costBreakdown : {};
-      const financials = Array.isArray(breakdown.conditional_financials) && breakdown.conditional_financials.length
-        ? breakdown.conditional_financials
-        : summary && summary.promotionFinancials && Array.isArray(summary.promotionFinancials.conditional)
-          ? summary.promotionFinancials.conditional
-          : [];
+      const financials =
+        Array.isArray(breakdown.conditional_financials) && breakdown.conditional_financials.length
+          ? breakdown.conditional_financials
+          : summary && summary.promotionFinancials && Array.isArray(summary.promotionFinancials.conditional)
+            ? summary.promotionFinancials.conditional
+            : [];
       const list = financials.filter((financial) => promotionFinancialMetrics(financial).length > 0);
       return list.map(priceStackableScenario);
     }
@@ -2120,7 +2237,11 @@
       const payment = stackablePaymentLabel(financial);
       const fields = [];
       if (moneyOrNull(financial.total_price_for_boosted_offer) !== null) {
-        fields.push({ label: `Preço ${payment ? `no ${payment}` : 'acumulativo'}`, value: CommerceModel.formatMoney(financial.total_price_for_boosted_offer, currency), tone: 'primary' });
+        fields.push({
+          label: `Preço ${payment ? `no ${payment}` : 'acumulativo'}`,
+          value: CommerceModel.formatMoney(financial.total_price_for_boosted_offer, currency),
+          tone: 'primary'
+        });
       }
       promotionFinancialMetrics(financial).forEach((metric) => fields.push(metric));
       return {
@@ -2135,7 +2256,11 @@
       const metrics = [];
 
       if (moneyOrNull(estimate.youReceive) !== null) {
-        metrics.push({ label: 'Você recebe', value: CommerceModel.formatMoney(estimate.youReceive, currency), tone: 'review-result' });
+        metrics.push({
+          label: 'Você recebe',
+          value: CommerceModel.formatMoney(estimate.youReceive, currency),
+          tone: 'review-result'
+        });
       }
       if (commission && saleFeeAmount(commission) !== null) {
         metrics.push({
@@ -2165,7 +2290,9 @@
       if (listingType) details.push(listingType);
       const reduction = moneyOrNull(commission.promotion_reduction_amount);
       if (reduction !== null && reduction > 0) {
-        details.push(`Redução de ${CommerceModel.formatMoney(reduction, commission.currency_id || currency)} já aplicada à tarifa.`);
+        details.push(
+          `Redução de ${CommerceModel.formatMoney(reduction, commission.currency_id || currency)} já aplicada à tarifa.`
+        );
       }
       return details.join(' · ');
     }
@@ -2173,16 +2300,19 @@
     function promotionCreditMetrics(commission, currency) {
       const credit = moneyOrNull(commission && commission.promotion_credit_amount);
       if (credit === null || credit <= 0) return [];
-      return [{
-        label: 'Crédito promocional',
-        value: CommerceModel.formatMoney(credit, commission.currency_id || currency),
-        description: 'Parcela do aporte que excede a tarifa de venda.',
-        tone: 'benefit'
-      }];
+      return [
+        {
+          label: 'Crédito promocional',
+          value: CommerceModel.formatMoney(credit, commission.currency_id || currency),
+          description: 'Parcela do aporte que excede a tarifa de venda.',
+          tone: 'benefit'
+        }
+      ];
     }
 
     function buildFinancialMetric(label, amount, percentage, currency, tone = 'muted', kind = '') {
-      const amountText = moneyOrNull(amount) !== null ? CommerceModel.formatMoney(amount, currency || itemCurrency()) : '';
+      const amountText =
+        moneyOrNull(amount) !== null ? CommerceModel.formatMoney(amount, currency || itemCurrency()) : '';
       const percentageText = financialPercentage(percentage) !== null ? formatPercent(percentage) : '';
       return {
         label,
@@ -2214,10 +2344,9 @@
 
     function promotionBenefitMessage(metric, state = 'active') {
       if (!metric) return '';
-      const benefit = [
-        metric.amountText,
-        metric.percentageText ? `(${metric.percentageText})` : ''
-      ].filter(Boolean).join(' ');
+      const benefit = [metric.amountText, metric.percentageText ? `(${metric.percentageText})` : '']
+        .filter(Boolean)
+        .join(' ');
       if (!benefit) return '';
       if (state === 'available') return `Redução de ${benefit} nas suas tarifas por venda ao participar.`;
       if (state === 'programmed') return `Reduziremos ${benefit} nas suas tarifas por venda.`;
@@ -2293,7 +2422,9 @@
     }
 
     function shortTargetLabel(target) {
-      return target && (target.title || target.itemId) ? String(target.title || target.itemId).slice(0, 42) : 'Variação';
+      return target && (target.title || target.itemId)
+        ? String(target.title || target.itemId).slice(0, 42)
+        : 'Variação';
     }
 
     function canUseBulkActions() {
@@ -2301,14 +2432,15 @@
     }
 
     function bulkEligibleTargets(preview) {
-      return (preview && Array.isArray(preview.targets) ? preview.targets : [])
-        .filter((target) => target && target.eligible && target.itemId);
+      return (preview && Array.isArray(preview.targets) ? preview.targets : []).filter(
+        (target) => target && target.eligible && target.itemId
+      );
     }
 
     function promotionRangeWarning(entry, targetPrice) {
       const price = Number(targetPrice || 0);
-      const min = Number(entry && entry.min_price || 0);
-      const max = Number(entry && entry.max_price || 0);
+      const min = Number((entry && entry.min_price) || 0);
+      const max = Number((entry && entry.max_price) || 0);
       if (!price) return '';
       if (entry && entry.direct_discount_draft && price >= Number(entry.original_price || 0)) {
         return 'O preço promocional deve ser menor que o preço base.';
@@ -2321,7 +2453,11 @@
     function promotionDraftWarning(entry, values) {
       const rangeWarning = promotionRangeWarning(entry, promotionTargetPrice(entry, values));
       if (rangeWarning) return rangeWarning;
-      if (entry && entry.direct_discount_draft && CommerceModel.parsePercentageInput(values && values.discount_percentage) === null) {
+      if (
+        entry &&
+        entry.direct_discount_draft &&
+        CommerceModel.parsePercentageInput(values && values.discount_percentage) === null
+      ) {
         return 'Informe um desconto entre 0% e 100%.';
       }
       const start = parseIsoDate(values && values.start_date);
@@ -2331,15 +2467,19 @@
     }
 
     function isPromotionActionPending(key, action) {
-      return Boolean(state.busy &&
+      return Boolean(
+        state.busy &&
         state.operationPending.indexOf('promotion-') === 0 &&
         state.operationPendingKey === key &&
-        state.operationPendingAction === action);
+        state.operationPendingAction === action
+      );
     }
 
     function formatPromotionPeriod(entry) {
       if (typeof formatarPeriodo !== 'function') return '';
-      const start = parseIsoDate(entry && (entry.start_date || entry.startDate)) || parseDateValue(entry && (entry.start_date || entry.startDate));
+      const start =
+        parseIsoDate(entry && (entry.start_date || entry.startDate)) ||
+        parseDateValue(entry && (entry.start_date || entry.startDate));
       const endValue = entry && (entry.end_date || entry.finish_date || entry.endDate || entry.finishDate);
       const end = parseIsoDate(endValue) || parseDateValue(endValue);
       return formatarPeriodo(start, end);
@@ -2364,13 +2504,17 @@
     }
 
     function stackablePaymentLabel(benefit) {
-      const payment = String(benefit && benefit.payment_method || '').trim().toUpperCase();
+      const payment = String((benefit && benefit.payment_method) || '')
+        .trim()
+        .toUpperCase();
       if (payment === 'PIX') return 'Pix';
       return payment;
     }
 
     function uniquePromotionEntries(entries, excludedEntries = []) {
-      const excluded = new Set((Array.isArray(excludedEntries) ? excludedEntries : []).map(promotionIdentity).filter(Boolean));
+      const excluded = new Set(
+        (Array.isArray(excludedEntries) ? excludedEntries : []).map(promotionIdentity).filter(Boolean)
+      );
       const seen = new Set();
       const result = [];
       for (const entry of Array.isArray(entries) ? entries : []) {
@@ -2383,8 +2527,9 @@
     }
 
     function promotionOpportunityEntries(groups) {
-      const itemOffers = uniquePromotionEntries(campaignPromotionEntries(groups.eligibleOffers))
-        .filter((entry) => !isStackablePromotion(entry));
+      const itemOffers = uniquePromotionEntries(campaignPromotionEntries(groups.eligibleOffers)).filter(
+        (entry) => !isStackablePromotion(entry)
+      );
       return itemOffers;
     }
 
@@ -2393,17 +2538,17 @@
     }
 
     function isPriceDiscountPromotion(entry) {
-      return String(entry && entry.type || '').toUpperCase() === 'PRICE_DISCOUNT';
+      return String((entry && entry.type) || '').toUpperCase() === 'PRICE_DISCOUNT';
     }
 
     function isStackablePromotion(entry) {
-      const type = String(entry && entry.type || '').toUpperCase();
-      return entry && entry.is_stackable === true || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN';
+      const type = String((entry && entry.type) || '').toUpperCase();
+      return (entry && entry.is_stackable === true) || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN';
     }
 
     function isCandidatePromotion(entry) {
-      const status = String(entry && (entry.status || entry.api_status) || '').toLowerCase();
-      return status === 'candidate' || String(entry && entry.display_status || '').toLowerCase() === 'available';
+      const status = String((entry && (entry.status || entry.api_status)) || '').toLowerCase();
+      return status === 'candidate' || String((entry && entry.display_status) || '').toLowerCase() === 'available';
     }
 
     function promotionIdentity(entry) {
@@ -2450,10 +2595,11 @@
         return { tone: 'warn', message: 'O preço deve ser menor que o preço base.' };
       }
       const max = moneyOrNull(entry && entry.max_price);
-      if (max && price > max) return {
-        tone: 'warn',
-        message: `Preço máximo: ${CommerceModel.formatMoney(max, itemCurrency())}.`
-      };
+      if (max && price > max)
+        return {
+          tone: 'warn',
+          message: `Preço máximo: ${CommerceModel.formatMoney(max, itemCurrency())}.`
+        };
       return null;
     }
 
@@ -2589,12 +2735,15 @@
       state.promotionEstimates[key] = { status: 'loading', hash, requestId };
       rerenderModal();
       try {
-        const data = await api(itemApiPath('/promotions/estimate', {
-          variation_id: state.context && state.context.selectedVariationId
-        }), {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
+        const data = await api(
+          itemApiPath('/promotions/estimate', {
+            variation_id: state.context && state.context.selectedVariationId
+          }),
+          {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          }
+        );
         const current = state.promotionEstimates[key];
         if (!current || current.requestId !== requestId || current.hash !== hash) return;
         state.promotionEstimates[key] = { status: 'ready', hash, data };
@@ -2616,24 +2765,31 @@
       rerenderModal();
 
       try {
-        const response = await api(itemApiPath('/promotions/estimates', {
-          variation_id: state.context && state.context.selectedVariationId
-        }), {
-          method: 'POST',
-          body: JSON.stringify({ estimates: candidates.map(({ payload }) => payload) })
-        });
+        const response = await api(
+          itemApiPath('/promotions/estimates', {
+            variation_id: state.context && state.context.selectedVariationId
+          }),
+          {
+            method: 'POST',
+            body: JSON.stringify({ estimates: candidates.map(({ payload }) => payload) })
+          }
+        );
         const estimates = Array.isArray(response && response.estimates) ? response.estimates : [];
         candidates.forEach(({ key, hash }, index) => {
           const current = state.promotionEstimates[key];
           if (!current || current.requestId !== requestId || current.hash !== hash) return;
           const data = estimates[index];
-          state.promotionEstimates[key] = data && !data.error
-            ? { status: 'ready', hash, data }
-            : {
-              status: 'error',
-              hash,
-              message: data && data.error ? CommerceModel.friendlyError(data.error.code || data.error.message) : 'Valores indisponíveis.'
-            };
+          state.promotionEstimates[key] =
+            data && !data.error
+              ? { status: 'ready', hash, data }
+              : {
+                  status: 'error',
+                  hash,
+                  message:
+                    data && data.error
+                      ? CommerceModel.friendlyError(data.error.code || data.error.message)
+                      : 'Valores indisponíveis.'
+                };
         });
       } catch (err) {
         candidates.forEach(({ key, hash }) => {
@@ -2661,7 +2817,7 @@
     function promotionEstimateHash(payload) {
       return JSON.stringify({
         payload,
-        variationId: state.context && state.context.selectedVariationId || ''
+        variationId: (state.context && state.context.selectedVariationId) || ''
       });
     }
 
@@ -2669,19 +2825,20 @@
       if (Object.prototype.hasOwnProperty.call(values || {}, 'deal_price')) {
         return CommerceModel.parseMoneyInput(values && values.deal_price);
       }
-      return CommerceModel.parseMoneyInput(values && values.deal_price) ||
-        moneyOrNull(promotionDisplayPrice(entry));
+      return CommerceModel.parseMoneyInput(values && values.deal_price) || moneyOrNull(promotionDisplayPrice(entry));
     }
 
     function promotionDisplayPrice(entry) {
-      return entry && (
-        entry.price ||
-        entry.new_price ||
-        entry.deal_price ||
-        entry.suggested_discounted_price ||
-        entry.suggested_price ||
-        entry.total_price_for_boosted_offer
-      ) || null;
+      return (
+        (entry &&
+          (entry.price ||
+            entry.new_price ||
+            entry.deal_price ||
+            entry.suggested_discounted_price ||
+            entry.suggested_price ||
+            entry.total_price_for_boosted_offer)) ||
+        null
+      );
     }
 
     function clearPromotionEstimate(key) {
@@ -2914,15 +3071,18 @@
     async function commitPromotionManagerAction(key, action, queuedEntry = null) {
       if (!state.itemId || state.busy || !['create', 'update', 'delete'].includes(action)) return;
       const row = promotionManagerRow(key);
-      const entry = queuedEntry || row && row.entry;
+      const entry = queuedEntry || (row && row.entry);
       if (!entry) return;
       const createdDirectDiscount = Boolean(entry.direct_discount_draft);
       const values = Object.assign({}, state.promotionDraftValues[key] || {});
-      const fields = action === 'delete'
-        ? []
-        : CommerceModel.getUserFields(action === 'update'
-          ? CommerceModel.getOfferUpdateFields(entry)
-          : CommerceModel.getOfferCreateFields(entry));
+      const fields =
+        action === 'delete'
+          ? []
+          : CommerceModel.getUserFields(
+              action === 'update'
+                ? CommerceModel.getOfferUpdateFields(entry)
+                : CommerceModel.getOfferCreateFields(entry)
+            );
       ensurePromotionDraft(key, entry, fields);
       Object.assign(values, state.promotionDraftValues[key] || {});
 
@@ -2936,16 +3096,16 @@
 
       try {
         const method = action === 'delete' ? 'DELETE' : action === 'update' ? 'PUT' : 'POST';
-        const payload = action === 'delete'
-          ? CommerceModel.buildOfferDeletePayload(entry)
-          : action === 'update'
-            ? CommerceModel.buildOfferUpdatePayload(entry, values)
-            : CommerceModel.buildOfferPayload(entry, values);
+        const payload =
+          action === 'delete'
+            ? CommerceModel.buildOfferDeletePayload(entry)
+            : action === 'update'
+              ? CommerceModel.buildOfferUpdatePayload(entry, values)
+              : CommerceModel.buildOfferPayload(entry, values);
 
         state.busy = true;
-        state.operationPending = state.promotionBulkEnabled && canUseBulkActions()
-          ? 'promotion-bulk-commit'
-          : 'promotion-single';
+        state.operationPending =
+          state.promotionBulkEnabled && canUseBulkActions() ? 'promotion-bulk-commit' : 'promotion-single';
         state.operationPendingKey = key;
         state.operationPendingAction = action;
         state.actionError = '';
@@ -3076,10 +3236,7 @@
       const adapter = directDiscountAdapter();
       if (!adapter || !Array.isArray(adapter.offerCreate)) return null;
       const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
-      const existing = [
-        groups.activeOffers,
-        groups.scheduledOffers
-      ].flat().find(isPriceDiscountPromotion);
+      const existing = [groups.activeOffers, groups.scheduledOffers].flat().find(isPriceDiscountPromotion);
       if (existing) {
         return Object.assign({}, existing, {
           label: existing.label && existing.label !== existing.typeLabel ? existing.label : 'Desconto direto',
@@ -3128,8 +3285,10 @@
       const draft = Object.assign({}, state.promotionDraftValues[key] || {});
       if (!Object.prototype.hasOwnProperty.call(draft, 'discount_percentage')) draft.discount_percentage = '';
       if (!Object.prototype.hasOwnProperty.call(draft, 'deal_price')) draft.deal_price = '';
-      if (!Object.prototype.hasOwnProperty.call(draft, 'start_date')) draft.start_date = defaultFieldValue('start_date', entry);
-      if (!Object.prototype.hasOwnProperty.call(draft, 'finish_date')) draft.finish_date = defaultFieldValue('finish_date', entry);
+      if (!Object.prototype.hasOwnProperty.call(draft, 'start_date'))
+        draft.start_date = defaultFieldValue('start_date', entry);
+      if (!Object.prototype.hasOwnProperty.call(draft, 'finish_date'))
+        draft.finish_date = defaultFieldValue('finish_date', entry);
       state.promotionDraftValues[key] = draft;
     }
 
@@ -3157,11 +3316,11 @@
 
     function popoverAnchor() {
       const anchor = state.popoverAnchor && state.popoverAnchor.isConnected ? state.popoverAnchor : state.inline;
-      const actionGroup = anchor && (
-        anchor.matches('[data-commerce-action-group]')
+      const actionGroup =
+        anchor &&
+        (anchor.matches('[data-commerce-action-group]')
           ? anchor
-          : anchor.querySelector('[data-commerce-action-group]')
-      );
+          : anchor.querySelector('[data-commerce-action-group]'));
       return actionGroup || anchor;
     }
 
@@ -3173,7 +3332,7 @@
       const preferredWidth = isSummaryPopover ? 400 : 340;
       const availableWidth = Math.max(0, window.innerWidth - 24);
       const width = window.innerWidth <= 640 ? availableWidth : Math.min(preferredWidth, availableWidth);
-      const centeredLeft = rect.left + ((rect.width - width) / 2);
+      const centeredLeft = rect.left + (rect.width - width) / 2;
       const left = Math.max(12, Math.min(centeredLeft, window.innerWidth - width - 12));
       const top = isListingPopover ? rect.bottom + 8 : Math.max(12, rect.bottom + 8);
       root.style.left = `${Math.round(left)}px`;
@@ -3263,9 +3422,10 @@
         });
         responses.push(response);
 
-        const next = response && response.continuation && Array.isArray(response.continuation.targetItemIds)
-          ? response.continuation.targetItemIds.filter(Boolean)
-          : [];
+        const next =
+          response && response.continuation && Array.isArray(response.continuation.targetItemIds)
+            ? response.continuation.targetItemIds.filter(Boolean)
+            : [];
         if (!next.length) return mergeBulkResponses(responses);
 
         const signature = next.join(',');
@@ -3280,7 +3440,7 @@
     function mergeBulkResponses(responses) {
       const pages = Array.isArray(responses) ? responses.filter(Boolean) : [];
       const first = pages[0] || {};
-      const targets = pages.flatMap((page) => Array.isArray(page.targets) ? page.targets : []);
+      const targets = pages.flatMap((page) => (Array.isArray(page.targets) ? page.targets : []));
       return Object.assign({}, first, {
         continuation: null,
         counts: {
@@ -3299,9 +3459,13 @@
 
     async function reconcileBulkResult(initialResult, title) {
       let result = initialResult;
-      const reconciliationIds = Array.from(new Set((Array.isArray(result && result.targets) ? result.targets : [])
-        .map((target) => target && target.status === 'pending_confirmation' ? target.reconciliationId : '')
-        .filter(Boolean)));
+      const reconciliationIds = Array.from(
+        new Set(
+          (Array.isArray(result && result.targets) ? result.targets : [])
+            .map((target) => (target && target.status === 'pending_confirmation' ? target.reconciliationId : ''))
+            .filter(Boolean)
+        )
+      );
       if (!reconciliationIds.length) return;
 
       for (let attempt = 0; attempt < 150; attempt += 1) {
@@ -3337,7 +3501,7 @@
           return target;
         });
         result = mergeBulkResponses([Object.assign({}, result, { targets })]);
-        if (Number(result.counts && result.counts.pending || 0) > 0) continue;
+        if (Number((result.counts && result.counts.pending) || 0) > 0) continue;
 
         notifyBulkResult(result, title);
         try {
@@ -3381,7 +3545,9 @@
         pending ? pendingText : '',
         unconfirmed ? unconfirmedText : '',
         unchanged ? unchangedText : ''
-      ].filter(Boolean).join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
       showToast(
         pending || unconfirmed || unchanged ? 'warning' : 'success',
         pending && !applied ? 'Alteração enviada' : unconfirmed && !applied ? 'Confirmação inconclusiva' : title,
@@ -3468,9 +3634,13 @@
         scheduleRender(80);
         positionPopover();
       });
-      window.addEventListener('scroll', () => {
-        positionPopover();
-      }, true);
+      window.addEventListener(
+        'scroll',
+        () => {
+          positionPopover();
+        },
+        true
+      );
     }
 
     function bindDocumentEvents() {
@@ -3517,7 +3687,8 @@
         itemId: state.itemId,
         mode: state.context && state.context.mode ? state.context.mode : null,
         catalogListing: Boolean(state.context && state.context.item && state.context.item.catalog_listing),
-        selectedVariationId: state.context && state.context.selectedVariationId ? state.context.selectedVariationId : null,
+        selectedVariationId:
+          state.context && state.context.selectedVariationId ? state.context.selectedVariationId : null,
         url: location.href
       };
     }
@@ -3533,8 +3704,7 @@
         state.busy = true;
         mountCommerce();
         await requestPageContextReload('show');
-      }
-      else mountCommerce();
+      } else mountCommerce();
       return getCommerceStatus();
     }
 
@@ -3576,7 +3746,7 @@
       id: 'commerce',
       label: 'Preço e promoções',
       supportsNonProduct: true,
-      getMode: () => state.context && state.context.mode ? state.context.mode : null,
+      getMode: () => (state.context && state.context.mode ? state.context.mode : null),
       getPageSignature: () => state.pageSignature,
       getStatus: getCommerceStatus,
       handlePageContextChange,

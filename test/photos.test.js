@@ -37,7 +37,10 @@ const {
 
 test('módulo de fotos preserva a qualidade ao receber o mesmo contexto novamente', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
-  const handler = source.slice(source.indexOf('function handlePageContextChange'), source.indexOf('async function loadContext'));
+  const handler = source.slice(
+    source.indexOf('function handlePageContextChange'),
+    source.indexOf('async function loadContext')
+  );
   assert.match(handler, /state\.loaded && isSamePhotoContext\(update\.context\)/);
   assert.match(handler, /rerenderTray\(\);\s*return;/s);
 });
@@ -91,30 +94,28 @@ test('buildCommitPayload permite remover foto da variacao editada', () => {
 });
 
 test('buildCommitPayload exige ao menos uma foto', () => {
-  assert.throws(
-    () => buildCommitPayload({ id: 'MLB123' }, { pictures: [] }),
-    /pelo menos 1 foto/
-  );
+  assert.throws(() => buildCommitPayload({ id: 'MLB123' }, { pictures: [] }), /pelo menos 1 foto/);
 });
 
 test('buildCommitPayload respeita limite de fotos por variacao', () => {
   assert.throws(
-    () => buildCommitPayload(
-      {
-        id: 'MLB123',
-        variations: [{ id: 10, picture_ids: ['A'] }]
-      },
-      {
-        pictures: [{ id: 'A' }, { id: 'B' }, { id: 'C' }],
-        variations: [{ id: 10, picture_ids: ['A', 'B', 'C'] }]
-      },
-      {
-        pictureLimits: {
-          maxPicturesPerItem: 6,
-          maxPicturesPerVariation: 2
+    () =>
+      buildCommitPayload(
+        {
+          id: 'MLB123',
+          variations: [{ id: 10, picture_ids: ['A'] }]
+        },
+        {
+          pictures: [{ id: 'A' }, { id: 'B' }, { id: 'C' }],
+          variations: [{ id: 10, picture_ids: ['A', 'B', 'C'] }]
+        },
+        {
+          pictureLimits: {
+            maxPicturesPerItem: 6,
+            maxPicturesPerVariation: 2
+          }
         }
-      }
-    ),
+      ),
     /Limite da variação: 2 fotos/
   );
 });
@@ -133,9 +134,7 @@ test('buildCommitPayload nao aplica limite total em variacoes antigas', () => {
     },
     {
       pictures,
-      variations: [
-        { id: 10, picture_ids: pictures.slice(0, 7).map((picture) => picture.id) }
-      ]
+      variations: [{ id: 10, picture_ids: pictures.slice(0, 7).map((picture) => picture.id) }]
     },
     {
       pictureLimits: {
@@ -152,16 +151,17 @@ test('buildCommitPayload nao aplica limite total em variacoes antigas', () => {
 
 test('buildCommitPayload respeita limite total de fotos do anuncio', () => {
   assert.throws(
-    () => buildCommitPayload(
-      { id: 'MLB123', variations: [] },
-      { pictures: [{ id: 'A' }, { id: 'B' }, { id: 'C' }] },
-      {
-        pictureLimits: {
-          maxPicturesPerItem: 2,
-          maxPicturesPerVariation: null
+    () =>
+      buildCommitPayload(
+        { id: 'MLB123', variations: [] },
+        { pictures: [{ id: 'A' }, { id: 'B' }, { id: 'C' }] },
+        {
+          pictureLimits: {
+            maxPicturesPerItem: 2,
+            maxPicturesPerVariation: null
+          }
         }
-      }
-    ),
+      ),
     /Limite do anúncio: 2 fotos/
   );
 });
@@ -290,22 +290,34 @@ test('view React e a unica rota da interface de fotos', () => {
   assert.match(view, /contentRef=\{attachEditorContent\}/);
   assert.match(view, /footer=\{footer\}/);
   assert.match(view, /function EditorDiagnostics\(/);
-  assert.match(view, /className="onblide-ml-editor-alert"[\s\S]*<Alert tone=\{model\.alert\.tone\}>\{model\.alert\.message\}<\/Alert>/);
+  assert.match(
+    view,
+    /className="onblide-ml-editor-alert"[\s\S]*<Alert tone=\{model\.alert\.tone\}>\{model\.alert\.message\}<\/Alert>/
+  );
   assert.match(view, /<Spinner size="sm" label="Analisando dimensões" \/>/);
   assert.match(view, /onClick=\{actions\.onOpenOptimize\}/);
-  assert.match(view, /className="onblide-ml-editor-action"[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*fill=\{false\}[\s\S]*Otimizar fotos/);
+  assert.match(
+    view,
+    /className="onblide-ml-editor-action"[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*fill=\{false\}[\s\S]*Otimizar fotos/
+  );
   assert.match(view, /className="onblide-ml-editor-action"[\s\S]*kind="primary"[\s\S]*Salvar/);
-  assert.match(view, /className="onblide-ml-editor-action"[\s\S]*kind="quiet"[\s\S]*tone="danger"[\s\S]*fill=\{false\}[\s\S]*Descartar/);
+  assert.match(
+    view,
+    /className="onblide-ml-editor-action"[\s\S]*kind="quiet"[\s\S]*tone="danger"[\s\S]*fill=\{false\}[\s\S]*Descartar/
+  );
   assert.match(view, /onClick=\{actions\.onReloadQuality\}/);
   assert.match(view, /function ReviewDialog\(/);
   assert.match(view, /function OptimizeReviewItem\(/);
-  assert.match(view, /<Checkbox[\s\S]*checked=\{item\.selected\}[\s\S]*onChange=\{\(selected\) => onToggle\(item\.localId, selected\)\}/);
+  assert.match(
+    view,
+    /<Checkbox[\s\S]*checked=\{item\.selected\}[\s\S]*onChange=\{\(selected\) => onToggle\(item\.localId, selected\)\}/
+  );
   assert.match(view, /<Badge tone=\{item\.badgeTone\} appearance="soft" dot=\{false\} size="sm">/);
   assert.match(view, /Confirmar e salvar \(\{model\.selectedCount\}\)/);
   assert.match(view, /function ResultDialog\(/);
   assert.match(view, /function OptimizeResultItem\(/);
   assert.match(view, /<Badge tone="warning" appearance="soft" dot=\{false\} size="sm">/);
-  assert.match(view, /<Badge tone="success" appearance="soft" dot=\{false\} size="sm">100%<\/Badge>/);
+  assert.match(view, /<Badge tone="success" appearance="soft" dot=\{false\} size="sm">\s*100%\s*<\/Badge>/);
   assert.match(view, /alt=\{`Imagem \$\{item\.index \+ 1\} otimizada`\}/);
   assert.doesNotMatch(view, /<section className="onblide-ml-modal/);
   assert.match(view, /<Badge[\s\S]*tone=\{picture\.quality\.badgeTone\}[\s\S]*appearance="solid"[\s\S]*dot=\{false\}/);
@@ -383,7 +395,10 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /function animateEditorChildren\(modal, direction\)/);
   assert.match(source, /element\.animate\(keyframes, options\)/);
   assert.match(source, /delay: opening \? 220 \+ sequenceIndex \* 55/);
-  assert.match(source, /const preservedEditorDialog = state\.qualityDialog && state\.qualityDialog\.mode === 'editor'/);
+  assert.match(
+    source,
+    /const preservedEditorDialog =\s*state\.qualityDialog && state\.qualityDialog\.mode === 'editor'/
+  );
   assert.match(source, /state\.qualityDialog = preservedEditorDialog;/);
   assert.match(source, /if \(!state\.editorTransition\) restoreTrayAfterDialog\(\);/);
   assert.match(source, /state\.editorTransitionTimer = setTimeout\(complete, fallbackDuration \+ 250\)/);
@@ -404,27 +419,45 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(view, /!model\.catalog && \(/);
   assert.match(source, /if \(isCatalogListing\(\)\) return 'Fotos definidas pelo catálogo\.';/);
   assert.match(source, /sendRemoteMessage\('oauth-start'\)/);
-  assert.doesNotMatch(source, /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/);
+  assert.doesNotMatch(
+    source,
+    /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/
+  );
   assert.doesNotMatch(source, /onblide-ml-expand/);
   assert.match(styles, /\.onblide-ml-dock-tab \{/);
   assert.match(styles, /width: 160px;/);
-  assert.match(styles, /\.onblide-ml-dock-silhouette \{[\s\S]*?left: 50%;[\s\S]*?width: 240px;[\s\S]*?transform: translateX\(-50%\);/);
+  assert.match(
+    styles,
+    /\.onblide-ml-dock-silhouette \{[\s\S]*?left: 50%;[\s\S]*?width: 240px;[\s\S]*?transform: translateX\(-50%\);/
+  );
   assert.match(view, /viewBox="0 0 240 28"/);
   assert.doesNotMatch(view, /preserveAspectRatio="none"/);
-  assert.match(source, /state\.error === AUTH_REQUIRED_MESSAGE[\s\S]*?title: 'Extensão desconectada'[\s\S]*?tone: 'muted'/);
-  assert.match(trayBar, /className=\{statusClassName\}[\s\S]*?onblide-ml-dock-state-icon[\s\S]*?onblide-ml-dock-state-copy/);
+  assert.match(
+    source,
+    /state\.error === AUTH_REQUIRED_MESSAGE[\s\S]*?title: 'Extensão desconectada'[\s\S]*?tone: 'muted'/
+  );
+  assert.match(
+    trayBar,
+    /className=\{statusClassName\}[\s\S]*?onblide-ml-dock-state-icon[\s\S]*?onblide-ml-dock-state-copy/
+  );
   assert.match(trayBar, /kind="quiet" tone="primary" fill=\{false\}[\s\S]*?Recarregar/);
   assert.doesNotMatch(trayBar, /<Alert/);
   assert.match(styles, /\.onblide-ml-dock-state \{[\s\S]*?grid-template-columns: minmax\(280px, 1fr\) auto;/);
   assert.doesNotMatch(view, /function Status\(|onblide-ml-status/);
   assert.doesNotMatch(styles, /\.onblide-ml-dock-silhouette-outline \{/);
   assert.doesNotMatch(styles, /\.onblide-ml-dock-catalog-notice \{/);
-  assert.match(source, /if \(catalog\) \{[\s\S]*?title: 'Este é um anúncio de catálogo'[\s\S]*?tone: 'muted'[\s\S]*?icon: 'info'/);
+  assert.match(
+    source,
+    /if \(catalog\) \{[\s\S]*?title: 'Este é um anúncio de catálogo'[\s\S]*?tone: 'muted'[\s\S]*?icon: 'info'/
+  );
   assert.match(styles, /bottom: calc\(100% - 1px\);/);
   assert.doesNotMatch(styles, /\.onblide-ml-start-service \{/);
   assert.match(editorDock, /kind=\{model\.dirty \? 'secondary' : 'primary'\}/);
   assert.match(editorDock, /className="onblide-ml-dock-action"[\s\S]*?kind="primary"[\s\S]*?Salvar/);
-  assert.match(editorDock, /<Tooltip label="Descartar alterações" placement="top">[\s\S]*?kind="quiet"[\s\S]*?tone="danger"[\s\S]*?fill=\{false\}[\s\S]*?iconOnly[\s\S]*?aria-label="Descartar alterações"/);
+  assert.match(
+    editorDock,
+    /<Tooltip label="Descartar alterações" placement="top">[\s\S]*?kind="quiet"[\s\S]*?tone="danger"[\s\S]*?fill=\{false\}[\s\S]*?iconOnly[\s\S]*?aria-label="Descartar alterações"/
+  );
   assert.match(styles, /\.onblide-ml-dock-actions \{[\s\S]*?flex: 0 0 150px;[\s\S]*?flex-direction: column;/);
   assert.match(styles, /\.onblide-ml-dock-action \{[\s\S]*?width: 100%;[\s\S]*?height: 32px;/);
   assert.match(styles, /\.onblide-ml-dock-secondary-actions \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 32px;/);
@@ -464,20 +497,18 @@ test('picture quality extrai dimensoes oficiais do Mercado Livre', () => {
       id: 'P1',
       size: '500x500',
       max_size: '1200x1200',
-      variations: [
-        { size: '90x90' },
-        { size: '800x800' }
-      ]
+      variations: [{ size: '90x90' }, { size: '800x800' }]
     }),
     { width: 1200, height: 1200, source: 'official' }
   );
 });
 
 test('picture quality mede dimensoes reais de PNG e calcula score', () => {
-  assert.deepStrictEqual(
-    extractImageDimensions(fakePng(1080, 1080)),
-    { width: 1080, height: 1080, source: 'measured' }
-  );
+  assert.deepStrictEqual(extractImageDimensions(fakePng(1080, 1080)), {
+    width: 1080,
+    height: 1080,
+    source: 'measured'
+  });
   assert.strictEqual(calculateResolutionScore(1080, 1080), 90);
   assert.strictEqual(calculateResolutionScore(1185, 1013), 99);
   assert.strictEqual(calculateResolutionScore(1600, 1200), 100);
@@ -485,10 +516,11 @@ test('picture quality mede dimensoes reais de PNG e calcula score', () => {
 });
 
 test('picture quality mede dimensoes reais de WebP', () => {
-  assert.deepStrictEqual(
-    extractImageDimensions(fakeWebpVp8x(1200, 1200)),
-    { width: 1200, height: 1200, source: 'measured' }
-  );
+  assert.deepStrictEqual(extractImageDimensions(fakeWebpVp8x(1200, 1200)), {
+    width: 1200,
+    height: 1200,
+    source: 'measured'
+  });
 });
 
 test('picture quality mede WebP por cabecalho parcial de arquivo grande', () => {
@@ -496,36 +528,39 @@ test('picture quality mede WebP por cabecalho parcial de arquivo grande', () => 
   header.writeUInt32LE(200000, 4);
   header.writeUInt32LE(199988, 16);
 
-  assert.deepStrictEqual(
-    extractImageDimensions(header),
-    { width: 1200, height: 1200, source: 'measured' }
-  );
+  assert.deepStrictEqual(extractImageDimensions(header), { width: 1200, height: 1200, source: 'measured' });
 });
 
 test('picture quality prefere imagem mlstatic 2x ao max_size declarado', async () => {
   const pictureId = '679212-MLB114811470619_072026';
   const downloaded = [];
-  const report = await buildPictureQualityReport({
-    downloadImage: async (url) => {
-      downloaded.push(url);
-      return {
-        mimeType: 'image/webp',
-        base64: fakeWebpVp8x(1200, 1200).toString('base64')
-      };
+  const report = await buildPictureQualityReport(
+    {
+      downloadImage: async (url) => {
+        downloaded.push(url);
+        return {
+          mimeType: 'image/webp',
+          base64: fakeWebpVp8x(1200, 1200).toString('base64')
+        };
+      }
+    },
+    {
+      id: 'MLB1234567890',
+      title: 'Produto',
+      category_id: 'MLB1055',
+      pictures: [
+        {
+          id: pictureId,
+          max_size: '500x500',
+          secure_url: `https://http2.mlstatic.com/D_${pictureId}-O.jpg`
+        }
+      ],
+      variations: [{ id: 10, picture_ids: [pictureId] }]
+    },
+    {
+      selectedVariationId: '10'
     }
-  }, {
-    id: 'MLB1234567890',
-    title: 'Produto',
-    category_id: 'MLB1055',
-    pictures: [{
-      id: pictureId,
-      max_size: '500x500',
-      secure_url: `https://http2.mlstatic.com/D_${pictureId}-O.jpg`
-    }],
-    variations: [{ id: 10, picture_ids: [pictureId] }]
-  }, {
-    selectedVariationId: '10'
-  });
+  );
 
   assert.deepStrictEqual(downloaded, [`https://http2.mlstatic.com/D_NQ_NP_2X_${pictureId}-F.webp`]);
   assert.strictEqual(report.summary.belowIdealCount, 0);
@@ -545,25 +580,30 @@ test('picture quality prefere imagem mlstatic 2x ao max_size declarado', async (
 test('picture quality le apenas o cabecalho quando o cliente oferece leitura parcial', async () => {
   let fullDownloadRequested = false;
   const headers = [];
-  const report = await buildPictureQualityReport({
-    readImageHeader: async (url) => {
-      headers.push(url);
-      const header = fakeWebpVp8x(1200, 1200);
-      header.writeUInt32LE(200000, 4);
-      header.writeUInt32LE(199988, 16);
-      return header;
+  const report = await buildPictureQualityReport(
+    {
+      readImageHeader: async (url) => {
+        headers.push(url);
+        const header = fakeWebpVp8x(1200, 1200);
+        header.writeUInt32LE(200000, 4);
+        header.writeUInt32LE(199988, 16);
+        return header;
+      },
+      downloadImage: async () => {
+        fullDownloadRequested = true;
+        throw new Error('download completo nao deveria ser usado');
+      }
     },
-    downloadImage: async () => {
-      fullDownloadRequested = true;
-      throw new Error('download completo nao deveria ser usado');
+    {
+      id: 'MLB1234567890',
+      pictures: [
+        {
+          id: '679212-MLB114811470619_072026',
+          secure_url: 'https://http2.mlstatic.com/D_679212-MLB114811470619_072026-O.jpg'
+        }
+      ]
     }
-  }, {
-    id: 'MLB1234567890',
-    pictures: [{
-      id: '679212-MLB114811470619_072026',
-      secure_url: 'https://http2.mlstatic.com/D_679212-MLB114811470619_072026-O.jpg'
-    }]
-  });
+  );
 
   assert.strictEqual(headers.length, 1);
   assert.strictEqual(fullDownloadRequested, false);
@@ -573,18 +613,23 @@ test('picture quality le apenas o cabecalho quando o cliente oferece leitura par
 
 test('picture quality amplia a leitura apenas quando o cabecalho curto nao traz dimensoes', async () => {
   const limits = [];
-  const report = await buildPictureQualityReport({
-    readImageHeader: async (_url, maxBytes) => {
-      limits.push(maxBytes);
-      return maxBytes === 4 * 1024 ? Buffer.alloc(64) : fakeWebpVp8x(1200, 1200);
+  const report = await buildPictureQualityReport(
+    {
+      readImageHeader: async (_url, maxBytes) => {
+        limits.push(maxBytes);
+        return maxBytes === 4 * 1024 ? Buffer.alloc(64) : fakeWebpVp8x(1200, 1200);
+      }
+    },
+    {
+      id: 'MLB1234567890',
+      pictures: [
+        {
+          id: '679212-MLB114811470619_072026',
+          secure_url: 'https://http2.mlstatic.com/D_679212-MLB114811470619_072026-O.jpg'
+        }
+      ]
     }
-  }, {
-    id: 'MLB1234567890',
-    pictures: [{
-      id: '679212-MLB114811470619_072026',
-      secure_url: 'https://http2.mlstatic.com/D_679212-MLB114811470619_072026-O.jpg'
-    }]
-  });
+  );
 
   assert.deepStrictEqual(limits, [4 * 1024, 64 * 1024]);
   assert.strictEqual(report.summary.status, 'ok');
@@ -593,18 +638,21 @@ test('picture quality amplia a leitura apenas quando o cabecalho curto nao traz 
 
 test('picture quality usa apenas dimensoes e ignora diagnostico oficial', async () => {
   let diagnosticRequested = false;
-  const report = await buildPictureQualityReport({
-    diagnosePicture: async () => {
-      diagnosticRequested = true;
-      throw new Error('diagnostic should not be called');
+  const report = await buildPictureQualityReport(
+    {
+      diagnosePicture: async () => {
+        diagnosticRequested = true;
+        throw new Error('diagnostic should not be called');
+      }
+    },
+    {
+      id: 'MLB1234567890',
+      title: 'Produto',
+      category_id: 'MLB1055',
+      pictures: [{ id: 'P1', variations: [{ size: '1200x1200' }] }],
+      variations: []
     }
-  }, {
-    id: 'MLB1234567890',
-    title: 'Produto',
-    category_id: 'MLB1055',
-    pictures: [{ id: 'P1', variations: [{ size: '1200x1200' }] }],
-    variations: []
-  });
+  );
 
   assert.strictEqual(diagnosticRequested, false);
   assert.strictEqual(report.pictures[0].status, 'ok');
@@ -613,32 +661,39 @@ test('picture quality usa apenas dimensoes e ignora diagnostico oficial', async 
 });
 
 test('picture quality nao cai para todas as fotos quando a variacao informada nao existe', async () => {
-  const report = await buildPictureQualityReport({}, {
-    id: 'MLB1234567890',
-    title: 'Produto',
-    category_id: 'MLB1055',
-    pictures: [{ id: 'P1' }],
-    variations: [{ id: 10, picture_ids: ['P1'] }]
-  }, {
-    selectedVariationId: '999'
-  });
+  const report = await buildPictureQualityReport(
+    {},
+    {
+      id: 'MLB1234567890',
+      title: 'Produto',
+      category_id: 'MLB1055',
+      pictures: [{ id: 'P1' }],
+      variations: [{ id: 10, picture_ids: ['P1'] }]
+    },
+    {
+      selectedVariationId: '999'
+    }
+  );
 
   assert.strictEqual(report.pictures.length, 0);
 });
 
 test('picture quality mede imagem quando a API nao traz dimensoes', async () => {
-  const report = await buildPictureQualityReport({
-    downloadImage: async () => ({
-      mimeType: 'image/png',
-      base64: fakePng(1080, 1080).toString('base64')
-    })
-  }, {
-    id: 'MLB1234567890',
-    title: 'Produto',
-    category_id: 'MLB1055',
-    pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.png' }],
-    variations: []
-  });
+  const report = await buildPictureQualityReport(
+    {
+      downloadImage: async () => ({
+        mimeType: 'image/png',
+        base64: fakePng(1080, 1080).toString('base64')
+      })
+    },
+    {
+      id: 'MLB1234567890',
+      title: 'Produto',
+      category_id: 'MLB1055',
+      pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.png' }],
+      variations: []
+    }
+  );
 
   assert.strictEqual(report.summary.belowIdealCount, 1);
   assert.strictEqual(report.summary.optimizableCount, 1);
@@ -675,19 +730,21 @@ test('api quality analisa apenas fotos da variacao selecionada', async (t) => {
       { id: 20, picture_ids: ['P2'] }
     ]
   };
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => item,
-      getLastModeration: async () => {
-        throw new Error('moderation should not be called');
-      },
-      diagnosePicture: async () => {
-        throw new Error('diagnostic should not be called');
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => item,
+        getLastModeration: async () => {
+          throw new Error('moderation should not be called');
+        },
+        diagnosePicture: async () => {
+          throw new Error('diagnostic should not be called');
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/quality?variation_id=10`);
@@ -712,27 +769,29 @@ test('api quality analisa apenas fotos da variacao selecionada', async (t) => {
 test('api fix-size retorna imagem base64 baixada da foto oficial', async (t) => {
   const downloaded = [];
   const image = fakePng(1080, 1080);
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.jpg' }]
-      }),
-      downloadImage: async (url) => {
-        downloaded.push(url);
-        return {
-          mimeType: 'image/png',
-          base64: image.toString('base64')
-        };
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.jpg' }]
+        }),
+        downloadImage: async (url) => {
+          downloaded.push(url);
+          return {
+            mimeType: 'image/png',
+            base64: image.toString('base64')
+          };
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/fix-size`, {
@@ -756,31 +815,35 @@ test('api fix-size usa derivacao mlstatic em alta resolucao', async (t) => {
   const pictureId = '679212-MLB114811470619_072026';
   const downloaded = [];
   const image = fakeWebpVp8x(1200, 1200);
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        pictures: [{
-          id: pictureId,
-          max_size: '500x500',
-          secure_url: `https://http2.mlstatic.com/D_${pictureId}-O.jpg`
-        }]
-      }),
-      downloadImage: async (url) => {
-        downloaded.push(url);
-        return {
-          mimeType: 'image/webp',
-          base64: image.toString('base64')
-        };
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          pictures: [
+            {
+              id: pictureId,
+              max_size: '500x500',
+              secure_url: `https://http2.mlstatic.com/D_${pictureId}-O.jpg`
+            }
+          ]
+        }),
+        downloadImage: async (url) => {
+          downloaded.push(url);
+          return {
+            mimeType: 'image/webp',
+            base64: image.toString('base64')
+          };
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/fix-size`, {
@@ -798,26 +861,28 @@ test('api fix-size usa derivacao mlstatic em alta resolucao', async (t) => {
 
 test('api fix-size bloqueia anuncio encerrado com venda antes de baixar imagem', async (t) => {
   let downloadCalled = false;
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        status: 'closed',
-        has_bids: true,
-        pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.jpg' }]
-      }),
-      downloadImage: async () => {
-        downloadCalled = true;
-        return {};
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          status: 'closed',
+          has_bids: true,
+          pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.jpg' }]
+        }),
+        downloadImage: async () => {
+          downloadCalled = true;
+          return {};
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/fix-size`, {
@@ -834,25 +899,27 @@ test('api fix-size bloqueia anuncio encerrado com venda antes de baixar imagem',
 
 test('api fix-size bloqueia anuncios de Catalogo', async (t) => {
   let downloadCalled = false;
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Catalogo',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        catalog_listing: true,
-        pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.jpg' }]
-      }),
-      downloadImage: async () => {
-        downloadCalled = true;
-        return {};
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Catalogo',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          catalog_listing: true,
+          pictures: [{ id: 'P1', secure_url: 'https://img.example/P1.jpg' }]
+        }),
+        downloadImage: async () => {
+          downloadCalled = true;
+          return {};
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/fix-size`, {

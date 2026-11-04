@@ -2,15 +2,15 @@
 
 ## Responsabilidades
 
-| Informação | Fonte canônica |
-| --- | --- |
-| UUID da identidade, senha, e-mail confirmado, fatores MFA e recuperação | Supabase Auth |
-| Nome e avatar do perfil de aplicação | D1 / API do Worker |
-| Workspace, membros, atribuições, convites e contas Mercado Livre | D1 / API do Worker |
-| Tokens Mercado Livre | D1, cifrados pelo Worker |
-| Sessão operacional da extensão | D1, vinculada à identidade e sessão do Supabase |
-| Eventos de autenticação e destinatários dos e-mails | Supabase Auth |
-| Entrega dos e-mails de autenticação | Worker / Resend, por hook assinado |
+| Informação                                                              | Fonte canônica                                  |
+| ----------------------------------------------------------------------- | ----------------------------------------------- |
+| UUID da identidade, senha, e-mail confirmado, fatores MFA e recuperação | Supabase Auth                                   |
+| Nome e avatar do perfil de aplicação                                    | D1 / API do Worker                              |
+| Workspace, membros, atribuições, convites e contas Mercado Livre        | D1 / API do Worker                              |
+| Tokens Mercado Livre                                                    | D1, cifrados pelo Worker                        |
+| Sessão operacional da extensão                                          | D1, vinculada à identidade e sessão do Supabase |
+| Eventos de autenticação e destinatários dos e-mails                     | Supabase Auth                                   |
+| Entrega dos e-mails de autenticação                                     | Worker / Resend, por hook assinado              |
 
 O Worker não verifica nem armazena senhas. O cliente envia credenciais apenas
 ao Supabase e entrega ao Worker um bearer temporário validado no servidor.

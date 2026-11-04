@@ -26,7 +26,18 @@ function installChromeMock(messages: Array<Record<string, unknown>>) {
       sendMessage(message, callback) {
         messages.push(message);
         if (message.action === 'account-update') {
-          callback({ ok: true, body: { accounts: [{ ...account, enabled: message.payload.enabled ?? account.enabled, display_name: message.payload.displayName ?? account.display_name }] } });
+          callback({
+            ok: true,
+            body: {
+              accounts: [
+                {
+                  ...account,
+                  enabled: message.payload.enabled ?? account.enabled,
+                  display_name: message.payload.displayName ?? account.display_name
+                }
+              ]
+            }
+          });
           return;
         }
         if (message.action === 'account-remove') {
@@ -46,12 +57,14 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   installChromeMock(messages);
   let renderer;
   await act(async () => {
-    renderer = create(<IntegrationsSession
-      connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
-      onStateChange={(state) => states.push(state)}
-      onBack={() => {}}
-      onOpenOptions={() => {}}
-    />);
+    renderer = create(
+      <IntegrationsSession
+        connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+        onStateChange={(state) => states.push(state)}
+        onBack={() => {}}
+        onOpenOptions={() => {}}
+      />
+    );
   });
 
   const integration = renderer.root.findByType(IntegrationAccount);
@@ -68,23 +81,39 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   assert.deepEqual(states.at(-1), { mode: 'cards' });
   assert.equal(renderer.root.findAllByType(Card).length, 1);
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-popup-integration-grid' }).length, 1);
-  const addIntegration = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Adicionar integração');
+  const addIntegration = renderer.root
+    .findAllByType(Button)
+    .find((button) => button.props.children === 'Adicionar integração');
   assert.equal(addIntegration.props.kind, 'quiet');
   assert.equal(addIntegration.props.tone, 'primary');
   assert.equal(addIntegration.props.size, 'sm');
-  assert.equal(renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Adicionar integração'), false);
+  assert.equal(
+    renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Adicionar integração'),
+    false
+  );
 
   await act(async () => {
     addIntegration.props.onClick();
     await Promise.resolve();
   });
-  assert.equal(messages.some((message) => message.action === 'oauth-start'), true);
+  assert.equal(
+    messages.some((message) => message.action === 'oauth-start'),
+    true
+  );
 
   await act(async () => integration.props.onUpdate(account, false));
-  assert.equal(messages.some((message) => message.action === 'account-update' && message.payload.enabled === false), true);
+  assert.equal(
+    messages.some((message) => message.action === 'account-update' && message.payload.enabled === false),
+    true
+  );
 
   await act(async () => integration.props.onRename(account, 'Nome atualizado'));
-  assert.equal(messages.some((message) => message.action === 'account-update' && message.payload.displayName === 'Nome atualizado'), true);
+  assert.equal(
+    messages.some(
+      (message) => message.action === 'account-update' && message.payload.displayName === 'Nome atualizado'
+    ),
+    true
+  );
 
   await act(async () => integration.props.onRemove(account));
   const confirmation = renderer.root.findByType(Modal);
@@ -93,7 +122,10 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
     confirmation.props.footer.props.children[1].props.onClick();
     await Promise.resolve();
   });
-  assert.equal(messages.some((message) => message.action === 'account-remove'), true);
+  assert.equal(
+    messages.some((message) => message.action === 'account-remove'),
+    true
+  );
   renderer.unmount();
 });
 
@@ -101,16 +133,21 @@ test('colaborador visualiza contas sem controles administrativos', async () => {
   installChromeMock([]);
   let renderer;
   await act(async () => {
-    renderer = create(<IntegrationsSession
-      connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'collaborator' } }}
-      onBack={() => {}}
-      onOpenOptions={() => {}}
-    />);
+    renderer = create(
+      <IntegrationsSession
+        connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'collaborator' } }}
+        onBack={() => {}}
+        onOpenOptions={() => {}}
+      />
+    );
   });
 
   const integration = renderer.root.findByType(IntegrationAccount);
   assert.equal(integration.props.admin, false);
   assert.equal(renderer.root.findAllByType(Switch).length, 0);
-  assert.equal(renderer.root.findAllByType(Button).some((button) => button.props.children === 'Adicionar integração'), false);
+  assert.equal(
+    renderer.root.findAllByType(Button).some((button) => button.props.children === 'Adicionar integração'),
+    false
+  );
   renderer.unmount();
 });

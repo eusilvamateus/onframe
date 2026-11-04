@@ -1,15 +1,7 @@
 const { assertOwnedItem } = require('./item-context');
 const { sanitizeError } = require('./errors');
-const {
-  previewStandardPriceUpdate,
-  updateStandardPrice
-} = require('./pricing');
-const {
-  createOffer,
-  deleteOffer,
-  previewOfferAction,
-  updateOffer
-} = require('./promotions');
+const { previewStandardPriceUpdate, updateStandardPrice } = require('./pricing');
+const { createOffer, deleteOffer, previewOfferAction, updateOffer } = require('./promotions');
 
 const BULK_SCOPE = 'user_product_family';
 const CONCURRENCY = 4;
@@ -104,7 +96,7 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
   }
 
   const userProduct = await client.getUserProduct(item.user_product_id);
-  const familyId = userProduct && userProduct.family_id || item.family_id;
+  const familyId = (userProduct && userProduct.family_id) || item.family_id;
   if (!familyId) {
     const err = new Error('bulk_family_not_found');
     err.statusCode = 409;
@@ -155,7 +147,9 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
 }
 
 async function resolveSourceItem(client, subjectId) {
-  const id = String(subjectId || '').trim().toUpperCase();
+  const id = String(subjectId || '')
+    .trim()
+    .toUpperCase();
   if (!/^MLBU\d+$/.test(id)) return assertOwnedItem(client, subjectId);
 
   const me = await client.getMe();
@@ -174,13 +168,14 @@ async function resolveSourceItem(client, subjectId) {
 
 async function previewTarget(client, operation, target) {
   try {
-    const preview = operation.type === 'pricing.standard.update'
-      ? await previewStandardPriceUpdate(client, target.itemId, operation.payload)
-      : await previewOfferAction(client, target.itemId, operation.promotionAction, operation.payload);
+    const preview =
+      operation.type === 'pricing.standard.update'
+        ? await previewStandardPriceUpdate(client, target.itemId, operation.payload)
+        : await previewOfferAction(client, target.itemId, operation.promotionAction, operation.payload);
     return {
       itemId: target.itemId,
-      userProductId: target.userProductId || preview.item && preview.item.user_product_id || null,
-      title: target.title || preview.item && preview.item.title || null,
+      userProductId: target.userProductId || (preview.item && preview.item.user_product_id) || null,
+      title: target.title || (preview.item && preview.item.title) || null,
       current: Boolean(target.current),
       eligible: true,
       status: 'eligible',
@@ -250,15 +245,23 @@ function normalizeOperation(input) {
 }
 
 function normalizeTargetItemIds(values) {
-  return unique((Array.isArray(values) ? values : [])
-    .map((value) => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, ''))
-    .filter((value) => /^MLB\d{6,13}$/.test(value)));
+  return unique(
+    (Array.isArray(values) ? values : [])
+      .map((value) =>
+        String(value || '')
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+      )
+      .filter((value) => /^MLB\d{6,13}$/.test(value))
+  );
 }
 
 function extractUserProductIds(value) {
   const found = [];
   visit(value, (candidate) => {
-    const match = String(candidate || '').toUpperCase().match(/\bMLBU\d{6,}\b/);
+    const match = String(candidate || '')
+      .toUpperCase()
+      .match(/\bMLBU\d{6,}\b/);
     if (match) found.push(match[0]);
   });
   return unique(found);
@@ -337,7 +340,9 @@ function unique(values) {
   const seen = new Set();
   const output = [];
   for (const value of values || []) {
-    const normalized = String(value || '').trim().toUpperCase();
+    const normalized = String(value || '')
+      .trim()
+      .toUpperCase();
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
     output.push(normalized);

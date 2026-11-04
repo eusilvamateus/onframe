@@ -22,24 +22,34 @@ function main() {
   if (String(packageLock.version || '').trim() !== version) {
     fail(`Versao divergente: package-lock.json=${packageLock.version || '(vazio)'}, esperado ${version}.`);
   }
-  if (packageLock.packages && packageLock.packages[''] && String(packageLock.packages[''].version || '').trim() !== version) {
-    fail(`Versao divergente: package-lock.json packages[""]=${packageLock.packages[''].version || '(vazio)'}, esperado ${version}.`);
+  if (
+    packageLock.packages &&
+    packageLock.packages[''] &&
+    String(packageLock.packages[''].version || '').trim() !== version
+  ) {
+    fail(
+      `Versao divergente: package-lock.json packages[""]=${packageLock.packages[''].version || '(vazio)'}, esperado ${version}.`
+    );
   }
 
   if (expectedTag) {
-    const normalizedTag = expectedTag.startsWith('refs/tags/')
-      ? expectedTag.slice('refs/tags/'.length)
-      : expectedTag;
+    const normalizedTag = expectedTag.startsWith('refs/tags/') ? expectedTag.slice('refs/tags/'.length) : expectedTag;
     if (normalizedTag !== `v${version}`) {
       fail(`Tag ${normalizedTag} nao corresponde a versao v${version}.`);
     }
   }
 
-  console.log(JSON.stringify({
-    ok: true,
-    version,
-    tag: `v${version}`
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        version,
+        tag: `v${version}`
+      },
+      null,
+      2
+    )
+  );
 }
 
 function readJson(relativePath) {

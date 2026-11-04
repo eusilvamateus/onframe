@@ -7,7 +7,13 @@ import { WorkspaceSession } from '../extension/ui/popup/WorkspaceSession.jsx';
 
 const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', role: 'admin', accounts: [] };
 const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', role: 'admin', accounts: [] };
-const invitation = { id: 'invite-1', kind: 'email', email: 'convite@example.com', role: 'collaborator', expiresAt: '2026-10-20T12:00:00.000Z' };
+const invitation = {
+  id: 'invite-1',
+  kind: 'email',
+  email: 'convite@example.com',
+  role: 'collaborator',
+  expiresAt: '2026-10-20T12:00:00.000Z'
+};
 
 function installChromeMock() {
   globalThis.chrome = {
@@ -29,12 +35,14 @@ test('sessao do workspace lista pessoas, convites e mantem a propria conta sem a
   installChromeMock();
   let renderer;
   await act(async () => {
-    renderer = create(<WorkspaceSession
-      connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
-      onBack={() => {}}
-      onOpenOptions={() => {}}
-      onConnectionChanged={async () => {}}
-    />);
+    renderer = create(
+      <WorkspaceSession
+        connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+        onBack={() => {}}
+        onOpenOptions={() => {}}
+        onConnectionChanged={async () => {}}
+      />
+    );
   });
 
   const items = renderer.root.findAllByType(ListItem);
@@ -48,11 +56,16 @@ test('sessao do workspace lista pessoas, convites e mantem a propria conta sem a
   assert.match(String(otherItem?.props.description), /Todas as contas/);
   assert.match(String(invitationItem?.props.description), /Colaborador/);
   assert.equal(leaveItem?.props.disabled, false);
-  const inviteButton = renderer.root.findAllByType(Button).find((button) => button.props.children === 'Convidar pessoa');
+  const inviteButton = renderer.root
+    .findAllByType(Button)
+    .find((button) => button.props.children === 'Convidar pessoa');
   assert.equal(inviteButton.props.kind, 'quiet');
   assert.equal(inviteButton.props.tone, 'primary');
   assert.equal(inviteButton.props.size, 'sm');
-  assert.equal(renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Convidar pessoa'), false);
+  assert.equal(
+    renderer.root.findAllByType(Tooltip).some((tooltip) => tooltip.props.label === 'Convidar pessoa'),
+    false
+  );
   renderer.unmount();
 });
 
@@ -64,13 +77,23 @@ test('convite em andamento reabre com o rascunho e cancelar limpa a retomada', a
   let renderer;
   try {
     await act(async () => {
-      renderer = create(<WorkspaceSession
-        connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
-        initialState={{ inviteOpen: true, inviteDraft: { kind: 'email', email: 'rascunho@example.com', role: 'collaborator', accountIds: ['account-1'] } }}
-        onStateChange={(state) => states.push(state)}
-        onBack={() => {}}
-        onConnectionChanged={async () => {}}
-      />);
+      renderer = create(
+        <WorkspaceSession
+          connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+          initialState={{
+            inviteOpen: true,
+            inviteDraft: {
+              kind: 'email',
+              email: 'rascunho@example.com',
+              role: 'collaborator',
+              accountIds: ['account-1']
+            }
+          }}
+          onStateChange={(state) => states.push(state)}
+          onBack={() => {}}
+          onConnectionChanged={async () => {}}
+        />
+      );
     });
 
     const email = renderer.root.findAllByType('input').find((input) => input.props.type === 'email');

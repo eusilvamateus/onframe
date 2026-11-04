@@ -10,12 +10,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'onframe:remote') {
     handleRemoteMessage(message)
       .then((payload) => sendResponse({ ok: true, body: payload }))
-      .catch((err) => sendResponse({
-        ok: false,
-        error: err && err.message ? err.message : 'Não consegui acessar o OnFrame remoto.',
-        code: err && err.code ? err.code : '',
-        technicalError: err && err.technicalError ? err.technicalError : (err && err.message ? err.message : String(err))
-      }));
+      .catch((err) =>
+        sendResponse({
+          ok: false,
+          error: err && err.message ? err.message : 'Não consegui acessar o OnFrame remoto.',
+          code: err && err.code ? err.code : '',
+          technicalError:
+            err && err.technicalError ? err.technicalError : err && err.message ? err.message : String(err)
+        })
+      );
     return true;
   }
 
@@ -23,12 +26,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   handleApiMessage(message)
     .then((payload) => sendResponse(payload))
-    .catch((err) => sendResponse({
-      ok: false,
-      status: 0,
-      error: 'Não consegui acessar o OnFrame remoto.',
-      technicalError: err && err.message ? err.message : String(err)
-    }));
+    .catch((err) =>
+      sendResponse({
+        ok: false,
+        status: 0,
+        error: 'Não consegui acessar o OnFrame remoto.',
+        technicalError: err && err.message ? err.message : String(err)
+      })
+    );
   return true;
 });
 
@@ -48,34 +53,68 @@ async function handleRemoteMessage(message) {
   if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
   if (action === 'products') return requestPlatform(productsPath(message.query));
   if (action === 'tax-configuration') return requestPlatform('/v1/app/tax-configuration');
-  if (action === 'tax-configuration-update') return requestPlatform('/v1/app/tax-configuration', { method: 'PUT', body: JSON.stringify(message.payload || {}) });
-  if (action === 'product-create') return requestPlatform('/v1/app/products', { method: 'POST', body: JSON.stringify(message.payload || {}) });
-  if (action === 'product-update') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
-  if (action === 'product-archive') return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, { method: 'DELETE' });
-  if (action === 'product-import-preview') return requestPlatform('/v1/app/products/import/preview', { method: 'POST', body: JSON.stringify(message.payload || {}) });
-  if (action === 'product-import-commit') return requestPlatform('/v1/app/products/import', { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'tax-configuration-update')
+    return requestPlatform('/v1/app/tax-configuration', { method: 'PUT', body: JSON.stringify(message.payload || {}) });
+  if (action === 'product-create')
+    return requestPlatform('/v1/app/products', { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'product-update')
+    return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, {
+      method: 'PATCH',
+      body: JSON.stringify(message.payload || {})
+    });
+  if (action === 'product-archive')
+    return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, {
+      method: 'DELETE'
+    });
+  if (action === 'product-import-preview')
+    return requestPlatform('/v1/app/products/import/preview', {
+      method: 'POST',
+      body: JSON.stringify(message.payload || {})
+    });
+  if (action === 'product-import-commit')
+    return requestPlatform('/v1/app/products/import', { method: 'POST', body: JSON.stringify(message.payload || {}) });
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'workspace-leave') return leaveWorkspace();
   if (action === 'profile') return requestPlatform('/v1/profile');
   if (action === 'security') return loadAccountSecurity();
-  if (action === 'security-session-remove') return requestPlatform(`/v1/security/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, { method: 'DELETE' });
+  if (action === 'security-session-remove')
+    return requestPlatform(`/v1/security/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, {
+      method: 'DELETE'
+    });
   if (action === 'security-sessions-remove-all') {
     const result = await requestPlatform('/v1/security/sessions', { method: 'DELETE' });
     await removeRemoteSession();
     await removePendingAuthFlow();
     return result;
   }
-  if (action === 'profile-update') return requestPlatform('/v1/profile', { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
-  if (action === 'profile-avatar') return requestPlatform('/v1/profile/avatar', { method: 'POST', body: JSON.stringify({ dataUrl: message.dataUrl }) });
+  if (action === 'profile-update')
+    return requestPlatform('/v1/profile', { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
+  if (action === 'profile-avatar')
+    return requestPlatform('/v1/profile/avatar', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl: message.dataUrl })
+    });
   if (action === 'profile-avatar-remove') return requestPlatform('/v1/profile/avatar', { method: 'DELETE' });
-  if (action === 'profile-session-remove') return requestPlatform(`/v1/profile/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, { method: 'DELETE' });
+  if (action === 'profile-session-remove')
+    return requestPlatform(`/v1/profile/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, {
+      method: 'DELETE'
+    });
   if (action === 'members') return requestPlatform('/v1/members');
-  if (action === 'member-update') return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, { method: 'PATCH', body: JSON.stringify(message.payload || {}) });
-  if (action === 'member-remove') return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, { method: 'DELETE' });
+  if (action === 'member-update')
+    return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, {
+      method: 'PATCH',
+      body: JSON.stringify(message.payload || {})
+    });
+  if (action === 'member-remove')
+    return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, { method: 'DELETE' });
   if (action === 'invitations') return requestPlatform('/v1/invitations');
-  if (action === 'invitation-create') return requestPlatform('/v1/invitations', { method: 'POST', body: JSON.stringify(message.payload || {}) });
-  if (action === 'invitation-revoke') return requestPlatform(`/v1/invitations/${encodeURIComponent(String(message.invitationId || ''))}`, { method: 'DELETE' });
+  if (action === 'invitation-create')
+    return requestPlatform('/v1/invitations', { method: 'POST', body: JSON.stringify(message.payload || {}) });
+  if (action === 'invitation-revoke')
+    return requestPlatform(`/v1/invitations/${encodeURIComponent(String(message.invitationId || ''))}`, {
+      method: 'DELETE'
+    });
   if (action === 'invitation-accept') return acceptWorkspaceInvitation(message.token);
   const failure = new Error('Ação remota inválida.');
   failure.code = 'remote_action_unsupported';
@@ -155,7 +194,9 @@ async function synchronizeRemoteIdentity(value, disconnect = false) {
   try {
     // O token do provedor e temporario e nao substitui a sessao operacional.
     return await requestRemote('/v1/identity/synchronize', {
-      method: 'POST', headers: { authorization: `Bearer ${accessToken}` }, body: '{}'
+      method: 'POST',
+      headers: { authorization: `Bearer ${accessToken}` },
+      body: '{}'
     });
   } finally {
     if (disconnect) {
@@ -264,9 +305,12 @@ async function removeRemoteAccount(userId) {
 async function requestPlatform(path, options = {}) {
   const session = await requireRemoteSession();
   try {
-    return await requestRemote(path, Object.assign({}, options, {
-      headers: Object.assign({}, options.headers || {}, { authorization: `Bearer ${session.token}` })
-    }));
+    return await requestRemote(
+      path,
+      Object.assign({}, options, {
+        headers: Object.assign({}, options.headers || {}, { authorization: `Bearer ${session.token}` })
+      })
+    );
   } catch (error) {
     if (error && error.status === 401) await removeRemoteSession();
     throw error;
@@ -320,15 +364,17 @@ function normalizeRemoteAccountUserId(value) {
 
 function normalizeRemoteAccounts(value) {
   if (!Array.isArray(value)) return [];
-  return value.map((account) => ({
-    id: account && account.id ? String(account.id) : '',
-    user_id: account && account.userId ? String(account.userId) : '',
-    nickname: account && account.nickname ? String(account.nickname) : '',
-    display_name: account && account.displayName ? String(account.displayName) : '',
-    permalink: account && account.profileUrl ? String(account.profileUrl) : '',
-    logo: account && account.logoUrl ? String(account.logoUrl) : '',
-    enabled: !(account && account.enabled === false)
-  })).filter((account) => account.user_id);
+  return value
+    .map((account) => ({
+      id: account && account.id ? String(account.id) : '',
+      user_id: account && account.userId ? String(account.userId) : '',
+      nickname: account && account.nickname ? String(account.nickname) : '',
+      display_name: account && account.displayName ? String(account.displayName) : '',
+      permalink: account && account.profileUrl ? String(account.profileUrl) : '',
+      logo: account && account.logoUrl ? String(account.logoUrl) : '',
+      enabled: !(account && account.enabled === false)
+    }))
+    .filter((account) => account.user_id);
 }
 
 async function startRemoteAuth() {
@@ -344,7 +390,7 @@ async function startRemoteAuth() {
     if (error && error.status === 401) await removeRemoteSession();
     throw error;
   }
-  const authUrl = String(result && result.authorizationUrl || '');
+  const authUrl = String((result && result.authorizationUrl) || '');
   if (!/^https:\/\/auth\.mercadolivre\.com\.br\/authorization\?/u.test(authUrl)) {
     const error = new Error('O OnFrame remoto retornou uma autorização inválida.');
     error.code = 'invalid_remote_authorization';
@@ -367,8 +413,8 @@ async function requireRemoteSession() {
 }
 
 function normalizePendingAuthFlow(payload) {
-  const token = String(payload && payload.flow || '');
-  const expiresAt = String(payload && payload.expiresAt || '');
+  const token = String((payload && payload.flow) || '');
+  const expiresAt = String((payload && payload.expiresAt) || '');
   if (!REMOTE_SESSION_TOKEN_PATTERN.test(token) || !Number.isFinite(Date.parse(expiresAt))) {
     const error = new Error('O OnFrame remoto retornou um fluxo de acesso inválido.');
     error.code = 'invalid_remote_auth_flow';
@@ -415,9 +461,9 @@ async function consumePendingAuthFlow() {
 }
 
 function normalizeRemoteSession(payload) {
-  const token = String(payload && payload.token || '');
-  const sessionId = String(payload && payload.sessionId || '');
-  const expiresAt = String(payload && payload.expiresAt || '');
+  const token = String((payload && payload.token) || '');
+  const sessionId = String((payload && payload.sessionId) || '');
+  const expiresAt = String((payload && payload.expiresAt) || '');
   if (!REMOTE_SESSION_TOKEN_PATTERN.test(token) || !sessionId || !Number.isFinite(Date.parse(expiresAt))) {
     const error = new Error('O OnFrame remoto retornou uma sessão inválida.');
     error.code = 'invalid_remote_session';
@@ -460,10 +506,13 @@ async function requestRemoteResponse(path, options = {}) {
   try {
     response = await fetch(`${REMOTE_SERVICE}${path}`, {
       method: options.method || 'GET',
-      headers: Object.assign({
-        accept: 'application/json',
-        'content-type': 'application/json'
-      }, options.headers || {}),
+      headers: Object.assign(
+        {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        options.headers || {}
+      ),
       body: options.body,
       cache: 'no-store',
       credentials: 'omit'
@@ -477,7 +526,7 @@ async function requestRemoteResponse(path, options = {}) {
 
   const body = parseJson(await response.text());
   if (!response.ok) {
-    const code = body && (body.code || body.error) ? (body.code || body.error) : 'remote_request_failed';
+    const code = body && (body.code || body.error) ? body.code || body.error : 'remote_request_failed';
     const failure = new Error(remoteErrorMessage(code, response.status, body && body.error));
     failure.code = code;
     failure.status = response.status;
@@ -491,22 +540,30 @@ async function requestRemoteResponse(path, options = {}) {
 }
 
 function remoteErrorMessage(code, status, fallbackMessage) {
-  if (code === 'auth_flow_unavailable') return 'Esse link de acesso expirou ou já foi usado. Solicite outro pela extensão.';
+  if (code === 'auth_flow_unavailable')
+    return 'Esse link de acesso expirou ou já foi usado. Solicite outro pela extensão.';
   if (code === 'extension_session_unauthorized') return 'A sessão desta extensão não é mais válida.';
   if (code === 'remote_oauth_unconfigured') return 'A conexão remota do Mercado Livre ainda não está configurada.';
   if (code === 'workspace_account_access_forbidden') return 'Seu acesso não pode conectar contas ao workspace.';
   if (code === 'workspace_admin_required') return 'Esta ação exige uma pessoa administradora do workspace.';
-  if (code === 'workspace_last_admin_required') return 'O workspace precisa manter pelo menos uma pessoa administradora.';
-  if (code === 'workspace_self_management_forbidden') return 'Use a ação Sair do workspace para encerrar sua participação.';
+  if (code === 'workspace_last_admin_required')
+    return 'O workspace precisa manter pelo menos uma pessoa administradora.';
+  if (code === 'workspace_self_management_forbidden')
+    return 'Use a ação Sair do workspace para encerrar sua participação.';
   if (code === 'workspace_already_member') return 'Esta pessoa já participa do workspace.';
   if (code === 'workspace_access_forbidden') return 'Você não tem acesso a este workspace.';
-  if (code === 'workspace_invitation_delivery_failed') return 'Não foi possível enviar o convite agora. Tente novamente.';
+  if (code === 'workspace_invitation_delivery_failed')
+    return 'Não foi possível enviar o convite agora. Tente novamente.';
   if (code === 'avatar_storage_unconfigured') return 'O envio de avatar ainda não foi configurado.';
-  if (code === 'avatar_storage_authorization_failed') return 'O serviço de imagens não aceitou a configuração atual. Tente novamente mais tarde.';
-  if (code === 'avatar_storage_bucket_unavailable') return 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.';
-  if (code === 'avatar_storage_unavailable') return 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.';
+  if (code === 'avatar_storage_authorization_failed')
+    return 'O serviço de imagens não aceitou a configuração atual. Tente novamente mais tarde.';
+  if (code === 'avatar_storage_bucket_unavailable')
+    return 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.';
+  if (code === 'avatar_storage_unavailable')
+    return 'O armazenamento de imagens está indisponível no momento. Tente novamente mais tarde.';
   if (code === 'avatar_upload_failed') return 'Não foi possível enviar a imagem agora. Tente novamente.';
-  if (code === 'avatar_profile_update_failed') return 'A imagem foi recebida, mas não foi possível atualizar seu perfil. Tente novamente.';
+  if (code === 'avatar_profile_update_failed')
+    return 'A imagem foi recebida, mas não foi possível atualizar seu perfil. Tente novamente.';
   if (code === 'avatar_too_large') return 'Escolha uma imagem de até 2 MB.';
   if (code === 'invalid_avatar') return 'Escolha uma imagem PNG, JPEG ou WebP válida.';
   if (code === 'workspace_account_unavailable') return 'Nenhuma conta do Mercado Livre está conectada neste workspace.';
@@ -630,7 +687,7 @@ async function handleApiMessage(message) {
 }
 
 function isRemoteSessionExpired(session) {
-  const expiresAt = Date.parse(String(session && session.expiresAt || ''));
+  const expiresAt = Date.parse(String((session && session.expiresAt) || ''));
   return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
 }
 
@@ -657,7 +714,8 @@ async function handleRemoteApiMessage(path, options, session) {
       status: error && error.status ? error.status : 0,
       error: error && error.message ? error.message : 'Não consegui acessar o OnFrame remoto.',
       code: error && error.code ? error.code : '',
-      technicalError: error && error.technicalError ? error.technicalError : (error && error.message ? error.message : String(error))
+      technicalError:
+        error && error.technicalError ? error.technicalError : error && error.message ? error.message : String(error)
     };
   }
 }

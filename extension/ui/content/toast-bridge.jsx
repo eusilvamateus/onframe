@@ -1,4 +1,3 @@
-import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ToastStack, toast } from '@onblide/ui';
 
@@ -15,9 +14,7 @@ function ensureToastStack() {
 
   if (!host.dataset.onframeMounted) {
     host.dataset.onframeMounted = 'true';
-    createRoot(host).render(
-      <ToastStack position="bottom-right" duration={4800} limit={3} />,
-    );
+    createRoot(host).render(<ToastStack position="bottom-right" duration={4800} limit={3} />);
   }
 }
 
@@ -29,12 +26,10 @@ function show(options = {}) {
     tone: options.tone,
     title,
     body: options.body ? String(options.body).trim() : undefined,
-    action: typeof options.onAction === 'function' && options.action
-      ? String(options.action).trim()
-      : undefined,
+    action: typeof options.onAction === 'function' && options.action ? String(options.action).trim() : undefined,
     onAction: typeof options.onAction === 'function' ? options.onAction : undefined,
     icon: options.icon !== false,
-    duration: options.duration,
+    duration: options.duration
   });
 }
 

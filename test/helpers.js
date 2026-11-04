@@ -4,10 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const vm = require('vm');
-const {
-  buildCommitPayload,
-  pickMode
-} = require('../cloudflare/src/domain/items');
+const { buildCommitPayload, pickMode } = require('../cloudflare/src/domain/items');
 const { createApp, sanitizeError, userFriendlyError } = require('./support/domain-api');
 const {
   buildPictureQualityReport,
@@ -16,10 +13,7 @@ const {
   extractImageDimensions,
   extractOfficialDimensions
 } = require('../cloudflare/src/domain/picture-quality');
-const {
-  buildPriceSummary,
-  updateStandardPrice
-} = require('../cloudflare/src/domain/pricing');
+const { buildPriceSummary, updateStandardPrice } = require('../cloudflare/src/domain/pricing');
 const {
   buildPromotionSummary,
   createCampaign,

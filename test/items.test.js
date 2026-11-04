@@ -39,12 +39,16 @@ const {
 test('descricao retorna metadados de historico sem repetir o conteudo alterado', async () => {
   const beforeText = 'Descricao anterior';
   const afterText = 'Nova descricao';
-  const result = await descriptions.upsertDescription({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123 }),
-    getItemDescription: async () => ({ plain_text: beforeText }),
-    updateItemDescription: async () => ({ plain_text: afterText })
-  }, 'MLB1234567890', { plainText: afterText });
+  const result = await descriptions.upsertDescription(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123 }),
+      getItemDescription: async () => ({ plain_text: beforeText }),
+      updateItemDescription: async () => ({ plain_text: afterText })
+    },
+    'MLB1234567890',
+    { plainText: afterText }
+  );
 
   assert.deepStrictEqual(result.history, {
     before: { exists: true, length: beforeText.length },
@@ -64,16 +68,16 @@ test('detector encontra user_product fora da URL /up', () => {
     'link[rel="canonical"], meta[property="og:url"], meta[name="twitter:url"]': [
       fakeElement('', { href: 'https://produto.mercadolivre.com.br/MLB-4199823557-produto-_JM' })
     ],
-    'link[rel="canonical"],meta[property="og:url"],meta[name="twitter:url"],a[href*="MLBU"],[data-testid*="selected"],[aria-checked="true"],[aria-pressed="true"]': [
-      fakeElement('Cor: Azul', { href: 'https://www.mercadolivre.com.br/p/up/MLBU123456789' })
-    ],
-    script: [
-      fakeElement('{"user_product_id":"MLBU987654321"}')
-    ]
+    'link[rel="canonical"],meta[property="og:url"],meta[name="twitter:url"],a[href*="MLBU"],[data-testid*="selected"],[aria-checked="true"],[aria-pressed="true"]':
+      [fakeElement('Cor: Azul', { href: 'https://www.mercadolivre.com.br/p/up/MLBU123456789' })],
+    script: [fakeElement('{"user_product_id":"MLBU987654321"}')]
   });
 
   assert.deepStrictEqual(
-    detection.collectUserProductCandidatesFromPage(doc, 'https://produto.mercadolivre.com.br/MLB-4199823557-produto-_JM'),
+    detection.collectUserProductCandidatesFromPage(
+      doc,
+      'https://produto.mercadolivre.com.br/MLB-4199823557-produto-_JM'
+    ),
     ['MLBU123456789', 'MLBU987654321']
   );
 });
@@ -93,7 +97,9 @@ test('detector separa identidade forte de candidatos fracos da variacao', () => 
     ['MLB1111111111', 'MLB2222222222']
   );
   assert.deepStrictEqual(
-    detection.collectPageIdentity(doc, 'https://produto.mercadolivre.com.br/MLB-1111111111-produto-_JM', { includeScripts: false }),
+    detection.collectPageIdentity(doc, 'https://produto.mercadolivre.com.br/MLB-1111111111-produto-_JM', {
+      includeScripts: false
+    }),
     {
       urlItemId: 'MLB1111111111',
       canonicalItemId: 'MLB1111111111',
@@ -130,11 +136,11 @@ test('detector identifica user_product, product_trigger e catalogo sem misturar 
 test('detector usa item_id publico do bloco de denuncia como identidade forte', () => {
   const doc = fakeDocument({
     'a[href*="/noindex/denounce"][href*="item_id=MLB"]': [
-      fakeElement('Denunciar', { href: 'https://www.mercadolivre.com.br/noindex/denounce?item_id=MLB6312193712&element_type=ITM' })
+      fakeElement('Denunciar', {
+        href: 'https://www.mercadolivre.com.br/noindex/denounce?item_id=MLB6312193712&element_type=ITM'
+      })
     ],
-    '#denounce': [
-      fakeElement('Anúncio #6312193712')
-    ]
+    '#denounce': [fakeElement('Anúncio #6312193712')]
   });
 
   const identity = detection.collectPageIdentity(
@@ -155,10 +161,14 @@ test('detector infere a variacao ativa por texto selecionado', () => {
   });
 
   assert.strictEqual(
-    detection.inferSelectedVariationId([
-      { id: 10, attribute_combinations: [{ name: 'Cor Da Estrutura', value_name: 'Cinza' }] },
-      { id: 20, attribute_combinations: [{ name: 'Cor Da Estrutura', value_name: 'Azul-celeste' }] }
-    ], doc, 'https://produto.mercadolivre.com.br/MLB-1234567890-produto-_JM'),
+    detection.inferSelectedVariationId(
+      [
+        { id: 10, attribute_combinations: [{ name: 'Cor Da Estrutura', value_name: 'Cinza' }] },
+        { id: 20, attribute_combinations: [{ name: 'Cor Da Estrutura', value_name: 'Azul-celeste' }] }
+      ],
+      doc,
+      'https://produto.mercadolivre.com.br/MLB-1234567890-produto-_JM'
+    ),
     '20'
   );
 });
@@ -168,16 +178,15 @@ test('assinatura da pagina muda quando a selecao visual muda', () => {
   const first = fakeDocument({ '.ui-pdp-container': [fakeElement('Cor: Azul')] });
   const second = fakeDocument({ '.ui-pdp-container': [fakeElement('Cor: Cinza')] });
 
-  assert.notStrictEqual(
-    detection.createPageSignature(first, href),
-    detection.createPageSignature(second, href)
-  );
+  assert.notStrictEqual(detection.createPageSignature(first, href), detection.createPageSignature(second, href));
 });
 
 test('assinatura da pagina ignora parametros que nao identificam anuncio ou variacao', () => {
   const doc = fakeDocument({
     'a[href*="/noindex/denounce"][href*="item_id=MLB"]': [
-      fakeElement('Denunciar', { href: 'https://www.mercadolivre.com.br/noindex/denounce?item_id=MLB6312193712&element_type=ITM' })
+      fakeElement('Denunciar', {
+        href: 'https://www.mercadolivre.com.br/noindex/denounce?item_id=MLB6312193712&element_type=ITM'
+      })
     ],
     '.ui-pdp-container': [fakeElement('Cor: Preto')]
   });
@@ -208,21 +217,23 @@ test('api resolve prioriza user_product quando solicitado', async (t) => {
       pictures: [{ id: 'NEW' }]
     }
   };
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async (itemId) => {
-        calls.push(['getItem', itemId]);
-        return items[itemId];
-      },
-      getUserProduct: async () => ({ id: 'MLBU222222222' }),
-      searchItemsByUserProduct: async (userId, userProductId) => {
-        calls.push(['searchItemsByUserProduct', userId, userProductId]);
-        return { results: ['MLB2222222222'] };
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async (itemId) => {
+          calls.push(['getItem', itemId]);
+          return items[itemId];
+        },
+        getUserProduct: async () => ({ id: 'MLBU222222222' }),
+        searchItemsByUserProduct: async (userId, userProductId) => {
+          calls.push(['searchItemsByUserProduct', userId, userProductId]);
+          return { results: ['MLB2222222222'] };
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -276,17 +287,19 @@ test('api resolve ignora item encerrado de migracao quando user_product tem item
       pictures: [{ id: 'BOOST' }]
     }
   };
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async (itemId) => items[itemId],
-      getUserProduct: async () => ({ id: 'MLBU333333333' }),
-      searchItemsByUserProduct: async () => ({
-        results: ['MLB1111111111', 'MLB3333333333', 'MLB2222222222']
-      })
-    }
-  }));
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async (itemId) => items[itemId],
+        getUserProduct: async () => ({ id: 'MLBU333333333' }),
+        searchItemsByUserProduct: async () => ({
+          results: ['MLB1111111111', 'MLB3333333333', 'MLB2222222222']
+        })
+      }
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -326,16 +339,18 @@ test('api resolve usa product_trigger como item exato da pagina user_product', a
       pictures: [{ id: 'WRONG' }]
     }
   };
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async (itemId) => {
-        calls.push(itemId);
-        return items[itemId];
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async (itemId) => {
+          calls.push(itemId);
+          return items[itemId];
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -362,30 +377,35 @@ test('api resolve encontra automaticamente a conta dona do anuncio', async (t) =
     { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true },
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false }
   ];
-  let activeUserId = 101;
+  const activeUserId = 101;
   const store = {
-    listAccountTokens: async () => accounts.map((account) => Object.assign({}, account, {
-      active: String(account.user_id) === String(activeUserId)
-    }))
+    listAccountTokens: async () =>
+      accounts.map((account) =>
+        Object.assign({}, account, {
+          active: String(account.user_id) === String(activeUserId)
+        })
+      )
   };
   const attempts = [];
-  const server = await listen(createApp({
-    store,
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id }),
-      getItem: async (itemId) => {
-        attempts.push([account.user_id, itemId]);
-        return {
-          id: itemId,
-          title: 'Item da loja 2',
-          seller_id: 202,
-          site_id: 'MLB',
-          pictures: [{ id: 'P1' }]
-        };
-      }
+  const server = await listen(
+    createApp({
+      store,
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id }),
+        getItem: async (itemId) => {
+          attempts.push([account.user_id, itemId]);
+          return {
+            id: itemId,
+            title: 'Item da loja 2',
+            seller_id: 202,
+            site_id: 'MLB',
+            pictures: [{ id: 'P1' }]
+          };
+        }
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -413,41 +433,41 @@ test('api resolve encontra automaticamente a conta dona do anuncio', async (t) =
 
 test('api resolve quick encontra user_product com busca ativa limitada sem getMe', async (t) => {
   const calls = [];
-  const accounts = [
-    { user_id: 706112599, nickname: 'BOGU SYS', refresh_token: 'TG-1', active: true, enabled: true }
-  ];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => {
-        throw new Error('Não deveria chamar getMe no quick resolve com conta conhecida.');
+  const accounts = [{ user_id: 706112599, nickname: 'BOGU SYS', refresh_token: 'TG-1', active: true, enabled: true }];
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
       },
-      getUserProduct: async (userProductId) => {
-        calls.push(['getUserProduct', userProductId]);
-        return { id: userProductId, family_id: 'MLBFAMILY1' };
-      },
-      searchItemsByUserProduct: async (userId, userProductId, options) => {
-        calls.push(['searchItemsByUserProduct', userId, userProductId, options]);
-        return { results: ['MLB7242152428'] };
-      },
-      getItem: async (itemId) => {
-        calls.push(['getItem', itemId]);
-        return {
-          id: itemId,
-          title: 'Item user product',
-          seller_id: account.user_id,
-          site_id: 'MLB',
-          status: 'active',
-          user_product_id: 'MLBU4433394234',
-          pictures: [{ id: 'P1' }],
-          variations: [{ id: 10 }]
-        };
-      }
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => {
+          throw new Error('Não deveria chamar getMe no quick resolve com conta conhecida.');
+        },
+        getUserProduct: async (userProductId) => {
+          calls.push(['getUserProduct', userProductId]);
+          return { id: userProductId, family_id: 'MLBFAMILY1' };
+        },
+        searchItemsByUserProduct: async (userId, userProductId, options) => {
+          calls.push(['searchItemsByUserProduct', userId, userProductId, options]);
+          return { results: ['MLB7242152428'] };
+        },
+        getItem: async (itemId) => {
+          calls.push(['getItem', itemId]);
+          return {
+            id: itemId,
+            title: 'Item user product',
+            seller_id: account.user_id,
+            site_id: 'MLB',
+            status: 'active',
+            user_product_id: 'MLBU4433394234',
+            pictures: [{ id: 'P1' }],
+            variations: [{ id: 10 }]
+          };
+        }
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve/quick`, {
@@ -475,32 +495,32 @@ test('api resolve quick encontra user_product com busca ativa limitada sem getMe
 
 test('api resolve quick reaproveita cache por conta e identidade', async (t) => {
   let getItemCalls = 0;
-  const accounts = [
-    { user_id: 310458346, nickname: 'BOGU STORE', refresh_token: 'TG-1', active: true, enabled: true }
-  ];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => {
-        throw new Error('Não deveria chamar getMe no quick resolve com conta conhecida.');
+  const accounts = [{ user_id: 310458346, nickname: 'BOGU STORE', refresh_token: 'TG-1', active: true, enabled: true }];
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
       },
-      getItem: async (itemId) => {
-        getItemCalls += 1;
-        return {
-          id: itemId,
-          title: 'Mesa catalogo propria',
-          seller_id: account.user_id,
-          site_id: 'MLB',
-          status: 'active',
-          catalog_listing: true,
-          pictures: []
-        };
-      }
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => {
+          throw new Error('Não deveria chamar getMe no quick resolve com conta conhecida.');
+        },
+        getItem: async (itemId) => {
+          getItemCalls += 1;
+          return {
+            id: itemId,
+            title: 'Mesa catalogo propria',
+            seller_id: account.user_id,
+            site_id: 'MLB',
+            status: 'active',
+            catalog_listing: true,
+            pictures: []
+          };
+        }
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const payload = {
@@ -537,28 +557,30 @@ test('api resolve usa ownerUserId para hidratar sem varrer contas', async (t) =>
     { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true, enabled: true },
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false, enabled: true }
   ];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => {
-        throw new Error('Não deveria chamar getMe quando ownerUserId vem do quick resolve.');
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
       },
-      getItem: async (itemId) => {
-        calls.push([account.user_id, itemId]);
-        return {
-          id: itemId,
-          title: 'Item loja 2',
-          seller_id: 202,
-          site_id: 'MLB',
-          status: 'active',
-          pictures: []
-        };
-      }
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => {
+          throw new Error('Não deveria chamar getMe quando ownerUserId vem do quick resolve.');
+        },
+        getItem: async (itemId) => {
+          calls.push([account.user_id, itemId]);
+          return {
+            id: itemId,
+            title: 'Item loja 2',
+            seller_id: 202,
+            site_id: 'MLB',
+            status: 'active',
+            pictures: []
+          };
+        }
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -584,25 +606,27 @@ test('api resolve bloqueia anuncio que nao pertence a contas conectadas', async 
     { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true },
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false }
   ];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts,
-      setActive: async () => {
-        throw new Error('Não deveria ativar conta.');
-      }
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id }),
-      getItem: async (itemId) => ({
-        id: itemId,
-        title: 'Item de outro vendedor',
-        seller_id: 303,
-        site_id: 'MLB',
-        pictures: []
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts,
+        setActive: async () => {
+          throw new Error('Não deveria ativar conta.');
+        }
+      },
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id }),
+        getItem: async (itemId) => ({
+          id: itemId,
+          title: 'Item de outro vendedor',
+          seller_id: 303,
+          site_id: 'MLB',
+          pictures: []
+        })
       })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -622,26 +646,28 @@ test('api resolve prioriza mensagem de catalogo quando nenhum item proprio e con
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false }
   ];
   const attempts = [];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id }),
-      getItem: async (itemId) => {
-        attempts.push([account.user_id, itemId]);
-        return {
-          id: itemId,
-          title: 'Item publico de catalogo',
-          seller_id: 303,
-          site_id: 'MLB',
-          catalog_listing: true,
-          pictures: []
-        };
-      }
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
+      },
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id }),
+        getItem: async (itemId) => {
+          attempts.push([account.user_id, itemId]);
+          return {
+            id: itemId,
+            title: 'Item publico de catalogo',
+            seller_id: 303,
+            site_id: 'MLB',
+            catalog_listing: true,
+            pictures: []
+          };
+        }
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -670,25 +696,27 @@ test('api resolve ignora conta desativada e informa quando ela e dona do anuncio
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false, enabled: false }
   ];
   const attempts = [];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id }),
-      getItem: async (itemId) => {
-        attempts.push([account.user_id, itemId]);
-        return {
-          id: itemId,
-          title: 'Item loja 2',
-          seller_id: 202,
-          site_id: 'MLB',
-          pictures: []
-        };
-      }
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
+      },
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id }),
+        getItem: async (itemId) => {
+          attempts.push([account.user_id, itemId]);
+          return {
+            id: itemId,
+            title: 'Item loja 2',
+            seller_id: 202,
+            site_id: 'MLB',
+            pictures: []
+          };
+        }
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -707,18 +735,18 @@ test('api resolve ignora conta desativada e informa quando ela e dona do anuncio
 });
 
 test('api resolve bloqueia quando todas as contas estao desativadas', async (t) => {
-  const accounts = [
-    { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true, enabled: false }
-  ];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: () => {
-      throw new Error('Não deveria tentar resolver sem contas habilitadas.');
-    }
-  }));
+  const accounts = [{ user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true, enabled: false }];
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
+      },
+      client: {},
+      clientFactory: () => {
+        throw new Error('Não deveria tentar resolver sem contas habilitadas.');
+      }
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -737,33 +765,38 @@ test('api item usa owner_user_id sem trocar conta ativa', async (t) => {
     { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true },
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false }
   ];
-  let activeUserId = 101;
+  const activeUserId = 101;
   const calls = [];
-  const server = await listen(createApp({
-    store: {
-      readAccount: async (userId) => accounts.find((account) => String(account.user_id) === String(userId)) || null,
-      listAccountTokens: async () => accounts.map((account) => Object.assign({}, account, {
-        active: String(account.user_id) === String(activeUserId)
-      }))
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id, nickname: account.nickname }),
-      getItem: async (itemId) => {
-        calls.push([account.user_id, itemId]);
-        return {
-          id: itemId,
-          title: 'Item loja 2',
-          seller_id: 202,
-          site_id: 'MLB',
-          price: 100,
-          currency_id: 'BRL',
-          pictures: []
-        };
+  const server = await listen(
+    createApp({
+      store: {
+        readAccount: async (userId) => accounts.find((account) => String(account.user_id) === String(userId)) || null,
+        listAccountTokens: async () =>
+          accounts.map((account) =>
+            Object.assign({}, account, {
+              active: String(account.user_id) === String(activeUserId)
+            })
+          )
       },
-      getItemPrices: async () => ({ prices: [{ type: 'standard', amount: 100, currency_id: 'BRL' }] })
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id, nickname: account.nickname }),
+        getItem: async (itemId) => {
+          calls.push([account.user_id, itemId]);
+          return {
+            id: itemId,
+            title: 'Item loja 2',
+            seller_id: 202,
+            site_id: 'MLB',
+            price: 100,
+            currency_id: 'BRL',
+            pictures: []
+          };
+        },
+        getItemPrices: async () => ({ prices: [{ type: 'standard', amount: 100, currency_id: 'BRL' }] })
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pricing/summary?owner_user_id=202`);
@@ -776,18 +809,18 @@ test('api item usa owner_user_id sem trocar conta ativa', async (t) => {
 });
 
 test('api item bloqueia owner_user_id de conta desativada', async (t) => {
-  const accounts = [
-    { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: true, enabled: false }
-  ];
-  const server = await listen(createApp({
-    store: {
-      readAccount: async (userId) => accounts.find((account) => String(account.user_id) === String(userId)) || null
-    },
-    client: {},
-    clientFactory: () => {
-      throw new Error('Não deveria criar client para conta desativada.');
-    }
-  }));
+  const accounts = [{ user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: true, enabled: false }];
+  const server = await listen(
+    createApp({
+      store: {
+        readAccount: async (userId) => accounts.find((account) => String(account.user_id) === String(userId)) || null
+      },
+      client: {},
+      clientFactory: () => {
+        throw new Error('Não deveria criar client para conta desativada.');
+      }
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pricing/summary?owner_user_id=202`);
@@ -802,32 +835,37 @@ test('api item encontra conta dona quando owner_user_id nao vem', async (t) => {
     { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true },
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false }
   ];
-  let activeUserId = 101;
+  const activeUserId = 101;
   const calls = [];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts.map((account) => Object.assign({}, account, {
-        active: String(account.user_id) === String(activeUserId)
-      }))
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id, nickname: account.nickname }),
-      getItem: async (itemId) => {
-        calls.push([account.user_id, itemId]);
-        return {
-          id: itemId,
-          title: 'Item loja 2',
-          seller_id: 202,
-          site_id: 'MLB',
-          price: 100,
-          currency_id: 'BRL',
-          pictures: []
-        };
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () =>
+          accounts.map((account) =>
+            Object.assign({}, account, {
+              active: String(account.user_id) === String(activeUserId)
+            })
+          )
       },
-      getItemPrices: async () => ({ prices: [{ type: 'standard', amount: 100, currency_id: 'BRL' }] })
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id, nickname: account.nickname }),
+        getItem: async (itemId) => {
+          calls.push([account.user_id, itemId]);
+          return {
+            id: itemId,
+            title: 'Item loja 2',
+            seller_id: 202,
+            site_id: 'MLB',
+            price: 100,
+            currency_id: 'BRL',
+            pictures: []
+          };
+        },
+        getItemPrices: async () => ({ prices: [{ type: 'standard', amount: 100, currency_id: 'BRL' }] })
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pricing/summary`);
@@ -848,24 +886,26 @@ test('api item bloqueia owner_user_id que nao possui anuncio', async (t) => {
     { user_id: 101, nickname: 'LOJA 1', refresh_token: 'TG-1', active: true },
     { user_id: 202, nickname: 'LOJA 2', refresh_token: 'TG-2', active: false }
   ];
-  const server = await listen(createApp({
-    store: {
-      readAccount: async (userId) => accounts.find((account) => String(account.user_id) === String(userId)) || null
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id }),
-      getItem: async (itemId) => ({
-        id: itemId,
-        title: 'Item loja 2',
-        seller_id: 202,
-        site_id: 'MLB',
-        price: 100,
-        currency_id: 'BRL',
-        pictures: []
+  const server = await listen(
+    createApp({
+      store: {
+        readAccount: async (userId) => accounts.find((account) => String(account.user_id) === String(userId)) || null
+      },
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id }),
+        getItem: async (itemId) => ({
+          id: itemId,
+          title: 'Item loja 2',
+          seller_id: 202,
+          site_id: 'MLB',
+          price: 100,
+          currency_id: 'BRL',
+          pictures: []
+        })
       })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/quality?owner_user_id=101`);
@@ -893,16 +933,18 @@ test('api resolve nao usa candidato fraco quando a identidade forte aponta outro
       pictures: [{ id: 'WEAK' }]
     }
   };
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async (itemId) => {
-        calls.push(itemId);
-        return items[itemId];
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async (itemId) => {
+          calls.push(itemId);
+          return items[itemId];
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -924,16 +966,18 @@ test('api resolve nao usa candidato fraco quando a identidade forte aponta outro
 
 test('api resolve bloqueia catalogo sem item confirmado do vendedor', async (t) => {
   let getItemCalled = false;
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => {
-        getItemCalled = true;
-        return null;
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => {
+          getItemCalled = true;
+          return null;
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -955,42 +999,42 @@ test('api resolve bloqueia catalogo sem item confirmado do vendedor', async (t) 
 
 test('api resolve confirma item proprio de catalogo por denuncia antes de product_trigger', async (t) => {
   const calls = [];
-  const accounts = [
-    { user_id: 310458346, nickname: 'BOGU STORE', refresh_token: 'TG-1', active: true, enabled: true }
-  ];
-  const server = await listen(createApp({
-    store: {
-      listAccountTokens: async () => accounts
-    },
-    client: {},
-    clientFactory: (account) => ({
-      getMe: async () => ({ id: account.user_id }),
-      getItem: async (itemId) => {
-        calls.push(itemId);
-        if (itemId === 'MLB6312193712') {
+  const accounts = [{ user_id: 310458346, nickname: 'BOGU STORE', refresh_token: 'TG-1', active: true, enabled: true }];
+  const server = await listen(
+    createApp({
+      store: {
+        listAccountTokens: async () => accounts
+      },
+      client: {},
+      clientFactory: (account) => ({
+        getMe: async () => ({ id: account.user_id }),
+        getItem: async (itemId) => {
+          calls.push(itemId);
+          if (itemId === 'MLB6312193712') {
+            return {
+              id: 'MLB6312193712',
+              title: 'Mesa catalogo propria',
+              seller_id: 310458346,
+              site_id: 'MLB',
+              status: 'active',
+              catalog_listing: true,
+              user_product_id: 'MLBU3721686677',
+              pictures: [{ id: 'CAT' }]
+            };
+          }
           return {
-            id: 'MLB6312193712',
-            title: 'Mesa catalogo propria',
-            seller_id: 310458346,
+            id: itemId,
+            title: 'Trigger de catalogo',
+            seller_id: 999,
             site_id: 'MLB',
             status: 'active',
-            catalog_listing: true,
-            user_product_id: 'MLBU3721686677',
-            pictures: [{ id: 'CAT' }]
+            pictures: []
           };
-        }
-        return {
-          id: itemId,
-          title: 'Trigger de catalogo',
-          seller_id: 999,
-          site_id: 'MLB',
-          status: 'active',
-          pictures: []
-        };
-      },
-      getUserProduct: async () => ({ id: 'MLBU3721686677' })
+        },
+        getUserProduct: async () => ({ id: 'MLBU3721686677' })
+      })
     })
-  }));
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -1041,16 +1085,18 @@ test('api resolve confirma item proprio de catalogo por denuncia antes de produc
 
 test('api resolve bloqueia quando existem apenas candidatos fracos', async (t) => {
   let getItemCalled = false;
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => {
-        getItemCalled = true;
-        return null;
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => {
+          getItemCalled = true;
+          return null;
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -1070,10 +1116,12 @@ test('api resolve bloqueia quando existem apenas candidatos fracos', async (t) =
 });
 
 test('api resolve mantem erro simples quando anuncio nao e detectado', async (t) => {
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {}
-  }));
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {}
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -1088,27 +1136,29 @@ test('api resolve mantem erro simples quando anuncio nao e detectado', async (t)
 });
 
 test('api resolve retorna limites de fotos da categoria', async (t) => {
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        pictures: []
-      }),
-      getCategory: async () => ({
-        id: 'MLB1055',
-        settings: {
-          max_pictures_per_item: 12,
-          max_pictures_per_item_var: 10
-        }
-      })
-    }
-  }));
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          pictures: []
+        }),
+        getCategory: async () => ({
+          id: 'MLB1055',
+          settings: {
+            max_pictures_per_item: 12,
+            max_pictures_per_item_var: 10
+          }
+        })
+      }
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -1127,23 +1177,25 @@ test('api resolve retorna limites de fotos da categoria', async (t) => {
 });
 
 test('api resolve informa quando fotos nao sao editaveis em anuncio encerrado com venda', async (t) => {
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        status: 'closed',
-        has_bids: true,
-        pictures: []
-      }),
-      getCategory: async () => ({ id: 'MLB1055', settings: {} })
-    }
-  }));
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          status: 'closed',
+          has_bids: true,
+          pictures: []
+        }),
+        getCategory: async () => ({ id: 'MLB1055', settings: {} })
+      }
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/resolve`, {
@@ -1164,32 +1216,34 @@ test('api resolve informa quando fotos nao sao editaveis em anuncio encerrado co
 
 test('api commit bloqueia limite antes de atualizar item', async (t) => {
   let updateCalled = false;
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        variations: [],
-        pictures: [{ id: 'A' }]
-      }),
-      getCategory: async () => ({
-        id: 'MLB1055',
-        settings: {
-          max_pictures_per_item: 2,
-          max_pictures_per_item_var: 2
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          variations: [],
+          pictures: [{ id: 'A' }]
+        }),
+        getCategory: async () => ({
+          id: 'MLB1055',
+          settings: {
+            max_pictures_per_item: 2,
+            max_pictures_per_item_var: 2
+          }
+        }),
+        updateItem: async () => {
+          updateCalled = true;
+          return {};
         }
-      }),
-      updateItem: async () => {
-        updateCalled = true;
-        return {};
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/commit`, {
@@ -1209,27 +1263,29 @@ test('api commit bloqueia limite antes de atualizar item', async (t) => {
 
 test('api commit bloqueia anuncio encerrado com venda antes de atualizar item', async (t) => {
   let updateCalled = false;
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        title: 'Item',
-        seller_id: 123,
-        category_id: 'MLB1055',
-        site_id: 'MLB',
-        status: 'closed',
-        has_bids: true,
-        variations: [],
-        pictures: [{ id: 'A' }]
-      }),
-      updateItem: async () => {
-        updateCalled = true;
-        return {};
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          title: 'Item',
+          seller_id: 123,
+          category_id: 'MLB1055',
+          site_id: 'MLB',
+          status: 'closed',
+          has_bids: true,
+          variations: [],
+          pictures: [{ id: 'A' }]
+        }),
+        updateItem: async () => {
+          updateCalled = true;
+          return {};
+        }
       }
-    }
-  }));
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB1234567890/pictures/commit`, {

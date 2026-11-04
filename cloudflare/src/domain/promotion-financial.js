@@ -27,20 +27,18 @@ function summarizePromotionFinancial(entry, options = {}) {
 }
 
 function isStackablePromotionEntry(entry) {
-  const type = String(entry && (entry.type || entry.promotion_type || entry.campaign_type) || '').toUpperCase();
-  return Boolean(entry && entry.is_stackable === true || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN');
+  const type = String((entry && (entry.type || entry.promotion_type || entry.campaign_type)) || '').toUpperCase();
+  return Boolean((entry && entry.is_stackable === true) || type === 'BANK' || type === 'SELLER_COUPON_CAMPAIGN');
 }
 
 function promotionOriginalPrice(entry, fallback) {
   const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
-  return amountOrNull(entry && entry.original_price) ||
-    amountOrNull(raw.original_price) ||
-    amountOrNull(fallback);
+  return amountOrNull(entry && entry.original_price) || amountOrNull(raw.original_price) || amountOrNull(fallback);
 }
 
 function promotionContributionPercentage(entry, party) {
   const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
-  const benefits = entry && entry.benefits || raw.benefits || {};
+  const benefits = (entry && entry.benefits) || raw.benefits || {};
   const topLevel = party === 'meli' ? entry && entry.meli_percentage : entry && entry.seller_percentage;
   const rawTopLevel = party === 'meli' ? raw.meli_percentage : raw.seller_percentage;
   const benefitValue = party === 'meli' ? benefits.meli_percent : benefits.seller_percent;
@@ -51,18 +49,19 @@ function summarizeContribution(percentage, originalPrice) {
   if (percentage === null || percentage === undefined) return null;
   return {
     percentage,
-    amount: originalPrice !== null && originalPrice !== undefined
-      ? roundMoney(originalPrice * percentage / 100)
-      : null,
+    amount:
+      originalPrice !== null && originalPrice !== undefined ? roundMoney((originalPrice * percentage) / 100) : null,
     amount_source: originalPrice !== null && originalPrice !== undefined ? 'calculated_from_original_price' : null
   };
 }
 
 function summarizeFeeReduction(entry) {
   const raw = entry && entry.raw && typeof entry.raw === 'object' ? entry.raw : {};
-  const boosted = entry && entry.boosted_offer === true || raw.boosted_offer === true;
-  const amount = amountOrNull(entry && entry.discount_meli_boost_amount) ?? amountOrNull(raw.discount_meli_boost_amount);
-  const percentage = amountOrNull(entry && entry.discount_meli_boosted_percentage) ?? amountOrNull(raw.discount_meli_boosted_percentage);
+  const boosted = (entry && entry.boosted_offer === true) || raw.boosted_offer === true;
+  const amount =
+    amountOrNull(entry && entry.discount_meli_boost_amount) ?? amountOrNull(raw.discount_meli_boost_amount);
+  const percentage =
+    amountOrNull(entry && entry.discount_meli_boosted_percentage) ?? amountOrNull(raw.discount_meli_boosted_percentage);
   if (!boosted) return null;
   return {
     amount,

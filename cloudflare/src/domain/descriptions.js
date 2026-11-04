@@ -95,7 +95,12 @@ async function prepareDescriptionTarget(client, target) {
   try {
     const item = await assertOwnedItem(client, target.itemId);
     if (item.catalog_listing) {
-      return blockedTarget(target, item, 'catalog_listing_description_read_only', 'Catálogo: descrição bloqueada pelo Mercado Livre.');
+      return blockedTarget(
+        target,
+        item,
+        'catalog_listing_description_read_only',
+        'Catálogo: descrição bloqueada pelo Mercado Livre.'
+      );
     }
 
     return {
@@ -147,7 +152,7 @@ async function getExistingDescription(client, itemId) {
     const description = await client.getItemDescription(itemId);
     return normalizeDescription(itemId, description, true);
   } catch (err) {
-    if (Number(err && err.statusCode || 0) === 404) {
+    if (Number((err && err.statusCode) || 0) === 404) {
       return normalizeDescription(itemId, null, false);
     }
     throw err;
@@ -174,7 +179,9 @@ function assertDescriptionEditableItem(item) {
 }
 
 function normalizePlainText(value) {
-  const plainText = String(value === undefined || value === null ? '' : value).replace(/\r\n/g, '\n').trim();
+  const plainText = String(value === undefined || value === null ? '' : value)
+    .replace(/\r\n/g, '\n')
+    .trim();
   if (!plainText) {
     const err = new Error('description_empty');
     err.statusCode = 400;

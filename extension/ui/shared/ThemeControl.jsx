@@ -125,7 +125,15 @@ export function ThemeMenuButton({ iconOnly = true, label = 'Aparência', placeme
 
   return (
     <Menu
-      trigger={iconOnly ? <Tooltip label={accessibleLabel} placement="bottom">{button}</Tooltip> : button}
+      trigger={
+        iconOnly ? (
+          <Tooltip label={accessibleLabel} placement="bottom">
+            {button}
+          </Tooltip>
+        ) : (
+          button
+        )
+      }
       items={themeMenuItems(preference, setTheme)}
       placement={placement}
       align={align}

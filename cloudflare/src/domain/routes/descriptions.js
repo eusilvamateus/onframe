@@ -1,8 +1,4 @@
-const {
-  getDescription,
-  updateDescriptionFamily,
-  upsertDescription
-} = require('../descriptions');
+const { getDescription, updateDescriptionFamily, upsertDescription } = require('../descriptions');
 
 async function handleDescriptionGet({ client, itemId }) {
   return getDescription(client, itemId);

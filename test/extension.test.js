@@ -19,7 +19,8 @@ test('pacote da extensão mantém o orçamento de tamanho e não duplica assets 
   ];
   generatedFiles.forEach((file) => assert.equal(fs.existsSync(file), true, `Bundle ausente: ${file}`));
 
-  const files = fs.readdirSync(extensionRoot, { recursive: true })
+  const files = fs
+    .readdirSync(extensionRoot, { recursive: true })
     .map((file) => path.join(extensionRoot, file))
     .filter((file) => fs.statSync(file).isFile());
   const totalBytes = files.reduce((total, file) => total + fs.statSync(file).size, 0);
@@ -53,7 +54,10 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
   assert.equal(feedbackSurface({ tone: 'danger', visible: true }), 'alert');
   assert.equal(feedbackSurface({ tone: 'warning' }), 'alert');
   assert.match(source, /<ToastStack position="bottom-right"/);
-  assert.match(source.slice(source.indexOf('async function updateAccount'), source.indexOf('async function renameAccount')), /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/);
+  assert.match(
+    source.slice(source.indexOf('async function updateAccount'), source.indexOf('async function renameAccount')),
+    /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/
+  );
 });
 
 test('content script usa o ToastStack oficial sem implementação visual paralela', () => {
@@ -71,11 +75,8 @@ test('content script usa o ToastStack oficial sem implementação visual paralel
 
 test('interfaces React não reintroduzem controles HTML ou folhas legadas', () => {
   const uiRoot = path.join(extensionRoot, 'ui');
-  const jsxFiles = fs.readdirSync(uiRoot, { recursive: true })
-    .filter((file) => String(file).endsWith('.jsx'));
-  const source = jsxFiles
-    .map((file) => fs.readFileSync(path.join(uiRoot, file), 'utf8'))
-    .join('\n');
+  const jsxFiles = fs.readdirSync(uiRoot, { recursive: true }).filter((file) => String(file).endsWith('.jsx'));
+  const source = jsxFiles.map((file) => fs.readFileSync(path.join(uiRoot, file), 'utf8')).join('\n');
 
   assert.doesNotMatch(source, /<(?:button|input|select|textarea|details|summary)\b/u);
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'components.css')), false);
@@ -101,7 +102,10 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(control, /value: 'system'/);
   assert.match(control, /<Chip[\s\S]*selected=\{preference === option\.value\}/);
   assert.match(control, /<Tabs[\s\S]*variant="pill"[\s\S]*active=\{preference\}/);
-  assert.match(control, /tabs=\{THEME_OPTIONS\.map\(\(option\) => \(\{ id: option\.value, label: option\.label, icon: option\.icon \}\)\)\}/);
+  assert.match(
+    control,
+    /tabs=\{THEME_OPTIONS\.map\(\(option\) => \(\{ id: option\.value, label: option\.label, icon: option\.icon \}\)\)\}/
+  );
   assert.match(control, /<Button[\s\S]*kind="quiet"[\s\S]*onClick=\{\(\) => setTheme\(next\.value\)\}/);
   assert.match(control, /const accessibleLabel = selected\.label;/);
   assert.doesNotMatch(control, /Tema:|Tema atual|Alterar para/);
@@ -122,12 +126,27 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(themeSync, /chrome\.storage\.onChanged/);
   assert.match(foundations, /:root\[data-onframe-theme='dark'\]/);
   assert.match(foundations, /\[class\^='onframe-'\]/);
-  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[aria-describedby\]\) > \[role='tooltip'\]/);
-  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-popover-root[^)]*\) \[aria-describedby\]\) > \[role='tooltip'\]/);
-  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[role='dialog'\]\) > \[role='tooltip'\]/);
+  assert.match(
+    foundations,
+    /body:has\(\s*:is\([^)]*\.onframe-commerce-modal-root[^)]*\)\s*\[aria-describedby\]\s*\)\s*>\s*\[role='tooltip'\]/
+  );
+  assert.match(
+    foundations,
+    /body:has\(\s*:is\([^)]*\.onframe-commerce-popover-root[^)]*\)\s*\[aria-describedby\]\s*\)\s*>\s*\[role='tooltip'\]/
+  );
+  assert.match(
+    foundations,
+    /body:has\(\s*:is\([^)]*\.onframe-commerce-modal-root[^)]*\)\s*\[role='dialog'\]\s*\)\s*>\s*\[role='tooltip'\]/
+  );
   assert.match(foundations, /--ob-z-tooltip: var\(--ob-z-extension-toast\)/);
-  assert.match(foundations, /:is\(\.onblide-ml-dialog-root, \.onframe-commerce-modal-root\)\s*\{[\s\S]*--ob-z-overlay: var\(--ob-z-extension-overlay\);[\s\S]*--ob-z-modal: var\(--ob-z-extension-modal\);/s);
-  assert.match(foundations, /body:has\(:is\([^)]*\.onframe-commerce-modal-root[^)]*\) \[role='dialog'\]\) > \[data-ob-popover-id\]\s*\{[\s\S]*--ob-z-dropdown: var\(--ob-z-extension-modal\);/s);
+  assert.match(
+    foundations,
+    /:is\(\.onblide-ml-dialog-root, \.onframe-commerce-modal-root\)\s*\{[\s\S]*--ob-z-overlay: var\(--ob-z-extension-overlay\);[\s\S]*--ob-z-modal: var\(--ob-z-extension-modal\);/s
+  );
+  assert.match(
+    foundations,
+    /body:has\(\s*:is\([^)]*\.onframe-commerce-modal-root[^)]*\)\s*\[role='dialog'\]\s*\)\s*>\s*\[data-ob-popover-id\]\s*\{[\s\S]*--ob-z-dropdown: var\(--ob-z-extension-modal\);/s
+  );
   assert.match(foundations, /--ob-selection-bg: var\(--ob-blue-100\)/);
   assert.match(foundations, /--ob-selection-bg: #3a6ee0/);
   assert.match(foundations, /--ob-selection-fg: #ffffff/);
@@ -156,7 +175,9 @@ test('tema do content script acompanha a preferência compartilhada e o sistema'
   let mediaListener = null;
   const mediaQuery = {
     matches: false,
-    addEventListener: (_event, listener) => { mediaListener = listener; },
+    addEventListener: (_event, listener) => {
+      mediaListener = listener;
+    },
     removeEventListener: (_event, listener) => {
       if (mediaListener === listener) mediaListener = null;
     }
@@ -175,7 +196,9 @@ test('tema do content script acompanha a preferência compartilhada e o sistema'
           get: (_defaults, callback) => callback({ onframeThemePreference: 'dark' })
         },
         onChanged: {
-          addListener: (listener) => { storageListener = listener; },
+          addListener: (listener) => {
+            storageListener = listener;
+          },
           removeListener: (listener) => {
             if (storageListener === listener) storageListener = null;
           }
@@ -207,39 +230,85 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const popupSource = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'IntegrationsSession.jsx'), 'utf8');
   const accountSource = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'IntegrationAccount.jsx'), 'utf8');
-  const helpers = accountSource.slice(accountSource.indexOf('export function accountName'), accountSource.indexOf('export function IntegrationAccount')).replaceAll('export ', '');
-  const accountComponent = accountSource.slice(accountSource.indexOf('export function IntegrationAccount')).replace('export ', '');
-  const integrations = source.slice(source.indexOf('function Integrations'), source.indexOf('function settingsOptionItems'));
+  const helpers = accountSource
+    .slice(
+      accountSource.indexOf('export function accountName'),
+      accountSource.indexOf('export function IntegrationAccount')
+    )
+    .replaceAll('export ', '');
+  const accountComponent = accountSource
+    .slice(accountSource.indexOf('export function IntegrationAccount'))
+    .replace('export ', '');
+  const integrations = source.slice(
+    source.indexOf('function Integrations'),
+    source.indexOf('function settingsOptionItems')
+  );
   const compiled = transformSync(`${helpers}\n${accountComponent}\n${integrations}\nIntegrations`, {
-    loader: 'jsx', jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment'
+    loader: 'jsx',
+    jsx: 'transform',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment'
   }).code;
   const opened = [];
   const updated = [];
   const removed = [];
   const Integrations = vm.runInNewContext(compiled, {
-    React, URL, useState: React.useState, useRef: React.useRef, openExternal: (url) => opened.push(url),
-    SectionHeader: ({ actions }) => React.createElement('section-header', null, actions), Button: 'button-control', ButtonGroup: 'button-group',
-    ToggleButton: 'toggle-control', Card: 'card-control', Avatar: 'avatar-control',
-    Tooltip: 'tooltip-control', Switch: 'switch-control', Input: 'input-control', Ph: 'icon-control'
+    React,
+    URL,
+    useState: React.useState,
+    useRef: React.useRef,
+    openExternal: (url) => opened.push(url),
+    SectionHeader: ({ actions }) => React.createElement('section-header', null, actions),
+    Button: 'button-control',
+    ButtonGroup: 'button-group',
+    ToggleButton: 'toggle-control',
+    Card: 'card-control',
+    Avatar: 'avatar-control',
+    Tooltip: 'tooltip-control',
+    Switch: 'switch-control',
+    Input: 'input-control',
+    Ph: 'icon-control'
   });
-  const account = { id: 'acc-1', user_id: '123', nickname: 'Nome original', display_name: 'Loja', enabled: true, permalink: 'http://perfil.mercadolivre.com.br/loja' };
+  const account = {
+    id: 'acc-1',
+    user_id: '123',
+    nickname: 'Nome original',
+    display_name: 'Loja',
+    enabled: true,
+    permalink: 'http://perfil.mercadolivre.com.br/loja'
+  };
   const renamed = [];
   let renderer;
   await act(async () => {
-    renderer = create(React.createElement(Integrations, {
-      accounts: [account], admin: true, loading: false, onConnect: () => {}, onUpdate: (_account, enabled) => updated.push(enabled),
-      onRename: async (_account, value) => { renamed.push(value); return true; }, onRemove: (_account) => removed.push(_account.user_id)
-    }));
+    renderer = create(
+      React.createElement(Integrations, {
+        accounts: [account],
+        admin: true,
+        loading: false,
+        onConnect: () => {},
+        onUpdate: (_account, enabled) => updated.push(enabled),
+        onRename: async (_account, value) => {
+          renamed.push(value);
+          return true;
+        },
+        onRemove: (_account) => removed.push(_account.user_id)
+      })
+    );
   });
   assert.equal(renderer.root.findAllByProps({ className: 'onframe-integration-list-item' }).length, 1);
   assert.equal(renderer.root.findAllByType('card-control').length, 1);
-  const connectButton = renderer.root.findAllByType('button-control').find((node) => node.props.children === 'Conectar conta');
+  const connectButton = renderer.root
+    .findAllByType('button-control')
+    .find((node) => node.props.children === 'Conectar conta');
   assert.equal(connectButton.props.icon.props.n, 'plus-circle');
   assert.equal(renderer.root.findAllByType('switch-control')[0].props.checked, true);
   assert.equal(renderer.root.findByType('switch-control').props.size, 'md');
   assert.equal(renderer.root.findByType('switch-control').props.label, undefined);
   assert.equal(renderer.root.findByType('button-group').props.size, 'md');
-  assert.deepEqual(renderer.root.findAllByType('toggle-control').map((node) => node.props.appearance), ['ghost', 'ghost']);
+  assert.deepEqual(
+    renderer.root.findAllByType('toggle-control').map((node) => node.props.appearance),
+    ['ghost', 'ghost']
+  );
   assert.match(popupSource, /value="list" appearance="ghost"[^]*value="cards" appearance="ghost"/u);
   await act(async () => renderer.root.findByType('switch-control').props.onChange(false));
   assert.deepEqual(updated, [false]);
@@ -264,56 +333,104 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Renomear Loja' })[0].props.onClick());
   const input = renderer.root.findByType('input-control');
   let selected = false;
-  input.props.onFocus({ target: { select: () => { selected = true; } } });
+  input.props.onFocus({
+    target: {
+      select: () => {
+        selected = true;
+      }
+    }
+  });
   assert.equal(selected, true);
   await act(async () => input.props.onChange({ target: { value: '  Loja principal  ' } }));
   await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Salvar nome' })[0].props.onClick());
   assert.deepEqual(renamed, ['Loja principal']);
   assert.equal(renderer.root.findAllByType('input-control').length, 0);
-  await act(async () => renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.onClick());
+  await act(async () =>
+    renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.onClick()
+  );
   assert.deepEqual(opened, ['https://perfil.mercadolivre.com.br/loja']);
 });
 
 test('upload de foto estima progresso sem concluir antes da resposta e libera o controle apos falha', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
-  const profileSettings = source.slice(source.indexOf('function ProfileSettings'), source.indexOf('function SessionsSettings'));
+  const profileSettings = source.slice(
+    source.indexOf('function ProfileSettings'),
+    source.indexOf('function SessionsSettings')
+  );
   const compiled = transformSync(`${profileSettings}\nProfileSettings`, {
-    loader: 'jsx', jsx: 'transform', jsxFactory: 'React.createElement', jsxFragment: 'React.Fragment'
+    loader: 'jsx',
+    jsx: 'transform',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment'
   }).code;
   const intervals = new Map();
   let nextIntervalId = 0;
   const ProfileSettings = vm.runInNewContext(compiled, {
-    React, useState: React.useState, useEffect: React.useEffect,
-    setInterval: (callback) => { const id = ++nextIntervalId; intervals.set(id, callback); return id; },
+    React,
+    useState: React.useState,
+    useEffect: React.useEffect,
+    setInterval: (callback) => {
+      const id = ++nextIntervalId;
+      intervals.set(id, callback);
+      return id;
+    },
     clearInterval: (id) => intervals.delete(id),
-    SectionHeader: 'section-header', FileUpload: 'file-upload', Input: 'input-control',
-    Link: 'link-control', Divider: 'divider-control', Button: 'button-control', ButtonGroup: 'button-group'
+    SectionHeader: 'section-header',
+    FileUpload: 'file-upload',
+    Input: 'input-control',
+    Link: 'link-control',
+    Divider: 'divider-control',
+    Button: 'button-control',
+    ButtonGroup: 'button-group'
   });
-  const profileWithAvatar = { user: { name: 'Mateus', email: 'mateus@example.com', avatarUrl: 'https://example.com/avatar.png' } };
+  const profileWithAvatar = {
+    user: { name: 'Mateus', email: 'mateus@example.com', avatarUrl: 'https://example.com/avatar.png' }
+  };
   const profileWithoutAvatar = { user: { ...profileWithAvatar.user, avatarUrl: null } };
   let finishUpload;
   let failUpload;
   let finishRemoval;
   let renderer;
-  const onAvatar = () => new Promise((resolve, reject) => { finishUpload = resolve; failUpload = reject; });
-  const onRemoveAvatar = () => new Promise((resolve) => { finishRemoval = resolve; });
-  const renderProfile = (profile, loading) => React.createElement(ProfileSettings, {
-    profile, loading, onSave: async () => {}, onAvatar, onRemoveAvatar, onOpenSecuritySettings: () => {}
-  });
+  const onAvatar = () =>
+    new Promise((resolve, reject) => {
+      finishUpload = resolve;
+      failUpload = reject;
+    });
+  const onRemoveAvatar = () =>
+    new Promise((resolve) => {
+      finishRemoval = resolve;
+    });
+  const renderProfile = (profile, loading) =>
+    React.createElement(ProfileSettings, {
+      profile,
+      loading,
+      onSave: async () => {},
+      onAvatar,
+      onRemoveAvatar,
+      onOpenSecuritySettings: () => {}
+    });
   await act(async () => {
     renderer = create(renderProfile(profileWithAvatar, false));
   });
   const upload = () => renderer.root.findByType('file-upload');
   assert.equal(upload().props.disabled, false);
-  await act(async () => { upload().props.onChange([]); });
+  await act(async () => {
+    upload().props.onChange([]);
+  });
   assert.equal(upload().props.disabled, true);
-  await act(async () => { finishRemoval(); });
-  await act(async () => { renderer.update(renderProfile(profileWithoutAvatar, true)); });
+  await act(async () => {
+    finishRemoval();
+  });
+  await act(async () => {
+    renderer.update(renderProfile(profileWithoutAvatar, true));
+  });
   assert.equal(upload().props.disabled, false);
 
   let uploadResult;
   const progress = [];
-  await act(async () => { uploadResult = upload().props.upload({ name: 'foto.png' }, (value) => progress.push(value)); });
+  await act(async () => {
+    uploadResult = upload().props.upload({ name: 'foto.png' }, (value) => progress.push(value));
+  });
   assert.equal(upload().props.disabled, true);
   assert.deepEqual(progress, [5]);
   for (let index = 0; index < 50; index += 1) {
@@ -321,16 +438,24 @@ test('upload de foto estima progresso sem concluir antes da resposta e libera o 
   }
   assert.ok(progress.some((value) => value > 5));
   assert.equal(progress.at(-1), 95);
-  await act(async () => { finishUpload(); await uploadResult; });
+  await act(async () => {
+    finishUpload();
+    await uploadResult;
+  });
   assert.equal(progress.at(-1), 100);
   assert.equal(intervals.size, 0);
   assert.equal(upload().props.disabled, false);
 
   const failedProgress = [];
   let failedUpload;
-  await act(async () => { failedUpload = upload().props.upload({ name: 'falha.png' }, (value) => failedProgress.push(value)); });
+  await act(async () => {
+    failedUpload = upload().props.upload({ name: 'falha.png' }, (value) => failedProgress.push(value));
+  });
   for (const callback of intervals.values()) callback();
-  await act(async () => { failUpload(new Error('Falha no envio')); await assert.rejects(failedUpload, /Falha no envio/); });
+  await act(async () => {
+    failUpload(new Error('Falha no envio'));
+    await assert.rejects(failedUpload, /Falha no envio/);
+  });
   assert.ok(failedProgress.at(-1) > 5);
   assert.ok(failedProgress.every((value) => value < 100));
   assert.equal(intervals.size, 0);
@@ -347,8 +472,14 @@ test('manifest declara somente os hosts públicos indispensáveis', () => {
   ]);
   assert.equal(manifest.action.default_popup, 'ui/popup/index.html');
   assert.equal(manifest.options_ui.page, 'ui/options/index.html');
-  assert.ok(manifest.content_scripts[0].js.indexOf('core/fonts.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
-  assert.ok(manifest.content_scripts[0].js.indexOf('core/period.js') < manifest.content_scripts[0].js.indexOf('modules/commerce/module.js'));
+  assert.ok(
+    manifest.content_scripts[0].js.indexOf('core/fonts.js') <
+      manifest.content_scripts[0].js.indexOf('modules/commerce/module.js')
+  );
+  assert.ok(
+    manifest.content_scripts[0].js.indexOf('core/period.js') <
+      manifest.content_scripts[0].js.indexOf('modules/commerce/module.js')
+  );
   assert.equal(manifest.content_scripts[0].js.includes('core/icons.js'), false);
   assert.equal(manifest.content_scripts[0].js.includes('core/datepicker.js'), false);
   assert.equal(manifest.content_scripts[0].js.includes('core/button.js'), false);
@@ -374,12 +505,30 @@ test('fontes do content script usam URLs da extensão', () => {
 
   assert.equal(appended.length, 1);
   assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
-  assert.match(appended[0].textContent, /font-family: 'Phosphor';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor\.woff2[\s\S]*format\('woff2'\)/s);
-  assert.match(appended[0].textContent, /font-family: 'Phosphor-Bold';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor-Bold\.woff2/s);
-  assert.match(appended[0].textContent, /font-family: 'Phosphor-Fill';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor-Fill\.woff2/s);
-  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s);
-  assert.match(appended[0].textContent, /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s);
-  assert.doesNotMatch(appended[0].textContent, /font-family: 'OnFrame Poppins (?:Regular|Medium|SemiBold|Bold|ExtraBold)'/);
+  assert.match(
+    appended[0].textContent,
+    /font-family: 'Phosphor';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor\.woff2[\s\S]*format\('woff2'\)/s
+  );
+  assert.match(
+    appended[0].textContent,
+    /font-family: 'Phosphor-Bold';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor-Bold\.woff2/s
+  );
+  assert.match(
+    appended[0].textContent,
+    /font-family: 'Phosphor-Fill';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor-Fill\.woff2/s
+  );
+  assert.match(
+    appended[0].textContent,
+    /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s
+  );
+  assert.match(
+    appended[0].textContent,
+    /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s
+  );
+  assert.doesNotMatch(
+    appended[0].textContent,
+    /font-family: 'OnFrame Poppins (?:Regular|Medium|SemiBold|Bold|ExtraBold)'/
+  );
   assert.doesNotMatch(foundations, /@font-face|\.\.\/fonts\//);
   assert.doesNotMatch(phosphor, /@font-face|\.woff2/);
   assert.match(phosphor, /font-family: "Phosphor" !important/);
@@ -400,9 +549,9 @@ test('verificacao hospedada de chaves reutiliza a interface de codigo do login',
   const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'security-ui.js'), 'utf8');
   assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
   assert.doesNotMatch(passkeys, /brandSrc=/);
-  assert.match(passkeys, /!managing && <div className="onframe-brand"/);
+  assert.match(passkeys, /!managing && \(\s*<div className="onframe-brand"/);
   assert.match(passkeys, /<VerificationEmailField email=\{email\}/);
-  assert.match(passkeys, /<VerificationCodeField label="Código do aplicativo autenticador" length=\{6\}/);
+  assert.match(passkeys, /<VerificationCodeField[\s\S]*label="Código do aplicativo autenticador"[\s\S]*length=\{6\}/);
   assert.doesNotMatch(passkeys, /<Input label="Código do aplicativo autenticador"/);
   assert.match(build, /onframe-stacked-primary\.png/);
 });
@@ -414,32 +563,51 @@ test('erros de autenticação sem mensagem útil preservam o status HTTP e tradu
   const message = window.OnFrameRemoteAuth.authErrorMessage;
   const fallback = 'Não foi possível enviar o código. Tente novamente.';
   assert.equal(message({ code: 'auth_request_failed', status: 403 }, fallback), `${fallback} (HTTP 403)`);
-  assert.equal(message({ code: 'over_email_send_rate_limit', status: 429 }, fallback), 'Aguarde um minuto antes de solicitar outro código.');
-  assert.equal(message({ code: 'auth_request_failed', status: 502 }, fallback), 'O serviço de autenticação está indisponível. Tente novamente em instantes.');
+  assert.equal(
+    message({ code: 'over_email_send_rate_limit', status: 429 }, fallback),
+    'Aguarde um minuto antes de solicitar outro código.'
+  );
+  assert.equal(
+    message({ code: 'auth_request_failed', status: 502 }, fallback),
+    'O serviço de autenticação está indisponível. Tente novamente em instantes.'
+  );
 });
 
 test('Turnstile so executa sob demanda e exibe area apenas durante interacao', async () => {
   const code = fs.readFileSync(path.join(extensionRoot, 'core', 'remote-auth.js'), 'utf8');
   const css = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
-  assert.match(css, /\.onframe-captcha \{ position: absolute;/);
-  assert.match(css, /\.onframe-captcha\[data-interactive="true"\]:not\(\[hidden\]\) \{ position: static;/);
+  assert.match(css, /\.onframe-captcha \{\s*position: absolute;/);
+  assert.match(css, /\.onframe-captcha\[data-interactive=['"]true['"]\]:not\(\[hidden\]\) \{\s*position: static;/);
   const sent = [];
   let onMessage;
   const container = {
-    dataset: {}, hidden: false, frame: null,
-    replaceChildren(frame) { this.frame = frame || null; }
+    dataset: {},
+    hidden: false,
+    frame: null,
+    replaceChildren(frame) {
+      this.frame = frame || null;
+    }
   };
   const window = {
     location: { origin: 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
-    addEventListener: (_name, listener) => { onMessage = listener; },
+    addEventListener: (_name, listener) => {
+      onMessage = listener;
+    },
     removeEventListener: () => {}
   };
-  const document = { createElement: () => ({
-    contentWindow: { postMessage: (message, origin) => sent.push({ message, origin }) },
-    setAttribute: () => {}, remove: () => {}
-  }) };
+  const document = {
+    createElement: () => ({
+      contentWindow: { postMessage: (message, origin) => sent.push({ message, origin }) },
+      setAttribute: () => {},
+      remove: () => {}
+    })
+  };
   vm.runInNewContext(code, {
-    window, document, crypto: require('node:crypto').webcrypto, setTimeout, clearTimeout,
+    window,
+    document,
+    crypto: require('node:crypto').webcrypto,
+    setTimeout,
+    clearTimeout,
     fetch: async () => ({ ok: true, headers: { get: () => 'text/html' } })
   });
   const challenge = window.OnFrameRemoteAuth.createChallenge(container, () => {});
@@ -451,14 +619,30 @@ test('Turnstile so executa sob demanda e exibe area apenas durante interacao', a
   const request = challenge.execute();
   await new Promise(setImmediate);
   assert.equal(sent.length, 0);
-  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'ready' } });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source,
+    data: { type: 'onframe:turnstile', nonce, status: 'ready' }
+  });
   assert.equal(sent.length, 1);
   assert.equal(sent[0].message.type, 'onframe:turnstile:execute');
-  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'interaction' } });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source,
+    data: { type: 'onframe:turnstile', nonce, status: 'interaction' }
+  });
   assert.equal(container.dataset.interactive, 'true');
-  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'success', token: 'captcha-test' } });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source,
+    data: { type: 'onframe:turnstile', nonce, status: 'success', token: 'captcha-test' }
+  });
   assert.equal(await request, 'captcha-test');
-  onMessage({ origin: 'https://onframe.onblide.com', source, data: { type: 'onframe:turnstile', nonce, status: 'idle' } });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source,
+    data: { type: 'onframe:turnstile', nonce, status: 'idle' }
+  });
   assert.equal(container.dataset.interactive, undefined);
   challenge.reset();
   await new Promise(setImmediate);
@@ -466,14 +650,26 @@ test('Turnstile so executa sob demanda e exibe area apenas durante interacao', a
   const nextNonce = new URL(container.frame.src).searchParams.get('nonce');
   const failed = challenge.execute();
   await new Promise(setImmediate);
-  onMessage({ origin: 'https://onframe.onblide.com', source: nextSource, data: { type: 'onframe:turnstile', nonce: nextNonce, status: 'error' } });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source: nextSource,
+    data: { type: 'onframe:turnstile', nonce: nextNonce, status: 'error' }
+  });
   await assert.rejects(failed, { code: 'captcha_unavailable' });
   const retried = challenge.execute();
   await new Promise(setImmediate);
   assert.ok(container.frame);
   const retryNonce = new URL(container.frame.src).searchParams.get('nonce');
-  onMessage({ origin: 'https://onframe.onblide.com', source: container.frame.contentWindow, data: { type: 'onframe:turnstile', nonce: retryNonce, status: 'ready' } });
-  onMessage({ origin: 'https://onframe.onblide.com', source: container.frame.contentWindow, data: { type: 'onframe:turnstile', nonce: retryNonce, status: 'success', token: 'captcha-retry' } });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source: container.frame.contentWindow,
+    data: { type: 'onframe:turnstile', nonce: retryNonce, status: 'ready' }
+  });
+  onMessage({
+    origin: 'https://onframe.onblide.com',
+    source: container.frame.contentWindow,
+    data: { type: 'onframe:turnstile', nonce: retryNonce, status: 'success', token: 'captcha-retry' }
+  });
   assert.equal(await retried, 'captcha-retry');
   challenge.destroy();
 });
@@ -496,8 +692,14 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const history = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'ItemEditHistory.jsx'), 'utf8');
   const periodGlobal = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'period-global.js'), 'utf8');
-  const profileSettings = options.slice(options.indexOf('function ProfileSettings'), options.indexOf('function SessionsSettings'));
-  const integrations = options.slice(options.indexOf('function Integrations'), options.indexOf('function settingsOptionItems'));
+  const profileSettings = options.slice(
+    options.indexOf('function ProfileSettings'),
+    options.indexOf('function SessionsSettings')
+  );
+  const integrations = options.slice(
+    options.indexOf('function Integrations'),
+    options.indexOf('function settingsOptionItems')
+  );
 
   assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
   assert.match(history, /formatarPeriodo\(dateFromIso\(period\.start\), dateFromIso\(period\.end\), \{ hoje \}\)/);
@@ -515,11 +717,20 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popupHtml, /<html lang="pt-BR" class="onframe-popup-window">/);
   assert.match(popupHtml, /<body class="onframe-popup-document">/);
   assert.match(optionsCss, /\.onframe-popup-document\s*\{[^}]*width:\s*460px;[^}]*min-width:\s*460px/);
-  assert.match(optionsCss, /\.onframe-history-product-media \.onframe-history-type-icon\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/);
+  assert.match(
+    optionsCss,
+    /\.onframe-history-product-media \.onframe-history-type-icon\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%/
+  );
   assert.match(optionsCss, /\.onframe-history-period-picker\s*\{[^}]*justify-content:\s*center/);
   assert.match(optionsCss, /\.onframe-history-period-picker > div\s*\{[^}]*width:\s*276px;[^}]*max-width:\s*100%/);
-  assert.match(optionsCss, /\.onframe-popup-window, \.onframe-popup-document\s*\{[^}]*background:\s*transparent;[^}]*border-radius:\s*var\(--ob-r-surface\);[^}]*overflow:\s*hidden;/);
-  assert.match(optionsCss, /\.onframe-popup-document #root\s*\{[^}]*background:\s*var\(--ob-surface\);[^}]*border-radius:\s*inherit;[^}]*overflow:\s*hidden;/);
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-window,\s*\.onframe-popup-document\s*\{[^}]*background:\s*transparent;[^}]*border-radius:\s*var\(--ob-r-surface\);[^}]*overflow:\s*hidden;/
+  );
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-document #root\s*\{[^}]*background:\s*var\(--ob-surface\);[^}]*border-radius:\s*inherit;[^}]*overflow:\s*hidden;/
+  );
   assert.match(optionsCss, /\.onframe-popup\s*\{[^}]*width:\s*100%;/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup\s*\{\s*width:\s*100vw;/);
   assert.match(optionsCss, /\.onframe-popup-session\s*\{[^}]*height:\s*600px;/);
@@ -527,13 +738,25 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(optionsCss, /\.onframe-popup-home\s*\{[^}]*min-height/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-session\s*\{[^}]*100vh/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-session-header\s*\{[^}]*border-bottom/);
-  assert.match(optionsCss, /\.onframe-popup-footer\s*\{[^}]*justify-content:\s*space-between;[^}]*border-top:\s*1px solid var\(--ob-border\)/);
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-footer\s*\{[^}]*justify-content:\s*space-between;[^}]*border-top:\s*1px solid var\(--ob-border\)/
+  );
   assert.match(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--ob-border\);/);
   assert.doesNotMatch(optionsCss, /\.onframe-popup-card-row\s*\{[^}]*border:\s*1px/);
   assert.match(optionsCss, /\.onframe-integration-list\s*\{[^}]*display:\s*flex;[^}]*gap:\s*var\(--ob-s-3\);/);
-  assert.match(optionsCss, /\.onframe-popup-integration-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(optionsCss, /\.onframe-popup-integration-list\s*\{[^}]*display:\s*flex;[^}]*overflow:\s*hidden;[^}]*border:\s*1px solid var\(--ob-border\)/);
-  assert.match(optionsCss, /\.onframe-popup-integration-list-row \+ \.onframe-popup-integration-list-row\s*\{[^}]*border-top:\s*1px solid var\(--ob-line-soft\)/);
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-integration-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/
+  );
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-integration-list\s*\{[^}]*display:\s*flex;[^}]*overflow:\s*hidden;[^}]*border:\s*1px solid var\(--ob-border\)/
+  );
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-integration-list-row \+ \.onframe-popup-integration-list-row\s*\{[^}]*border-top:\s*1px solid var\(--ob-line-soft\)/
+  );
   assert.doesNotMatch(optionsCss, /\.onframe-(?:popup-)?integration-list\s*\{[^}]*border-top/);
   assert.match(options, /<AuthBrand \/>/);
   assert.match(authPanel, /alt="OnFrame"/);
@@ -541,12 +764,21 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
   assert.match(optionsCss, /\.onframe-auth-panel\s*\{[^}]*width:\s*min\(100%, 448px\);[^}]*margin-inline:\s*auto/);
-  assert.match(optionsCss, /\.onframe-auth-methods, \.onframe-auth-methods > div, \.onframe-auth-methods > div > div\s*\{[^}]*width:\s*100%/);
+  assert.match(
+    optionsCss,
+    /\.onframe-auth-methods,\s*\.onframe-auth-methods > div,\s*\.onframe-auth-methods > div > div\s*\{[^}]*width:\s*100%/
+  );
   assert.match(optionsCss, /\.onframe-auth-methods button\s*\{[^}]*flex:\s*1;[^}]*justify-content:\s*center/);
   assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-s-1\)/);
-  assert.match(optionsCss, /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/);
+  assert.match(
+    optionsCss,
+    /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/
+  );
   assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-s-5\);[^}]*min-width:\s*0/);
-  assert.match(optionsCss, /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-s-2\)/);
+  assert.match(
+    optionsCss,
+    /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-s-2\)/
+  );
   assert.match(optionsCss, /\.onframe-auth-code-scroll\s*\{[^}]*display:\s*flex/);
   assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
   const loginLogo = fs.readFileSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png'));
@@ -557,7 +789,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /accountDetail=\{connection\.user\.email\}/);
   assert.match(options, /accountImage=\{connection\.user\.avatarUrl\}/);
   assert.match(options, /onToggle=\{\(\) => setNavigationCollapsed/);
-  assert.match(options, /Drawer open=\{mobileNavigationOpen\}/);
+  assert.match(options, /<Drawer\s+open=\{mobileNavigationOpen\}/);
   assert.match(options, /Navbar/);
   assert.match(options, /id: 'home', label: 'Início'/);
   assert.match(options, /id: 'integrations', label: 'Integrações'/);
@@ -591,10 +823,13 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /<div className="onframe-options-desktop-context">\{pageContext\}<\/div>/);
   assert.doesNotMatch(options, /onframe-options-desktop-context">\s*<Navbar/);
   assert.match(options, /setSettingsPage\('security'\)/);
-  assert.match(options, />Voltar<\/Button>/);
+  assert.match(options, />\s*Voltar\s*<\/Button>/);
   assert.match(options, /className="onframe-options-context-crumbs"/);
-  assert.match(options, /<Breadcrumbs items=\{breadcrumbs\} size="sm" maxItems=\{3\} onNavigate=\{navigateBreadcrumb\} \/>/);
-  assert.match(options, /<Button kind="primary" size="sm" icon=\{<Ph n="caret-circle-left" size=\{16\} \/>\}/);
+  assert.match(
+    options,
+    /<Breadcrumbs items=\{breadcrumbs\} size="sm" maxItems=\{3\} onNavigate=\{navigateBreadcrumb\} \/>/
+  );
+  assert.match(options, /<Button\s+kind="primary"\s+size="sm"\s+icon=\{<Ph n="caret-circle-left" size=\{16\} \/>\}/);
   assert.match(options, /onNavigate={navigateBreadcrumb}/);
   assert.match(options, /reserveContextSpace/);
   assert.match(options, /SearchInput/);
@@ -605,11 +840,14 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(options, /function ActionBar/);
   assert.match(optionsCss, /\.onframe-settings-action-bar\s*\{\s*position: fixed;/);
   assert.match(optionsCss, /\.onframe-options-sidebar\s*\{[^}]*z-index: var\(--ob-z-raised\);/);
-  assert.match(optionsCss, /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-s-4\);[^}]*left: calc\(var\(--ob-s-6\) \+ var\(--ob-s-2\)\);/);
+  assert.match(
+    optionsCss,
+    /\.onframe-options-desktop-context\s*\{[^}]*position: absolute;[^}]*top: var\(--ob-s-4\);[^}]*left: calc\(var\(--ob-s-6\) \+ var\(--ob-s-2\)\);/
+  );
   assert.match(optionsCss, /\.onframe-options-main\s*\{[^}]*padding: var\(--ob-s-7\) var\(--ob-s-6\) var\(--ob-s-6\);/);
   assert.match(optionsCss, /\.onframe-page-title\s*\{[^}]*font-size: var\(--ob-fs-lg\);/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
-  assert.match(options, /\{isIndex && <>/);
+  assert.match(options, /\{isIndex && \(\s*<>/);
   assert.match(options, /SETTINGS_OPTIONS/);
   assert.match(options, /SETTINGS_SECTIONS/);
   assert.match(options, /SettingsDirectory/);
@@ -620,14 +858,17 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /<List as="nav" dividers ariaLabel="Configurações">/);
   assert.doesNotMatch(options, /<List[^>]*dividers[^>]*ariaLabel="(?:Formas de entrar|Navegadores autorizados)"/);
   assert.doesNotMatch(options, /trailing=\{<Ph n="caret-right" size=\{18\} \/>\}/);
-  assert.doesNotMatch(options, /function (?:ProfileSettings|WorkspacePeople|WorkspaceGeneralSettings|ApplicationUpdatesSettings)[\s\S]{0,500}<Card/);
+  assert.doesNotMatch(
+    options,
+    /function (?:ProfileSettings|WorkspacePeople|WorkspaceGeneralSettings|ApplicationUpdatesSettings)[\s\S]{0,500}<Card/
+  );
   assert.match(options, /List/);
   assert.match(options, /ListItem/);
   assert.match(options, /ProfileSettings/);
   assert.match(options, /SecuritySettings/);
   assert.match(options, /SessionsSettings/);
   assert.match(options, /WorkspaceGeneralSettings/);
-  assert.match(options, /<WorkspacePeople /);
+  assert.match(options, /<WorkspacePeople\s/);
   assert.match(options, /ApplicationUpdatesSettings/);
   assert.doesNotMatch(options, /eyebrow: 'CONFIGURAÇÕES'/);
   assert.match(options, /FileUpload/);
@@ -643,8 +884,14 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(profileSettings, /disabled/);
   assert.match(profileSettings, /onOpenSecuritySettings\(\)/);
   assert.match(profileSettings, /Segurança e login/);
-  assert.match(optionsCss, /\.onframe-profile-layout\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(220px, 260px\) minmax\(0, 480px\);/);
-  assert.match(fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8'), /\.onframe-credential-form\s*\{[^}]*max-width: 448px;[^}]*margin-inline: auto;/);
+  assert.match(
+    optionsCss,
+    /\.onframe-profile-layout\s*\{[^}]*display: grid;[^}]*grid-template-columns: minmax\(220px, 260px\) minmax\(0, 480px\);/
+  );
+  assert.match(
+    fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8'),
+    /\.onframe-credential-form\s*\{[^}]*max-width: 448px;[^}]*margin-inline: auto;/
+  );
   assert.doesNotMatch(optionsCss, /\.onframe-profile-access\s*\{/);
   assert.match(popup, /className="onframe-popup-userbar"/);
   assert.match(popup, /connection === null[^]*<PopupLoading \/>/);
@@ -653,25 +900,34 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popup, /void refreshOverview\(\);/);
   assert.match(popup, /void refreshRelease\(\);/);
   assert.doesNotMatch(popup, /await refreshOverview\(\)/);
-  assert.match(popup, /<Avatar name=\{personName\} src=\{connection\.user\.avatarUrl\} alt="" size=\{40\} \/>/);
-  assert.match(popup, /<Switch checked=\{resourcesEnabled\} disabled=\{busy\}/);
-  assert.match(popup, /label="Recursos da extensão" size="md" \/>/);
+  assert.match(
+    popup,
+    /<Avatar\s+name=\{personName\}\s+src=\{connection\.user\.avatarUrl\}\s+alt=""\s+size=\{40\}\s*\/>/
+  );
+  assert.match(popup, /<Switch\s+checked=\{resourcesEnabled\}\s+disabled=\{busy\}/);
+  assert.match(popup, /label="Recursos da extensão"\s+size="md"\s*\/>/);
   assert.match(popup, /aria-label="Abrir opções da extensão"[^>]*onClick=\{onOpenOptions\}/);
   assert.match(popup, /onOpenOptions=\{openOptions\}/);
   assert.match(popup, /header=\{userHeader\}/);
   assert.match(popupHistory, /const PAGE_SIZE = 5;/);
   assert.match(popupHistory, /query: \{ limit: PAGE_SIZE, cursor: nextCursor \}/);
   assert.match(popupHistory, /\{loadingMore \? 'Carregando\.\.\.' : 'Carregar mais'\}/);
-  assert.match(popupHistory, />Ver tudo<\/Button>/);
+  assert.match(popupHistory, />\s*Ver tudo\s*<\/Button>/);
   assert.match(itemEditEvent, /<article className="onframe-popup-history-row">/);
-  assert.doesNotMatch(popup, /LogoMark|manifestVersion|openUpdater|sendToTab|activeProductTab|sendRemoteMessage\('accounts'\)/);
+  assert.doesNotMatch(
+    popup,
+    /LogoMark|manifestVersion|openUpdater|sendToTab|activeProductTab|sendRemoteMessage\('accounts'\)/
+  );
   assert.match(popup, /<PopupFooter release=\{release\} busy=\{busy\}/);
   assert.match(popupFooter, /<Menu/);
   assert.match(popupFooter, /placement="top"/);
-  assert.match(popupFooter, /kind="cream" size="sm" count=\{updateAvailable \? 1 : undefined\}/);
-  assert.match(popupFooter, /kind="quiet" tone="danger" size="sm"/);
+  assert.match(popupFooter, /kind="cream"\s+size="sm"\s+count=\{updateAvailable \? 1 : undefined\}/);
+  assert.match(popupFooter, /kind="quiet"\s+tone="danger"\s+size="sm"/);
   assert.doesNotMatch(popup, /<Card|<Badge|Visibilidade na página|Abrir painel do workspace/);
-  assert.match(optionsCss, /\.onframe-popup-resource-switch label > span:last-child\s*\{[^}]*position:\s*absolute;[^}]*width:\s*1px;/);
+  assert.match(
+    optionsCss,
+    /\.onframe-popup-resource-switch label > span:last-child\s*\{[^}]*position:\s*absolute;[^}]*width:\s*1px;/
+  );
   assert.doesNotMatch(authPanel, /FieldShell|<input\b|onframe-field-input/);
   assert.match(authPanel, /<Input[\s\S]*endAddon=/);
   assert.match(authPanel, /eye-closed/);
@@ -728,13 +984,25 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const chrome = {
     runtime: {
       lastError: null,
-      onMessage: { addListener(value) { listener = value; } }
+      onMessage: {
+        addListener(value) {
+          listener = value;
+        }
+      }
     },
     storage: {
       local: {
-        get(defaults, callback) { callback(Object.assign({}, defaults, storage)); },
-        set(value, callback) { Object.assign(storage, value); callback(); },
-        remove(key, callback) { delete storage[key]; callback(); }
+        get(defaults, callback) {
+          callback(Object.assign({}, defaults, storage));
+        },
+        set(value, callback) {
+          Object.assign(storage, value);
+          callback();
+        },
+        remove(key, callback) {
+          delete storage[key];
+          callback();
+        }
       }
     },
     tabs: { async create() {} }
@@ -742,25 +1010,57 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const sandbox = {
     chrome,
     fetch: async (url, options = {}) => {
-      const request = { url, method: options.method || 'GET', headers: new Headers(options.headers || {}), body: options.body || '' };
+      const request = {
+        url,
+        method: options.method || 'GET',
+        headers: new Headers(options.headers || {}),
+        body: options.body || ''
+      };
       requests.push(request);
-      if (url.endsWith('/v1/auth/config')) return Response.json(securityMode === 'legacy' ? {} : { capabilities: { accountSecurity: 1 } });
+      if (url.endsWith('/v1/auth/config'))
+        return Response.json(securityMode === 'legacy' ? {} : { capabilities: { accountSecurity: 1 } });
       if (url.endsWith('/v1/security')) {
         if (securityMode === 'missing-route') return Response.json({ error: 'not_found' }, { status: 404 });
-        if (securityMode === 'unavailable') return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
-        return Response.json(securityMode === 'malformed' ? {} : { sessions: [{ id: 'provider-session' }], factors: [], passkeys: [] });
+        if (securityMode === 'unavailable')
+          return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
+        return Response.json(
+          securityMode === 'malformed' ? {} : { sessions: [{ id: 'provider-session' }], factors: [], passkeys: [] }
+        );
       }
-      if (identityUnavailable && url.endsWith('/v1/identity/synchronize')) return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
-      if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST') return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
-      if (url.endsWith('/v1/extension-sessions/from-auth')) return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
-      if (url.endsWith('/v1/accounts')) return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
-      if (url.endsWith('/v1/app/release')) return Response.json({ latestVersion: '0.6.0', changelogUrl: 'https://github.com/eusilvamateus/onframe/releases/tag/v0.6.0' });
-      if (url.includes('/v1/app/item-edit-history')) return Response.json({ events: [], page: 1, total: 0, totalPages: 1 });
+      if (identityUnavailable && url.endsWith('/v1/identity/synchronize'))
+        return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
+      if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST')
+        return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
+      if (url.endsWith('/v1/extension-sessions/from-auth'))
+        return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
+      if (url.endsWith('/v1/accounts'))
+        return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
+      if (url.endsWith('/v1/app/release'))
+        return Response.json({
+          latestVersion: '0.6.0',
+          changelogUrl: 'https://github.com/eusilvamateus/onframe/releases/tag/v0.6.0'
+        });
+      if (url.includes('/v1/app/item-edit-history'))
+        return Response.json({ events: [], page: 1, total: 0, totalPages: 1 });
       if (url.endsWith('/v1/accounts/123')) {
         const payload = options.method === 'PATCH' ? JSON.parse(options.body) : {};
-        return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', displayName: payload.displayName || null, enabled: payload.enabled ?? true }] });
+        return Response.json({
+          accounts: [
+            {
+              id: 'acc-1',
+              userId: '123',
+              nickname: 'OnFrame',
+              displayName: payload.displayName || null,
+              enabled: payload.enabled ?? true
+            }
+          ]
+        });
       }
-      if (url.endsWith('/v1/mercadolivre/oauth/start')) return Response.json({ authorizationUrl: 'https://auth.mercadolivre.com.br/authorization?response_type=code' }, { status: 201 });
+      if (url.endsWith('/v1/mercadolivre/oauth/start'))
+        return Response.json(
+          { authorizationUrl: 'https://auth.mercadolivre.com.br/authorization?response_type=code' },
+          { status: 201 }
+        );
       if (url.endsWith('/v1/api/resolve/quick')) return Response.json({ item: { id: 'MLB1234567890' }, quick: true });
       if (options.method === 'DELETE') return Response.json({ revokedAt: '2026-09-28T00:00:00.000Z' });
       return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'OnFrame' } });
@@ -782,18 +1082,28 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(authenticated.body.token, undefined);
   assert.equal(storage.onframeRemoteSession.token, token);
   assert.equal(storage.onframeRemoteAuthFlow, undefined);
-  assert.equal(requests.find((request) => request.url.endsWith('/v1/extension-sessions/from-auth')).headers.get('authorization'), 'Bearer ' + 'a'.repeat(20));
+  assert.equal(
+    requests.find((request) => request.url.endsWith('/v1/extension-sessions/from-auth')).headers.get('authorization'),
+    'Bearer ' + 'a'.repeat(20)
+  );
 
   const legacySecurity = await send({ type: 'onframe:remote', action: 'security' });
   assert.equal(legacySecurity.code, 'security_backend_unavailable');
-  assert.equal(requests.some((request) => request.url.endsWith('/v1/security')), false);
+  assert.equal(
+    requests.some((request) => request.url.endsWith('/v1/security')),
+    false
+  );
   assert.equal(storage.onframeRemoteSession.token, token);
   securityMode = 'ready';
   const security = await send({ type: 'onframe:remote', action: 'security' });
   assert.equal(security.ok, true);
   assert.equal(security.body.sessions[0].id, 'provider-session');
   assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
-  for (const [mode, code] of [['missing-route', 'security_backend_unavailable'], ['unavailable', 'identity_security_unavailable'], ['malformed', 'security_data_unavailable']]) {
+  for (const [mode, code] of [
+    ['missing-route', 'security_backend_unavailable'],
+    ['unavailable', 'identity_security_unavailable'],
+    ['malformed', 'security_data_unavailable']
+  ]) {
     securityMode = mode;
     const failedSecurity = await send({ type: 'onframe:remote', action: 'security' });
     assert.equal(failedSecurity.ok, false);
@@ -829,24 +1139,42 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(historyUrl.searchParams.get('from'), '1767240000000');
   assert.equal(historyUrl.searchParams.get('to'), '1767585599999');
 
-  const updated = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', payload: { enabled: false } });
+  const updated = await send({
+    type: 'onframe:remote',
+    action: 'account-update',
+    userId: '123',
+    payload: { enabled: false }
+  });
   assert.equal(updated.ok, true);
   assert.equal(updated.body.accounts[0].enabled, false);
   assert.equal(requests.at(-1).method, 'PATCH');
   assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
   assert.equal(requests.at(-1).body, JSON.stringify({ enabled: false }));
 
-  const renamed = await send({ type: 'onframe:remote', action: 'account-update', userId: '123', payload: { displayName: 'Loja principal' } });
+  const renamed = await send({
+    type: 'onframe:remote',
+    action: 'account-update',
+    userId: '123',
+    payload: { displayName: 'Loja principal' }
+  });
   assert.equal(renamed.ok, true);
   assert.equal(renamed.body.accounts[0].display_name, 'Loja principal');
   assert.equal(requests.at(-1).body, JSON.stringify({ displayName: 'Loja principal' }));
 
-  const remoteApi = await send({ type: 'onframe:api', path: '/api/resolve/quick', options: { method: 'POST', body: '{}' } });
+  const remoteApi = await send({
+    type: 'onframe:api',
+    path: '/api/resolve/quick',
+    options: { method: 'POST', body: '{}' }
+  });
   assert.equal(remoteApi.ok, true);
   assert.equal(requests.at(-1).url.endsWith('/v1/api/resolve/quick'), true);
 
   await send({ type: 'onframe:remote', action: 'disconnect' });
-  const noSession = await send({ type: 'onframe:api', path: '/api/resolve/quick', options: { method: 'POST', body: '{}' } });
+  const noSession = await send({
+    type: 'onframe:api',
+    path: '/api/resolve/quick',
+    options: { method: 'POST', body: '{}' }
+  });
   assert.equal(noSession.ok, false);
   assert.equal(noSession.status, 401);
   assert.equal(noSession.code, 'extension_session_unauthorized');
@@ -854,7 +1182,12 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   await send({ type: 'onframe:remote', action: 'authenticate', accessToken: 'a'.repeat(20) });
   await send({ type: 'onframe:remote', action: 'auth-flow-start' });
   identityUnavailable = true;
-  const changedPassword = await send({ type: 'onframe:remote', action: 'identity-sync', accessToken: 'c'.repeat(20), disconnect: true });
+  const changedPassword = await send({
+    type: 'onframe:remote',
+    action: 'identity-sync',
+    accessToken: 'c'.repeat(20),
+    disconnect: true
+  });
   assert.equal(changedPassword.ok, false);
   assert.equal(changedPassword.code, 'identity_security_unavailable');
   assert.equal(storage.onframeRemoteSession, undefined);
@@ -880,5 +1213,8 @@ test('Worker mantém as contas e o contrato remoto como única fronteira', () =>
 test('módulo de fotos abre a autorização remota sem controle de serviço local', () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'modules', 'photos', 'module.js'), 'utf8');
   assert.match(source, /sendRemoteMessage\('oauth-start'\)/);
-  assert.doesNotMatch(source, /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/);
+  assert.doesNotMatch(
+    source,
+    /LOCAL_SERVICE_OFFLINE_MESSAGE|start-service|openLocalServiceLauncher|onframe:openLauncher/
+  );
 });

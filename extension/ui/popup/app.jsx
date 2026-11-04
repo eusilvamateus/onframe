@@ -5,7 +5,13 @@ import { Alert, Avatar, Button, List, ListItem, Ph, Switch, ToastStack, Tooltip 
 import '../shared/app.css';
 import { AuthPanel } from '../shared/AuthPanel';
 import { ThemeCycleButton } from '../shared/ThemeControl';
-import { clearPopupSessionState, emptyPopupSessionState, normalizePopupSessionState, readPopupSessionState, writePopupSessionState } from '../shared/popup-session-state';
+import {
+  clearPopupSessionState,
+  emptyPopupSessionState,
+  normalizePopupSessionState,
+  readPopupSessionState,
+  writePopupSessionState
+} from '../shared/popup-session-state';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WorkspaceSession } from './WorkspaceSession';
 import { IntegrationsSession } from './IntegrationsSession';
@@ -18,40 +24,62 @@ const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
 function PopupUserHeader({ connection, resourcesEnabled, busy, onToggleResources, onOpenOptions }) {
   const personName = connection.user.name || 'Conta OnFrame';
-  return <header className="onframe-popup-userbar">
-    <div className="onframe-popup-user">
-      <Avatar name={personName} src={connection.user.avatarUrl} alt="" size={40} />
-      <div className="onframe-popup-user-copy">
-        <h1 className="onframe-popup-user-name">{personName}</h1>
-        <p className="onframe-popup-user-email">{connection.user.email}</p>
+  return (
+    <header className="onframe-popup-userbar">
+      <div className="onframe-popup-user">
+        <Avatar name={personName} src={connection.user.avatarUrl} alt="" size={40} />
+        <div className="onframe-popup-user-copy">
+          <h1 className="onframe-popup-user-name">{personName}</h1>
+          <p className="onframe-popup-user-email">{connection.user.email}</p>
+        </div>
       </div>
-    </div>
-    <div className="onframe-popup-actions">
-      <ThemeCycleButton />
-      <Tooltip label={resourcesEnabled ? 'Desativar recursos da extensão' : 'Ativar recursos da extensão'} placement="bottom">
-        <span className="onframe-popup-resource-switch">
-          <Switch checked={resourcesEnabled} disabled={busy} onChange={onToggleResources} label="Recursos da extensão" size="md" />
-        </span>
-      </Tooltip>
-      <Tooltip label="Abrir opções da extensão" placement="left">
-        <Button kind="quiet" size="sm" iconOnly aria-label="Abrir opções da extensão" onClick={onOpenOptions} icon={<Ph n="gear" size={18} />} />
-      </Tooltip>
-    </div>
-  </header>;
+      <div className="onframe-popup-actions">
+        <ThemeCycleButton />
+        <Tooltip
+          label={resourcesEnabled ? 'Desativar recursos da extensão' : 'Ativar recursos da extensão'}
+          placement="bottom"
+        >
+          <span className="onframe-popup-resource-switch">
+            <Switch
+              checked={resourcesEnabled}
+              disabled={busy}
+              onChange={onToggleResources}
+              label="Recursos da extensão"
+              size="md"
+            />
+          </span>
+        </Tooltip>
+        <Tooltip label="Abrir opções da extensão" placement="left">
+          <Button
+            kind="quiet"
+            size="sm"
+            iconOnly
+            aria-label="Abrir opções da extensão"
+            onClick={onOpenOptions}
+            icon={<Ph n="gear" size={18} />}
+          />
+        </Tooltip>
+      </div>
+    </header>
+  );
 }
 
 function readResourcesPreference() {
-  return new Promise((resolve) => chrome.storage.local.get({ [RESOURCES_ENABLED_KEY]: true }, (result) => {
-    resolve(result?.[RESOURCES_ENABLED_KEY] !== false);
-  }));
+  return new Promise((resolve) =>
+    chrome.storage.local.get({ [RESOURCES_ENABLED_KEY]: true }, (result) => {
+      resolve(result?.[RESOURCES_ENABLED_KEY] !== false);
+    })
+  );
 }
 
 function writeResourcesPreference(value) {
-  return new Promise((resolve, reject) => chrome.storage.local.set({ [RESOURCES_ENABLED_KEY]: Boolean(value) }, () => {
-    const error = chrome.runtime.lastError;
-    if (error) reject(new Error(error.message));
-    else resolve();
-  }));
+  return new Promise((resolve, reject) =>
+    chrome.storage.local.set({ [RESOURCES_ENABLED_KEY]: Boolean(value) }, () => {
+      const error = chrome.runtime.lastError;
+      if (error) reject(new Error(error.message));
+      else resolve();
+    })
+  );
 }
 
 function openOptions(target) {
@@ -84,7 +112,10 @@ function Popup() {
     void writePopupSessionState(next);
   }, []);
   const persistAuthState = useCallback((auth) => persistPopupSession({ auth }), [persistPopupSession]);
-  const persistIntegrationsState = useCallback((integrations) => persistPopupSession({ integrations }), [persistPopupSession]);
+  const persistIntegrationsState = useCallback(
+    (integrations) => persistPopupSession({ integrations }),
+    [persistPopupSession]
+  );
 
   const refreshOverview = useCallback(async () => {
     try {
@@ -103,37 +134,42 @@ function Popup() {
     }
   }, []);
 
-  const load = useCallback(async ({ resetUi = false } = {}) => {
-    setBusy(true);
-    try {
-      const [nextConnection, nextResourcesEnabled, savedPopupSession] = await Promise.all([
-        sendRemoteMessage('status'),
-        readResourcesPreference(),
-        readPopupSessionState()
-      ]);
-      const nextPopupSession = resetUi ? emptyPopupSessionState() : savedPopupSession;
-      popupSessionRef.current = nextPopupSession;
-      setPopupSession(nextPopupSession);
-      setConnection(nextConnection);
-      setView(nextConnection?.connected ? nextPopupSession.view : 'home');
-      setResourcesEnabled(nextResourcesEnabled);
-      setFeedback('');
-      setOverview(null);
-      setRelease(undefined);
-      if (resetUi) void clearPopupSessionState();
-      if (nextConnection?.connected) {
-        void refreshOverview();
-        void refreshRelease();
+  const load = useCallback(
+    async ({ resetUi = false } = {}) => {
+      setBusy(true);
+      try {
+        const [nextConnection, nextResourcesEnabled, savedPopupSession] = await Promise.all([
+          sendRemoteMessage('status'),
+          readResourcesPreference(),
+          readPopupSessionState()
+        ]);
+        const nextPopupSession = resetUi ? emptyPopupSessionState() : savedPopupSession;
+        popupSessionRef.current = nextPopupSession;
+        setPopupSession(nextPopupSession);
+        setConnection(nextConnection);
+        setView(nextConnection?.connected ? nextPopupSession.view : 'home');
+        setResourcesEnabled(nextResourcesEnabled);
+        setFeedback('');
+        setOverview(null);
+        setRelease(undefined);
+        if (resetUi) void clearPopupSessionState();
+        if (nextConnection?.connected) {
+          void refreshOverview();
+          void refreshRelease();
+        }
+      } catch (error) {
+        setConnection({ connected: false, reason: 'unavailable' });
+        setFeedback(userError(error));
+      } finally {
+        setBusy(false);
       }
-    } catch (error) {
-      setConnection({ connected: false, reason: 'unavailable' });
-      setFeedback(userError(error));
-    } finally {
-      setBusy(false);
-    }
-  }, [refreshOverview, refreshRelease]);
+    },
+    [refreshOverview, refreshRelease]
+  );
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   async function toggleResources(nextEnabled) {
     const previous = resourcesEnabled;
@@ -172,19 +208,30 @@ function Popup() {
   if (connection === null) return <PopupLoading />;
 
   const connected = Boolean(connection?.connected && connection?.user && connection?.workspace);
-  if (!connected) return <main className="onframe-popup onframe-popup-auth">
-    <div className="onframe-auth-theme-control"><ThemeCycleButton /></div>
-    {feedback && <Alert tone="danger">{feedback}</Alert>}
-    <AuthPanel initialState={popupSession?.auth} onStateChange={persistAuthState} onConnected={() => load({ resetUi: true })} />
-  </main>;
+  if (!connected)
+    return (
+      <main className="onframe-popup onframe-popup-auth">
+        <div className="onframe-auth-theme-control">
+          <ThemeCycleButton />
+        </div>
+        {feedback && <Alert tone="danger">{feedback}</Alert>}
+        <AuthPanel
+          initialState={popupSession?.auth}
+          onStateChange={persistAuthState}
+          onConnected={() => load({ resetUi: true })}
+        />
+      </main>
+    );
   const footer = <PopupFooter release={release} busy={busy} onDisconnect={() => void disconnect()} />;
-  const userHeader = <PopupUserHeader
-    connection={connection}
-    resourcesEnabled={resourcesEnabled}
-    busy={busy}
-    onToggleResources={(value) => void toggleResources(value)}
-    onOpenOptions={openOptions}
-  />;
+  const userHeader = (
+    <PopupUserHeader
+      connection={connection}
+      resourcesEnabled={resourcesEnabled}
+      busy={busy}
+      onToggleResources={(value) => void toggleResources(value)}
+      onOpenOptions={openOptions}
+    />
+  );
 
   function returnHome() {
     setView('home');
@@ -197,19 +244,44 @@ function Popup() {
     persistPopupSession({ view: nextView });
   }
 
-  const workspaceSession = popupSession?.workspace?.workspaceId === connection.workspace.id ? popupSession.workspace : null;
+  const workspaceSession =
+    popupSession?.workspace?.workspaceId === connection.workspace.id ? popupSession.workspace : null;
 
-  if (view === 'workspace') return <WorkspaceSession
-    connection={connection}
-    initialState={workspaceSession}
-    onStateChange={(workspace) => persistPopupSession({ workspace: { workspaceId: connection.workspace.id, ...workspace } })}
-    onBack={returnHome}
-    onConnectionChanged={() => load({ resetUi: true })}
-    footer={footer}
-    header={userHeader}
-  />;
-  if (view === 'integrations') return <IntegrationsSession connection={connection} initialState={popupSession?.integrations} onStateChange={persistIntegrationsState} onBack={returnHome} footer={footer} header={userHeader} />;
-  if (view === 'history') return <HistorySession connection={connection} onBack={returnHome} onOpenFullHistory={() => openOptions('history')} footer={footer} header={userHeader} />;
+  if (view === 'workspace')
+    return (
+      <WorkspaceSession
+        connection={connection}
+        initialState={workspaceSession}
+        onStateChange={(workspace) =>
+          persistPopupSession({ workspace: { workspaceId: connection.workspace.id, ...workspace } })
+        }
+        onBack={returnHome}
+        onConnectionChanged={() => load({ resetUi: true })}
+        footer={footer}
+        header={userHeader}
+      />
+    );
+  if (view === 'integrations')
+    return (
+      <IntegrationsSession
+        connection={connection}
+        initialState={popupSession?.integrations}
+        onStateChange={persistIntegrationsState}
+        onBack={returnHome}
+        footer={footer}
+        header={userHeader}
+      />
+    );
+  if (view === 'history')
+    return (
+      <HistorySession
+        connection={connection}
+        onBack={returnHome}
+        onOpenFullHistory={() => openOptions('history')}
+        footer={footer}
+        header={userHeader}
+      />
+    );
 
   return (
     <main className="onframe-popup onframe-popup-home">
@@ -218,7 +290,11 @@ function Popup() {
       <List className="onframe-popup-home-list" ariaLabel="Sessões da extensão">
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"
-          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--primary"><Ph n="users-three" size={18} /></span>}
+          leading={
+            <span className="onframe-popup-icon-tile onframe-popup-icon-tile--primary">
+              <Ph n="users-three" size={18} />
+            </span>
+          }
           title="Workspace"
           description={workspaceSummary(overview, connection.workspace.role)}
           strong
@@ -227,7 +303,11 @@ function Popup() {
         />
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"
-          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning"><Ph n="storefront" size={18} /></span>}
+          leading={
+            <span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning">
+              <Ph n="storefront" size={18} />
+            </span>
+          }
           title="Integrações"
           description={integrationsSummary(overview)}
           strong
@@ -236,7 +316,11 @@ function Popup() {
         />
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"
-          leading={<span className="onframe-popup-icon-tile onframe-popup-icon-tile--success"><Ph n="clock-counter-clockwise" size={18} /></span>}
+          leading={
+            <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success">
+              <Ph n="clock-counter-clockwise" size={18} />
+            </span>
+          }
           title="Histórico"
           description={historySummary(overview)}
           strong
@@ -249,4 +333,9 @@ function Popup() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<><ToastStack position="bottom-center" limit={1} /><Popup /></>);
+createRoot(document.getElementById('root')).render(
+  <>
+    <ToastStack position="bottom-center" limit={1} />
+    <Popup />
+  </>
+);

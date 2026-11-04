@@ -1,7 +1,4 @@
-const {
-  buildBulkPreview,
-  commitBulkAction
-} = require('../bulk-actions');
+const { buildBulkPreview, commitBulkAction } = require('../bulk-actions');
 
 async function handleBulkPreview({ req, client, itemId, readJson }) {
   const body = await readJson(req);

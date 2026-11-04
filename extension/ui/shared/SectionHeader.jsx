@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function SectionHeader({ eyebrow, title, copy, actions }) {
   return (
     <div className="onframe-row onframe-row-between" style={{ alignItems: 'flex-start' }}>

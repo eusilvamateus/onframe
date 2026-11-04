@@ -30,12 +30,18 @@ function main() {
   fs.mkdirSync(path.dirname(path.resolve(ROOT, output)), { recursive: true });
   fs.writeFileSync(path.resolve(ROOT, output), `${notes}\n`, 'utf8');
 
-  console.log(JSON.stringify({
-    ok: true,
-    tag,
-    previousTag: previousTag || null,
-    output
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        tag,
+        previousTag: previousTag || null,
+        output
+      },
+      null,
+      2
+    )
+  );
 }
 
 function parseArgs(argv) {
@@ -70,11 +76,8 @@ function buildReleaseNotes({ tag, previousTag, changelog, repoUrl = DEFAULT_REPO
   const normalizedTag = normalizeTag(tag);
   const normalizedPrevious = normalizeTag(previousTag || '');
   const section = extractChangelogSection(changelog, normalizedTag);
-  const releaseBody = stripVersionHeading(section).trim() || [
-    '## Changes',
-    '',
-    `- Release ${normalizedTag}.`
-  ].join('\n');
+  const releaseBody =
+    stripVersionHeading(section).trim() || ['## Changes', '', `- Release ${normalizedTag}.`].join('\n');
   const previousLine = normalizedPrevious
     ? `- Previous release: [\`${normalizedPrevious}\`](${repoUrl}/releases/tag/${normalizedPrevious})`
     : '- Previous release: none';
@@ -130,16 +133,18 @@ function findPreviousTag(tag, cwd = ROOT) {
 
   if (result.status !== 0) return '';
 
-  return String(result.stdout || '')
-    .split(/\r?\n/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .filter((item) => item !== tag)
-    .filter((item) => {
-      const parsed = parseSemverTag(item);
-      return parsed && compareSemver(parsed, current) < 0;
-    })
-    .sort((left, right) => compareSemver(parseSemverTag(right), parseSemverTag(left)))[0] || '';
+  return (
+    String(result.stdout || '')
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => item !== tag)
+      .filter((item) => {
+        const parsed = parseSemverTag(item);
+        return parsed && compareSemver(parsed, current) < 0;
+      })
+      .sort((left, right) => compareSemver(parseSemverTag(right), parseSemverTag(left)))[0] || ''
+  );
 }
 
 function parseSemverTag(tag) {

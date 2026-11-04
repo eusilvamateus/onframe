@@ -12,16 +12,38 @@ function memberAccess(member) {
 }
 
 function PopupIcon({ name, tone = 'primary' }) {
-  return <span className={`onframe-popup-icon-tile onframe-popup-icon-tile--${tone}`}><Ph n={name} size={18} /></span>;
+  return (
+    <span className={`onframe-popup-icon-tile onframe-popup-icon-tile--${tone}`}>
+      <Ph n={name} size={18} />
+    </span>
+  );
 }
 
 function LoadingList() {
-  return <div className="onframe-popup-loading-list" aria-label="Carregando workspace">
-    {[0, 1, 2].map((item) => <div className="onframe-popup-loading-row" key={item}><Skeleton circle height={36} /><div><Skeleton width={132} height={13} /><Skeleton width={210} height={10} /></div></div>)}
-  </div>;
+  return (
+    <div className="onframe-popup-loading-list" aria-label="Carregando workspace">
+      {[0, 1, 2].map((item) => (
+        <div className="onframe-popup-loading-row" key={item}>
+          <Skeleton circle height={36} />
+          <div>
+            <Skeleton width={132} height={13} />
+            <Skeleton width={210} height={10} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
-export function WorkspaceSession({ connection, initialState, onStateChange, onBack, onConnectionChanged, footer, header }) {
+export function WorkspaceSession({
+  connection,
+  initialState,
+  onStateChange,
+  onBack,
+  onConnectionChanged,
+  footer,
+  header
+}) {
   const admin = connection.workspace.role === 'admin';
   const restoredInviteDraft = normalizeInviteDraft(initialState?.inviteDraft);
   const [members, setMembers] = useState([]);
@@ -47,12 +69,21 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
 
   useEffect(() => {
     let active = true;
-    if (!admin) return () => { active = false; };
+    if (!admin)
+      return () => {
+        active = false;
+      };
     setLoading(true);
     void loadWorkspace()
-      .catch((error) => { if (active) setFeedback({ tone: 'danger', message: userError(error) }); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch((error) => {
+        if (active) setFeedback({ tone: 'danger', message: userError(error) });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [admin, loadWorkspace]);
 
   async function run(action, successMessage) {
@@ -90,20 +121,23 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
 
   async function submitAccess(values) {
     const currentDialog = dialog;
-    const result = await run(async () => {
-      if (currentDialog.type === 'member') {
-        await sendRemoteMessage('member-update', {
-          userId: currentDialog.member.id,
-          payload: { role: values.role, accountIds: values.accountIds }
-        });
-        await loadWorkspace();
-        return { updated: true };
-      }
+    const result = await run(
+      async () => {
+        if (currentDialog.type === 'member') {
+          await sendRemoteMessage('member-update', {
+            userId: currentDialog.member.id,
+            payload: { role: values.role, accountIds: values.accountIds }
+          });
+          await loadWorkspace();
+          return { updated: true };
+        }
 
-      const response = await sendRemoteMessage('invitation-create', { payload: values });
-      await loadWorkspace();
-      return response;
-    }, currentDialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null);
+        const response = await sendRemoteMessage('invitation-create', { payload: values });
+        await loadWorkspace();
+        return response;
+      },
+      currentDialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null
+    );
 
     if (!result) return;
     closeAccessDialog();
@@ -117,9 +151,18 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
         tone: 'warning',
         message: 'O convite foi criado, mas o link não foi copiado.',
         action: 'Copiar link',
-        onAction: () => void navigator.clipboard.writeText(invitationUrl)
-          .then(() => { setFeedback(null); toast({ tone: 'success', title: 'Link copiado.' }); })
-          .catch(() => setFeedback((current) => current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }))
+        onAction: () =>
+          void navigator.clipboard
+            .writeText(invitationUrl)
+            .then(() => {
+              setFeedback(null);
+              toast({ tone: 'success', title: 'Link copiado.' });
+            })
+            .catch(() =>
+              setFeedback(
+                (current) => current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }
+              )
+            )
       });
     }
   }
@@ -127,20 +170,27 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
   async function confirmDestructive() {
     const currentDialog = dialog;
     if (!currentDialog) return;
-    const result = await run(async () => {
-      if (currentDialog.type === 'member-delete') {
-        await sendRemoteMessage('member-remove', { userId: currentDialog.member.id });
-        await loadWorkspace();
-      }
-      if (currentDialog.type === 'invitation-delete') {
-        await sendRemoteMessage('invitation-revoke', { invitationId: currentDialog.invitation.id });
-        await loadWorkspace();
-      }
-      if (currentDialog.type === 'workspace-leave') {
-        await sendRemoteMessage('workspace-leave');
-      }
-      return true;
-    }, currentDialog.type === 'member-delete' ? 'Pessoa removida.' : currentDialog.type === 'invitation-delete' ? 'Convite revogado.' : 'Você saiu do workspace.');
+    const result = await run(
+      async () => {
+        if (currentDialog.type === 'member-delete') {
+          await sendRemoteMessage('member-remove', { userId: currentDialog.member.id });
+          await loadWorkspace();
+        }
+        if (currentDialog.type === 'invitation-delete') {
+          await sendRemoteMessage('invitation-revoke', { invitationId: currentDialog.invitation.id });
+          await loadWorkspace();
+        }
+        if (currentDialog.type === 'workspace-leave') {
+          await sendRemoteMessage('workspace-leave');
+        }
+        return true;
+      },
+      currentDialog.type === 'member-delete'
+        ? 'Pessoa removida.'
+        : currentDialog.type === 'invitation-delete'
+          ? 'Convite revogado.'
+          : 'Você saiu do workspace.'
+    );
 
     if (!result) return;
     setDialog(null);
@@ -153,12 +203,18 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
   const currentUserId = connection.user.id;
   const canLeave = members.filter((member) => member.role === 'admin').length > 1;
   const confirmation = ['member-delete', 'invitation-delete', 'workspace-leave'].includes(dialog?.type);
-  const confirmationTitle = dialog?.type === 'member-delete' ? 'Remover pessoa' : dialog?.type === 'invitation-delete' ? 'Revogar convite' : 'Sair do workspace';
-  const confirmationCopy = dialog?.type === 'member-delete'
-    ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.`
-    : dialog?.type === 'invitation-delete'
-      ? 'Revogar este convite? O link ou e-mail enviado deixará de conceder acesso.'
-      : `Sair de ${connection.workspace.name}? Você perderá acesso às contas e pessoas deste workspace.`;
+  const confirmationTitle =
+    dialog?.type === 'member-delete'
+      ? 'Remover pessoa'
+      : dialog?.type === 'invitation-delete'
+        ? 'Revogar convite'
+        : 'Sair do workspace';
+  const confirmationCopy =
+    dialog?.type === 'member-delete'
+      ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.`
+      : dialog?.type === 'invitation-delete'
+        ? 'Revogar este convite? O link ou e-mail enviado deixará de conceder acesso.'
+        : `Sair de ${connection.workspace.name}? Você perderá acesso às contas e pessoas deste workspace.`;
 
   return (
     <main className="onframe-popup onframe-popup-session">
@@ -166,77 +222,177 @@ export function WorkspaceSession({ connection, initialState, onStateChange, onBa
       <PopupSessionHeader title="Workspace" subtitle={connection.workspace.name} onBack={onBack} />
 
       <div className="onframe-popup-session-body">
-        {feedback && <Alert tone={feedback.tone} action={feedback.action} onAction={feedback.onAction} dismissible onClose={() => setFeedback(null)}>{feedback.message}</Alert>}
-        {!admin && <Alert tone="info">Somente administradores podem gerenciar pessoas, convites e permissões deste workspace.</Alert>}
-        {loading ? <LoadingList /> : admin && <>
-          <section className="onframe-popup-section" aria-labelledby="workspace-people-title">
-            <div className="onframe-popup-section-header">
-              <div><h2 id="workspace-people-title">Pessoas</h2><p>{members.length} {members.length === 1 ? 'pessoa' : 'pessoas'} neste workspace</p></div>
-              <Button kind="quiet" tone="primary" size="sm" disabled={busy} onClick={openInvite} icon={<Ph n="user-plus" size={16} />}>Convidar pessoa</Button>
-            </div>
-            <List className="onframe-popup-card-list" ariaLabel="Pessoas do workspace">
-              {members.map((member) => {
-                const self = member.id === currentUserId;
-                return <ListItem
-                  key={member.id}
-                  className="onframe-popup-card-row"
-                  leading={<Avatar name={member.name || member.email} src={member.avatarUrl} alt="" size={36} />}
-                  title={member.name || member.email}
-                  description={memberAccess(member)}
-                  strong
-                  onClick={self ? undefined : () => setDialog({ type: 'member', member })}
-                  trailing={self
-                    ? <Badge tone="primary">Você</Badge>
-                    : <><Tooltip label="Remover pessoa" placement="left"><Button kind="quiet" tone="danger" size="sm" iconOnly disabled={busy} aria-label={`Remover ${member.name || member.email}`} onClick={(event) => { event.stopPropagation(); setDialog({ type: 'member-delete', member }); }} icon={<Ph n="trash" size={16} />} /></Tooltip><Ph n="caret-right" size={16} /></>}
-                />;
-              })}
-            </List>
-          </section>
+        {feedback && (
+          <Alert
+            tone={feedback.tone}
+            action={feedback.action}
+            onAction={feedback.onAction}
+            dismissible
+            onClose={() => setFeedback(null)}
+          >
+            {feedback.message}
+          </Alert>
+        )}
+        {!admin && (
+          <Alert tone="info">
+            Somente administradores podem gerenciar pessoas, convites e permissões deste workspace.
+          </Alert>
+        )}
+        {loading ? (
+          <LoadingList />
+        ) : (
+          admin && (
+            <>
+              <section className="onframe-popup-section" aria-labelledby="workspace-people-title">
+                <div className="onframe-popup-section-header">
+                  <div>
+                    <h2 id="workspace-people-title">Pessoas</h2>
+                    <p>
+                      {members.length} {members.length === 1 ? 'pessoa' : 'pessoas'} neste workspace
+                    </p>
+                  </div>
+                  <Button
+                    kind="quiet"
+                    tone="primary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={openInvite}
+                    icon={<Ph n="user-plus" size={16} />}
+                  >
+                    Convidar pessoa
+                  </Button>
+                </div>
+                <List className="onframe-popup-card-list" ariaLabel="Pessoas do workspace">
+                  {members.map((member) => {
+                    const self = member.id === currentUserId;
+                    return (
+                      <ListItem
+                        key={member.id}
+                        className="onframe-popup-card-row"
+                        leading={<Avatar name={member.name || member.email} src={member.avatarUrl} alt="" size={36} />}
+                        title={member.name || member.email}
+                        description={memberAccess(member)}
+                        strong
+                        onClick={self ? undefined : () => setDialog({ type: 'member', member })}
+                        trailing={
+                          self ? (
+                            <Badge tone="primary">Você</Badge>
+                          ) : (
+                            <>
+                              <Tooltip label="Remover pessoa" placement="left">
+                                <Button
+                                  kind="quiet"
+                                  tone="danger"
+                                  size="sm"
+                                  iconOnly
+                                  disabled={busy}
+                                  aria-label={`Remover ${member.name || member.email}`}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setDialog({ type: 'member-delete', member });
+                                  }}
+                                  icon={<Ph n="trash" size={16} />}
+                                />
+                              </Tooltip>
+                              <Ph n="caret-right" size={16} />
+                            </>
+                          )
+                        }
+                      />
+                    );
+                  })}
+                </List>
+              </section>
 
-          <section className="onframe-popup-section" aria-labelledby="workspace-invitations-title">
-            <div className="onframe-popup-section-header">
-              <div><h2 id="workspace-invitations-title">Convites pendentes</h2><p>{invitations.length ? `${invitations.length} aguardando aceite` : 'Nenhum convite pendente'}</p></div>
-            </div>
-            {invitations.length > 0 && <List className="onframe-popup-card-list" ariaLabel="Convites pendentes">
-              {invitations.map((invitation) => <ListItem
-                key={invitation.id}
-                className="onframe-popup-card-row"
-                leading={<PopupIcon name="envelope-simple" tone="warning" />}
-                title={invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
-                description={`${invitation.role === 'admin' ? 'Administrador' : 'Colaborador'} · expira ${formatDate(invitation.expiresAt)}`}
-                wrap
-                strong
-                trailing={<Tooltip label="Revogar convite" placement="left"><Button kind="quiet" tone="danger" size="sm" iconOnly disabled={busy} aria-label="Revogar convite" onClick={() => setDialog({ type: 'invitation-delete', invitation })} icon={<Ph n="trash" size={16} />} /></Tooltip>}
-              />)}
-            </List>}
-          </section>
+              <section className="onframe-popup-section" aria-labelledby="workspace-invitations-title">
+                <div className="onframe-popup-section-header">
+                  <div>
+                    <h2 id="workspace-invitations-title">Convites pendentes</h2>
+                    <p>{invitations.length ? `${invitations.length} aguardando aceite` : 'Nenhum convite pendente'}</p>
+                  </div>
+                </div>
+                {invitations.length > 0 && (
+                  <List className="onframe-popup-card-list" ariaLabel="Convites pendentes">
+                    {invitations.map((invitation) => (
+                      <ListItem
+                        key={invitation.id}
+                        className="onframe-popup-card-row"
+                        leading={<PopupIcon name="envelope-simple" tone="warning" />}
+                        title={invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
+                        description={`${invitation.role === 'admin' ? 'Administrador' : 'Colaborador'} · expira ${formatDate(invitation.expiresAt)}`}
+                        wrap
+                        strong
+                        trailing={
+                          <Tooltip label="Revogar convite" placement="left">
+                            <Button
+                              kind="quiet"
+                              tone="danger"
+                              size="sm"
+                              iconOnly
+                              disabled={busy}
+                              aria-label="Revogar convite"
+                              onClick={() => setDialog({ type: 'invitation-delete', invitation })}
+                              icon={<Ph n="trash" size={16} />}
+                            />
+                          </Tooltip>
+                        }
+                      />
+                    ))}
+                  </List>
+                )}
+              </section>
 
-          <section className="onframe-popup-section" aria-label="Ações do workspace">
-            <List className="onframe-popup-card-list">
-              <ListItem
-                className="onframe-popup-card-row"
-                tone="danger"
-                leading={<PopupIcon name="sign-out" tone="danger" />}
-                title="Sair do workspace"
-                description={canLeave ? 'Seu acesso será encerrado.' : 'Outro administrador é necessário para sair.'}
-                disabled={!canLeave || busy}
-                onClick={() => setDialog({ type: 'workspace-leave' })}
-                trailing={<Ph n="caret-right" size={16} />}
-              />
-            </List>
-          </section>
-        </>}
+              <section className="onframe-popup-section" aria-label="Ações do workspace">
+                <List className="onframe-popup-card-list">
+                  <ListItem
+                    className="onframe-popup-card-row"
+                    tone="danger"
+                    leading={<PopupIcon name="sign-out" tone="danger" />}
+                    title="Sair do workspace"
+                    description={
+                      canLeave ? 'Seu acesso será encerrado.' : 'Outro administrador é necessário para sair.'
+                    }
+                    disabled={!canLeave || busy}
+                    onClick={() => setDialog({ type: 'workspace-leave' })}
+                    trailing={<Ph n="caret-right" size={16} />}
+                  />
+                </List>
+              </section>
+            </>
+          )
+        )}
       </div>
 
       {footer}
 
-      <WorkspaceAccessModal dialog={dialog} accounts={accounts} busy={busy} initialValues={inviteDraft} onDraftChange={updateInviteDraft} onClose={closeAccessDialog} onConfirm={(values) => void submitAccess(values)} />
+      <WorkspaceAccessModal
+        dialog={dialog}
+        accounts={accounts}
+        busy={busy}
+        initialValues={inviteDraft}
+        onDraftChange={updateInviteDraft}
+        onClose={closeAccessDialog}
+        onConfirm={(values) => void submitAccess(values)}
+      />
       <Modal
         open={confirmation}
         onClose={() => setDialog(null)}
         title={confirmationTitle}
         role="alertdialog"
-        footer={<><Button kind="secondary" disabled={busy} onClick={() => setDialog(null)}>Cancelar</Button><Button kind="danger" disabled={busy} onClick={() => void confirmDestructive()}>{dialog?.type === 'workspace-leave' ? 'Sair' : dialog?.type === 'invitation-delete' ? 'Revogar' : 'Remover'}</Button></>}
+        footer={
+          <>
+            <Button kind="secondary" disabled={busy} onClick={() => setDialog(null)}>
+              Cancelar
+            </Button>
+            <Button kind="danger" disabled={busy} onClick={() => void confirmDestructive()}>
+              {dialog?.type === 'workspace-leave'
+                ? 'Sair'
+                : dialog?.type === 'invitation-delete'
+                  ? 'Revogar'
+                  : 'Remover'}
+            </Button>
+          </>
+        }
       >
         {confirmationCopy}
       </Modal>

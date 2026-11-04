@@ -1,6 +1,12 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body, #root { min-height: 100%; }
+html,
+body,
+#root {
+  min-height: 100%;
+}
 
 body {
   margin: 0;
@@ -62,9 +68,15 @@ body {
   flex-direction: column;
 }
 
-.onframe-hosted-stack { gap: var(--ob-s-5); }
-.onframe-hosted-intro { gap: var(--ob-s-2); }
-.onframe-hosted-form { gap: var(--ob-s-4); }
+.onframe-hosted-stack {
+  gap: var(--ob-s-5);
+}
+.onframe-hosted-intro {
+  gap: var(--ob-s-2);
+}
+.onframe-hosted-form {
+  gap: var(--ob-s-4);
+}
 
 .onframe-hosted-eyebrow {
   margin: 0;

@@ -102,7 +102,11 @@ function EditorDiagnostics({ diagnostics }) {
 }
 
 function EditorDialog({ model, actions, onRendered }) {
-  const footer = <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>;
+  const footer = (
+    <Button kind="secondary" onClick={actions.onClose}>
+      Fechar
+    </Button>
+  );
   return (
     <ModalHost onRendered={onRendered}>
       <Modal
@@ -197,11 +201,15 @@ function OptimizeReviewItem({ item, onToggle }) {
       />
       <div className="onblide-ml-review-info">
         <strong>Imagem {item.index + 1}</strong>
-        <span>{item.dimensions} {'->'} {item.optimizedDimensions}</span>
+        <span>
+          {item.dimensions} {'->'} {item.optimizedDimensions}
+        </span>
       </div>
       <div className="onblide-ml-review-preview" aria-hidden="true">
         <img src={item.url} alt="" />
-        <span><Ph n="arrows-clockwise" size={14} /></span>
+        <span>
+          <Ph n="arrows-clockwise" size={14} />
+        </span>
         <img src={item.url} alt="" />
       </div>
       <Badge tone={item.badgeTone} appearance="soft" dot={false} size="sm">
@@ -214,7 +222,9 @@ function OptimizeReviewItem({ item, onToggle }) {
 function ReviewDialog({ model, actions, onRendered }) {
   const footer = (
     <>
-      <Button kind="secondary" onClick={actions.onClose}>Cancelar</Button>
+      <Button kind="secondary" onClick={actions.onClose}>
+        Cancelar
+      </Button>
       <Button
         kind="primary"
         disabled={!model.selectedCount}
@@ -235,12 +245,12 @@ function ReviewDialog({ model, actions, onRendered }) {
         onClose={actions.onClose}
         footer={footer}
       >
-        <p className="onblide-ml-modal-copy">
-          Redimensiona para 1200px no lado maior e envia ao Mercado Livre.
-        </p>
+        <p className="onblide-ml-modal-copy">Redimensiona para 1200px no lado maior e envia ao Mercado Livre.</p>
         {model.error && <div className="onblide-ml-dialog-error">{model.error}</div>}
         <div className="onblide-ml-selection-bar">
-          <span><strong>{model.selectedCount}</strong> de {model.items.length} selecionadas</span>
+          <span>
+            <strong>{model.selectedCount}</strong> de {model.items.length} selecionadas
+          </span>
           <Button
             className="onblide-ml-selection-action"
             kind="quiet"
@@ -282,7 +292,9 @@ function OptimizeResultItem({ item }) {
           <img src={item.afterUrl} alt={`Imagem ${item.index + 1} otimizada`} />
           <figcaption>Otimizada · {item.optimizedDimensions}</figcaption>
           <span className="onblide-ml-result-score">
-            <Badge tone="success" appearance="soft" dot={false} size="sm">100%</Badge>
+            <Badge tone="success" appearance="soft" dot={false} size="sm">
+              100%
+            </Badge>
           </span>
         </figure>
       </div>
@@ -291,7 +303,11 @@ function OptimizeResultItem({ item }) {
 }
 
 function ResultDialog({ model, actions, onRendered }) {
-  const footer = <Button kind="secondary" onClick={actions.onClose}>Fechar</Button>;
+  const footer = (
+    <Button kind="secondary" onClick={actions.onClose}>
+      Fechar
+    </Button>
+  );
   return (
     <ModalHost onRendered={onRendered}>
       <Modal
@@ -302,11 +318,11 @@ function ResultDialog({ model, actions, onRendered }) {
         onClose={actions.onClose}
         footer={footer}
       >
-        <p className="onblide-ml-modal-copy">
-          Fotos enviadas. O Mercado Livre pode levar alguns minutos para exibir.
-        </p>
+        <p className="onblide-ml-modal-copy">Fotos enviadas. O Mercado Livre pode levar alguns minutos para exibir.</p>
         <div className="onblide-ml-result-list">
-          {model.items.map((item) => <OptimizeResultItem key={item.localId} item={item} />)}
+          {model.items.map((item) => (
+            <OptimizeResultItem key={item.localId} item={item} />
+          ))}
         </div>
       </Modal>
     </ModalHost>
@@ -365,7 +381,9 @@ function TrayBar({ model, actions }) {
 function DockIdentity({ counter }) {
   return (
     <div className="onblide-ml-dock-identity">
-      <span className="onblide-ml-dock-identity-icon"><Ph n="image" size={16} /></span>
+      <span className="onblide-ml-dock-identity-icon">
+        <Ph n="image" size={16} />
+      </span>
       <span className="onblide-ml-dock-identity-copy">
         <strong>Editor de fotos</strong>
         <small>{counter}</small>
@@ -427,11 +445,14 @@ function PictureTile({ picture, actions }) {
 function UploadTile({ actions }) {
   const [uploadKey, setUploadKey] = useState(0);
   const queue = useRef(Promise.resolve());
-  const upload = useCallback((file) => {
-    const pending = queue.current.then(() => actions.onUploadFiles([file]));
-    queue.current = pending.catch(() => {});
-    return pending;
-  }, [actions]);
+  const upload = useCallback(
+    (file) => {
+      const pending = queue.current.then(() => actions.onUploadFiles([file]));
+      queue.current = pending.catch(() => {});
+      return pending;
+    },
+    [actions]
+  );
 
   return (
     <div className="onblide-ml-upload">
@@ -506,11 +527,7 @@ function EditorDockContent({ model, actions }) {
           )}
         </div>
       </div>
-      {model.feedback && (
-        <div className={`onblide-ml-tray-feedback ${model.feedback.tone}`}>
-          {model.feedback.text}
-        </div>
-      )}
+      {model.feedback && <div className={`onblide-ml-tray-feedback ${model.feedback.tone}`}>{model.feedback.text}</div>}
     </>
   );
 }
@@ -533,16 +550,8 @@ function PhotoDock({ model, onRendered, actions }) {
         if (node) onRendered(node);
       }}
     >
-      <svg
-        className="onblide-ml-dock-silhouette"
-        viewBox="0 0 240 28"
-        focusable="false"
-        aria-hidden="true"
-      >
-        <path
-          className="onblide-ml-dock-silhouette-fill"
-          d="M0 28H20C40 28 44 0 68 0H172C196 0 200 28 220 28H240Z"
-        />
+      <svg className="onblide-ml-dock-silhouette" viewBox="0 0 240 28" focusable="false" aria-hidden="true">
+        <path className="onblide-ml-dock-silhouette-fill" d="M0 28H20C40 28 44 0 68 0H172C196 0 200 28 220 28H240Z" />
       </svg>
       <Button
         className="onblide-ml-dock-tab"
@@ -556,11 +565,11 @@ function PhotoDock({ model, onRendered, actions }) {
         title={label}
         onClick={actions.onToggle}
         style={{ position: 'absolute', width: 160, height: 32, borderRadius: 0 }}
-        icon={(
+        icon={
           <span className={`onblide-ml-dock-tab-icon${model.expanded ? ' is-expanded' : ''}`}>
             <Ph n="caret-up" size={16} />
           </span>
-        )}
+        }
       />
       <div className={`onblide-ml-dock-panel${model.expanded ? ' is-expanded' : ''}`}>
         <div className="onblide-ml-dock-content">
@@ -594,9 +603,8 @@ function renderTray(host, model, callbacks = {}) {
     onDiscard: typeof callbacks.onDiscard === 'function' ? callbacks.onDiscard : () => {},
     onRemove: typeof callbacks.onRemove === 'function' ? callbacks.onRemove : () => {},
     onUploadFiles: typeof callbacks.onUploadFiles === 'function' ? callbacks.onUploadFiles : () => {},
-    onPicturePointerDown: typeof callbacks.onPicturePointerDown === 'function'
-      ? callbacks.onPicturePointerDown
-      : () => {},
+    onPicturePointerDown:
+      typeof callbacks.onPicturePointerDown === 'function' ? callbacks.onPicturePointerDown : () => {},
     onMovePicture: typeof callbacks.onMovePicture === 'function' ? callbacks.onMovePicture : () => {}
   };
   flushSync(() => {
@@ -620,9 +628,8 @@ function renderDialog(host, model, callbacks = {}) {
     onReloadQuality: typeof callbacks.onReloadQuality === 'function' ? callbacks.onReloadQuality : () => {},
     onRemove: typeof callbacks.onRemove === 'function' ? callbacks.onRemove : () => {},
     onUploadFiles: typeof callbacks.onUploadFiles === 'function' ? callbacks.onUploadFiles : () => {},
-    onPicturePointerDown: typeof callbacks.onPicturePointerDown === 'function'
-      ? callbacks.onPicturePointerDown
-      : () => {},
+    onPicturePointerDown:
+      typeof callbacks.onPicturePointerDown === 'function' ? callbacks.onPicturePointerDown : () => {},
     onMovePicture: typeof callbacks.onMovePicture === 'function' ? callbacks.onMovePicture : () => {},
     onSelectAll: typeof callbacks.onSelectAll === 'function' ? callbacks.onSelectAll : () => {},
     onClear: typeof callbacks.onClear === 'function' ? callbacks.onClear : () => {},

@@ -17,13 +17,22 @@ export {
   handleUpdateCampaign,
   handleUpdateOffer
 } from './domain/routes/promotions.js';
-export { handleDescriptionBulkUpdate, handleDescriptionGet, handleDescriptionUpdate } from './domain/routes/descriptions.js';
+export {
+  handleDescriptionBulkUpdate,
+  handleDescriptionGet,
+  handleDescriptionUpdate
+} from './domain/routes/descriptions.js';
 export {
   handleCharacteristicsBulkUpdate,
   handleCharacteristicsGet,
   handleCharacteristicsUpdate
 } from './domain/routes/characteristics.js';
-export { handlePictureCommit, handlePictureFixSize, handlePictureQuality, handlePictureUpload } from './domain/routes/pictures.js';
+export {
+  handlePictureCommit,
+  handlePictureFixSize,
+  handlePictureQuality,
+  handlePictureUpload
+} from './domain/routes/pictures.js';
 export { handleBulkCommit, handleBulkPreview } from './domain/routes/bulk.js';
 export { verifyOfferMutation } from './domain/promotions.js';
 export { resolveItemClient } from './domain/account-client.js';

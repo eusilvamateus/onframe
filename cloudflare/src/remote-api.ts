@@ -176,16 +176,18 @@ export async function handleRemoteApiRequest(input: {
     requestPayload = await readRequestJson(input.request, options);
     return requestPayload;
   };
-  const resolveItemClient = (itemId: string) => resolveLegacyItemClient({
-    context,
-    itemId,
-    ownerUserId: input.url.searchParams.get('owner_user_id')
-  });
-  const resolveBulkClient = (subjectId: string) => resolveLegacyBulkClient({
-    context,
-    subjectId,
-    ownerUserId: input.url.searchParams.get('owner_user_id')
-  });
+  const resolveItemClient = (itemId: string) =>
+    resolveLegacyItemClient({
+      context,
+      itemId,
+      ownerUserId: input.url.searchParams.get('owner_user_id')
+    });
+  const resolveBulkClient = (subjectId: string) =>
+    resolveLegacyBulkClient({
+      context,
+      subjectId,
+      ownerUserId: input.url.searchParams.get('owner_user_id')
+    });
   const matchPromotionProduct = async (client: RemoteMeliClient, itemId: string) => {
     try {
       const productMatch = await matchProductForPromotionItem(
@@ -202,8 +204,22 @@ export async function handleRemoteApiRequest(input: {
       });
       return { ...productMatch, tax };
     } catch (error) {
-      console.error(JSON.stringify({ event: 'promotion_product_match_failed', itemId, requestId: input.requestId, error: sanitizeError(error) }));
-      return { status: 'unavailable', sku: null, source: null, variationId: null, reason: 'catalog_unavailable', product: null };
+      console.error(
+        JSON.stringify({
+          event: 'promotion_product_match_failed',
+          itemId,
+          requestId: input.requestId,
+          error: sanitizeError(error)
+        })
+      );
+      return {
+        status: 'unavailable',
+        sku: null,
+        source: null,
+        variationId: null,
+        reason: 'catalog_unavailable',
+        product: null
+      };
     }
   };
   const runItemMutation = async (
@@ -225,13 +241,15 @@ export async function handleRemoteApiRequest(input: {
       snapshots: (targetItemId) => client.historySnapshots(targetItemId),
       promotionSnapshots: (targetItemId) => client.historyPromotionSnapshots(targetItemId)
     }).catch((error) => {
-      console.error(JSON.stringify({
-        event: 'item_edit_history_write_failed',
-        itemId,
-        operation,
-        requestId: input.requestId,
-        error: sanitizeError(error)
-      }));
+      console.error(
+        JSON.stringify({
+          event: 'item_edit_history_write_failed',
+          itemId,
+          operation,
+          requestId: input.requestId,
+          error: sanitizeError(error)
+        })
+      );
     });
     return result;
   };
@@ -242,24 +260,28 @@ export async function handleRemoteApiRequest(input: {
     }
 
     if (route === 'POST /resolve') {
-      return unwrapLegacyRouteResult(await handleResolve({
-        req: input.request,
-        client: context.client,
-        store: context.store,
-        clientFactory: context.clientFactory,
-        readJson
-      }));
+      return unwrapLegacyRouteResult(
+        await handleResolve({
+          req: input.request,
+          client: context.client,
+          store: context.store,
+          clientFactory: context.clientFactory,
+          readJson
+        })
+      );
     }
 
     if (route === 'POST /resolve/quick') {
-      return unwrapLegacyRouteResult(await handleResolveQuick({
-        req: input.request,
-        client: context.client,
-        store: context.store,
-        clientFactory: context.clientFactory,
-        readJson,
-        cache: quickCache
-      }));
+      return unwrapLegacyRouteResult(
+        await handleResolveQuick({
+          req: input.request,
+          client: context.client,
+          store: context.store,
+          clientFactory: context.clientFactory,
+          readJson,
+          cache: quickCache
+        })
+      );
     }
 
     const priceSummary = apiPath.match(/^\/items\/(MLB\d+)\/pricing\/summary$/u);
@@ -270,12 +292,14 @@ export async function handleRemoteApiRequest(input: {
     const standardPrice = apiPath.match(/^\/items\/(MLB\d+)\/pricing\/standard$/u);
     if (input.request.method === 'PUT' && standardPrice) {
       const client = await resolveItemClient(standardPrice[1]);
-      return runItemMutation('pricing.standard.update', standardPrice[1], client, () => handleStandardPriceUpdate({
-        req: input.request,
-        client,
-        itemId: standardPrice[1],
-        readJson
-      }));
+      return runItemMutation('pricing.standard.update', standardPrice[1], client, () =>
+        handleStandardPriceUpdate({
+          req: input.request,
+          client,
+          itemId: standardPrice[1],
+          readJson
+        })
+      );
     }
 
     const bulkPreview = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/preview$/u);
@@ -313,12 +337,14 @@ export async function handleRemoteApiRequest(input: {
     const descriptionBulk = apiPath.match(/^\/items\/(MLB\d+)\/description\/bulk$/u);
     if (input.request.method === 'POST' && descriptionBulk) {
       const client = await resolveBulkClient(descriptionBulk[1]);
-      return runItemMutation('description.update', descriptionBulk[1], client, () => handleDescriptionBulkUpdate({
-        req: input.request,
-        client,
-        itemId: descriptionBulk[1],
-        readJson
-      }));
+      return runItemMutation('description.update', descriptionBulk[1], client, () =>
+        handleDescriptionBulkUpdate({
+          req: input.request,
+          client,
+          itemId: descriptionBulk[1],
+          readJson
+        })
+      );
     }
 
     const description = apiPath.match(/^\/items\/(MLB\d+)\/description$/u);
@@ -327,42 +353,54 @@ export async function handleRemoteApiRequest(input: {
     }
     if (input.request.method === 'PUT' && description) {
       const client = await resolveItemClient(description[1]);
-      return runItemMutation('description.update', description[1], client, () => handleDescriptionUpdate({
-        req: input.request,
-        client,
-        itemId: description[1],
-        readJson
-      }));
+      return runItemMutation('description.update', description[1], client, () =>
+        handleDescriptionUpdate({
+          req: input.request,
+          client,
+          itemId: description[1],
+          readJson
+        })
+      );
     }
 
     const characteristicsBulk = apiPath.match(/^\/items\/(MLB\d+)\/characteristics\/bulk$/u);
     if (input.request.method === 'POST' && characteristicsBulk) {
       const client = await resolveBulkClient(characteristicsBulk[1]);
-      return runItemMutation('characteristics.update', characteristicsBulk[1], client, () => handleCharacteristicsBulkUpdate({
-        req: input.request,
-        client,
-        itemId: characteristicsBulk[1],
-        readJson
-      }));
+      return runItemMutation('characteristics.update', characteristicsBulk[1], client, () =>
+        handleCharacteristicsBulkUpdate({
+          req: input.request,
+          client,
+          itemId: characteristicsBulk[1],
+          readJson
+        })
+      );
     }
 
     const characteristics = apiPath.match(/^\/items\/(MLB\d+)\/characteristics$/u);
     if (input.request.method === 'GET' && characteristics) {
-      return handleCharacteristicsGet({ client: await resolveItemClient(characteristics[1]), itemId: characteristics[1] });
+      return handleCharacteristicsGet({
+        client: await resolveItemClient(characteristics[1]),
+        itemId: characteristics[1]
+      });
     }
     if (input.request.method === 'PUT' && characteristics) {
       const client = await resolveItemClient(characteristics[1]);
-      return runItemMutation('characteristics.update', characteristics[1], client, () => handleCharacteristicsUpdate({
-        req: input.request,
-        client,
-        itemId: characteristics[1],
-        readJson
-      }));
+      return runItemMutation('characteristics.update', characteristics[1], client, () =>
+        handleCharacteristicsUpdate({
+          req: input.request,
+          client,
+          itemId: characteristics[1],
+          readJson
+        })
+      );
     }
 
     const promotionSummary = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/summary$/u);
     if (input.request.method === 'GET' && promotionSummary) {
-      return handlePromotionSummary({ client: await resolveItemClient(promotionSummary[1]), itemId: promotionSummary[1] });
+      return handlePromotionSummary({
+        client: await resolveItemClient(promotionSummary[1]),
+        itemId: promotionSummary[1]
+      });
     }
 
     const promotionEstimates = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/estimates$/u);
@@ -398,19 +436,26 @@ export async function handleRemoteApiRequest(input: {
     const offer = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/offers$/u);
     if (input.request.method === 'POST' && offer) {
       const client = await resolveItemClient(offer[1]);
-      return runItemMutation('promotion.offer.create', offer[1], client, () => handleCreateOffer({ req: input.request, client, itemId: offer[1], readJson }));
+      return runItemMutation('promotion.offer.create', offer[1], client, () =>
+        handleCreateOffer({ req: input.request, client, itemId: offer[1], readJson })
+      );
     }
     if (input.request.method === 'PUT' && offer) {
       const client = await resolveItemClient(offer[1]);
-      return runItemMutation('promotion.offer.update', offer[1], client, () => handleUpdateOffer({ req: input.request, client, itemId: offer[1], readJson }));
+      return runItemMutation('promotion.offer.update', offer[1], client, () =>
+        handleUpdateOffer({ req: input.request, client, itemId: offer[1], readJson })
+      );
     }
     if (input.request.method === 'DELETE' && offer) {
       const client = await resolveItemClient(offer[1]);
-      return runItemMutation('promotion.offer.delete', offer[1], client, () => handleDeleteOffer({ req: input.request, client, itemId: offer[1], readJson }));
+      return runItemMutation('promotion.offer.delete', offer[1], client, () =>
+        handleDeleteOffer({ req: input.request, client, itemId: offer[1], readJson })
+      );
     }
 
     if (route === 'GET /promotions/campaigns') return handleCampaignList({ client: context.client });
-    if (route === 'POST /promotions/campaigns') return handleCreateCampaign({ req: input.request, client: context.client, readJson });
+    if (route === 'POST /promotions/campaigns')
+      return handleCreateCampaign({ req: input.request, client: context.client, readJson });
 
     const campaign = apiPath.match(/^\/promotions\/campaigns\/([^/]+)$/u);
     if (input.request.method === 'PUT' && campaign) {
@@ -432,23 +477,39 @@ export async function handleRemoteApiRequest(input: {
 
     const pictureUpload = apiPath.match(/^\/items\/(MLB\d+)\/pictures\/upload$/u);
     if (input.request.method === 'POST' && pictureUpload) {
-      return handlePictureUpload({ req: input.request, client: await resolveItemClient(pictureUpload[1]), itemId: pictureUpload[1], readJson });
+      return handlePictureUpload({
+        req: input.request,
+        client: await resolveItemClient(pictureUpload[1]),
+        itemId: pictureUpload[1],
+        readJson
+      });
     }
 
     const pictureQuality = apiPath.match(/^\/items\/(MLB\d+)\/pictures\/quality$/u);
     if (input.request.method === 'GET' && pictureQuality) {
-      return handlePictureQuality({ url: input.url, client: await resolveItemClient(pictureQuality[1]), itemId: pictureQuality[1] });
+      return handlePictureQuality({
+        url: input.url,
+        client: await resolveItemClient(pictureQuality[1]),
+        itemId: pictureQuality[1]
+      });
     }
 
     const pictureFixSize = apiPath.match(/^\/items\/(MLB\d+)\/pictures\/fix-size$/u);
     if (input.request.method === 'POST' && pictureFixSize) {
-      return handlePictureFixSize({ req: input.request, client: await resolveItemClient(pictureFixSize[1]), itemId: pictureFixSize[1], readJson });
+      return handlePictureFixSize({
+        req: input.request,
+        client: await resolveItemClient(pictureFixSize[1]),
+        itemId: pictureFixSize[1],
+        readJson
+      });
     }
 
     const pictureCommit = apiPath.match(/^\/items\/(MLB\d+)\/pictures\/commit$/u);
     if (input.request.method === 'POST' && pictureCommit) {
       const client = await resolveItemClient(pictureCommit[1]);
-      return runItemMutation('pictures.update', pictureCommit[1], client, () => handlePictureCommit({ req: input.request, client, itemId: pictureCommit[1], readJson }));
+      return runItemMutation('pictures.update', pictureCommit[1], client, () =>
+        handlePictureCommit({ req: input.request, client, itemId: pictureCommit[1], readJson })
+      );
     }
 
     throw new RemoteApiError('endpoint_not_found', 404, 'Endpoint nao encontrado.');
@@ -457,7 +518,10 @@ export async function handleRemoteApiRequest(input: {
   }
 }
 
-export function remoteApiErrorPayload(error: unknown, requestId: string): { status: number; payload: Record<string, string> } {
+export function remoteApiErrorPayload(
+  error: unknown,
+  requestId: string
+): { status: number; payload: Record<string, string> } {
   const normalized = normalizeRemoteApiError(error);
   const technicalError = sanitizeError(normalized);
   return {
@@ -473,19 +537,20 @@ export function remoteApiErrorPayload(error: unknown, requestId: string): { stat
 function unwrapLegacyRouteResult(value: unknown): unknown {
   if (!value || typeof value !== 'object') return value;
   const result = value as { statusCode?: unknown; payload?: unknown };
-  if (!Object.prototype.hasOwnProperty.call(result, 'statusCode') || !Object.prototype.hasOwnProperty.call(result, 'payload')) {
+  if (
+    !Object.prototype.hasOwnProperty.call(result, 'statusCode') ||
+    !Object.prototype.hasOwnProperty.call(result, 'payload')
+  ) {
     return value;
   }
   const statusCode = Number(result.statusCode);
   if (!Number.isInteger(statusCode) || statusCode < 100 || statusCode > 599) return value;
   if (statusCode < 400) return result.payload;
 
-  const payload = result.payload && typeof result.payload === 'object'
-    ? result.payload as Record<string, unknown>
-    : {};
-  const message = typeof payload.error === 'string' && payload.error.trim()
-    ? payload.error
-    : 'A requisicao nao pode ser concluida.';
+  const payload =
+    result.payload && typeof result.payload === 'object' ? (result.payload as Record<string, unknown>) : {};
+  const message =
+    typeof payload.error === 'string' && payload.error.trim() ? payload.error : 'A requisicao nao pode ser concluida.';
   throw new RemoteApiError(errorCodeForStatus(statusCode), statusCode, message, result.payload);
 }
 
@@ -514,40 +579,46 @@ async function registerPendingPromotionReconciliations(input: {
     const reconciliationId = crypto.randomUUID();
     const now = Date.now();
     try {
-      await input.env.ONFRAME_DB.prepare(`
+      await input.env.ONFRAME_DB.prepare(
+        `
         INSERT INTO promotion_reconciliations (
           id, workspace_id, seller_account_id, user_id, request_id,
           source_item_id, item_id, operation, payload_json, accepted_result_json, history_before_json,
           actor_name, actor_email, status, attempts, created_at, updated_at, expires_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
-      `).bind(
-        reconciliationId,
-        input.actor.workspaceId,
-        account.id,
-        input.actor.userId,
-        input.requestId,
-        input.sourceItemId,
-        itemId,
-        action,
-        JSON.stringify(payload),
-        JSON.stringify(metadata?.result ?? target.result ?? {}),
-        JSON.stringify(input.client.historyPromotionSnapshots(itemId).first ?? null),
-        input.actor.displayName || null,
-        input.actor.email || null,
-        now,
-        now,
-        now + RECONCILIATION_RETENTION_MS
-      ).run();
+      `
+      )
+        .bind(
+          reconciliationId,
+          input.actor.workspaceId,
+          account.id,
+          input.actor.userId,
+          input.requestId,
+          input.sourceItemId,
+          itemId,
+          action,
+          JSON.stringify(payload),
+          JSON.stringify(metadata?.result ?? target.result ?? {}),
+          JSON.stringify(input.client.historyPromotionSnapshots(itemId).first ?? null),
+          input.actor.displayName || null,
+          input.actor.email || null,
+          now,
+          now,
+          now + RECONCILIATION_RETENTION_MS
+        )
+        .run();
       target.reconciliationId = reconciliationId;
       await startPromotionReconciliation(input.env, reconciliationId);
     } catch (error) {
-      console.error(JSON.stringify({
-        event: 'promotion_reconciliation_registration_failed',
-        itemId,
-        reconciliationId,
-        requestId: input.requestId,
-        error: sanitizeError(error)
-      }));
+      console.error(
+        JSON.stringify({
+          event: 'promotion_reconciliation_registration_failed',
+          itemId,
+          reconciliationId,
+          requestId: input.requestId,
+          error: sanitizeError(error)
+        })
+      );
     }
   }
 }
@@ -558,27 +629,34 @@ async function listPromotionReconciliations(
   url: URL
 ): Promise<Record<string, unknown>> {
   const ids = uniqueReconciliationIds(url.searchParams.get('ids'));
-  if (!ids.length) throw new RemoteApiError('reconciliation_ids_required', 400, 'Informe as operações que deseja consultar.');
+  if (!ids.length)
+    throw new RemoteApiError('reconciliation_ids_required', 400, 'Informe as operações que deseja consultar.');
 
   const placeholders = ids.map(() => '?').join(', ');
-  const records = await env.ONFRAME_DB.prepare(`
+  const records = await env.ONFRAME_DB.prepare(
+    `
     SELECT id, item_id, status, attempts, last_error, workflow_started_at, accepted_result_json
     FROM promotion_reconciliations
     WHERE workspace_id = ? AND user_id = ? AND id IN (${placeholders})
-  `).bind(actor.workspaceId, actor.userId, ...ids).all<{
-    id: string;
-    item_id: string;
-    status: 'pending' | 'confirmed' | 'unconfirmed';
-    attempts: number;
-    last_error: string | null;
-    workflow_started_at: number | null;
-    accepted_result_json: string;
-  }>();
+  `
+  )
+    .bind(actor.workspaceId, actor.userId, ...ids)
+    .all<{
+      id: string;
+      item_id: string;
+      status: 'pending' | 'confirmed' | 'unconfirmed';
+      attempts: number;
+      last_error: string | null;
+      workflow_started_at: number | null;
+      accepted_result_json: string;
+    }>();
 
   const rows = records.results ?? [];
-  await Promise.all(rows
-    .filter((row) => row.status === 'pending' && !row.workflow_started_at)
-    .map((row) => startPromotionReconciliation(env, row.id)));
+  await Promise.all(
+    rows
+      .filter((row) => row.status === 'pending' && !row.workflow_started_at)
+      .map((row) => startPromotionReconciliation(env, row.id))
+  );
 
   return {
     operations: rows.map((row) => ({
@@ -598,37 +676,48 @@ async function startPromotionReconciliation(env: RemoteRuntimeEnv, reconciliatio
       id: reconciliationId,
       params: { reconciliationId }
     });
-    await env.ONFRAME_DB.prepare(`
+    await env.ONFRAME_DB.prepare(
+      `
       UPDATE promotion_reconciliations
       SET workflow_started_at = COALESCE(workflow_started_at, ?), updated_at = ?
       WHERE id = ? AND status = 'pending'
-    `).bind(Date.now(), Date.now(), reconciliationId).run();
+    `
+    )
+      .bind(Date.now(), Date.now(), reconciliationId)
+      .run();
   } catch (error) {
-    console.error(JSON.stringify({
-      event: 'promotion_reconciliation_start_failed',
-      reconciliationId,
-      error: sanitizeError(error)
-    }));
+    console.error(
+      JSON.stringify({
+        event: 'promotion_reconciliation_start_failed',
+        reconciliationId,
+        error: sanitizeError(error)
+      })
+    );
   }
 }
 
 function uniqueReconciliationIds(value: string | null): string[] {
-  return Array.from(new Set(String(value || '').split(',')
-    .map((entry) => entry.trim().toLowerCase())
-    .filter((entry) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(entry))))
-    .slice(0, 50);
+  return Array.from(
+    new Set(
+      String(value || '')
+        .split(',')
+        .map((entry) => entry.trim().toLowerCase())
+        .filter((entry) => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(entry))
+    )
+  ).slice(0, 50);
 }
 
 function reconciliationMessage(status: PromotionReconciliationRow['status'], lastError: string | null): string {
   if (status === 'confirmed') return 'Alteração confirmada pelo Mercado Livre.';
-  if (status === 'unconfirmed') return 'O estado final não foi confirmado. Atualize as promoções antes de repetir a ação.';
+  if (status === 'unconfirmed')
+    return 'O estado final não foi confirmado. Atualize as promoções antes de repetir a ação.';
   return lastError
     ? 'A alteração foi aceita e uma nova confirmação será tentada automaticamente.'
     : 'A alteração foi aceita e aguarda confirmação do Mercado Livre.';
 }
 
 function recordOrNull(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function parseStoredJson(value: string): unknown {
@@ -643,14 +732,18 @@ export async function reconcilePromotionOperation(
   env: RemoteRuntimeEnv,
   reconciliationId: string
 ): Promise<ReconciliationOutcome> {
-  const row = await env.ONFRAME_DB.prepare(`
+  const row = await env.ONFRAME_DB.prepare(
+    `
     SELECT reconciliations.*,
            accounts.meli_user_id, accounts.nickname, accounts.site_id, accounts.profile_url,
            accounts.enabled AS account_enabled
     FROM promotion_reconciliations AS reconciliations
     INNER JOIN seller_accounts AS accounts ON accounts.id = reconciliations.seller_account_id
     WHERE reconciliations.id = ?
-  `).bind(reconciliationId).first<PromotionReconciliationRow>();
+  `
+  )
+    .bind(reconciliationId)
+    .first<PromotionReconciliationRow>();
   if (!row) return { id: reconciliationId, itemId: '', status: 'missing', attempts: 0 };
   if (row.status !== 'pending') return reconciliationOutcome(row);
   if (row.expires_at <= Date.now() || row.account_enabled !== 1) {
@@ -704,11 +797,15 @@ export async function reconcilePromotionOperation(
     });
 
     const now = Date.now();
-    await env.ONFRAME_DB.prepare(`
+    await env.ONFRAME_DB.prepare(
+      `
       UPDATE promotion_reconciliations
       SET status = 'confirmed', attempts = ?, last_error = NULL, updated_at = ?, completed_at = ?
       WHERE id = ? AND status = 'pending'
-    `).bind(attempts, now, now, reconciliationId).run();
+    `
+    )
+      .bind(attempts, now, now, reconciliationId)
+      .run();
     return {
       id: row.id,
       itemId: row.item_id,
@@ -728,11 +825,15 @@ async function updatePendingPromotionReconciliation(
   attempts: number,
   lastError: string | null
 ): Promise<void> {
-  await env.ONFRAME_DB.prepare(`
+  await env.ONFRAME_DB.prepare(
+    `
     UPDATE promotion_reconciliations
     SET attempts = ?, last_error = ?, updated_at = ?
     WHERE id = ? AND status = 'pending'
-  `).bind(attempts, lastError, Date.now(), reconciliationId).run();
+  `
+  )
+    .bind(attempts, lastError, Date.now(), reconciliationId)
+    .run();
 }
 
 export async function markPromotionReconciliationUnconfirmed(
@@ -741,16 +842,24 @@ export async function markPromotionReconciliationUnconfirmed(
   lastError: string | null = null
 ): Promise<ReconciliationOutcome> {
   const now = Date.now();
-  await env.ONFRAME_DB.prepare(`
+  await env.ONFRAME_DB.prepare(
+    `
     UPDATE promotion_reconciliations
     SET status = 'unconfirmed', last_error = COALESCE(?, last_error), updated_at = ?, completed_at = ?
     WHERE id = ? AND status = 'pending'
-  `).bind(lastError, now, now, reconciliationId).run();
-  const row = await env.ONFRAME_DB.prepare(`
+  `
+  )
+    .bind(lastError, now, now, reconciliationId)
+    .run();
+  const row = await env.ONFRAME_DB.prepare(
+    `
     SELECT id, item_id, status, attempts, last_error
     FROM promotion_reconciliations
     WHERE id = ?
-  `).bind(reconciliationId).first<PromotionReconciliationRow>();
+  `
+  )
+    .bind(reconciliationId)
+    .first<PromotionReconciliationRow>();
   if (!row) return { id: reconciliationId, itemId: '', status: 'missing', attempts: 0 };
   return reconciliationOutcome(row);
 }
@@ -767,7 +876,8 @@ function reconciliationOutcome(row: PromotionReconciliationRow): ReconciliationO
 
 async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiActor): Promise<RemoteApiContext> {
   assertRemoteMeliConfigured(env);
-  const records = await env.ONFRAME_DB.prepare(`
+  const records = await env.ONFRAME_DB.prepare(
+    `
     SELECT accounts.id, accounts.meli_user_id, accounts.nickname, accounts.site_id,
            accounts.profile_url, accounts.enabled
     FROM seller_accounts AS accounts
@@ -784,21 +894,29 @@ async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiAct
         )
       )
     ORDER BY accounts.created_at ASC
-  `).bind(actor.userId, actor.workspaceId, actor.userId).all<{
-    id: string;
-    meli_user_id: string;
-    nickname: string | null;
-    site_id: string | null;
-    profile_url: string | null;
-    enabled: number;
-  }>();
+  `
+  )
+    .bind(actor.userId, actor.workspaceId, actor.userId)
+    .all<{
+      id: string;
+      meli_user_id: string;
+      nickname: string | null;
+      site_id: string | null;
+      profile_url: string | null;
+      enabled: number;
+    }>();
   if (!records.results?.length) {
-    const membership = await env.ONFRAME_DB.prepare(`
+    const membership = await env.ONFRAME_DB.prepare(
+      `
       SELECT role
       FROM workspace_members
       WHERE workspace_id = ? AND user_id = ?
-    `).bind(actor.workspaceId, actor.userId).first<{ role: 'admin' | 'collaborator' }>();
-    if (!membership) throw new RemoteApiError('workspace_access_forbidden', 403, 'Você não faz mais parte deste workspace.');
+    `
+    )
+      .bind(actor.workspaceId, actor.userId)
+      .first<{ role: 'admin' | 'collaborator' }>();
+    if (!membership)
+      throw new RemoteApiError('workspace_access_forbidden', 403, 'Você não faz mais parte deste workspace.');
   }
   const accounts = (records.results ?? []).map((record) => ({
     id: record.id,
@@ -821,7 +939,7 @@ async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiAct
   const accountsByUserId = new Map(accounts.map((account) => [account.meliUserId, account]));
   const defaultAccount = enabledAccounts[0];
   const clientFactory = (legacyAccount: LegacyAccount | null): RemoteMeliClient => {
-    const account = legacyAccount && accountsByUserId.get(String(legacyAccount.user_id)) || defaultAccount;
+    const account = (legacyAccount && accountsByUserId.get(String(legacyAccount.user_id))) || defaultAccount;
     if (!account) throw new RemoteApiError('workspace_account_unavailable', 409);
     return new RemoteMeliClient(env, account);
   };
@@ -832,7 +950,8 @@ async function createRemoteApiContext(env: RemoteRuntimeEnv, actor: RemoteApiAct
     clientFactory,
     store: {
       listAccountTokens: async () => legacyAccounts,
-      readAccount: async (userId: string) => legacyAccounts.find((account) => account.user_id === String(userId)) || null
+      readAccount: async (userId: string) =>
+        legacyAccounts.find((account) => account.user_id === String(userId)) || null
     }
   };
 }
@@ -865,11 +984,21 @@ async function resolveLegacyBulkClient(input: {
   }
   const ownerUserId = String(input.ownerUserId || '').trim();
   if (!/^\d+$/u.test(ownerUserId)) {
-    throw new RemoteApiError('workspace_account_access_forbidden', 403, 'Conta conectada nao encontrada para este anuncio.');
+    throw new RemoteApiError(
+      'workspace_account_access_forbidden',
+      403,
+      'Conta conectada nao encontrada para este anuncio.'
+    );
   }
   const account = await input.context.store.readAccount(ownerUserId);
-  if (!account) throw new RemoteApiError('workspace_account_access_forbidden', 403, 'Conta conectada nao encontrada para este anuncio.');
-  if (account.enabled === false) throw new RemoteApiError('workspace_accounts_disabled', 403, 'Esta conta esta desativada no OnFrame.');
+  if (!account)
+    throw new RemoteApiError(
+      'workspace_account_access_forbidden',
+      403,
+      'Conta conectada nao encontrada para este anuncio.'
+    );
+  if (account.enabled === false)
+    throw new RemoteApiError('workspace_accounts_disabled', 403, 'Esta conta esta desativada no OnFrame.');
   return input.context.clientFactory(account);
 }
 
@@ -884,7 +1013,10 @@ function toLegacyAccount(account: SellerAccount): LegacyAccount {
   };
 }
 
-async function readRequestJson(request: Request, options: { maxBytes?: number } = {}): Promise<Record<string, unknown>> {
+async function readRequestJson(
+  request: Request,
+  options: { maxBytes?: number } = {}
+): Promise<Record<string, unknown>> {
   const contentType = String(request.headers.get('content-type') || '').toLowerCase();
   if (contentType && !contentType.includes('application/json')) {
     throw new RemoteApiError('invalid_content_type', 415, 'Content-Type invalido. Use application/json.');
@@ -968,73 +1100,184 @@ class RemoteMeliClient {
       // Historico auxiliar nao deve impedir uma mutacao valida.
     }
   }
-  async getItemPrices(itemId: string, options: { displayVersion?: boolean; showAllPrices?: boolean } = {}): Promise<unknown> {
-    return this.request(withQuery(`/items/${encodeURIComponent(itemId)}/prices`, { display_version: options.displayVersion ? 'true' : undefined }), {
-      headers: options.showAllPrices ? { 'show-all-prices': 'true' } : undefined
-    });
+  async getItemPrices(
+    itemId: string,
+    options: { displayVersion?: boolean; showAllPrices?: boolean } = {}
+  ): Promise<unknown> {
+    return this.request(
+      withQuery(`/items/${encodeURIComponent(itemId)}/prices`, {
+        display_version: options.displayVersion ? 'true' : undefined
+      }),
+      {
+        headers: options.showAllPrices ? { 'show-all-prices': 'true' } : undefined
+      }
+    );
   }
-  async getItemSalePrice(itemId: string, params: Record<string, unknown> = {}, options: { calculateNetTaxes?: boolean } = {}): Promise<unknown> {
+  async getItemSalePrice(
+    itemId: string,
+    params: Record<string, unknown> = {},
+    options: { calculateNetTaxes?: boolean } = {}
+  ): Promise<unknown> {
     return this.request(withQuery(`/items/${encodeURIComponent(itemId)}/sale_price`, params), {
       headers: options.calculateNetTaxes ? { 'x-calculate-net-taxes': 'true' } : undefined
     });
   }
-  async getCategory(categoryId: string): Promise<unknown> { return this.request(`/categories/${encodeURIComponent(categoryId)}`); }
-  async getCategoryAttributes(categoryId: string): Promise<unknown> { return this.request(`/categories/${encodeURIComponent(categoryId)}/attributes`); }
-  async getDomainTechnicalSpecs(domainId: string): Promise<unknown> { return this.request(`/domains/${encodeURIComponent(domainId)}/technical_specs`); }
-  async getUserProduct(userProductId: string): Promise<unknown> { return this.request(`/user-products/${encodeURIComponent(userProductId)}`); }
-  async getUserProductFamily(siteId: string, familyId: string): Promise<unknown> { return this.request(`/sites/${encodeURIComponent(siteId)}/user-products-families/${encodeURIComponent(familyId)}`); }
-  async searchItemsByUserProduct(userId: string | number, userProductId: string, options: Record<string, unknown> = {}): Promise<unknown> {
-    return this.request(withQuery(`/users/${encodeURIComponent(userId)}/items/search`, { ...options, user_product_id: userProductId }));
+  async getCategory(categoryId: string): Promise<unknown> {
+    return this.request(`/categories/${encodeURIComponent(categoryId)}`);
   }
-  async getListingPrices(siteId: string, params: Record<string, unknown> = {}): Promise<unknown> { return this.request(withQuery(`/sites/${encodeURIComponent(siteId)}/listing_prices`, params)); }
-  async getSellerShippingCost(userId: string | number, params: Record<string, unknown> = {}): Promise<unknown> { return this.request(withQuery(`/users/${encodeURIComponent(userId)}/shipping_options/free`, params)); }
-  async getPriceReference(itemId: string): Promise<unknown> { return this.request(`/suggestions/items/${encodeURIComponent(itemId)}/details`); }
-  async getPricingAutomation(itemId: string): Promise<unknown> { return this.request(`/pricing-automation/items/${encodeURIComponent(itemId)}/automation`); }
-  async getCatalogCompetition(itemId: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/price_to_win?version=v2`); }
-  async getBuyboxSync(itemId: string): Promise<unknown> { return this.request(`/public/buybox/sync/${encodeURIComponent(itemId)}`, { headers: { 'x-public': 'true' } }); }
-  async getSellerPromotions(userId: string | number): Promise<unknown> { return this.request(`/seller-promotions/users/${encodeURIComponent(userId)}?app_version=v2`); }
+  async getCategoryAttributes(categoryId: string): Promise<unknown> {
+    return this.request(`/categories/${encodeURIComponent(categoryId)}/attributes`);
+  }
+  async getDomainTechnicalSpecs(domainId: string): Promise<unknown> {
+    return this.request(`/domains/${encodeURIComponent(domainId)}/technical_specs`);
+  }
+  async getUserProduct(userProductId: string): Promise<unknown> {
+    return this.request(`/user-products/${encodeURIComponent(userProductId)}`);
+  }
+  async getUserProductFamily(siteId: string, familyId: string): Promise<unknown> {
+    return this.request(`/sites/${encodeURIComponent(siteId)}/user-products-families/${encodeURIComponent(familyId)}`);
+  }
+  async searchItemsByUserProduct(
+    userId: string | number,
+    userProductId: string,
+    options: Record<string, unknown> = {}
+  ): Promise<unknown> {
+    return this.request(
+      withQuery(`/users/${encodeURIComponent(userId)}/items/search`, { ...options, user_product_id: userProductId })
+    );
+  }
+  async getListingPrices(siteId: string, params: Record<string, unknown> = {}): Promise<unknown> {
+    return this.request(withQuery(`/sites/${encodeURIComponent(siteId)}/listing_prices`, params));
+  }
+  async getSellerShippingCost(userId: string | number, params: Record<string, unknown> = {}): Promise<unknown> {
+    return this.request(withQuery(`/users/${encodeURIComponent(userId)}/shipping_options/free`, params));
+  }
+  async getPriceReference(itemId: string): Promise<unknown> {
+    return this.request(`/suggestions/items/${encodeURIComponent(itemId)}/details`);
+  }
+  async getPricingAutomation(itemId: string): Promise<unknown> {
+    return this.request(`/pricing-automation/items/${encodeURIComponent(itemId)}/automation`);
+  }
+  async getCatalogCompetition(itemId: string): Promise<unknown> {
+    return this.request(`/items/${encodeURIComponent(itemId)}/price_to_win?version=v2`);
+  }
+  async getBuyboxSync(itemId: string): Promise<unknown> {
+    return this.request(`/public/buybox/sync/${encodeURIComponent(itemId)}`, { headers: { 'x-public': 'true' } });
+  }
+  async getSellerPromotions(userId: string | number): Promise<unknown> {
+    return this.request(`/seller-promotions/users/${encodeURIComponent(userId)}?app_version=v2`);
+  }
   async getItemPromotions(itemId: string): Promise<unknown> {
     const promotions = await this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`);
     this.rememberPromotionSnapshot(itemId, promotions);
     return promotions;
   }
-  async getPromotion(promotionId: string, promotionType: string): Promise<unknown> { return this.request(withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}`, { promotion_type: promotionType, app_version: 'v2' })); }
-  async getPromotionItems(promotionId: string, promotionType: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    return this.request(withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}/items`, { ...params, promotion_type: promotionType, app_version: 'v2' }));
+  async getPromotion(promotionId: string, promotionType: string): Promise<unknown> {
+    return this.request(
+      withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}`, {
+        promotion_type: promotionType,
+        app_version: 'v2'
+      })
+    );
   }
-  async getPromotionOffer(offerId: string): Promise<unknown> { return this.request(`/seller-promotions/offers/${encodeURIComponent(offerId)}?app_version=v2`); }
-  async createPromotionCampaign(payload: unknown): Promise<unknown> { return this.request('/seller-promotions/promotions?app_version=v2', { method: 'POST', body: JSON.stringify(payload) }); }
-  async updatePromotionCampaign(promotionId: string, payload: unknown): Promise<unknown> { return this.request(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}?app_version=v2`, { method: 'PUT', body: JSON.stringify(payload) }); }
-  async deletePromotionCampaign(promotionId: string, promotionType: string): Promise<unknown> { return this.request(withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}`, { promotion_type: promotionType, app_version: 'v2' }), { method: 'DELETE' }); }
+  async getPromotionItems(
+    promotionId: string,
+    promotionType: string,
+    params: Record<string, unknown> = {}
+  ): Promise<unknown> {
+    return this.request(
+      withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}/items`, {
+        ...params,
+        promotion_type: promotionType,
+        app_version: 'v2'
+      })
+    );
+  }
+  async getPromotionOffer(offerId: string): Promise<unknown> {
+    return this.request(`/seller-promotions/offers/${encodeURIComponent(offerId)}?app_version=v2`);
+  }
+  async createPromotionCampaign(payload: unknown): Promise<unknown> {
+    return this.request('/seller-promotions/promotions?app_version=v2', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+  async updatePromotionCampaign(promotionId: string, payload: unknown): Promise<unknown> {
+    return this.request(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}?app_version=v2`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+  async deletePromotionCampaign(promotionId: string, promotionType: string): Promise<unknown> {
+    return this.request(
+      withQuery(`/seller-promotions/promotions/${encodeURIComponent(promotionId)}`, {
+        promotion_type: promotionType,
+        app_version: 'v2'
+      }),
+      { method: 'DELETE' }
+    );
+  }
   async createPromotionOffer(itemId: string, payload: unknown): Promise<unknown> {
     await this.ensurePromotionHistoryBefore(itemId);
-    return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, { method: 'POST', body: JSON.stringify(payload) });
+    return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   }
   async updatePromotionOffer(itemId: string, payload: unknown): Promise<unknown> {
     await this.ensurePromotionHistoryBefore(itemId);
-    return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, { method: 'PUT', body: JSON.stringify(payload) });
+    return this.request(`/seller-promotions/items/${encodeURIComponent(itemId)}?app_version=v2`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
   }
   async deletePromotionOffer(itemId: string, params: Record<string, unknown> = {}): Promise<unknown> {
     await this.ensurePromotionHistoryBefore(itemId);
-    return this.request(withQuery(`/seller-promotions/items/${encodeURIComponent(itemId)}`, { ...params, app_version: 'v2' }), { method: 'DELETE' });
+    return this.request(
+      withQuery(`/seller-promotions/items/${encodeURIComponent(itemId)}`, { ...params, app_version: 'v2' }),
+      { method: 'DELETE' }
+    );
   }
-  async getItemDescription(itemId: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/description`); }
-  async createItemDescription(itemId: string, plainText: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/description`, { method: 'POST', body: JSON.stringify({ plain_text: plainText }) }); }
-  async updateItemDescription(itemId: string, plainText: string): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}/description?api_version=2`, { method: 'PUT', body: JSON.stringify({ plain_text: plainText }) }); }
-  async updateItem(itemId: string, payload: unknown): Promise<unknown> { return this.request(`/items/${encodeURIComponent(itemId)}`, { method: 'PUT', body: JSON.stringify(payload) }); }
+  async getItemDescription(itemId: string): Promise<unknown> {
+    return this.request(`/items/${encodeURIComponent(itemId)}/description`);
+  }
+  async createItemDescription(itemId: string, plainText: string): Promise<unknown> {
+    return this.request(`/items/${encodeURIComponent(itemId)}/description`, {
+      method: 'POST',
+      body: JSON.stringify({ plain_text: plainText })
+    });
+  }
+  async updateItemDescription(itemId: string, plainText: string): Promise<unknown> {
+    return this.request(`/items/${encodeURIComponent(itemId)}/description?api_version=2`, {
+      method: 'PUT',
+      body: JSON.stringify({ plain_text: plainText })
+    });
+  }
+  async updateItem(itemId: string, payload: unknown): Promise<unknown> {
+    return this.request(`/items/${encodeURIComponent(itemId)}`, { method: 'PUT', body: JSON.stringify(payload) });
+  }
 
   async uploadPicture(input: { filename: string; mimeType: string; base64: string }): Promise<unknown> {
     const bytes = decodeBase64(input.base64);
     if (!bytes.byteLength) throw new RemoteApiError('invalid_picture', 400, 'Imagem vazia.');
     const form = new FormData();
-    form.append('file', new Blob([bytes], { type: input.mimeType || 'application/octet-stream' }), sanitizeFilename(input.filename));
+    form.append(
+      'file',
+      new Blob([bytes], { type: input.mimeType || 'application/octet-stream' }),
+      sanitizeFilename(input.filename)
+    );
     return this.request('/pictures/items/upload', { method: 'POST', body: form });
   }
 
   async downloadImage(url: string): Promise<{ mimeType: string; base64: string }> {
     assertAllowedImageUrl(url);
     const response = await fetch(String(url), { headers: { accept: 'image/*' } });
-    if (!response.ok) throw new RemoteApiError('image_download_failed', response.status, `Nao consegui baixar a imagem. HTTP ${response.status}`);
+    if (!response.ok)
+      throw new RemoteApiError(
+        'image_download_failed',
+        response.status,
+        `Nao consegui baixar a imagem. HTTP ${response.status}`
+      );
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (!bytes.byteLength) throw new RemoteApiError('invalid_picture', 400, 'Imagem vazia.');
     return { mimeType: normalizeImageMimeType(response.headers.get('content-type')), base64: encodeBase64(bytes) };
@@ -1046,7 +1289,12 @@ class RemoteMeliClient {
     const response = await fetch(String(url), {
       headers: { accept: 'image/*', range: `bytes=0-${limit - 1}` }
     });
-    if (!response.ok) throw new RemoteApiError('image_download_failed', response.status, `Nao consegui ler a imagem. HTTP ${response.status}`);
+    if (!response.ok)
+      throw new RemoteApiError(
+        'image_download_failed',
+        response.status,
+        `Nao consegui ler a imagem. HTTP ${response.status}`
+      );
     return readResponsePrefix(response, limit);
   }
 
@@ -1055,7 +1303,8 @@ class RemoteMeliClient {
     const headers = new Headers(options.headers || {});
     headers.set('accept', 'application/json');
     headers.set('authorization', `Bearer ${accessToken}`);
-    if (options.body && !(options.body instanceof FormData) && !headers.has('content-type')) headers.set('content-type', 'application/json');
+    if (options.body && !(options.body instanceof FormData) && !headers.has('content-type'))
+      headers.set('content-type', 'application/json');
 
     const response = await fetch(`${MELI_API_BASE}${path}`, { ...options, headers });
     if (response.status === 401 && !retried) {
@@ -1078,8 +1327,9 @@ class RemoteMeliClient {
 
   private async refreshAccessToken(failedAccessToken: string): Promise<string> {
     if (!this.refreshAccessTokenPromise) {
-      this.refreshAccessTokenPromise = refreshSellerCredential(this.env, this.account, failedAccessToken)
-        .then((token) => token.access_token);
+      this.refreshAccessTokenPromise = refreshSellerCredential(this.env, this.account, failedAccessToken).then(
+        (token) => token.access_token
+      );
     }
     const accessToken = await this.refreshAccessTokenPromise;
     this.accessTokenPromise = Promise.resolve(accessToken);
@@ -1110,28 +1360,35 @@ async function readResponsePrefix(response: Response, maxBytes: number): Promise
 
 async function readSellerCredential(env: RemoteRuntimeEnv, account: SellerAccount): Promise<SellerCredential> {
   assertRemoteMeliConfigured(env);
-  const record = await env.ONFRAME_DB.prepare(`
+  const record = await env.ONFRAME_DB.prepare(
+    `
     SELECT token_ciphertext, token_iv, token_auth_tag, expires_at, updated_at, refresh_lock_id, refresh_lock_expires_at
     FROM seller_credentials
     WHERE seller_account_id = ?
-  `).bind(account.id).first<{
-    token_ciphertext: string;
-    token_iv: string;
-    token_auth_tag: string;
-    expires_at: number;
-    updated_at: number;
-    refresh_lock_id: string | null;
-    refresh_lock_expires_at: number | null;
-  }>();
-  if (!record) throw new RemoteApiError('workspace_account_unavailable', 409, 'Conta conectada nao encontrada para este anuncio.');
+  `
+  )
+    .bind(account.id)
+    .first<{
+      token_ciphertext: string;
+      token_iv: string;
+      token_auth_tag: string;
+      expires_at: number;
+      updated_at: number;
+      refresh_lock_id: string | null;
+      refresh_lock_expires_at: number | null;
+    }>();
+  if (!record)
+    throw new RemoteApiError('workspace_account_unavailable', 409, 'Conta conectada nao encontrada para este anuncio.');
 
   let tokenPayload: unknown;
   try {
-    tokenPayload = JSON.parse(await decryptValue(await importMeliTokenCipherKey(env), {
-      ciphertext: record.token_ciphertext,
-      iv: record.token_iv,
-      authTag: record.token_auth_tag
-    }));
+    tokenPayload = JSON.parse(
+      await decryptValue(await importMeliTokenCipherKey(env), {
+        ciphertext: record.token_ciphertext,
+        iv: record.token_iv,
+        authTag: record.token_auth_tag
+      })
+    );
   } catch {
     throw new RemoteApiError('remote_credentials_unavailable', 503, 'Nao foi possivel ler a credencial remota.');
   }
@@ -1145,19 +1402,27 @@ async function readSellerCredential(env: RemoteRuntimeEnv, account: SellerAccoun
   };
 }
 
-async function refreshSellerCredential(env: RemoteRuntimeEnv, account: SellerAccount, failedAccessToken = ''): Promise<MeliToken> {
+async function refreshSellerCredential(
+  env: RemoteRuntimeEnv,
+  account: SellerAccount,
+  failedAccessToken = ''
+): Promise<MeliToken> {
   for (let attempt = 0; attempt < TOKEN_REFRESH_WAIT_ATTEMPTS; attempt += 1) {
     const current = await readSellerCredential(env, account);
     if (!needsRefresh(current, failedAccessToken)) return current.token;
 
     const lockId = crypto.randomUUID();
     const timestamp = Date.now();
-    const lockResult = await env.ONFRAME_DB.prepare(`
+    const lockResult = await env.ONFRAME_DB.prepare(
+      `
       UPDATE seller_credentials
       SET refresh_lock_id = ?, refresh_lock_expires_at = ?
       WHERE seller_account_id = ?
         AND (refresh_lock_expires_at IS NULL OR refresh_lock_expires_at <= ?)
-    `).bind(lockId, timestamp + TOKEN_REFRESH_LOCK_MS, account.id, timestamp).run();
+    `
+    )
+      .bind(lockId, timestamp + TOKEN_REFRESH_LOCK_MS, account.id, timestamp)
+      .run();
 
     if (lockResult.meta.changes !== 1) {
       await wait(TOKEN_REFRESH_WAIT_MS);
@@ -1174,21 +1439,25 @@ async function refreshSellerCredential(env: RemoteRuntimeEnv, account: SellerAcc
       const refreshed = await requestMeliRefresh(env, latest.token.refresh_token);
       const encrypted = await encryptValue(await importMeliTokenCipherKey(env), JSON.stringify(refreshed));
       const expiresAt = Date.now() + Math.max(0, Number(refreshed.expires_in || 0)) * 1000;
-      const write = await env.ONFRAME_DB.prepare(`
+      const write = await env.ONFRAME_DB.prepare(
+        `
         UPDATE seller_credentials
         SET token_ciphertext = ?, token_iv = ?, token_auth_tag = ?, expires_at = ?, refreshed_at = ?, updated_at = ?,
             refresh_lock_id = NULL, refresh_lock_expires_at = NULL
         WHERE seller_account_id = ? AND refresh_lock_id = ?
-      `).bind(
-        encrypted.ciphertext,
-        encrypted.iv,
-        encrypted.authTag,
-        expiresAt,
-        Date.now(),
-        Date.now(),
-        account.id,
-        lockId
-      ).run();
+      `
+      )
+        .bind(
+          encrypted.ciphertext,
+          encrypted.iv,
+          encrypted.authTag,
+          expiresAt,
+          Date.now(),
+          Date.now(),
+          account.id,
+          lockId
+        )
+        .run();
       if (write.meta.changes !== 1) throw new RemoteApiError('remote_token_refresh_conflict', 503);
       return refreshed;
     } catch (error) {
@@ -1206,11 +1475,15 @@ function needsRefresh(credential: SellerCredential, failedAccessToken: string): 
 }
 
 async function releaseRefreshLock(env: RemoteRuntimeEnv, accountId: string, lockId: string): Promise<void> {
-  await env.ONFRAME_DB.prepare(`
+  await env.ONFRAME_DB.prepare(
+    `
     UPDATE seller_credentials
     SET refresh_lock_id = NULL, refresh_lock_expires_at = NULL
     WHERE seller_account_id = ? AND refresh_lock_id = ?
-  `).bind(accountId, lockId).run();
+  `
+  )
+    .bind(accountId, lockId)
+    .run();
 }
 
 async function requestMeliRefresh(env: RemoteRuntimeEnv, refreshToken: string): Promise<MeliToken> {
@@ -1239,7 +1512,7 @@ async function parseMeliResponse(response: Response): Promise<unknown> {
   }
   if (response.ok) return body;
 
-  const objectBody = body && typeof body === 'object' ? body as Record<string, unknown> : null;
+  const objectBody = body && typeof body === 'object' ? (body as Record<string, unknown>) : null;
   const message = objectBody
     ? String(objectBody.message || objectBody.error_description || objectBody.error || JSON.stringify(objectBody))
     : String(body || `HTTP ${response.status}`);
@@ -1293,8 +1566,16 @@ function assertRemoteMeliConfigured(env: RemoteRuntimeEnv): asserts env is Remot
   MELI_CLIENT_SECRET: string;
   MELI_TOKEN_CIPHER_KEY_BASE64: string;
 } {
-  if (!String(env.MELI_CLIENT_ID || '').trim() || !String(env.MELI_CLIENT_SECRET || '').trim() || !String(env.MELI_TOKEN_CIPHER_KEY_BASE64 || '').trim()) {
-    throw new RemoteApiError('remote_oauth_unconfigured', 503, 'A conexao remota do Mercado Livre ainda nao esta configurada.');
+  if (
+    !String(env.MELI_CLIENT_ID || '').trim() ||
+    !String(env.MELI_CLIENT_SECRET || '').trim() ||
+    !String(env.MELI_TOKEN_CIPHER_KEY_BASE64 || '').trim()
+  ) {
+    throw new RemoteApiError(
+      'remote_oauth_unconfigured',
+      503,
+      'A conexao remota do Mercado Livre ainda nao esta configurada.'
+    );
   }
 }
 
@@ -1302,7 +1583,11 @@ async function importMeliTokenCipherKey(env: RemoteRuntimeEnv): Promise<CryptoKe
   try {
     return await importAesGcmKeyBase64(env.MELI_TOKEN_CIPHER_KEY_BASE64 || '');
   } catch {
-    throw new RemoteApiError('remote_oauth_unconfigured', 503, 'A conexao remota do Mercado Livre ainda nao esta configurada.');
+    throw new RemoteApiError(
+      'remote_oauth_unconfigured',
+      503,
+      'A conexao remota do Mercado Livre ainda nao esta configurada.'
+    );
   }
 }
 
@@ -1336,7 +1621,12 @@ function sanitizeFilename(value: string): string {
 }
 
 function normalizeImageMimeType(value: string | null): string {
-  return String(value || '').split(';')[0].trim().toLowerCase() === 'image/png' ? 'image/png' : 'image/jpeg';
+  return String(value || '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase() === 'image/png'
+    ? 'image/png'
+    : 'image/jpeg';
 }
 
 function assertAllowedImageUrl(value: string): void {

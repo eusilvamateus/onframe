@@ -62,7 +62,8 @@
   overflow: visible !important;
 }
 
-.onframe-characteristics-is-editing [data-testid="action-collapsable-target"].ui-vpp-highlighted-specs__striped-collapsed__action {
+.onframe-characteristics-is-editing
+  [data-testid='action-collapsable-target'].ui-vpp-highlighted-specs__striped-collapsed__action {
   display: none;
 }
 

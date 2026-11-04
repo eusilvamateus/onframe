@@ -16,7 +16,9 @@ test('a distribuição não inclui servidor, configuração de token ou document
 
 test('domínio comercial pertence ao Worker e é compatível com a suíte Node', () => {
   const contracts = fs.readFileSync(path.join(root, 'cloudflare', 'src', 'legacy-contracts.ts'), 'utf8');
-  const moduleType = JSON.parse(fs.readFileSync(path.join(root, 'cloudflare', 'src', 'domain', 'package.json'), 'utf8'));
+  const moduleType = JSON.parse(
+    fs.readFileSync(path.join(root, 'cloudflare', 'src', 'domain', 'package.json'), 'utf8')
+  );
   assert.equal(moduleType.type, 'commonjs');
   assert.match(contracts, /\.\/domain\/account-client\.js/);
   assert.match(contracts, /\.\/domain\/routes\/promotions\.js/);
@@ -26,15 +28,23 @@ test('domínio comercial pertence ao Worker e é compatível com a suíte Node',
 test('promoções pendentes usam Workflow durável e reconciliação consultável', () => {
   const config = JSON.parse(fs.readFileSync(path.join(root, 'cloudflare', 'wrangler.jsonc'), 'utf8'));
   const worker = fs.readFileSync(path.join(root, 'cloudflare', 'src', 'remote-api.ts'), 'utf8');
-  const workflow = fs.readFileSync(path.join(root, 'cloudflare', 'src', 'promotion-reconciliation-workflow.ts'), 'utf8');
+  const workflow = fs.readFileSync(
+    path.join(root, 'cloudflare', 'src', 'promotion-reconciliation-workflow.ts'),
+    'utf8'
+  );
   const extension = fs.readFileSync(path.join(root, 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const migration = fs.readFileSync(path.join(root, 'cloudflare', 'migrations', '0011_promotion_reconciliations.sql'), 'utf8');
+  const migration = fs.readFileSync(
+    path.join(root, 'cloudflare', 'migrations', '0011_promotion_reconciliations.sql'),
+    'utf8'
+  );
 
-  assert.deepEqual(config.workflows, [{
-    name: 'onframe-promotion-reconciliation',
-    binding: 'PROMOTION_RECONCILIATION',
-    class_name: 'PromotionReconciliationWorkflow'
-  }]);
+  assert.deepEqual(config.workflows, [
+    {
+      name: 'onframe-promotion-reconciliation',
+      binding: 'PROMOTION_RECONCILIATION',
+      class_name: 'PromotionReconciliationWorkflow'
+    }
+  ]);
   assert.equal(config.main, 'src/worker.ts');
   assert.match(workflow, /class PromotionReconciliationWorkflow extends WorkflowEntrypoint/);
   assert.match(worker, /GET \/bulk\/reconciliations/);
@@ -59,7 +69,8 @@ test('bootstrap preserva instalação e atualização, sem ciclo de serviço', (
     'uninstall.ps1',
     'uninstall.sh'
   ].sort();
-  const rootFiles = fs.readdirSync(bootstrap, { withFileTypes: true })
+  const rootFiles = fs
+    .readdirSync(bootstrap, { withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => entry.name)
     .sort();

@@ -1,7 +1,34 @@
 import { createRoot } from 'react-dom/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Avatar, Badge, Breadcrumbs, Button, ButtonGroup, Card, Divider, Drawer, FileUpload, Input, Link, List, ListItem, ListSubheader, Modal, Navbar, Ph, SearchInput, Select, SideNav, Skeleton, ToastStack, ToggleButton, Tooltip, toast } from '@onblide/ui';
+import {
+  Alert,
+  Avatar,
+  Badge,
+  Breadcrumbs,
+  Button,
+  ButtonGroup,
+  Card,
+  Divider,
+  Drawer,
+  FileUpload,
+  Input,
+  Link,
+  List,
+  ListItem,
+  ListSubheader,
+  Modal,
+  Navbar,
+  Ph,
+  SearchInput,
+  Select,
+  SideNav,
+  Skeleton,
+  ToastStack,
+  ToggleButton,
+  Tooltip,
+  toast
+} from '@onblide/ui';
 import '../shared/app.css';
 import { AuthBrand, AuthPanel } from '../shared/AuthPanel';
 import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
@@ -15,9 +42,7 @@ import { IntegrationAccount, accountName, trustedLogo } from '../shared/Integrat
 import { ItemEditHistory } from './ItemEditHistory';
 import { Products } from './Products';
 import { TaxSettings } from './TaxSettings';
-import { formatDate, initials, manifestVersion, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
-
-const RELEASES_URL = 'https://github.com/eusilvamateus/onframe/releases';
+import { formatDate, initials, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const VIEW_META = {
   home: { title: 'Início', icon: 'house' },
@@ -28,13 +53,69 @@ const VIEW_META = {
 };
 
 const SETTINGS_OPTIONS = [
-  { tab: 'account', page: 'profile', category: 'Conta', label: 'Perfil', description: 'Foto, nome e e-mail da sua conta.', icon: 'user-circle', keywords: 'foto nome email dados pessoais' },
-  { tab: 'account', page: 'security', category: 'Conta', label: 'Segurança e login', description: 'Senha, e-mail de acesso e sessões.', icon: 'shield-check', keywords: 'senha email login credenciais seguranca' },
-  { tab: 'workspace', page: 'general', category: 'Workspace', label: 'Geral', description: 'Nome e informações do workspace.', icon: 'buildings', keywords: 'nome informacoes empresa' },
-  { tab: 'workspace', page: 'people', category: 'Workspace', label: 'Pessoas', description: 'Acessos, permissões e convites.', icon: 'users-three', keywords: 'membros colaboradores administradores convite permissao' },
-  { tab: 'workspace', page: 'margin', category: 'Workspace', label: 'Margem de contribuição', description: 'Impostos usados no cálculo das promoções.', icon: 'percent', keywords: 'margem imposto aliquota produto conta promocao' },
-  { tab: 'application', page: 'appearance', category: 'Aplicativo', label: 'Aparência', description: 'Tema claro, escuro ou definido pelo sistema.', icon: 'circle-half', keywords: 'aparencia tema claro escuro sistema' },
-  { tab: 'application', page: 'updates', category: 'Aplicativo', label: 'Atualizações', description: 'Versão instalada e atualizador da extensão.', icon: 'arrow-clockwise', keywords: 'versao atualizar atualizador extensao' }
+  {
+    tab: 'account',
+    page: 'profile',
+    category: 'Conta',
+    label: 'Perfil',
+    description: 'Foto, nome e e-mail da sua conta.',
+    icon: 'user-circle',
+    keywords: 'foto nome email dados pessoais'
+  },
+  {
+    tab: 'account',
+    page: 'security',
+    category: 'Conta',
+    label: 'Segurança e login',
+    description: 'Senha, e-mail de acesso e sessões.',
+    icon: 'shield-check',
+    keywords: 'senha email login credenciais seguranca'
+  },
+  {
+    tab: 'workspace',
+    page: 'general',
+    category: 'Workspace',
+    label: 'Geral',
+    description: 'Nome e informações do workspace.',
+    icon: 'buildings',
+    keywords: 'nome informacoes empresa'
+  },
+  {
+    tab: 'workspace',
+    page: 'people',
+    category: 'Workspace',
+    label: 'Pessoas',
+    description: 'Acessos, permissões e convites.',
+    icon: 'users-three',
+    keywords: 'membros colaboradores administradores convite permissao'
+  },
+  {
+    tab: 'workspace',
+    page: 'margin',
+    category: 'Workspace',
+    label: 'Margem de contribuição',
+    description: 'Impostos usados no cálculo das promoções.',
+    icon: 'percent',
+    keywords: 'margem imposto aliquota produto conta promocao'
+  },
+  {
+    tab: 'application',
+    page: 'appearance',
+    category: 'Aplicativo',
+    label: 'Aparência',
+    description: 'Tema claro, escuro ou definido pelo sistema.',
+    icon: 'circle-half',
+    keywords: 'aparencia tema claro escuro sistema'
+  },
+  {
+    tab: 'application',
+    page: 'updates',
+    category: 'Aplicativo',
+    label: 'Atualizações',
+    description: 'Versão instalada e atualizador da extensão.',
+    icon: 'arrow-clockwise',
+    keywords: 'versao atualizar atualizador extensao'
+  }
 ];
 
 const SETTINGS_SECTIONS = [
@@ -65,7 +146,10 @@ const SETTINGS_PAGE_META = {
 };
 
 function searchValue(value) {
-  return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
 function feedbackSurface({ tone, visible = false, needsAttention = false }) {
@@ -74,22 +158,24 @@ function feedbackSurface({ tone, visible = false, needsAttention = false }) {
 }
 
 function activityLabel(operation) {
-  return {
-    mercadolivre_oauth_connected: 'Conta do Mercado Livre conectada',
-    seller_account_updated: 'Conta do Mercado Livre atualizada',
-    seller_account_deleted: 'Conta do Mercado Livre removida',
-    workspace_member_updated: 'Acesso de uma pessoa atualizado',
-    workspace_member_removed: 'Pessoa removida do workspace',
-    workspace_member_left: 'Pessoa saiu do workspace',
-    workspace_invitation_created: 'Convite criado',
-    workspace_invitation_revoked: 'Convite revogado',
-    product_created: 'Produto criado',
-    product_updated: 'Produto atualizado',
-    product_archived: 'Produto arquivado',
-    product_import_committed: 'Produtos importados por planilha',
-    tax_configuration_updated: 'Configurações de imposto atualizadas',
-    profile_updated: 'Perfil atualizado'
-  }[operation] || 'Atividade no workspace';
+  return (
+    {
+      mercadolivre_oauth_connected: 'Conta do Mercado Livre conectada',
+      seller_account_updated: 'Conta do Mercado Livre atualizada',
+      seller_account_deleted: 'Conta do Mercado Livre removida',
+      workspace_member_updated: 'Acesso de uma pessoa atualizado',
+      workspace_member_removed: 'Pessoa removida do workspace',
+      workspace_member_left: 'Pessoa saiu do workspace',
+      workspace_invitation_created: 'Convite criado',
+      workspace_invitation_revoked: 'Convite revogado',
+      product_created: 'Produto criado',
+      product_updated: 'Produto atualizado',
+      product_archived: 'Produto arquivado',
+      product_import_committed: 'Produtos importados por planilha',
+      tax_configuration_updated: 'Configurações de imposto atualizadas',
+      profile_updated: 'Perfil atualizado'
+    }[operation] || 'Atividade no workspace'
+  );
 }
 
 function PageHeader({ meta, actions, reserveContextSpace = false }) {
@@ -108,10 +194,25 @@ function PageHeader({ meta, actions, reserveContextSpace = false }) {
 }
 
 function FeedbackRoot({ children }) {
-  return <><ToastStack position="bottom-right" />{children}</>;
+  return (
+    <>
+      <ToastStack position="bottom-right" />
+      {children}
+    </>
+  );
 }
 
-function Home({ workspace, overview, accounts, invitations, admin, loading, onConnect, onOpenIntegrations, onOpenWorkspace }) {
+function Home({
+  workspace,
+  overview,
+  accounts,
+  invitations,
+  admin,
+  loading,
+  onConnect,
+  onOpenIntegrations,
+  onOpenWorkspace
+}) {
   const activity = overview?.recentActivity || [];
   const pendingInvitations = invitations.length;
   const emptyAccounts = accounts.length === 0;
@@ -120,15 +221,29 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
       <SectionHeader
         eyebrow="WORKSPACE"
         title={workspace.name}
-        copy={admin ? 'Você administra as integrações e os acessos deste workspace.' : 'Você acessa as integrações atribuídas a este workspace.'}
+        copy={
+          admin
+            ? 'Você administra as integrações e os acessos deste workspace.'
+            : 'Você acessa as integrações atribuídas a este workspace.'
+        }
       />
       {emptyAccounts && (
         <Card padding={24}>
           <SectionHeader
             eyebrow="PRÓXIMA AÇÃO"
             title={admin ? 'Conecte uma conta do Mercado Livre' : 'Aguarde uma conta ser atribuída'}
-            copy={admin ? 'Conecte a primeira conta para começar a usar o OnFrame neste workspace.' : 'Um administrador precisa atribuir uma conta do Mercado Livre ao seu acesso.'}
-            actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>Conectar conta</Button> : undefined}
+            copy={
+              admin
+                ? 'Conecte a primeira conta para começar a usar o OnFrame neste workspace.'
+                : 'Um administrador precisa atribuir uma conta do Mercado Livre ao seu acesso.'
+            }
+            actions={
+              admin ? (
+                <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>
+                  Conectar conta
+                </Button>
+              ) : undefined
+            }
           />
         </Card>
       )}
@@ -138,7 +253,11 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
             eyebrow="PRÓXIMA AÇÃO"
             title={`${pendingInvitations} ${pendingInvitations === 1 ? 'convite pendente' : 'convites pendentes'}`}
             copy="Há pessoas aguardando acesso a este workspace."
-            actions={<Button kind="secondary" disabled={loading} onClick={onOpenWorkspace}>Gerenciar pessoas</Button>}
+            actions={
+              <Button kind="secondary" disabled={loading} onClick={onOpenWorkspace}>
+                Gerenciar pessoas
+              </Button>
+            }
           />
         </Card>
       )}
@@ -148,8 +267,16 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
             <SectionHeader
               eyebrow="INTEGRAÇÃO"
               title="Mercado Livre"
-              copy={accounts.length === 1 ? '1 conta disponível neste workspace.' : `${accounts.length} contas disponíveis neste workspace.`}
-              actions={<Button kind="secondary" disabled={loading} onClick={onOpenIntegrations}>Gerenciar integrações</Button>}
+              copy={
+                accounts.length === 1
+                  ? '1 conta disponível neste workspace.'
+                  : `${accounts.length} contas disponíveis neste workspace.`
+              }
+              actions={
+                <Button kind="secondary" disabled={loading} onClick={onOpenIntegrations}>
+                  Gerenciar integrações
+                </Button>
+              }
             />
             <div className="onframe-list">
               {accounts.map((account) => (
@@ -159,7 +286,9 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
                     <p className="onframe-list-title">{accountName(account)}</p>
                     <p className="onframe-list-meta">Mercado Livre</p>
                   </div>
-                  <Badge tone={account.enabled === false ? 'neutral' : 'success'}>{account.enabled === false ? 'Desativada' : 'Habilitada'}</Badge>
+                  <Badge tone={account.enabled === false ? 'neutral' : 'success'}>
+                    {account.enabled === false ? 'Desativada' : 'Habilitada'}
+                  </Badge>
                 </div>
               ))}
             </div>
@@ -169,14 +298,18 @@ function Home({ workspace, overview, accounts, invitations, admin, loading, onCo
       <Card padding={24}>
         <div className="onframe-stack">
           <SectionHeader eyebrow="ATIVIDADE" title="Atividade recente" />
-          {activity.length === 0 ? <p className="onframe-empty">Ainda não há atividade neste workspace.</p> : (
+          {activity.length === 0 ? (
+            <p className="onframe-empty">Ainda não há atividade neste workspace.</p>
+          ) : (
             <div className="onframe-list">
               {activity.map((event) => (
                 <div className="onframe-list-row" key={event.id || `${event.operation}-${event.occurredAt}`}>
                   <Avatar name={initials(event.actorName)} size={32} />
                   <div className="onframe-grow">
                     <p className="onframe-list-title">{activityLabel(event.operation)}</p>
-                    <p className="onframe-list-meta">{event.actorName} · {formatDate(event.occurredAt)}</p>
+                    <p className="onframe-list-meta">
+                      {event.actorName} · {formatDate(event.occurredAt)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -196,28 +329,67 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove
         <SectionHeader
           eyebrow="MERCADO LIVRE"
           title={admin ? 'Contas conectadas' : 'Contas atribuídas'}
-          copy={admin ? 'Conecte e controle as contas disponíveis neste workspace.' : 'Contas atribuídas ao seu acesso neste workspace.'}
-          actions={admin && <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>Conectar conta</Button>}
+          copy={
+            admin
+              ? 'Conecte e controle as contas disponíveis neste workspace.'
+              : 'Contas atribuídas ao seu acesso neste workspace.'
+          }
+          actions={
+            admin && (
+              <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>
+                Conectar conta
+              </Button>
+            )
+          }
         />
       </div>
-      {accounts.length > 0 && <div className="onframe-integration-view-bar">
-        <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="md">
-          <Tooltip label="Visualizar como lista"><ToggleButton value="list" appearance="ghost" icon="list-bullets" ariaLabel="Lista" /></Tooltip>
-          <Tooltip label="Visualizar como cards"><ToggleButton value="cards" appearance="ghost" icon="squares-four" ariaLabel="Cards" /></Tooltip>
-        </ButtonGroup>
-      </div>}
+      {accounts.length > 0 && (
+        <div className="onframe-integration-view-bar">
+          <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="md">
+            <Tooltip label="Visualizar como lista">
+              <ToggleButton value="list" appearance="ghost" icon="list-bullets" ariaLabel="Lista" />
+            </Tooltip>
+            <Tooltip label="Visualizar como cards">
+              <ToggleButton value="cards" appearance="ghost" icon="squares-four" ariaLabel="Cards" />
+            </Tooltip>
+          </ButtonGroup>
+        </div>
+      )}
       {accounts.length === 0 ? (
         <Card padding={24}>
           <SectionHeader
             eyebrow="ESTADO"
             title={admin ? 'Nenhuma conta conectada' : 'Nenhuma conta atribuída'}
-            copy={admin ? 'Conecte uma conta do Mercado Livre para disponibilizá-la neste workspace.' : 'Um administrador precisa atribuir uma conta para que você possa usá-la.'}
-            actions={admin ? <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>Conectar conta</Button> : undefined}
+            copy={
+              admin
+                ? 'Conecte uma conta do Mercado Livre para disponibilizá-la neste workspace.'
+                : 'Um administrador precisa atribuir uma conta para que você possa usá-la.'
+            }
+            actions={
+              admin ? (
+                <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>
+                  Conectar conta
+                </Button>
+              ) : undefined
+            }
           />
         </Card>
-      ) : <div className={mode === 'cards' ? 'onframe-integration-grid' : 'onframe-integration-list'}>
-        {accounts.map((account) => <IntegrationAccount key={account.id || account.user_id} account={account} admin={admin} mode={mode} loading={loading} onUpdate={onUpdate} onRename={onRename} onRemove={onRemove} />)}
-      </div>}
+      ) : (
+        <div className={mode === 'cards' ? 'onframe-integration-grid' : 'onframe-integration-list'}>
+          {accounts.map((account) => (
+            <IntegrationAccount
+              key={account.id || account.user_id}
+              account={account}
+              admin={admin}
+              mode={mode}
+              loading={loading}
+              onUpdate={onUpdate}
+              onRename={onRename}
+              onRemove={onRemove}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -231,25 +403,35 @@ function settingsOptionItems(options, onNavigate, showCategory = false) {
       description={option.description}
       meta={showCategory ? option.category : undefined}
       href={`#settings-${option.tab}-${option.page}`}
-      onClick={(event) => { event.preventDefault(); onNavigate(option); }}
+      onClick={(event) => {
+        event.preventDefault();
+        onNavigate(option);
+      }}
     />
   ));
 }
 
 function SettingsOptionList({ options, ariaLabel, onNavigate, showCategory = false }) {
-  return <List as="nav" dividers ariaLabel={ariaLabel}>{settingsOptionItems(options, onNavigate, showCategory)}</List>;
+  return (
+    <List as="nav" dividers ariaLabel={ariaLabel}>
+      {settingsOptionItems(options, onNavigate, showCategory)}
+    </List>
+  );
 }
 
 function SettingsDirectory({ options, onNavigate }) {
-  const sections = SETTINGS_SECTIONS
-    .map((section) => ({ ...section, options: options.filter((option) => option.tab === section.id) }))
-    .filter((section) => section.options.length > 0);
-  return <List as="nav" dividers ariaLabel="Configurações">
-    {sections.flatMap((section) => [
-      <ListSubheader key={`header-${section.id}`}>{section.label}</ListSubheader>,
-      ...settingsOptionItems(section.options, onNavigate)
-    ])}
-  </List>;
+  const sections = SETTINGS_SECTIONS.map((section) => ({
+    ...section,
+    options: options.filter((option) => option.tab === section.id)
+  })).filter((section) => section.options.length > 0);
+  return (
+    <List as="nav" dividers ariaLabel="Configurações">
+      {sections.flatMap((section) => [
+        <ListSubheader key={`header-${section.id}`}>{section.label}</ListSubheader>,
+        ...settingsOptionItems(section.options, onNavigate)
+      ])}
+    </List>
+  );
 }
 
 function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, onOpenSecuritySettings }) {
@@ -286,13 +468,17 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
       setAvatarBusy(false);
     }
   }
-  const avatarFiles = profile.user.avatarUrl ? [{
-    id: 'profile-avatar',
-    name: 'Foto do perfil',
-    size: 0,
-    type: 'image/*',
-    url: profile.user.avatarUrl
-  }] : [];
+  const avatarFiles = profile.user.avatarUrl
+    ? [
+        {
+          id: 'profile-avatar',
+          name: 'Foto do perfil',
+          size: 0,
+          type: 'image/*',
+          url: profile.user.avatarUrl
+        }
+      ]
+    : [];
   return (
     <section className="onframe-stack onframe-settings-form" aria-label="Dados pessoais">
       <SectionHeader title="Dados pessoais" copy="Defina como sua conta aparece no OnFrame." />
@@ -318,12 +504,32 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
           }}
         />
         <div className="onframe-profile-fields">
-          <Input label="Nome" value={name} autoComplete="name" disabled={loading} onChange={(event) => setName(event.target.value)} />
+          <Input
+            label="Nome"
+            value={name}
+            autoComplete="name"
+            disabled={loading}
+            onChange={(event) => setName(event.target.value)}
+          />
           <Input
             label="E-mail"
             value={profile.user.email || ''}
             disabled
-            hint={<><span>Para alterar este e-mail, acesse </span><Link href="#settings-account-security" onClick={(event) => { event.preventDefault(); onOpenSecuritySettings(); }}>Segurança e login</Link>.</>}
+            hint={
+              <>
+                <span>Para alterar este e-mail, acesse </span>
+                <Link
+                  href="#settings-account-security"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onOpenSecuritySettings();
+                  }}
+                >
+                  Segurança e login
+                </Link>
+                .
+              </>
+            }
           />
         </div>
       </div>
@@ -331,11 +537,21 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
         <div className="onframe-settings-action-bar-content">
           <Divider decorative />
           <div className="onframe-settings-action-bar-controls">
-            {changed && <p className="onframe-settings-action-status" role="status">Alterações não salvas</p>}
+            {changed && (
+              <p className="onframe-settings-action-status" role="status">
+                Alterações não salvas
+              </p>
+            )}
             <div className="onframe-settings-action-buttons">
               <ButtonGroup attached={false} justify="end" ariaLabel="Ações do perfil">
-                {changed && <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>Descartar</Button>}
-                <Button disabled={loading || !changed} onClick={() => void onSave(name)}>Salvar alterações</Button>
+                {changed && (
+                  <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>
+                    Descartar
+                  </Button>
+                )}
+                <Button disabled={loading || !changed} onClick={() => void onSave(name)}>
+                  Salvar alterações
+                </Button>
               </ButtonGroup>
             </div>
           </div>
@@ -347,37 +563,105 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
 
 function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemoveAllSessions }) {
   const [confirmation, setConfirmation] = useState(null);
-  if (!securityOverview) return <p className="onframe-muted" role="status">{loading ? 'Carregando sessões...' : 'Os dados de sessões estão indisponíveis.'}</p>;
+  if (!securityOverview)
+    return (
+      <p className="onframe-muted" role="status">
+        {loading ? 'Carregando sessões...' : 'Os dados de sessões estão indisponíveis.'}
+      </p>
+    );
   const sessions = securityOverview.sessions;
   return (
     <div className="onframe-stack">
       <section className="onframe-stack" aria-label="Navegadores autorizados">
-        <SectionHeader title="Dispositivos conectados" copy="Confira onde sua conta está conectada e encerre acessos que não reconhece." />
+        <SectionHeader
+          title="Dispositivos conectados"
+          copy="Confira onde sua conta está conectada e encerre acessos que não reconhece."
+        />
         <List ariaLabel="Dispositivos conectados" dividers>
           {sessions.map((session) => (
             <ListItem
               key={session.id}
-              leading={<Ph n={session.deviceType === 'mobile' ? 'device-mobile' : session.deviceType === 'tablet' ? 'device-tablet' : 'desktop'} size={20} />}
+              leading={
+                <Ph
+                  n={
+                    session.deviceType === 'mobile'
+                      ? 'device-mobile'
+                      : session.deviceType === 'tablet'
+                        ? 'device-tablet'
+                        : 'desktop'
+                  }
+                  size={20}
+                />
+              }
               title={session.browser}
               strong
               wrap
-              description={<>{session.operatingSystem}<br />Última atividade: {formatDate(session.lastSeenAt || session.createdAt)}<br />Conectado desde: {formatDate(session.createdAt)}</>}
+              description={
+                <>
+                  {session.operatingSystem}
+                  <br />
+                  Última atividade: {formatDate(session.lastSeenAt || session.createdAt)}
+                  <br />
+                  Conectado desde: {formatDate(session.createdAt)}
+                </>
+              }
               meta={session.current ? <Badge tone="primary">Sessão atual</Badge> : undefined}
-              trailing={<Button kind="secondary" size="sm" disabled={loading} icon={<Ph n="sign-out" size={16} />} onClick={() => setConfirmation(session)}>Sair</Button>}
+              trailing={
+                <Button
+                  kind="secondary"
+                  size="sm"
+                  disabled={loading}
+                  icon={<Ph n="sign-out" size={16} />}
+                  onClick={() => setConfirmation(session)}
+                >
+                  Sair
+                </Button>
+              }
             />
           ))}
         </List>
         {sessions.length === 0 && <p className="onframe-empty">Não há sessões ativas.</p>}
       </section>
       <Divider decorative />
-      <SectionHeader title="Sair de todas as sessões" copy="Encerra os acessos em todos os dispositivos, incluindo este." actions={<Button kind="danger" disabled={loading} icon={<Ph n="sign-out" size={18} />} onClick={() => setConfirmation('all')}>Sair de todas as sessões</Button>} />
-      {confirmation && <div className="onframe-stack" role="region" aria-label="Confirmar encerramento">
-        <Alert tone="warning">{confirmation === 'all' ? 'Você precisará entrar novamente em todos os dispositivos.' : `Encerrar a sessão de ${confirmation.browser}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}</Alert>
-        <div className="onframe-actions"><Button kind="secondary" disabled={loading} onClick={() => setConfirmation(null)}>Cancelar</Button><Button kind="danger" disabled={loading} onClick={async () => {
-          const result = confirmation === 'all' ? await onRemoveAllSessions() : await onRemoveSession(confirmation);
-          if (result !== null) setConfirmation(null);
-        }}>Confirmar encerramento</Button></div>
-      </div>}
+      <SectionHeader
+        title="Sair de todas as sessões"
+        copy="Encerra os acessos em todos os dispositivos, incluindo este."
+        actions={
+          <Button
+            kind="danger"
+            disabled={loading}
+            icon={<Ph n="sign-out" size={18} />}
+            onClick={() => setConfirmation('all')}
+          >
+            Sair de todas as sessões
+          </Button>
+        }
+      />
+      {confirmation && (
+        <div className="onframe-stack" role="region" aria-label="Confirmar encerramento">
+          <Alert tone="warning">
+            {confirmation === 'all'
+              ? 'Você precisará entrar novamente em todos os dispositivos.'
+              : `Encerrar a sessão de ${confirmation.browser}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}
+          </Alert>
+          <div className="onframe-actions">
+            <Button kind="secondary" disabled={loading} onClick={() => setConfirmation(null)}>
+              Cancelar
+            </Button>
+            <Button
+              kind="danger"
+              disabled={loading}
+              onClick={async () => {
+                const result =
+                  confirmation === 'all' ? await onRemoveAllSessions() : await onRemoveSession(confirmation);
+                if (result !== null) setConfirmation(null);
+              }}
+            >
+              Confirmar encerramento
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -390,16 +674,32 @@ function WorkspaceGeneralSettings({ workspace, loading, onSaveWorkspace }) {
   return (
     <section className="onframe-stack onframe-settings-form" aria-label="Informações gerais">
       <SectionHeader title="Informações gerais" />
-      <Input label="Nome" value={name} disabled={loading} maxLength={120} onChange={(event) => setName(event.target.value)} />
+      <Input
+        label="Nome"
+        value={name}
+        disabled={loading}
+        maxLength={120}
+        onChange={(event) => setName(event.target.value)}
+      />
       <footer className="onframe-settings-action-bar" aria-label="Ações do workspace">
         <div className="onframe-settings-action-bar-content">
           <Divider decorative />
           <div className="onframe-settings-action-bar-controls">
-            {changed && <p className="onframe-settings-action-status" role="status">Alterações não salvas</p>}
+            {changed && (
+              <p className="onframe-settings-action-status" role="status">
+                Alterações não salvas
+              </p>
+            )}
             <div className="onframe-settings-action-buttons">
               <ButtonGroup attached={false} justify="end" ariaLabel="Ações do workspace">
-                {changed && <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>Descartar</Button>}
-                <Button disabled={loading || !changed} onClick={() => void onSaveWorkspace(name)}>Salvar alterações</Button>
+                {changed && (
+                  <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>
+                    Descartar
+                  </Button>
+                )}
+                <Button disabled={loading || !changed} onClick={() => void onSaveWorkspace(name)}>
+                  Salvar alterações
+                </Button>
               </ButtonGroup>
             </div>
           </div>
@@ -415,7 +715,11 @@ function ApplicationUpdatesSettings() {
       <SectionHeader
         title="Atualizador"
         copy="Instale a versão mais recente pelo atualizador."
-        actions={<Button kind="secondary" onClick={openUpdater} icon={<Ph n="arrow-square-out" size={17} />}>Abrir atualizador</Button>}
+        actions={
+          <Button kind="secondary" onClick={openUpdater} icon={<Ph n="arrow-square-out" size={17} />}>
+            Abrir atualizador
+          </Button>
+        }
       />
     </section>
   );
@@ -433,13 +737,42 @@ function AppearanceSettings() {
   );
 }
 
-function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPageChange, workspace, profile, securityOverview, members, invitations, accounts, admin, loading, onSaveProfile, onAvatar, onRemoveAvatar, onCredentialChanged, onRemoveSession, onRemoveAllSessions, onDisconnect, onSaveWorkspace, onInvite, onEdit, onRemove, onRevoke, onLeave }) {
+function Settings({
+  activeSection,
+  onSectionChange,
+  settingsPage,
+  onSettingsPageChange,
+  workspace,
+  profile,
+  securityOverview,
+  members,
+  invitations,
+  admin,
+  loading,
+  onSaveProfile,
+  onAvatar,
+  onRemoveAvatar,
+  onCredentialChanged,
+  onRemoveSession,
+  onRemoveAllSessions,
+  onDisconnect,
+  onSaveWorkspace,
+  onInvite,
+  onEdit,
+  onRemove,
+  onRevoke,
+  onLeave
+}) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter((option) => option.tab !== 'workspace' || admin);
   const isIndex = settingsPage === 'index';
   const normalizedQuery = searchValue(query).trim();
   const matches = normalizedQuery
-    ? availableOptions.filter((option) => searchValue(`${option.category} ${option.label} ${option.description} ${option.keywords}`).includes(normalizedQuery))
+    ? availableOptions.filter((option) =>
+        searchValue(`${option.category} ${option.label} ${option.description} ${option.keywords}`).includes(
+          normalizedQuery
+        )
+      )
     : [];
   const selectOption = (option) => {
     onSectionChange(option.tab);
@@ -448,23 +781,102 @@ function Settings({ activeSection, onSectionChange, settingsPage, onSettingsPage
   };
   return (
     <div className="onframe-stack">
-      {isIndex && <>
-        <SearchInput value={query} onChange={setQuery} placeholder="Buscar configurações..." width="min(100%, 520px)" />
-        {normalizedQuery && (matches.length > 0
-          ? <SettingsOptionList options={matches} ariaLabel="Resultados da busca" onNavigate={selectOption} showCategory />
-          : <p className="onframe-empty">Nenhuma configuração encontrada.</p>)}
-        {!normalizedQuery && <SettingsDirectory options={availableOptions} onNavigate={selectOption} />}
-      </>}
-      {!isIndex && activeSection === 'account' && settingsPage === 'profile' && <ProfileSettings profile={profile} loading={loading} onSave={onSaveProfile} onAvatar={onAvatar} onRemoveAvatar={onRemoveAvatar} onOpenSecuritySettings={() => onSettingsPageChange('security')} />}
-      {!isIndex && activeSection === 'account' && settingsPage === 'security' && <SecuritySettings profile={profile} securityOverview={securityOverview} loading={loading} onOpenSecurity={onSettingsPageChange} onOpenSessions={() => onSettingsPageChange('sessions')} onOpenMfa={() => onSettingsPageChange('mfa')} onOpenPasskeys={() => onSettingsPageChange('passkeys')} />}
-      {!isIndex && activeSection === 'account' && ['password', 'email', 'mfa', 'passkeys'].includes(settingsPage) && !securityOverview && <p className="onframe-muted" role="status">{loading ? 'Carregando segurança da conta...' : 'Os dados de segurança estão indisponíveis.'}</p>}
-      {!isIndex && activeSection === 'account' && ['password', 'email'].includes(settingsPage) && profile && securityOverview && <CredentialSettings key={settingsPage} kind={settingsPage} profile={profile} onChanged={onCredentialChanged} />}
-      {!isIndex && activeSection === 'account' && settingsPage === 'sessions' && <SessionsSettings securityOverview={securityOverview} loading={loading} onRemoveSession={onRemoveSession} onRemoveAllSessions={onRemoveAllSessions} />}
-      {!isIndex && activeSection === 'account' && settingsPage === 'mfa' && profile && securityOverview && <TwoFactorSettings profile={profile} securityOverview={securityOverview} onDisconnect={onDisconnect} />}
-      {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && <PasskeySettings profile={profile} securityOverview={securityOverview} />}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && <WorkspacePeople members={members} invitations={invitations} currentUserId={profile?.user?.id} loading={loading} onInvite={onInvite} onEdit={onEdit} onRemove={onRemove} onRevoke={onRevoke} onLeave={onLeave} />}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && <TaxSettings workspaceId={workspace.id} />}
+      {isIndex && (
+        <>
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar configurações..."
+            width="min(100%, 520px)"
+          />
+          {normalizedQuery &&
+            (matches.length > 0 ? (
+              <SettingsOptionList
+                options={matches}
+                ariaLabel="Resultados da busca"
+                onNavigate={selectOption}
+                showCategory
+              />
+            ) : (
+              <p className="onframe-empty">Nenhuma configuração encontrada.</p>
+            ))}
+          {!normalizedQuery && <SettingsDirectory options={availableOptions} onNavigate={selectOption} />}
+        </>
+      )}
+      {!isIndex && activeSection === 'account' && settingsPage === 'profile' && (
+        <ProfileSettings
+          profile={profile}
+          loading={loading}
+          onSave={onSaveProfile}
+          onAvatar={onAvatar}
+          onRemoveAvatar={onRemoveAvatar}
+          onOpenSecuritySettings={() => onSettingsPageChange('security')}
+        />
+      )}
+      {!isIndex && activeSection === 'account' && settingsPage === 'security' && (
+        <SecuritySettings
+          profile={profile}
+          securityOverview={securityOverview}
+          loading={loading}
+          onOpenSecurity={onSettingsPageChange}
+          onOpenSessions={() => onSettingsPageChange('sessions')}
+          onOpenMfa={() => onSettingsPageChange('mfa')}
+          onOpenPasskeys={() => onSettingsPageChange('passkeys')}
+        />
+      )}
+      {!isIndex &&
+        activeSection === 'account' &&
+        ['password', 'email', 'mfa', 'passkeys'].includes(settingsPage) &&
+        !securityOverview && (
+          <p className="onframe-muted" role="status">
+            {loading ? 'Carregando segurança da conta...' : 'Os dados de segurança estão indisponíveis.'}
+          </p>
+        )}
+      {!isIndex &&
+        activeSection === 'account' &&
+        ['password', 'email'].includes(settingsPage) &&
+        profile &&
+        securityOverview && (
+          <CredentialSettings
+            key={settingsPage}
+            kind={settingsPage}
+            profile={profile}
+            onChanged={onCredentialChanged}
+          />
+        )}
+      {!isIndex && activeSection === 'account' && settingsPage === 'sessions' && (
+        <SessionsSettings
+          securityOverview={securityOverview}
+          loading={loading}
+          onRemoveSession={onRemoveSession}
+          onRemoveAllSessions={onRemoveAllSessions}
+        />
+      )}
+      {!isIndex && activeSection === 'account' && settingsPage === 'mfa' && profile && securityOverview && (
+        <TwoFactorSettings profile={profile} securityOverview={securityOverview} onDisconnect={onDisconnect} />
+      )}
+      {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && (
+        <PasskeySettings profile={profile} securityOverview={securityOverview} />
+      )}
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && (
+        <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />
+      )}
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && (
+        <WorkspacePeople
+          members={members}
+          invitations={invitations}
+          currentUserId={profile?.user?.id}
+          loading={loading}
+          onInvite={onInvite}
+          onEdit={onEdit}
+          onRemove={onRemove}
+          onRevoke={onRevoke}
+          onLeave={onLeave}
+        />
+      )}
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && (
+        <TaxSettings workspaceId={workspace.id} />
+      )}
       {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
     </div>
@@ -480,7 +892,9 @@ function OptionsApp() {
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
-  const [view, setView] = useState(() => ({ '#history': 'history', '#products': 'products' }[window.location.hash] || 'home'));
+  const [view, setView] = useState(
+    () => ({ '#history': 'history', '#products': 'products' })[window.location.hash] || 'home'
+  );
   const [settingsTab, setSettingsTab] = useState('account');
   const [settingsPage, setSettingsPage] = useState('index');
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
@@ -538,9 +952,17 @@ function OptionsApp() {
   const loadView = useCallback(async () => {
     if (!connection?.connected) return;
     const admin = connection.workspace?.role === 'admin';
-    const needsData = view === 'home' || view === 'integrations' || view === 'products' || view === 'history' || (view === 'settings' && (settingsTab === 'account' || (settingsTab === 'workspace' && admin)));
+    const needsData =
+      view === 'home' ||
+      view === 'integrations' ||
+      view === 'products' ||
+      view === 'history' ||
+      (view === 'settings' && (settingsTab === 'account' || (settingsTab === 'workspace' && admin)));
     if (!needsData) return;
-    const needsSecurity = view === 'settings' && settingsTab === 'account' && ['security', 'sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage);
+    const needsSecurity =
+      view === 'settings' &&
+      settingsTab === 'account' &&
+      ['security', 'sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage);
     setLoading(true);
     try {
       if (view === 'home') {
@@ -560,28 +982,46 @@ function OptionsApp() {
       }
       if (view === 'settings' && settingsTab === 'account') {
         const [nextProfile, nextSecurity] = await Promise.all([
-          sendRemoteMessage('profile'), needsSecurity ? sendRemoteMessage('security') : Promise.resolve(null)
+          sendRemoteMessage('profile'),
+          needsSecurity ? sendRemoteMessage('security') : Promise.resolve(null)
         ]);
         setProfile(nextProfile);
         if (needsSecurity) setSecurityOverview(nextSecurity);
       }
       if (view === 'settings' && settingsTab === 'workspace' && admin) {
-        const [memberResult, invitationResult] = await Promise.all([sendRemoteMessage('members'), sendRemoteMessage('invitations'), loadAccounts()]);
+        const [memberResult, invitationResult] = await Promise.all([
+          sendRemoteMessage('members'),
+          sendRemoteMessage('invitations'),
+          loadAccounts()
+        ]);
         setMembers(memberResult.members || []);
         setInvitations(invitationResult.invitations || []);
       }
     } catch (error) {
       if (needsSecurity) setSecurityOverview(null);
-      setNotice({ tone: error?.code === 'security_backend_unavailable' ? 'info' : 'danger', message: userError(error) });
+      setNotice({
+        tone: error?.code === 'security_backend_unavailable' ? 'info' : 'danger',
+        message: userError(error)
+      });
       if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
         setConnection({ connected: false, reason: 'unauthorized' });
       }
     } finally {
       setLoading(false);
     }
-  }, [connection?.connected, connection?.workspace?.id, connection?.workspace?.role, loadAccounts, settingsTab, settingsPage, view]);
+  }, [
+    connection?.connected,
+    connection?.workspace?.id,
+    connection?.workspace?.role,
+    loadAccounts,
+    settingsTab,
+    settingsPage,
+    view
+  ]);
 
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
   useEffect(() => {
     const hash = view === 'history' ? '#history' : view === 'products' ? '#products' : '';
     const target = hash || `${window.location.pathname}${window.location.search}`;
@@ -590,11 +1030,15 @@ function OptionsApp() {
     }
   }, [view]);
   useEffect(() => {
-    const refreshOnFocus = () => { void reload().then(loadView); };
+    const refreshOnFocus = () => {
+      void reload().then(loadView);
+    };
     window.addEventListener('focus', refreshOnFocus);
     return () => window.removeEventListener('focus', refreshOnFocus);
   }, [reload, loadView]);
-  useEffect(() => { void loadView(); }, [loadView]);
+  useEffect(() => {
+    void loadView();
+  }, [loadView]);
   useEffect(() => {
     if (!connection?.connected || acceptingInvitation.current) return;
     const token = new URL(window.location.href).searchParams.get('invite');
@@ -645,10 +1089,13 @@ function OptionsApp() {
   }
 
   async function updateAccount(account, enabled) {
-    await run(async () => {
-      await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
-      await loadAccounts();
-    }, enabled ? 'Conta ativada.' : 'Conta desativada.');
+    await run(
+      async () => {
+        await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
+        await loadAccounts();
+      },
+      enabled ? 'Conta ativada.' : 'Conta desativada.'
+    );
   }
 
   async function renameAccount(account, displayName) {
@@ -690,28 +1137,44 @@ function OptionsApp() {
   }
 
   async function submitMember(values) {
-    const result = await run(async () => {
-      if (dialog.type === 'member') {
-        await sendRemoteMessage('member-update', { userId: dialog.member.id, payload: { role: values.role, accountIds: values.accountIds } });
-      } else {
-        const response = await sendRemoteMessage('invitation-create', { payload: values });
-        if (response.invitation?.url) {
-          try {
-            await navigator.clipboard.writeText(response.invitation.url);
-            showFeedback({ tone: 'success', message: 'Link de convite criado e copiado.' });
-          } catch {
-            const retryCopy = () => void navigator.clipboard.writeText(response.invitation.url)
-              .then(() => showFeedback({ tone: 'success', message: 'Link copiado.' }))
-              .catch(() => setNotice((current) => current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }));
-            showFeedback({
-              tone: 'warning', message: 'Convite criado, mas o link não foi copiado.', needsAttention: true,
-              action: 'Copiar link', onAction: retryCopy
-            });
+    const result = await run(
+      async () => {
+        if (dialog.type === 'member') {
+          await sendRemoteMessage('member-update', {
+            userId: dialog.member.id,
+            payload: { role: values.role, accountIds: values.accountIds }
+          });
+        } else {
+          const response = await sendRemoteMessage('invitation-create', { payload: values });
+          if (response.invitation?.url) {
+            try {
+              await navigator.clipboard.writeText(response.invitation.url);
+              showFeedback({ tone: 'success', message: 'Link de convite criado e copiado.' });
+            } catch {
+              const retryCopy = () =>
+                void navigator.clipboard
+                  .writeText(response.invitation.url)
+                  .then(() => showFeedback({ tone: 'success', message: 'Link copiado.' }))
+                  .catch(() =>
+                    setNotice(
+                      (current) =>
+                        current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }
+                    )
+                  );
+              showFeedback({
+                tone: 'warning',
+                message: 'Convite criado, mas o link não foi copiado.',
+                needsAttention: true,
+                action: 'Copiar link',
+                onAction: retryCopy
+              });
+            }
           }
         }
-      }
-      await loadView();
-    }, dialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null);
+        await loadView();
+      },
+      dialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null
+    );
     if (result !== null) setDialog(null);
   }
 
@@ -755,7 +1218,9 @@ function OptionsApp() {
 
   async function saveWorkspace(name) {
     await run(async () => {
-      const result = await sendRemoteMessage('profile-update', { payload: { displayName: profile.user.name, workspaceName: name } });
+      const result = await sendRemoteMessage('profile-update', {
+        payload: { displayName: profile.user.name, workspaceName: name }
+      });
       setProfile(result);
       await reload();
     }, 'Nome do workspace salvo.');
@@ -789,20 +1254,22 @@ function OptionsApp() {
   if (connection === null && loading) {
     return (
       <FeedbackRoot>
-      <main className="onframe-auth-page" aria-busy="true">
-        <div className="onframe-auth-page-theme"><ThemeMenuButton /></div>
-        <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
-          <AuthBrand />
-          <Card padding={24}>
-            <div className="onframe-stack">
-              <Skeleton width="32%" height={10} radius={5} />
-              <Skeleton width="68%" height={20} radius={6} />
-              <Skeleton width="100%" height={14} radius={6} />
-              <Skeleton width="100%" height={42} radius={10} />
-            </div>
-          </Card>
-        </div>
-      </main>
+        <main className="onframe-auth-page" aria-busy="true">
+          <div className="onframe-auth-page-theme">
+            <ThemeMenuButton />
+          </div>
+          <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
+            <AuthBrand />
+            <Card padding={24}>
+              <div className="onframe-stack">
+                <Skeleton width="32%" height={10} radius={5} />
+                <Skeleton width="68%" height={20} radius={6} />
+                <Skeleton width="100%" height={14} radius={6} />
+                <Skeleton width="100%" height={42} radius={10} />
+              </div>
+            </Card>
+          </div>
+        </main>
       </FeedbackRoot>
     );
   }
@@ -811,13 +1278,25 @@ function OptionsApp() {
   if (!connected) {
     return (
       <FeedbackRoot>
-      <main className="onframe-auth-page">
-        <div className="onframe-auth-page-theme"><ThemeMenuButton /></div>
-        <div className="onframe-auth-surface onframe-stack">
-          {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
-          <AuthPanel onConnected={reload} />
-        </div>
-      </main>
+        <main className="onframe-auth-page">
+          <div className="onframe-auth-page-theme">
+            <ThemeMenuButton />
+          </div>
+          <div className="onframe-auth-surface onframe-stack">
+            {notice && (
+              <Alert
+                tone={notice.tone}
+                action={notice.action}
+                onAction={notice.onAction}
+                dismissible
+                onClose={() => setNotice(null)}
+              >
+                {notice.message}
+              </Alert>
+            )}
+            <AuthPanel onConnected={reload} />
+          </div>
+        </main>
       </FeedbackRoot>
     );
   }
@@ -828,30 +1307,30 @@ function OptionsApp() {
     workspace: 'Workspace',
     application: 'Aplicativo'
   };
-  const settingsDetail = view === 'settings' && settingsPage !== 'index' ? SETTINGS_PAGE_META[settingsTab]?.[settingsPage] : undefined;
+  const settingsDetail =
+    view === 'settings' && settingsPage !== 'index' ? SETTINGS_PAGE_META[settingsTab]?.[settingsPage] : undefined;
   const meta = settingsDetail || VIEW_META[view];
   const breadcrumbs = settingsDetail
     ? [
-      { label: 'Início', icon: 'house', href: '#inicio' },
-      { label: 'Configurações', icon: 'gear-six', href: '#configuracoes' },
-      { label: settingsTabLabels[settingsTab] },
-      ...(settingsTab === 'account' && ['sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage) ? [{ label: 'Segurança e login', href: '#configuracoes-account-security' }] : []),
-      { label: meta.title }
-    ]
+        { label: 'Início', icon: 'house', href: '#inicio' },
+        { label: 'Configurações', icon: 'gear-six', href: '#configuracoes' },
+        { label: settingsTabLabels[settingsTab] },
+        ...(settingsTab === 'account' && ['sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage)
+          ? [{ label: 'Segurança e login', href: '#configuracoes-account-security' }]
+          : []),
+        { label: meta.title }
+      ]
     : view === 'home'
       ? [{ label: 'Início', icon: 'house' }]
-      : [
-        { label: 'Início', icon: 'house', href: '#inicio' },
-        { label: meta.title }
-      ];
+      : [{ label: 'Início', icon: 'house', href: '#inicio' }, { label: meta.title }];
   const goBackFromSettingsDetail = settingsDetail
     ? () => {
-      if (settingsTab === 'account' && ['sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage)) {
-        setSettingsPage('security');
-        return;
+        if (settingsTab === 'account' && ['sessions', 'mfa', 'passkeys', 'password', 'email'].includes(settingsPage)) {
+          setSettingsPage('security');
+          return;
+        }
+        setSettingsPage('index');
       }
-      setSettingsPage('index');
-    }
     : undefined;
   const navigateBreadcrumb = (item) => {
     const targets = {
@@ -880,8 +1359,28 @@ function OptionsApp() {
   ];
   const personName = connection.user.name || connection.user.email;
   const accountMenu = [
-    { label: 'Conta', icon: 'user-circle', onSelect: () => { setSettingsTab('account'); setSettingsPage('profile'); setView('settings'); } },
-    ...(admin ? [{ label: 'Workspace', icon: 'gear-six', onSelect: () => { setSettingsTab('workspace'); setSettingsPage('general'); setView('settings'); } }] : []),
+    {
+      label: 'Conta',
+      icon: 'user-circle',
+      onSelect: () => {
+        setSettingsTab('account');
+        setSettingsPage('profile');
+        setView('settings');
+      }
+    },
+    ...(admin
+      ? [
+          {
+            label: 'Workspace',
+            icon: 'gear-six',
+            onSelect: () => {
+              setSettingsTab('workspace');
+              setSettingsPage('general');
+              setView('settings');
+            }
+          }
+        ]
+      : []),
     { type: 'label', label: 'Aparência' },
     { type: 'custom', ariaLabel: 'Tema da interface', content: <ThemeTabs /> },
     { type: 'separator' },
@@ -903,79 +1402,50 @@ function OptionsApp() {
   };
   const activeWorkspace = workspaces.find((item) => item.id === workspace.id);
   const workspaceOptions = workspaces.map((item) => ({ label: item.name, id: item.id }));
-  const workspaceControl = workspaceOptions.length > 1 ? (
-    <Select
-      label="Workspace ativo"
-      options={workspaceOptions}
-      value={activeWorkspace?.name || null}
-      onChange={(name) => activateWorkspace(workspaces.find((item) => item.name === name)?.id)}
-      width={220}
-    />
-  ) : null;
+  const workspaceControl =
+    workspaceOptions.length > 1 ? (
+      <Select
+        label="Workspace ativo"
+        options={workspaceOptions}
+        value={activeWorkspace?.name || null}
+        onChange={(name) => activateWorkspace(workspaces.find((item) => item.name === name)?.id)}
+        width={220}
+      />
+    ) : null;
   const pageContext = (
     <div className="onframe-options-context-crumbs">
-      {settingsDetail && <Button kind="primary" size="sm" icon={<Ph n="caret-circle-left" size={16} />} onClick={goBackFromSettingsDetail}>Voltar</Button>}
+      {settingsDetail && (
+        <Button
+          kind="primary"
+          size="sm"
+          icon={<Ph n="caret-circle-left" size={16} />}
+          onClick={goBackFromSettingsDetail}
+        >
+          Voltar
+        </Button>
+      )}
       <Breadcrumbs items={breadcrumbs} size="sm" maxItems={3} onNavigate={navigateBreadcrumb} />
     </div>
   );
-  const pageHeaderActions = (workspaceControl || (view === 'products' && productHeaderActions))
-    ? <>{workspaceControl}{view === 'products' && productHeaderActions}</>
-    : undefined;
+  const pageHeaderActions =
+    workspaceControl || (view === 'products' && productHeaderActions) ? (
+      <>
+        {workspaceControl}
+        {view === 'products' && productHeaderActions}
+      </>
+    ) : undefined;
 
   return (
     <FeedbackRoot>
-    <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>
-      <aside className="onframe-options-sidebar" aria-label="Navegação do workspace">
-        <SideNav
-          items={navigation}
-          active={view}
-          onNav={navigate}
-          collapsed={navigationCollapsed}
-          onToggle={() => setNavigationCollapsed((collapsed) => !collapsed)}
-          flush
-          accountName={personName}
-          accountDetail={connection.user.email}
-          accountImage={connection.user.avatarUrl}
-          accountImageAlt=""
-          accountMenu={accountMenu}
-          menuLabel="Conta"
-        />
-      </aside>
-      <div className="onframe-options-column">
-        <div className="onframe-options-desktop-context">{pageContext}</div>
-        <div className="onframe-options-mobile-nav">
-          <Navbar
-            layout="context"
-            size="sm"
-            sticky
-            onMenuToggle={() => setMobileNavigationOpen(true)}
-            crumbs={pageContext}
-          />
-        </div>
-        <section className="onframe-options-main">
-          <div className={`onframe-options-content${settingsDetail ? '' : ' onframe-options-content--root'}`}>
-            <PageHeader
-              meta={meta}
-              actions={pageHeaderActions}
-              reserveContextSpace
-            />
-            {notice && <Alert tone={notice.tone} action={notice.action} onAction={notice.onAction} dismissible onClose={() => setNotice(null)}>{notice.message}</Alert>}
-            {view === 'home' && <Home workspace={workspace} overview={overview} accounts={accounts} invitations={admin ? invitations : []} admin={admin} loading={loading} onConnect={() => void connectAccount()} onOpenIntegrations={() => setView('integrations')} onOpenWorkspace={() => openSettings('workspace', 'general')} />}
-            {view === 'integrations' && <Integrations accounts={accounts} admin={admin} loading={loading} onConnect={() => void connectAccount()} onUpdate={(account, enabled) => void updateAccount(account, enabled)} onRename={renameAccount} onRemove={(account) => setDialog({ type: 'account-delete', account })} />}
-            {view === 'products' && <Products accounts={accounts} admin={admin} onHeaderActionsChange={setProductHeaderActions} />}
-            {view === 'history' && <ItemEditHistory accounts={accounts} members={members} currentUser={connection.user} admin={admin} onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined} />}
-            {view === 'settings' && <Settings activeSection={settingsTab} onSectionChange={setSettingsTab} settingsPage={settingsPage} onSettingsPageChange={setSettingsPage} workspace={workspace} profile={profile} securityOverview={securityOverview} members={members} invitations={invitations} accounts={accounts} admin={admin} loading={loading} onSaveProfile={saveProfile} onAvatar={uploadAvatar} onRemoveAvatar={removeAvatar} onCredentialChanged={(message) => { setConnection({ connected: false }); setProfile(null); setSecurityOverview(null); setNotice(message); }} onRemoveSession={removeSession} onRemoveAllSessions={removeAllSessions} onDisconnect={() => void disconnect()} onSaveWorkspace={(name) => void saveWorkspace(name)} onInvite={() => setDialog({ type: 'invite' })} onEdit={(member) => setDialog({ type: 'member', member })} onRemove={(member) => setDialog({ type: 'member-delete', member })} onRevoke={(invitation) => void revokeInvitation(invitation)} onLeave={() => setDialog({ type: 'workspace-leave' })} />}
-          </div>
-        </section>
-      </div>
-      <Drawer open={mobileNavigationOpen} onClose={() => setMobileNavigationOpen(false)} side="left" width={300} title="Navegação do OnFrame">
-        <div className="onframe-options-drawer-content">
+      <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>
+        <aside className="onframe-options-sidebar" aria-label="Navegação do workspace">
           <SideNav
             items={navigation}
             active={view}
             onNav={navigate}
+            collapsed={navigationCollapsed}
+            onToggle={() => setNavigationCollapsed((collapsed) => !collapsed)}
             flush
-            hideBrand
             accountName={personName}
             accountDetail={connection.user.email}
             accountImage={connection.user.avatarUrl}
@@ -983,23 +1453,167 @@ function OptionsApp() {
             accountMenu={accountMenu}
             menuLabel="Conta"
           />
+        </aside>
+        <div className="onframe-options-column">
+          <div className="onframe-options-desktop-context">{pageContext}</div>
+          <div className="onframe-options-mobile-nav">
+            <Navbar
+              layout="context"
+              size="sm"
+              sticky
+              onMenuToggle={() => setMobileNavigationOpen(true)}
+              crumbs={pageContext}
+            />
+          </div>
+          <section className="onframe-options-main">
+            <div className={`onframe-options-content${settingsDetail ? '' : ' onframe-options-content--root'}`}>
+              <PageHeader meta={meta} actions={pageHeaderActions} reserveContextSpace />
+              {notice && (
+                <Alert
+                  tone={notice.tone}
+                  action={notice.action}
+                  onAction={notice.onAction}
+                  dismissible
+                  onClose={() => setNotice(null)}
+                >
+                  {notice.message}
+                </Alert>
+              )}
+              {view === 'home' && (
+                <Home
+                  workspace={workspace}
+                  overview={overview}
+                  accounts={accounts}
+                  invitations={admin ? invitations : []}
+                  admin={admin}
+                  loading={loading}
+                  onConnect={() => void connectAccount()}
+                  onOpenIntegrations={() => setView('integrations')}
+                  onOpenWorkspace={() => openSettings('workspace', 'general')}
+                />
+              )}
+              {view === 'integrations' && (
+                <Integrations
+                  accounts={accounts}
+                  admin={admin}
+                  loading={loading}
+                  onConnect={() => void connectAccount()}
+                  onUpdate={(account, enabled) => void updateAccount(account, enabled)}
+                  onRename={renameAccount}
+                  onRemove={(account) => setDialog({ type: 'account-delete', account })}
+                />
+              )}
+              {view === 'products' && (
+                <Products accounts={accounts} admin={admin} onHeaderActionsChange={setProductHeaderActions} />
+              )}
+              {view === 'history' && (
+                <ItemEditHistory
+                  accounts={accounts}
+                  members={members}
+                  currentUser={connection.user}
+                  admin={admin}
+                  onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined}
+                />
+              )}
+              {view === 'settings' && (
+                <Settings
+                  activeSection={settingsTab}
+                  onSectionChange={setSettingsTab}
+                  settingsPage={settingsPage}
+                  onSettingsPageChange={setSettingsPage}
+                  workspace={workspace}
+                  profile={profile}
+                  securityOverview={securityOverview}
+                  members={members}
+                  invitations={invitations}
+                  admin={admin}
+                  loading={loading}
+                  onSaveProfile={saveProfile}
+                  onAvatar={uploadAvatar}
+                  onRemoveAvatar={removeAvatar}
+                  onCredentialChanged={(message) => {
+                    setConnection({ connected: false });
+                    setProfile(null);
+                    setSecurityOverview(null);
+                    setNotice(message);
+                  }}
+                  onRemoveSession={removeSession}
+                  onRemoveAllSessions={removeAllSessions}
+                  onDisconnect={() => void disconnect()}
+                  onSaveWorkspace={(name) => void saveWorkspace(name)}
+                  onInvite={() => setDialog({ type: 'invite' })}
+                  onEdit={(member) => setDialog({ type: 'member', member })}
+                  onRemove={(member) => setDialog({ type: 'member-delete', member })}
+                  onRevoke={(invitation) => void revokeInvitation(invitation)}
+                  onLeave={() => setDialog({ type: 'workspace-leave' })}
+                />
+              )}
+            </div>
+          </section>
         </div>
-      </Drawer>
+        <Drawer
+          open={mobileNavigationOpen}
+          onClose={() => setMobileNavigationOpen(false)}
+          side="left"
+          width={300}
+          title="Navegação do OnFrame"
+        >
+          <div className="onframe-options-drawer-content">
+            <SideNav
+              items={navigation}
+              active={view}
+              onNav={navigate}
+              flush
+              hideBrand
+              accountName={personName}
+              accountDetail={connection.user.email}
+              accountImage={connection.user.avatarUrl}
+              accountImageAlt=""
+              accountMenu={accountMenu}
+              menuLabel="Conta"
+            />
+          </div>
+        </Drawer>
 
-      <WorkspaceAccessModal dialog={dialog} accounts={accounts} busy={loading} onClose={() => setDialog(null)} onConfirm={(values) => void submitMember(values)} />
-      <Modal
-        open={dialog?.type === 'account-delete' || dialog?.type === 'member-delete' || dialog?.type === 'workspace-leave'}
-        onClose={() => setDialog(null)}
-        title={dialog?.type === 'workspace-leave' ? 'Sair do workspace' : dialog?.type === 'account-delete' ? 'Remover conta' : 'Remover pessoa'}
-        footer={<><Button kind="secondary" disabled={loading} onClick={() => setDialog(null)}>Cancelar</Button><Button kind="danger" disabled={loading} onClick={() => void confirmDialog()}>{dialog?.type === 'workspace-leave' ? 'Sair do workspace' : 'Remover'}</Button></>}
-      >
-        {dialog?.type === 'workspace-leave'
-          ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
-          : dialog?.type === 'account-delete'
-          ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
-          : dialog?.member ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.` : ''}
-      </Modal>
-    </main>
+        <WorkspaceAccessModal
+          dialog={dialog}
+          accounts={accounts}
+          busy={loading}
+          onClose={() => setDialog(null)}
+          onConfirm={(values) => void submitMember(values)}
+        />
+        <Modal
+          open={
+            dialog?.type === 'account-delete' || dialog?.type === 'member-delete' || dialog?.type === 'workspace-leave'
+          }
+          onClose={() => setDialog(null)}
+          title={
+            dialog?.type === 'workspace-leave'
+              ? 'Sair do workspace'
+              : dialog?.type === 'account-delete'
+                ? 'Remover conta'
+                : 'Remover pessoa'
+          }
+          footer={
+            <>
+              <Button kind="secondary" disabled={loading} onClick={() => setDialog(null)}>
+                Cancelar
+              </Button>
+              <Button kind="danger" disabled={loading} onClick={() => void confirmDialog()}>
+                {dialog?.type === 'workspace-leave' ? 'Sair do workspace' : 'Remover'}
+              </Button>
+            </>
+          }
+        >
+          {dialog?.type === 'workspace-leave'
+            ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
+            : dialog?.type === 'account-delete'
+              ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
+              : dialog?.member
+                ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.`
+                : ''}
+        </Modal>
+      </main>
     </FeedbackRoot>
   );
 }

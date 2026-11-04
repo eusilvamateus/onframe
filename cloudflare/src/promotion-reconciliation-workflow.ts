@@ -7,10 +7,21 @@ import {
   type RemoteRuntimeEnv
 } from './remote-api';
 
-export class PromotionReconciliationWorkflow extends WorkflowEntrypoint<RemoteRuntimeEnv, PromotionReconciliationParams> {
+export class PromotionReconciliationWorkflow extends WorkflowEntrypoint<
+  RemoteRuntimeEnv,
+  PromotionReconciliationParams
+> {
   async run(event: WorkflowEvent<PromotionReconciliationParams>, step: WorkflowStep): Promise<ReconciliationOutcome> {
     const reconciliationId = event.payload.reconciliationId;
-    const delays = ['2 seconds', '4 seconds', '8 seconds', '15 seconds', '30 seconds', '1 minute', '2 minutes'] as const;
+    const delays = [
+      '2 seconds',
+      '4 seconds',
+      '8 seconds',
+      '15 seconds',
+      '30 seconds',
+      '1 minute',
+      '2 minutes'
+    ] as const;
 
     for (let index = 0; index < delays.length; index += 1) {
       await step.sleep(`wait-${index + 1}`, delays[index]);
@@ -25,8 +36,8 @@ export class PromotionReconciliationWorkflow extends WorkflowEntrypoint<RemoteRu
       if (outcome.status !== 'pending') return outcome;
     }
 
-    return step.do<ReconciliationOutcome>('finish-unconfirmed', async () => (
+    return step.do<ReconciliationOutcome>('finish-unconfirmed', async () =>
       markPromotionReconciliationUnconfirmed(this.env, reconciliationId)
-    ));
+    );
   }
 }

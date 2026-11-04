@@ -4,7 +4,9 @@
   const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 
   function normalizeEmail(value) {
-    const email = String(value || '').trim().toLowerCase();
+    const email = String(value || '')
+      .trim()
+      .toLowerCase();
     return EMAIL_PATTERN.test(email) ? email : '';
   }
 
@@ -15,12 +17,17 @@
       credentials: 'omit'
     });
     const payload = await response.json().catch(() => ({}));
-    const supabaseUrl = String(payload && payload.supabaseUrl || '');
-    const supabasePublishableKey = String(payload && payload.supabasePublishableKey || '');
+    const supabaseUrl = String((payload && payload.supabaseUrl) || '');
+    const supabasePublishableKey = String((payload && payload.supabasePublishableKey) || '');
     if (!response.ok || !SUPABASE_ORIGIN_PATTERN.test(supabaseUrl) || !supabasePublishableKey) {
       throw new Error('Não foi possível preparar o acesso ao OnFrame.');
     }
-    return { supabaseUrl, supabasePublishableKey, emailOtpLength: payload.emailOtpLength === 8 ? 8 : 6, capabilities: { accountSecurity: payload.capabilities?.accountSecurity === 1 } };
+    return {
+      supabaseUrl,
+      supabasePublishableKey,
+      emailOtpLength: payload.emailOtpLength === 8 ? 8 : 6,
+      capabilities: { accountSecurity: payload.capabilities?.accountSecurity === 1 }
+    };
   }
 
   async function request(config, path, body, options = {}) {
@@ -157,7 +164,7 @@
       const currentMountId = ++mountId;
 
       try {
-        if (!await isChallengeAvailable() || destroyed || currentMountId !== mountId) {
+        if (!(await isChallengeAvailable()) || destroyed || currentMountId !== mountId) {
           if (!destroyed && currentMountId === mountId) unmountUnavailable();
           return;
         }
@@ -192,13 +199,18 @@
         if (pending) return pending.promise;
         let resolve;
         let reject;
-        const promise = new Promise((done, fail) => { resolve = done; reject = fail; });
+        const promise = new Promise((done, fail) => {
+          resolve = done;
+          reject = fail;
+        });
         const timer = setTimeout(() => unmountUnavailable(), 60000);
         pending = { promise, resolve, reject, timer };
         requestToken();
         return promise;
       },
-      reset: () => { mountPromise = mount(); },
+      reset: () => {
+        mountPromise = mount();
+      },
       destroy: () => {
         destroyed = true;
         loading = false;
@@ -214,13 +226,14 @@
   }
 
   function authErrorMessage(error, fallback) {
-    const code = String(error && error.code || '');
-    const status = Number(error && error.status || 0);
+    const code = String((error && error.code) || '');
+    const status = Number((error && error.status) || 0);
     if (code === 'weak_password') return 'Escolha uma senha mais forte.';
     if (code === 'captcha_failed') return 'A confirmação de segurança expirou. Tente novamente.';
     if (code === 'captcha_unavailable') return 'A confirmação de segurança está indisponível. Tente novamente.';
     if (code === 'email_not_confirmed') return 'Confirme seu e-mail para continuar.';
-    if (code === 'over_email_send_rate_limit' || status === 429) return 'Aguarde um minuto antes de solicitar outro código.';
+    if (code === 'over_email_send_rate_limit' || status === 429)
+      return 'Aguarde um minuto antes de solicitar outro código.';
     if (status >= 500) return 'O serviço de autenticação está indisponível. Tente novamente em instantes.';
     if (code === 'auth_request_failed' && status) return `${fallback} (HTTP ${status})`;
     return fallback;

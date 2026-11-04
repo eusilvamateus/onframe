@@ -18,7 +18,7 @@
     let currentItemKey = '';
     let currentSelectionKey = '';
     let currentContext = null;
-    let activeModule = modules[0] || null;
+    const activeModule = modules[0] || null;
     let editorVisible = true;
     let originalPushState = null;
     let originalReplaceState = null;
@@ -120,7 +120,10 @@
         const quickContext = await resolveQuickPageContext({ page });
         if (requestId !== syncRequestId) return;
         currentContext = quickContext;
-        currentSignature = quickContext && quickContext.page && quickContext.page.signature ? quickContext.page.signature : page.signature;
+        currentSignature =
+          quickContext && quickContext.page && quickContext.page.signature
+            ? quickContext.page.signature
+            : page.signature;
         currentItemKey = page.itemKey;
         currentSelectionKey = page.selectionKey;
         notifyModules({
@@ -171,7 +174,10 @@
         if (quickContext) {
           notifyModules({
             status: 'hydration-error',
-            signature: quickContext && quickContext.page && quickContext.page.signature ? quickContext.page.signature : page.signature,
+            signature:
+              quickContext && quickContext.page && quickContext.page.signature
+                ? quickContext.page.signature
+                : page.signature,
             context: quickContext,
             error: toUserError(err),
             reason
@@ -204,7 +210,8 @@
     async function handleRuntimeMessage(message) {
       if (message.type === 'onframe:getModules') return { ok: true, modules: modules.map(summarizeModule) };
       if (message.type === 'onframe:setEditorVisibility') return setEditorVisibility(message.visible);
-      if (message.type === 'onframe:getStatus' && !message.moduleId) return withShellVisibility(activeModule ? activeModule.getStatus() : getShellStatus());
+      if (message.type === 'onframe:getStatus' && !message.moduleId)
+        return withShellVisibility(activeModule ? activeModule.getStatus() : getShellStatus());
 
       const targetModule = resolveMessageModule(message);
       if (!targetModule) return { ok: false, error: 'Módulo indisponível.' };
@@ -320,9 +327,13 @@
       window.addEventListener('popstate', () => schedulePageSync('history'), true);
       document.addEventListener('click', handlePageInteraction, true);
       document.addEventListener('change', handlePageInteraction, true);
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') schedulePageSync('visible', { force: true });
-      }, true);
+      document.addEventListener(
+        'visibilitychange',
+        () => {
+          if (document.visibilityState === 'visible') schedulePageSync('visible', { force: true });
+        },
+        true
+      );
 
       if (typeof MutationObserver !== 'function') return;
       observer = new MutationObserver((mutations) => {
@@ -362,9 +373,12 @@
 
     function handlePageInteraction(event) {
       if (isOnFrameNode(event.target)) return;
-      const target = event.target && typeof event.target.closest === 'function'
-        ? event.target.closest('[aria-checked], [aria-pressed], [data-testid], a[href*="attributes="], a[href*="product_trigger_id"], button')
-        : null;
+      const target =
+        event.target && typeof event.target.closest === 'function'
+          ? event.target.closest(
+              '[aria-checked], [aria-pressed], [data-testid], a[href*="attributes="], a[href*="product_trigger_id"], button'
+            )
+          : null;
       if (target) schedulePageSync('interaction', { delay: 60 });
     }
 
@@ -374,17 +388,20 @@
         if (isOnFrameNode(mutation.target)) continue;
         const added = Array.from(mutation.addedNodes || []);
         const removed = Array.from(mutation.removedNodes || []);
-        if (isCharacteristicsModalNode(mutation.target) || added.concat(removed).some(isCharacteristicsModalNode)) return true;
+        if (isCharacteristicsModalNode(mutation.target) || added.concat(removed).some(isCharacteristicsModalNode))
+          return true;
         if (added.concat(removed).some((node) => !isOnFrameNode(node))) hasExternalMutation = true;
         if (mutation.type === 'attributes') hasExternalMutation = true;
       }
       if (!hasExternalMutation) return false;
       if (!isProductPage()) return true;
       const page = readProductPageContext();
-      return !currentSignature ||
+      return (
+        !currentSignature ||
         page.signature !== currentSignature ||
         page.itemKey !== currentItemKey ||
-        page.selectionKey !== currentSelectionKey;
+        page.selectionKey !== currentSelectionKey
+      );
     }
 
     function isCharacteristicsModalNode(node) {
@@ -398,7 +415,11 @@
       if (!node || node.nodeType !== 1) return false;
       if (node.id === 'onblide-ml-root') return true;
       if (typeof node.closest !== 'function') return false;
-      return Boolean(node.closest('#onblide-ml-root, #onframe-toast-root, .onblide-ml-tray, .onframe-commerce-inline, .onframe-commerce-listing-controls, .onframe-commerce-listing-badge, .onframe-commerce-popover-root, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-description-root, .onframe-description-action-root, .onframe-description-action, .onframe-description-catalog-notice, .onframe-section-edit-tooltip, .onframe-characteristics-root, .onframe-characteristics-action-root, .onframe-characteristics-action, .onframe-characteristics-catalog-notice, .onframe-characteristics-inline-control, .onframe-characteristics-inline-cell, .onframe-characteristics-extra-row'));
+      return Boolean(
+        node.closest(
+          '#onblide-ml-root, #onframe-toast-root, .onblide-ml-tray, .onframe-commerce-inline, .onframe-commerce-listing-controls, .onframe-commerce-listing-badge, .onframe-commerce-popover-root, .onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-description-root, .onframe-description-action-root, .onframe-description-action, .onframe-description-catalog-notice, .onframe-section-edit-tooltip, .onframe-characteristics-root, .onframe-characteristics-action-root, .onframe-characteristics-action, .onframe-characteristics-catalog-notice, .onframe-characteristics-inline-control, .onframe-characteristics-inline-cell, .onframe-characteristics-extra-row'
+        )
+      );
     }
 
     function readEditorVisibility() {
@@ -419,7 +440,8 @@
 
     async function resolvePageContext(options = {}) {
       const page = options.page || readProductPageContext();
-      const ownerAccount = options.quickContext && options.quickContext.ownerAccount ? options.quickContext.ownerAccount : null;
+      const ownerAccount =
+        options.quickContext && options.quickContext.ownerAccount ? options.quickContext.ownerAccount : null;
       const context = await api('/api/resolve', {
         method: 'POST',
         body: JSON.stringify({
@@ -458,7 +480,9 @@
       const url = location.href;
       const pageIdentity = Detection.collectPageIdentity(document, url, { includeScripts: false });
       const itemCandidates = Detection.collectItemIdCandidatesFromPage(document, url, { includeScripts: false });
-      const userProductCandidates = Detection.collectUserProductCandidatesFromPage(document, url, { includeScripts: false });
+      const userProductCandidates = Detection.collectUserProductCandidatesFromPage(document, url, {
+        includeScripts: false
+      });
       const selectionKey = JSON.stringify(Detection.createSelectionKey(document, url));
       return {
         url,
@@ -487,7 +511,7 @@
     }
 
     function shouldFallbackToFullResolve(err) {
-      const status = Number(err && (err.status || err.statusCode) ? (err.status || err.statusCode) : 0);
+      const status = Number(err && (err.status || err.statusCode) ? err.status || err.statusCode : 0);
       return ![400, 401, 403, 409].includes(status);
     }
 

@@ -10,11 +10,13 @@ async function buildPictureQualityReport(client, item, options = {}) {
     const role = selectedVariationId ? 'variation_thumbnail' : index === 0 ? 'thumbnail' : 'other';
     const dimensions = await resolvePictureDimensions(client, picture);
 
-    results.push(summarizePictureQuality({
-      picture,
-      role,
-      resolution: buildResolutionSummary(dimensions)
-    }));
+    results.push(
+      summarizePictureQuality({
+        picture,
+        role,
+        resolution: buildResolutionSummary(dimensions)
+      })
+    );
   }
 
   return {
@@ -85,8 +87,7 @@ function compareDimensions(a, b) {
   const aLong = Math.max(Number(a.width) || 0, Number(a.height) || 0);
   const bLong = Math.max(Number(b.width) || 0, Number(b.height) || 0);
   if (aLong !== bLong) return aLong - bLong;
-  return ((Number(a.width) || 0) * (Number(a.height) || 0)) -
-    ((Number(b.width) || 0) * (Number(b.height) || 0));
+  return (Number(a.width) || 0) * (Number(a.height) || 0) - (Number(b.width) || 0) * (Number(b.height) || 0);
 }
 
 function buildPictureDownloadCandidates(picture) {
@@ -94,10 +95,9 @@ function buildPictureDownloadCandidates(picture) {
   const sourceUrls = [picture && picture.secure_url, picture && picture.url]
     .map((value) => String(value || '').trim())
     .filter(Boolean);
-  const assetIds = new Set([
-    normalizePictureAssetId(picture && picture.id),
-    ...sourceUrls.map(extractPictureAssetIdFromUrl)
-  ].filter(Boolean));
+  const assetIds = new Set(
+    [normalizePictureAssetId(picture && picture.id), ...sourceUrls.map(extractPictureAssetIdFromUrl)].filter(Boolean)
+  );
 
   for (const assetId of assetIds) {
     urls.push(`https://http2.mlstatic.com/D_NQ_NP_2X_${assetId}-F.webp`);
@@ -143,9 +143,10 @@ function summarizePictureQuality({ picture, role, resolution }) {
   return {
     pictureId: picture.id || null,
     role,
-    dimensions: resolution && resolution.available
-      ? { width: resolution.width, height: resolution.height, source: resolution.source }
-      : null,
+    dimensions:
+      resolution && resolution.available
+        ? { width: resolution.width, height: resolution.height, source: resolution.source }
+        : null,
     resolution,
     status,
     canFixSize: canOptimize,
@@ -216,10 +217,7 @@ function qualityOkMessage(resolution) {
 }
 
 function extractOfficialDimensions(picture) {
-  const candidates = [
-    parseSize(picture && picture.size),
-    parseSize(picture && picture.max_size)
-  ].filter(Boolean);
+  const candidates = [parseSize(picture && picture.size), parseSize(picture && picture.max_size)].filter(Boolean);
   const variations = picture && Array.isArray(picture.variations) ? picture.variations : [];
   for (const variation of variations) {
     const parsed = parseSize(variation && variation.size);
@@ -249,7 +247,8 @@ function extractImageDimensions(buffer) {
 }
 
 function extractPngDimensions(buffer) {
-  const isPng = buffer.length >= 24 &&
+  const isPng =
+    buffer.length >= 24 &&
     buffer[0] === 0x89 &&
     buffer[1] === 0x50 &&
     buffer[2] === 0x4e &&
@@ -292,12 +291,7 @@ function extractJpegDimensions(buffer) {
 }
 
 function isJpegStartOfFrame(marker) {
-  return [
-    0xc0, 0xc1, 0xc2, 0xc3,
-    0xc5, 0xc6, 0xc7,
-    0xc9, 0xca, 0xcb,
-    0xcd, 0xce, 0xcf
-  ].includes(marker);
+  return [0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker);
 }
 
 function extractWebpDimensions(buffer) {
@@ -331,11 +325,14 @@ function extractWebpDimensions(buffer) {
       };
     }
 
-    if (chunkType === 'VP8 ' && chunkSize >= 10 &&
+    if (
+      chunkType === 'VP8 ' &&
+      chunkSize >= 10 &&
       dataOffset + 10 <= buffer.length &&
       buffer[dataOffset + 3] === 0x9d &&
       buffer[dataOffset + 4] === 0x01 &&
-      buffer[dataOffset + 5] === 0x2a) {
+      buffer[dataOffset + 5] === 0x2a
+    ) {
       return {
         width: buffer.readUInt16LE(dataOffset + 6) & 0x3fff,
         height: buffer.readUInt16LE(dataOffset + 8) & 0x3fff,

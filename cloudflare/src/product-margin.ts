@@ -1,7 +1,7 @@
 type RecordValue = Record<string, unknown>;
 
 function recordOrNull(value: unknown): RecordValue | null {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : null;
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as RecordValue) : null;
 }
 
 function numberOrNull(value: unknown): number | null {
@@ -31,11 +31,26 @@ function customCosts(value: unknown, salePriceCents: number | null) {
     const description = typeof entry?.description === 'string' ? entry.description.trim() : '';
     const type = entry?.type;
     const valueNumber = numberOrNull(entry?.value);
-    if (!description || (type !== 'fixed' && type !== 'percentage') || valueNumber === null || valueNumber < 0 || (type === 'percentage' && valueNumber > 100)) return null;
-    const amountCents = type === 'fixed'
-      ? Math.round(valueNumber * 100)
-      : Math.round(salePriceCents * Math.round(valueNumber * 100) / 10_000);
-    costs.push({ description, type, value: valueNumber, base: type === 'percentage' ? 'sale_price' : 'unit', amount: moneyFromCents(amountCents), amountCents });
+    if (
+      !description ||
+      (type !== 'fixed' && type !== 'percentage') ||
+      valueNumber === null ||
+      valueNumber < 0 ||
+      (type === 'percentage' && valueNumber > 100)
+    )
+      return null;
+    const amountCents =
+      type === 'fixed'
+        ? Math.round(valueNumber * 100)
+        : Math.round((salePriceCents * Math.round(valueNumber * 100)) / 10_000);
+    costs.push({
+      description,
+      type,
+      value: valueNumber,
+      base: type === 'percentage' ? 'sale_price' : 'unit',
+      amount: moneyFromCents(amountCents),
+      amountCents
+    });
   }
   return costs;
 }
@@ -60,18 +75,15 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   if (youReceiveCents === null || youReceiveCents < 0) missing.push('you_receive');
   if (product && (productCostCents === null || productCostCents < 0)) missing.push('product_cost');
   if (product && calculatedCustomCosts === null) missing.push('custom_costs');
-  if (product && (taxRate === null || taxRate < 0 || taxRate > 100 || taxBase !== 'sale_price')) missing.push('tax_rate');
+  if (product && (taxRate === null || taxRate < 0 || taxRate > 100 || taxBase !== 'sale_price'))
+    missing.push('tax_rate');
 
   const complete = missing.length === 0;
   const taxRateBps = complete ? Math.round(taxRate! * 100) : null;
-  const taxAmountCents = complete ? Math.round(salePriceCents! * taxRateBps! / 10_000) : null;
+  const taxAmountCents = complete ? Math.round((salePriceCents! * taxRateBps!) / 10_000) : null;
   const customCostCents = complete ? calculatedCustomCosts!.reduce((total, cost) => total + cost.amountCents, 0) : null;
-  const amountCents = complete
-    ? youReceiveCents! - productCostCents! - taxAmountCents! - customCostCents!
-    : null;
-  const percentage = complete
-    ? roundPercentage(amountCents! / salePriceCents! * 100)
-    : null;
+  const amountCents = complete ? youReceiveCents! - productCostCents! - taxAmountCents! - customCostCents! : null;
+  const percentage = complete ? roundPercentage((amountCents! / salePriceCents!) * 100) : null;
 
   return {
     complete,

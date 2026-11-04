@@ -26,28 +26,54 @@ export function PopupFooter({
   onUpdate = openUpdater
 }) {
   const updateAvailable = isNewerVersion(release?.latestVersion, currentVersion);
-  const updateItems = release === undefined
-    ? [{ label: 'Verificando atualizações...', icon: 'spinner-gap', disabled: true }]
-    : updateAvailable
-      ? [
-          { label: `Ver changelog da v${release.latestVersion}`, icon: 'file-text', onSelect: () => onOpenChangelog(release.changelogUrl) },
-          { label: `Atualizar para v${release.latestVersion}`, icon: 'download-simple', onSelect: onUpdate }
-        ]
-      : release
-        ? [{ label: 'Extensão atualizada', icon: 'check-circle', disabled: true }]
-        : [{ label: 'Não foi possível verificar atualizações', icon: 'warning-circle', disabled: true }];
+  const updateItems =
+    release === undefined
+      ? [{ label: 'Verificando atualizações...', icon: 'spinner-gap', disabled: true }]
+      : updateAvailable
+        ? [
+            {
+              label: `Ver changelog da v${release.latestVersion}`,
+              icon: 'file-text',
+              onSelect: () => onOpenChangelog(release.changelogUrl)
+            },
+            { label: `Atualizar para v${release.latestVersion}`, icon: 'download-simple', onSelect: onUpdate }
+          ]
+        : release
+          ? [{ label: 'Extensão atualizada', icon: 'check-circle', disabled: true }]
+          : [{ label: 'Não foi possível verificar atualizações', icon: 'warning-circle', disabled: true }];
 
   const versionLabel = `Versão ${currentVersion}${updateAvailable ? `, atualização ${release.latestVersion} disponível` : ''}`;
 
-  return <footer className="onframe-popup-footer">
-    <Menu
-      ariaLabel="Versão e atualização"
-      align="left"
-      placement="top"
-      size="sm"
-      items={updateItems}
-      trigger={<Button kind="cream" size="sm" count={updateAvailable ? 1 : undefined} aria-label={versionLabel} icon={<Ph n="tag" size={15} />}>v{currentVersion}</Button>}
-    />
-    <Button kind="quiet" tone="danger" size="sm" disabled={busy} onClick={onDisconnect} icon={<Ph n="sign-out" size={16} />}>Desconectar</Button>
-  </footer>;
+  return (
+    <footer className="onframe-popup-footer">
+      <Menu
+        ariaLabel="Versão e atualização"
+        align="left"
+        placement="top"
+        size="sm"
+        items={updateItems}
+        trigger={
+          <Button
+            kind="cream"
+            size="sm"
+            count={updateAvailable ? 1 : undefined}
+            aria-label={versionLabel}
+            icon={<Ph n="tag" size={15} />}
+          >
+            v{currentVersion}
+          </Button>
+        }
+      />
+      <Button
+        kind="quiet"
+        tone="danger"
+        size="sm"
+        disabled={busy}
+        onClick={onDisconnect}
+        icon={<Ph n="sign-out" size={16} />}
+      >
+        Desconectar
+      </Button>
+    </footer>
+  );
 }

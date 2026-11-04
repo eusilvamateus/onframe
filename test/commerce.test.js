@@ -36,10 +36,7 @@ const {
   fakeElement,
   listen
 } = require('./helpers');
-const {
-  buildBulkPreview,
-  commitBulkAction
-} = require('../cloudflare/src/domain/bulk-actions');
+const { buildBulkPreview, commitBulkAction } = require('../cloudflare/src/domain/bulk-actions');
 const { buildCostProjection } = require('../cloudflare/src/domain/pricing');
 
 test('commerce model resume estado de preco e bloqueios', () => {
@@ -100,10 +97,24 @@ test('commerce model nao conta desconto pix acumulativo como promocao de preco',
     offers: {
       active: [
         { id: 'C1', type: 'SELLER_CAMPAIGN', status: 'started', is_current_price: true, display_status: 'active' },
-        { id: 'P1', type: 'BANK', status: 'started', display_status: 'active', is_stackable: true, payment_method: 'PIX' }
+        {
+          id: 'P1',
+          type: 'BANK',
+          status: 'started',
+          display_status: 'active',
+          is_stackable: true,
+          payment_method: 'PIX'
+        }
       ],
       eligible: [
-        { id: 'P2', type: 'BANK', status: 'candidate', display_status: 'available', is_stackable: true, payment_method: 'PIX' },
+        {
+          id: 'P2',
+          type: 'BANK',
+          status: 'candidate',
+          display_status: 'available',
+          is_stackable: true,
+          payment_method: 'PIX'
+        },
         { id: 'P3', type: 'DEAL', status: 'candidate', display_status: 'available' }
       ]
     }
@@ -157,13 +168,16 @@ test('commerce model mantém pendente como programada quando outra oferta vence 
 });
 
 test('commerce model monta payload amigavel de oferta', () => {
-  const payload = commerceModel.buildOfferPayload({
-    id: 'P-MLB123',
-    type: 'SELLER_CAMPAIGN',
-    capabilities: { offerCreate: ['promotion_id', 'deal_price'] }
-  }, {
-    deal_price: '89,90'
-  });
+  const payload = commerceModel.buildOfferPayload(
+    {
+      id: 'P-MLB123',
+      type: 'SELLER_CAMPAIGN',
+      capabilities: { offerCreate: ['promotion_id', 'deal_price'] }
+    },
+    {
+      deal_price: '89,90'
+    }
+  );
 
   assert.deepStrictEqual(payload, {
     promotionType: 'SELLER_CAMPAIGN',
@@ -171,10 +185,14 @@ test('commerce model monta payload amigavel de oferta', () => {
     dealPrice: 89.9
   });
   assert.throws(
-    () => commerceModel.buildOfferPayload({
-      type: 'PRICE_DISCOUNT',
-      capabilities: { offerCreate: ['deal_price'] }
-    }, {}),
+    () =>
+      commerceModel.buildOfferPayload(
+        {
+          type: 'PRICE_DISCOUNT',
+          capabilities: { offerCreate: ['deal_price'] }
+        },
+        {}
+      ),
     /promotion_missing_deal_price/
   );
 });
@@ -202,51 +220,65 @@ test('commerce model sincroniza percentual e preco do desconto direto', () => {
 });
 
 test('commerce model bloqueia preco promocional fora da faixa conhecida', () => {
-  const payload = commerceModel.buildOfferPayload({
-    type: 'DEAL',
-    min_price: 59.2,
-    max_price: 209.94,
-    capabilities: { offerCreate: ['deal_price'] }
-  }, {
-    deal_price: '149,99'
-  });
+  const payload = commerceModel.buildOfferPayload(
+    {
+      type: 'DEAL',
+      min_price: 59.2,
+      max_price: 209.94,
+      capabilities: { offerCreate: ['deal_price'] }
+    },
+    {
+      deal_price: '149,99'
+    }
+  );
 
   assert.strictEqual(payload.dealPrice, 149.99);
 
   assert.throws(
-    () => commerceModel.buildOfferPayload({
-      type: 'PRICE_DISCOUNT',
-      min_price: 80,
-      max_price: 120,
-      capabilities: { offerCreate: ['deal_price'] }
-    }, {
-      deal_price: '70'
-    }),
+    () =>
+      commerceModel.buildOfferPayload(
+        {
+          type: 'PRICE_DISCOUNT',
+          min_price: 80,
+          max_price: 120,
+          capabilities: { offerCreate: ['deal_price'] }
+        },
+        {
+          deal_price: '70'
+        }
+      ),
     /Use um preço entre R\$ 80,00 e R\$ 120,00/
   );
 
   assert.throws(
-    () => commerceModel.buildOfferPayload({
-      type: 'PRICE_DISCOUNT',
-      min_price: 80,
-      max_price: 120,
-      capabilities: { offerCreate: ['deal_price'] }
-    }, {
-      deal_price: '130'
-    }),
+    () =>
+      commerceModel.buildOfferPayload(
+        {
+          type: 'PRICE_DISCOUNT',
+          min_price: 80,
+          max_price: 120,
+          capabilities: { offerCreate: ['deal_price'] }
+        },
+        {
+          deal_price: '130'
+        }
+      ),
     /Use um preço entre R\$ 80,00 e R\$ 120,00/
   );
 });
 
 test('commerce model envia datas de promocao em formato local', () => {
-  const payload = commerceModel.buildOfferPayload({
-    type: 'PRICE_DISCOUNT',
-    capabilities: { offerCreate: ['deal_price', 'start_date', 'finish_date'] }
-  }, {
-    deal_price: '89,90',
-    start_date: '2026-08-01',
-    finish_date: '2026-08-10'
-  });
+  const payload = commerceModel.buildOfferPayload(
+    {
+      type: 'PRICE_DISCOUNT',
+      capabilities: { offerCreate: ['deal_price', 'start_date', 'finish_date'] }
+    },
+    {
+      deal_price: '89,90',
+      start_date: '2026-08-01',
+      finish_date: '2026-08-10'
+    }
+  );
 
   assert.strictEqual(payload.startDate, '2026-08-01T00:00:00');
   assert.strictEqual(payload.finishDate, '2026-08-10T23:59:59');
@@ -265,14 +297,26 @@ test('commerce model preserva mensagem amigavel ja traduzida', () => {
 
 test('promoções usam componentes oficiais sem bridges legados', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const directDiscountView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
-  const managerView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const directDiscountView = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'),
+    'utf8'
+  );
+  const managerView = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
 
-  assert.match(directDiscountView, /import \{ Alert, Button, Datepicker, Input, Modal, Ph, Skeleton, Spinner \} from '@onblide\/ui'/);
+  assert.match(
+    directDiscountView,
+    /import \{ Alert, Button, Datepicker, Input, Modal, Ph, Skeleton, Spinner \} from '@onblide\/ui'/
+  );
   assert.match(directDiscountView, /<Datepicker[\s\S]*mode="range"/s);
-  assert.match(managerView, /import \{[\s\S]*Button,[\s\S]*Input,[\s\S]*Popover,[\s\S]*Tabs[\s\S]*\} from '@onblide\/ui'/s);
+  assert.match(
+    managerView,
+    /import \{[\s\S]*Button,[\s\S]*Input,[\s\S]*Popover,[\s\S]*Tabs[\s\S]*\} from '@onblide\/ui'/s
+  );
   assert.doesNotMatch(source, /OnFrameDatepicker|OnFrameButton|data-onframe-(?:datepicker|button)-root/);
   assert.doesNotMatch(build, /datepicker-bridge|button-bridge/);
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'datepicker-bridge.jsx')), false);
@@ -283,15 +327,27 @@ test('promoções usam componentes oficiais sem bridges legados', () => {
 
 test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'),
+    'utf8'
+  );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
-  const phosphor = fs.readFileSync(path.join(__dirname, '..', 'extension', 'vendor', 'phosphor', 'phosphor.css'), 'utf8');
+  const phosphor = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'vendor', 'phosphor', 'phosphor.css'),
+    'utf8'
+  );
   const scripts = manifest.content_scripts[0].js;
 
   assert.match(view, /import \{ Badge, Button, Chip, Ph \} from '@onblide\/ui'/);
-  assert.match(view, /<Chip[\s\S]*label=\{<>\s*<Ph n="currency-dollar" size=\{13\} \/>[\s\S]*selected=\{model\.active === 'price'\}/);
-  assert.match(view, /<Chip[\s\S]*label=\{<>\s*<Ph n="tag" size=\{13\} \/>[\s\S]*selected=\{model\.active === 'promotions'\}/);
+  assert.match(
+    view,
+    /<Chip[\s\S]*label=\{\s*<>\s*<Ph n="currency-dollar" size=\{13\} \/>[\s\S]*selected=\{model\.active === 'price'\}/
+  );
+  assert.match(
+    view,
+    /<Chip[\s\S]*label=\{\s*<>\s*<Ph n="tag" size=\{13\} \/>[\s\S]*selected=\{model\.active === 'promotions'\}/
+  );
   assert.match(view, /role="group"[\s\S]*aria-label="Preço e promoções"/);
   assert.match(view, /data-commerce-action-group=""/);
   assert.match(view, /function containClick\(event\) \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
@@ -301,9 +357,18 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
   assert.match(source, /const CommerceActionsView = rootScope\.OnFrameCommerceActionsView/);
   assert.match(source, /CommerceActionsView\.render\(state\.inline, buildInlineActionsViewModel\(\)/);
   assert.match(source, /CommerceActionsView\.render\(record\.controls, buildListingActionsViewModel\(record\)/);
-  assert.match(source, /function commercePriceActionTone\(tone\) \{\s*return tone === 'warn' \? 'danger' : 'neutral';\s*\}/);
-  assert.match(source, /if \(tone === 'success'\) return 'success';\s*if \(tone === 'warning'\) return 'warning';\s*if \(tone === 'primary'\) return 'primary';\s*if \(tone === 'warn'\) return 'danger';\s*return 'neutral';/);
-  assert.match(source, /function listingPromotionTone\(record\) \{[\s\S]*const state = CommerceModel\.getPromotionState\(record\.promotionSummary\);\s*return state\.tone;/);
+  assert.match(
+    source,
+    /function commercePriceActionTone\(tone\) \{\s*return tone === 'warn' \? 'danger' : 'neutral';\s*\}/
+  );
+  assert.match(
+    source,
+    /if \(tone === 'success'\) return 'success';\s*if \(tone === 'warning'\) return 'warning';\s*if \(tone === 'primary'\) return 'primary';\s*if \(tone === 'warn'\) return 'danger';\s*return 'neutral';/
+  );
+  assert.match(
+    source,
+    /function listingPromotionTone\(record\) \{[\s\S]*const state = CommerceModel\.getPromotionState\(record\.promotionSummary\);\s*return state\.tone;/
+  );
   assert.doesNotMatch(source, /function buildInlineMarkup|function bindInlineEvents|function listingControlButton/);
   assert.doesNotMatch(source, /onframe-commerce-chip|onframe-commerce-chipbar/);
   assert.equal(fs.existsSync(path.join(__dirname, '..', 'extension', 'styles', 'components.css')), false);
@@ -314,14 +379,23 @@ test('acoes de preco e promocao usam o grupo oficial do design system', () => {
 
 test('popover de preco organiza resumo e edicao em conteudo progressivo', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'),
+    'utf8'
+  );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
-  const pricePopoverSource = source.slice(source.indexOf('function buildPricePopoverViewModel'), source.indexOf('function buildPromotionPopoverViewModel'));
+  const pricePopoverSource = source.slice(
+    source.indexOf('function buildPricePopoverViewModel'),
+    source.indexOf('function buildPromotionPopoverViewModel')
+  );
 
-  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/);
+  assert.match(
+    view,
+    /import \{ Accordion, Alert, Badge, Button, Card, Checkbox, Input, Ph, Spinner, Tooltip \} from '@onblide\/ui'/
+  );
   assert.match(view, /<Card padding=\{12\} elevation="shadow">/);
   assert.match(view, /globalThis\.OnFrameCommercePriceView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
@@ -340,7 +414,10 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(view, /<Accordion items=\{blockedItems\} type="single" ariaLabel="Variações não atualizadas"/);
   assert.match(view, /<Alert tone=\{status\.tone === 'warn' \? 'danger' : 'success'\} title=\{status\.message\}>/);
   assert.doesNotMatch(view, /<(?:details|summary)>/);
-  assert.match(view, /const heroField = model\.fields\.find\(\(field\) => field\.label === 'Você recebe'\) \|\| priceField/);
+  assert.match(
+    view,
+    /const heroField = model\.fields\.find\(\(field\) => field\.label === 'Você recebe'\) \|\| priceField/
+  );
   assert.match(view, /className="onframe-commerce-price-base"/);
   assert.match(view, /className="onframe-commerce-price-editor"/);
   assert.match(view, /className="onframe-commerce-price-editor-bulk"/);
@@ -358,7 +435,10 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(view, /<small>Vendendo em:<\/small>/);
   assert.match(view, /onClick=\{actions\.onOpenPromotion\}/);
   assert.match(source, /sellingIn: snapshot\.originalPrice \? priceSellingPromotion\(\) : null/);
-  assert.match(source, /function priceSellingPromotion\(\)[\s\S]*currentPromotionEntry\(pricePromotionEntries\(groups\)\)/);
+  assert.match(
+    source,
+    /function priceSellingPromotion\(\)[\s\S]*currentPromotionEntry\(pricePromotionEntries\(groups\)\)/
+  );
   assert.doesNotMatch(source, /priceMeta/);
   assert.match(source, /Você recebe/);
   assert.match(source, /Tarifa de venda/);
@@ -386,9 +466,15 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(styles, /\.onframe-commerce-popover-root\.price-summary/);
   assert.doesNotMatch(styles, /\.onframe-commerce-price-view,[\s\S]*font-weight: 500 !important;/);
   assert.match(styles, /\.onframe-commerce-popover-root\.promotions,[\s\S]*width: min\(400px/s);
-  assert.match(styles, /:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\) :where\([\s\S]*summary,[\s\S]*table,[\s\S]*output\),[\s\S]*font-family: var\(--ob-font\) !important;/s);
+  assert.match(
+    styles,
+    /:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\)\s*:where\([\s\S]*summary,[\s\S]*table,[\s\S]*output\s*\),[\s\S]*font-family: var\(--ob-font\) !important;/s
+  );
   assert.doesNotMatch(styles, /onframe-commerce-promotion-result-popover-root/);
-  assert.match(styles, /body:has\(:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\) \[aria-describedby\]\) > \[role='tooltip'\][\s\S]*font-family: var\(--ob-font\) !important;/s);
+  assert.match(
+    styles,
+    /body:has\(\s*:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\)\s*\[aria-describedby\]\s*\)\s*>\s*\[role='tooltip'\][\s\S]*font-family: var\(--ob-font\) !important;/s
+  );
   assert.match(styles, /\.onframe-commerce-price-breakdown-row\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-price-promotion-link\s*{\s*display: flex/s);
   assert.match(styles, /\.onframe-commerce-price-base\s*{\s*display: grid/s);
@@ -400,14 +486,17 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
 
 test('listagens reutilizam popovers apenas para anuncios da conta conectada', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-actions-view.jsx'),
+    'utf8'
+  );
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
   assert.match(source, /supportsNonProduct: true/);
   assert.match(source, /function isListingPageUrl/);
   assert.match(source, /function extractListingItemId/);
   assert.match(source, /params\.get\('wid'\)/);
-  assert.ok(source.includes("if (/\\/p\\/MLB\\d+/i.test(url.pathname)) return null;"));
+  assert.ok(source.includes('if (/\\/p\\/MLB\\d+/i.test(url.pathname)) return null;'));
   assert.match(source, /const LISTING_REQUEST_CONCURRENCY = 20/);
   assert.match(source, /state\.listingResolving < LISTING_REQUEST_CONCURRENCY/);
   assert.match(source, /listingSummaryQueue/);
@@ -429,8 +518,14 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
   assert.match(source, /function listingPriceTone/);
   assert.match(source, /function listingPromotionTone/);
   assert.match(styles, /\.onframe-commerce-listing-controls\s*\{/);
-  assert.match(styles, /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: 3;[\s\S]*pointer-events: auto !important;/);
-  assert.match(styles, /\.onframe-commerce-listing-controls \.onframe-commerce-action-group \[role="button"\]\s*\{[\s\S]*cursor: pointer !important;/);
+  assert.match(
+    styles,
+    /\.onframe-commerce-listing-controls\s*\{[\s\S]*z-index: 3;[\s\S]*pointer-events: auto !important;/
+  );
+  assert.match(
+    styles,
+    /\.onframe-commerce-listing-controls \.onframe-commerce-action-group \[role=['"]button['"]\]\s*\{[\s\S]*cursor: pointer !important;/
+  );
   assert.match(styles, /\.onframe-commerce-listing-badge\s*\{[\s\S]*pointer-events: none;/);
   assert.match(source, /function scheduleListingControlsLayout/);
   assert.match(source, /function syncListingControlsLayout/);
@@ -446,7 +541,10 @@ test('listagens reutilizam popovers apenas para anuncios da conta conectada', ()
 
 test('modal de promocoes usa uma view React sem reconstruir o DOM ao editar', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const scripts = manifest.content_scripts[0].js;
@@ -465,14 +563,20 @@ test('modal de promocoes usa uma view React sem reconstruir o DOM ao editar', ()
 
 test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design system', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
 
   assert.match(view, /Modal,[\s\S]*Popover,[\s\S]*SearchInput,[\s\S]*Tabs/s);
   assert.doesNotMatch(view, /<ScrollArea/, 'o Modal já fornece a única região rolável desta tela');
   assert.match(view, /variant="pill" size="sm"/);
   assert.doesNotMatch(view, /<Tabs[^>]*appearance=/);
-  assert.match(view, /onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover[\s\S]*<Tabs/s);
+  assert.match(
+    view,
+    /onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover[\s\S]*<Tabs/s
+  );
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);
@@ -484,12 +588,15 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /label="Com redução de tarifa"/);
   assert.match(view, /Aplicadas ao anúncio/);
   assert.match(view, /Disponíveis para aplicar/);
-  assert.match(view, /<Card padding=\{0\}/);
+  assert.match(view, /<Card[\s\S]*padding=\{0\}/);
   assert.match(view, /borderColor: row\.formOpen \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
   assert.doesNotMatch(view, /Avatar/);
   assert.match(view, /onframe-commerce-promotion-type-icon \$\{row\.type\}/);
   assert.match(view, /row\.type === 'coupon' \? 'ticket' : row\.type === 'payment' \? 'credit-card' : 'tag'/);
-  assert.match(view, /<div className="onframe-promotion-manager-meta">\s*<small>\{row\.typeLabel\}<\/small>\s*<small>\{row\.period\}<\/small>\s*<\/div>/s);
+  assert.match(
+    view,
+    /<div className="onframe-promotion-manager-meta">\s*<small>\{row\.typeLabel\}<\/small>\s*<small>\{row\.period\}<\/small>\s*<\/div>/s
+  );
   assert.doesNotMatch(view, /\{row\.typeLabel\} · \{row\.period\}/);
   assert.match(view, /const isCoupon = row\.type === 'coupon'/);
   assert.match(view, /tone=\{isCoupon \? 'warning' : 'primary'\}/);
@@ -524,57 +631,126 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /setTimeout\(\(\) => commitQueuedPromotionManagerRemoval\(key, row\.entry\), 5000\)/);
   assert.match(source, /function commitQueuedPromotionManagerRemoval/);
   assert.match(styles, /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\)/s);
-  assert.match(styles, /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-modal-root[\s\S]*\) :where\(div,[\s\S]*legend,[\s\S]*button,[\s\S]*table,[\s\S]*output\),[\s\S]*font-family: var\(--ob-font\) !important;/s);
-  assert.match(styles, /:where\(kbd, \[style\*="--ob-font-mono"\]\),[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
-  assert.match(styles, /> \[data-ob-popover-id\] :where\(kbd, \[style\*="--ob-font-mono"\]\),/);
-  assert.match(styles, /> \[role='tooltip'\] :where\(kbd, \[style\*="--ob-font-mono"\]\),/);
-  assert.match(styles, /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
-  assert.match(styles, /\.onframe-promotion-manager \.onframe-commerce-promotion-type-icon\s*\{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*border: 1px solid var\(--ob-line-soft\);[\s\S]*border-radius: var\(--ob-r-control\);[\s\S]*background: var\(--ob-bg-alt\);/s);
+  assert.match(
+    styles,
+    /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-commerce-direct-discount-modal-root[\s\S]*\)\s*:where\(\s*div,[\s\S]*legend,[\s\S]*button,[\s\S]*table,[\s\S]*output\s*\),[\s\S]*font-family: var\(--ob-font\) !important;/s
+  );
+  assert.match(
+    styles,
+    /:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
+  );
+  assert.match(styles, />\s*\[data-ob-popover-id\]\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/);
+  assert.match(styles, />\s*\[role='tooltip'\]\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager \.onframe-commerce-promotion-type-icon\s*\{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*border: 1px solid var\(--ob-line-soft\);[\s\S]*border-radius: var\(--ob-r-control\);[\s\S]*background: var\(--ob-bg-alt\);/s
+  );
   assert.doesNotMatch(styles, /--onframe-promotion-font-/);
-  assert.match(styles, /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-black\)/s);
-  assert.match(styles, /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: 13px;[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
-  assert.match(styles, /\.onframe-promotion-manager-name strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;[\s\S]*color: var\(--ob-fg-strong\);/s);
-  assert.match(styles, /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: 1px;[\s\S]*margin-top: 2px;/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-black\)/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: 13px;[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-name strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;[\s\S]*color: var\(--ob-fg-strong\);/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: 1px;[\s\S]*margin-top: 2px;/s
+  );
   assert.match(styles, /\.onframe-promotion-manager-meta > small\s*\{[\s\S]*margin-top: 0;/s);
-  assert.match(styles, /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s
+  );
   assert.match(styles, /\.onframe-promotion-manager-title > small\s*\{[\s\S]*font-weight: var\(--ob-w-regular\)/s);
-  assert.match(styles, /\.onframe-promotion-manager-condition > span,[\s\S]*font-weight: var\(--ob-w-regular\) !important;/s);
-  assert.match(styles, /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-condition > span,[\s\S]*font-weight: var\(--ob-w-regular\) !important;/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s
+  );
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-calculation strong\s*\{[^}]*font-size:/s);
   assert.match(styles, /\.onframe-promotion-manager-calculation span small\s*\{[\s\S]*font-size: 11px;/s);
-  assert.match(styles, /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*position: sticky;[\s\S]*background: var\(--ob-surface\)/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*position: sticky;[\s\S]*background: var\(--ob-surface\)/s
+  );
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-toolbar\s*\{[^}]*border-bottom:/s);
   assert.match(styles, /\.onframe-promotion-manager-search-line\s*\{[\s\S]*justify-content: flex-start;/s);
   assert.match(styles, /\.onframe-promotion-manager-filter-controls\s*\{[\s\S]*flex: none;/s);
-  assert.match(styles, /\.onframe-promotion-manager-filter-group \+ \.onframe-promotion-manager-filter-group\s*\{[\s\S]*border-top: 1px solid var\(--ob-line-soft\);/s);
-  assert.match(styles, /\.onframe-promotion-manager input:focus-visible\s*\{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-filter-group \+ \.onframe-promotion-manager-filter-group\s*\{[\s\S]*border-top: 1px solid var\(--ob-line-soft\);/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager input:focus-visible\s*\{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s
+  );
   assert.match(styles, /\.onframe-promotion-manager-editor\s*\{[\s\S]*background: var\(--ob-bg-alt\);/s);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-editor > div \+ div\s*\{/);
   assert.match(styles, /\.onframe-promotion-manager-editor > div\s*\{[\s\S]*border-inline: 0 !important;/s);
-  assert.match(styles, /\.onframe-promotion-manager-editor \.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border-inline: 0;[\s\S]*border-radius: 0;/s);
-  assert.match(styles, /\.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border: 1px solid var\(--ob-line-soft\);/s);
-  assert.doesNotMatch(styles, /\.onframe-promotion-manager-editor-metrics \.onframe-promotion-manager-metric \+ \.onframe-promotion-manager-metric\s*\{/);
-  assert.match(styles, /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-editor \.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border-inline: 0;[\s\S]*border-radius: 0;/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border: 1px solid var\(--ob-line-soft\);/s
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.onframe-promotion-manager-editor-metrics \.onframe-promotion-manager-metric \+ \.onframe-promotion-manager-metric\s*\{/
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s
+  );
   assert.match(view, /<Alert tone="success" action="Desfazer" onAction=\{\(\) => actions\.onUndoRemove\(row\.key\)\}>/);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-removed\b/);
 });
 
 test('modal de promoções abre pela view oficial sem animação legada', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
 
   assert.match(source, /function openPromotionModal/);
   assert.match(source, /CommercePromotionManagerView\.render\(/);
   assert.match(source, /schedulePromotionManagerEstimates\(\);/);
   assert.match(view, /<Modal[\s\S]*width=\{1080\}/s);
-  assert.doesNotMatch(source, /beginPromotionModalOpenTransition|readPromotionPopoverRect|getPromotionModalMorphTransform/);
+  assert.doesNotMatch(
+    source,
+    /beginPromotionModalOpenTransition|readPromotionPopoverRect|getPromotionModalMorphTransform/
+  );
 });
 
 test('modal de desconto direto usa somente componentes oficiais do design system', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
-  const priceView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'),
+    'utf8'
+  );
+  const priceView = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'),
+    'utf8'
+  );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
@@ -614,26 +790,50 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   assert.match(source, /function directDiscountActionLabel\(\)[\s\S]*return 'Criar desconto';/);
   assert.match(source, /function promotionDraftWarning/);
   assert.match(source, /const draftWarning = promotionDraftWarning\(entry, values\);/);
-  assert.match(source, /groups\.activeOffers,[\s\S]*groups\.scheduledOffers[\s\S]*\.flat\(\)\.find\(isPriceDiscountPromotion\)/);
+  assert.match(
+    source,
+    /groups\.activeOffers,[\s\S]*groups\.scheduledOffers[\s\S]*\.flat\(\)\.find\(isPriceDiscountPromotion\)/
+  );
   assert.doesNotMatch(source, /status: 'candidate',[\s\S]{0,300}type: 'PRICE_DISCOUNT'/);
-  assert.doesNotMatch(source, /function buildDirectDiscountModal|function renderDirectDiscountDateRange|data-direct-discount-field/);
+  assert.doesNotMatch(
+    source,
+    /function buildDirectDiscountModal|function renderDirectDiscountDateRange|data-direct-discount-field/
+  );
   assert.doesNotMatch(view, /ob-field-(?:shell|prefix|suffix)|<button class=/);
   assert.match(styles, /\.onframe-commerce-direct-discount\s*{\s*display: grid;/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-calculation,[\s\S]*\.onframe-commerce-direct-discount-results\s*{\s*display: grid/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s);
+  assert.match(
+    styles,
+    /\.onframe-commerce-direct-discount-calculation,[\s\S]*\.onframe-commerce-direct-discount-results\s*{\s*display: grid/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s
+  );
   assert.match(styles, /\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 160px;/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-date-range input\[type="text"\]:focus-visible\s*{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s);
+  assert.match(
+    styles,
+    /\.onframe-commerce-direct-discount-date-range input\[type=['"]text['"]\]:focus-visible\s*{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s
+  );
   assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount[^}]*\.ob-field-(?:shell|prefix|suffix)/s);
   assert.match(source, /description: saleFeeDescription\(commission, currency\)/);
   assert.match(source, /`Tarifa de venda · \$\{formatPercent\(commissionPercentage\)\}`/);
   assert.match(view, /description && <small>\{description\}<\/small>/);
-  assert.match(styles, /\.onframe-commerce-direct-discount-total\s*{[\s\S]*border-top: 1px solid var\(--ob-line-soft\)/s);
-  assert.match(source, /if \(state\.directDiscountModalOpen\) \{\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);/s);
+  assert.match(
+    styles,
+    /\.onframe-commerce-direct-discount-total\s*{[\s\S]*border-top: 1px solid var\(--ob-line-soft\)/s
+  );
+  assert.match(
+    source,
+    /if \(state\.directDiscountModalOpen\) \{\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);/s
+  );
 });
 
 test('modal de promoções mantém filtros e revisão financeira na view React', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
 
   assert.match(view, /<Popover[\s\S]*title="Filtrar promoções"/s);
   assert.match(view, /label="Ativas"/);
@@ -652,14 +852,23 @@ test('modal de promoções mantém filtros e revisão financeira na view React',
 
 test('popover de promocoes separa grupos reais em abas e accordions', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotions-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotions-view.jsx'),
+    'utf8'
+  );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
-  const popoverSource = source.slice(source.indexOf('function buildPromotionPopoverViewModel'), source.indexOf('function renderModal'));
+  const popoverSource = source.slice(
+    source.indexOf('function buildPromotionPopoverViewModel'),
+    source.indexOf('function renderModal')
+  );
   const scripts = manifest.content_scripts[0].js;
 
-  assert.match(view, /import \{ Accordion, Alert, Badge, Button, Card, Ph, ScrollArea, Spinner, Tabs \} from '@onblide\/ui'/);
+  assert.match(
+    view,
+    /import \{ Accordion, Alert, Badge, Button, Card, Ph, ScrollArea, Spinner, Tabs \} from '@onblide\/ui'/
+  );
   assert.match(view, /<Card padding=\{12\} elevation="shadow">/);
   assert.match(view, /globalThis\.OnFrameCommercePromotionsView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(view, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
@@ -677,10 +886,13 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   assert.match(source, /const isSummaryPopover = state\.popover === 'promotions' \|\| state\.popover === 'price';/);
   assert.match(source, /const preferredWidth = isSummaryPopover \? 400 : 340/);
   assert.match(source, /anchor\.querySelector\('\[data-commerce-action-group\]'\)/);
-  assert.match(source, /const centeredLeft = rect\.left \+ \(\(rect\.width - width\) \/ 2\)/);
+  assert.match(source, /const centeredLeft = rect\.left \+ \(?rect\.width - width\)? \/ 2/);
   assert.doesNotMatch(popoverSource, /renderStackablePromotionSummary/);
   assert.match(source, /function promotionPopoverCampaignEntry/);
-  assert.match(source, /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(pricePromotionEntries\(groups\)\);/);
+  assert.match(
+    source,
+    /function promotionPopoverCampaignEntry\(groups\) \{\s*const active = currentPromotionEntry\(pricePromotionEntries\(groups\)\);/
+  );
   assert.match(source, /if \(programmed\) return programmed;\s*return null;/s);
   assert.match(source, /function promotionStartTimestamp/);
   assert.match(source, /function formatPromotionPeriod/);
@@ -694,14 +906,20 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   assert.match(source, /function couponCompactTerms/);
   assert.match(source, /subtype === 'FIXED_PERCENTAGE'[\s\S]*coupon\.fixed_percentage/s);
   assert.match(source, /subtype === 'FIXED_AMOUNT'[\s\S]*coupon\.fixed_amount/s);
-  assert.match(source, /function couponAmount\(value\) \{\s*if \(value === null \|\| value === undefined \|\| value === ''\) return null;/s);
+  assert.match(
+    source,
+    /function couponAmount\(value\) \{\s*if \(value === null \|\| value === undefined \|\| value === ''\) return null;/s
+  );
   assert.match(source, /Aplicado sobre o total da compra/);
   assert.doesNotMatch(source, /function couponSubtypeLabel/);
   assert.match(view, /function promotionGroups\(model\)/);
   assert.match(view, /<Tabs tabs=\{tabs\} active=\{currentGroup\.id\}/);
   assert.match(view, /<ScrollArea maxHeight=\{318\}/);
   assert.match(view, /<Accordion[\s\S]*items=\{currentGroup\.items\}/);
-  assert.match(view, /defaultValue=\{model\.expandCampaign && currentGroup\.id === 'campaigns' \? \['campaign'\] : \[\]\}/);
+  assert.match(
+    view,
+    /defaultValue=\{model\.expandCampaign && currentGroup\.id === 'campaigns' \? \['campaign'\] : \[\]\}/
+  );
   assert.match(view, /<Badge tone=\{status\.tone\} appearance="soft" size="sm" dot>/);
   assert.match(source, /function promotionPopoverFinancialBenefit/);
   assert.match(source, /value: primary\.amountText \|\| primary\.percentageText/);
@@ -719,10 +937,19 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
   assert.match(view, /icon="credit-card"/);
   assert.match(view, /id: 'payments',[\s\S]*label: 'Pagamento'/);
   assert.match(view, /className="onframe-commerce-popover-footer"/);
-  assert.match(styles, /\.onframe-commerce-popover-root\.promotions,\s*\.onframe-commerce-popover-root\.price-summary\s*{\s*width: min\(400px/s);
+  assert.match(
+    styles,
+    /\.onframe-commerce-popover-root\.promotions,\s*\.onframe-commerce-popover-root\.price-summary\s*{\s*width: min\(400px/s
+  );
   assert.match(styles, /\.onframe-commerce-popover-summary-metrics\s*{\s*display: grid/s);
-  assert.match(styles, /\.onframe-commerce-price-view \.onframe-commerce-popover-summary-metric \+ \.onframe-commerce-popover-summary-metric\s*{\s*border-left: 1px solid var\(--ob-line-soft\);/s);
-  assert.doesNotMatch(styles, /\n\.onframe-commerce-popover-summary-metric \+ \.onframe-commerce-popover-summary-metric\s*{/);
+  assert.match(
+    styles,
+    /\.onframe-commerce-price-view \.onframe-commerce-popover-summary-metric \+ \.onframe-commerce-popover-summary-metric\s*{\s*border-left: 1px solid var\(--ob-line-soft\);/s
+  );
+  assert.doesNotMatch(
+    styles,
+    /\n\.onframe-commerce-popover-summary-metric \+ \.onframe-commerce-popover-summary-metric\s*{/
+  );
   assert.match(styles, /\.onframe-commerce-popover-summary-context\s*{\s*display: flex/s);
   assert.match(styles, /\.onframe-commerce-popover-footer > button\s*{\s*width: 100%;/s);
   assert.doesNotMatch(styles, /\.onframe-commerce-popover-tabs\s*{[^}]*overflow/s);
@@ -732,7 +959,10 @@ test('popover de promocoes separa grupos reais em abas e accordions', () => {
 
 test('modal de promoções comunica o tipo comercial de cada campanha', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
   const labels = {
     DEAL: 'Campanha com melhor exposição',
     MARKETPLACE_CAMPAIGN: 'Campanha com aporte do Mercado Livre',
@@ -764,7 +994,10 @@ test('modal de promoções comunica o tipo comercial de cada campanha', () => {
 
 test('campo de preço promocional valida faixa e limpa o erro pela view React', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
 
   assert.match(source, /function promotionManagerPriceError/);
   assert.match(source, /O preço promocional deve ser menor que o preço original/);
@@ -773,15 +1006,24 @@ test('campo de preço promocional valida faixa e limpa o erro pela view React', 
   assert.match(source, /state\.actionError = '';/);
   assert.match(view, /error=\{row\.priceError \|\| undefined\}/);
   assert.match(view, /label="Estoque reservado"[\s\S]*error=\{row\.stockError \|\| undefined\}/);
-  assert.match(view, /onChange=\{\(event\) => actions\.onDraftChange\(row\.key, 'deal_price', event\.target\.value\)\}/);
+  assert.match(
+    view,
+    /onChange=\{\(event\) => actions\.onDraftChange\(row\.key, 'deal_price', event\.target\.value\)\}/
+  );
   assert.match(source, /showToast\('success', promotionActionSuccessLabel\(action\)\)/);
   assert.doesNotMatch(source, /updatePromotionPriceFieldFeedback|savePromotionFieldDraft|onframe-commerce-alert/);
 });
 
 test('modais de promocoes reconciliam as views React sem reconstruir o host', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const managerView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
-  const directDiscountView = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'), 'utf8');
+  const managerView = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
+  const directDiscountView = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-direct-discount-view.jsx'),
+    'utf8'
+  );
 
   assert.match(source, /CommercePromotionManagerView\.render\(/);
   assert.match(source, /CommerceDirectDiscountView\.render\(/);
@@ -796,7 +1038,10 @@ test('promocoes preferem oportunidade do item com faixa de preco', () => {
 
   assert.match(source, /function promotionOpportunityEntries/);
   assert.match(source, /campaignPromotionEntries\(groups\.eligibleOffers\)/);
-  assert.doesNotMatch(source, /campaignPromotionEntries\(groups\.eligibleOffers\), campaignPromotionEntries\(groups\.activeOffers\)/);
+  assert.doesNotMatch(
+    source,
+    /campaignPromotionEntries\(groups\.eligibleOffers\), campaignPromotionEntries\(groups\.activeOffers\)/
+  );
   assert.doesNotMatch(source, /participatingPromotionEntries|renderPromotionFilterOption\('status', 'participating'/);
   assert.doesNotMatch(source, /hasSamePromotion/);
   assert.match(source, /function isPriceDiscountPromotion/);
@@ -804,7 +1049,10 @@ test('promocoes preferem oportunidade do item com faixa de preco', () => {
 
 test('gerenciador de promoções usa cartões React e cálculo financeiro oficial', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
-  const view = fs.readFileSync(path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
 
   assert.match(source, /function buildPromotionRows/);
   assert.match(source, /function comparePromotionRows/);
@@ -815,7 +1063,7 @@ test('gerenciador de promoções usa cartões React e cálculo financeiro oficia
   assert.match(source, /function formatPromotionCost/);
   assert.match(source, /Com redução de tarifas/);
   assert.match(source, /Bônus do Mercado Livre/);
-  assert.match(view, /<Card padding=\{0\}/);
+  assert.match(view, /<Card[\s\S]*padding=\{0\}/);
   assert.match(view, /onframe-promotion-manager-card/);
   assert.match(view, /Como o valor é calculado/);
   assert.match(view, /row\.calculation\.map/);
@@ -827,89 +1075,128 @@ test('remocao de promocao nao exige campos de criacao ou edicao', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
 
   assert.match(source, /const method = action === 'delete' \? 'DELETE'/);
-  assert.match(source, /const payload = action === 'delete'\s*\?\s*CommerceModel\.buildOfferDeletePayload\(entry\)/);
+  assert.match(source, /const payload =\s*action === 'delete'\s*\?\s*CommerceModel\.buildOfferDeletePayload\(entry\)/);
   assert.doesNotMatch(source, /let payload = CommerceModel\.buildOfferPayload\(entry, values\);/);
 });
 
 test('pricing summary normaliza preco, quantidade, automacao, referencia e catalogo', async () => {
   let listingParams = null;
   let shippingParams = null;
-  const summary = await buildPriceSummary({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({
-      id: 'MLB1234567890',
-      title: 'Item',
-      seller_id: 123,
-      category_id: 'MLB1055',
-      site_id: 'MLB',
-      status: 'active',
-      price: 100,
-      base_price: 100,
-      currency_id: 'BRL',
-      listing_type_id: 'gold_special',
-      catalog_listing: true,
-      catalog_product_id: 'MLB123',
-      tags: ['dynamic_standard_price'],
-      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
-      condition: 'new',
-      pictures: []
-    }),
-    getItemPrices: async () => ({
-      version: 7,
-      prices: [
-        { id: '1', type: 'standard', amount: 100, currency_id: 'BRL', conditions: { context_restrictions: [] } },
-        { id: '2', type: 'standard', amount: 90, currency_id: 'BRL', conditions: { context_restrictions: ['channel_marketplace', 'user_type_business'], min_purchase_unit: 10 } }
-      ],
-      price_per_quantity: [
-        { id: '3', type: 'discount_percentage', percentage: 5, conditions: { context_restrictions: ['channel_marketplace'], min_purchase_unit: 2, eligible: true } }
-      ]
-    }),
-    getItemSalePrice: async () => ({
-      price_id: '1',
-      amount: 95,
-      regular_amount: 100,
-      currency_id: 'BRL',
-      metadata: { promotion_id: 'P-MLB1', promotion_type: 'PRICE_DISCOUNT' }
-    }),
-    getPricingAutomation: async () => ({ status: 'ACTIVE', rule: { type: 'COMPETITIVE' }, min_price: 80, max_price: 120 }),
-    getPriceReference: async () => ({ item_id: 'MLB1234567890', status: 'with_benchmark_high', suggested_price: { amount: 92 }, current_price: { amount: 100 } }),
-    getListingPrices: async (siteId, params) => {
-      listingParams = { siteId, params };
-      return [{ listing_type_id: 'gold_special', sale_fee_amount: 12.35, sale_fee_details: { percentage_fee: 13, fixed_fee: 0 } }];
+  const summary = await buildPriceSummary(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({
+        id: 'MLB1234567890',
+        title: 'Item',
+        seller_id: 123,
+        category_id: 'MLB1055',
+        site_id: 'MLB',
+        status: 'active',
+        price: 100,
+        base_price: 100,
+        currency_id: 'BRL',
+        listing_type_id: 'gold_special',
+        catalog_listing: true,
+        catalog_product_id: 'MLB123',
+        tags: ['dynamic_standard_price'],
+        shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+        condition: 'new',
+        pictures: []
+      }),
+      getItemPrices: async () => ({
+        version: 7,
+        prices: [
+          { id: '1', type: 'standard', amount: 100, currency_id: 'BRL', conditions: { context_restrictions: [] } },
+          {
+            id: '2',
+            type: 'standard',
+            amount: 90,
+            currency_id: 'BRL',
+            conditions: { context_restrictions: ['channel_marketplace', 'user_type_business'], min_purchase_unit: 10 }
+          }
+        ],
+        price_per_quantity: [
+          {
+            id: '3',
+            type: 'discount_percentage',
+            percentage: 5,
+            conditions: { context_restrictions: ['channel_marketplace'], min_purchase_unit: 2, eligible: true }
+          }
+        ]
+      }),
+      getItemSalePrice: async () => ({
+        price_id: '1',
+        amount: 95,
+        regular_amount: 100,
+        currency_id: 'BRL',
+        metadata: { promotion_id: 'P-MLB1', promotion_type: 'PRICE_DISCOUNT' }
+      }),
+      getPricingAutomation: async () => ({
+        status: 'ACTIVE',
+        rule: { type: 'COMPETITIVE' },
+        min_price: 80,
+        max_price: 120
+      }),
+      getPriceReference: async () => ({
+        item_id: 'MLB1234567890',
+        status: 'with_benchmark_high',
+        suggested_price: { amount: 92 },
+        current_price: { amount: 100 }
+      }),
+      getListingPrices: async (siteId, params) => {
+        listingParams = { siteId, params };
+        return [
+          {
+            listing_type_id: 'gold_special',
+            sale_fee_amount: 12.35,
+            sale_fee_details: { percentage_fee: 13, fixed_fee: 0 }
+          }
+        ];
+      },
+      getSellerShippingCost: async (sellerId, params) => {
+        shippingParams = { sellerId, params };
+        return {
+          coverage: {
+            all_country: { list_cost: 8.5, currency_id: 'BRL', billable_weight: 1200 },
+            discount: { rate: 0.2, type: 'mandatory_free_shipping', promoted_amount: 10.62 }
+          }
+        };
+      },
+      getItemPromotions: async () => ({
+        results: [
+          {
+            id: 'P-MLB1',
+            offer_id: 'OFFER-1',
+            boosted_offer: true,
+            discount_meli_boosted_percentage: 4,
+            discount_meli_boost_amount: 3,
+            total_price_for_boosted_offer: 95,
+            seller_percentage: 7,
+            meli_percentage: 3
+          },
+          {
+            id: 'P-PIX',
+            type: 'BANK',
+            ref_id: 'OFFER-PIX',
+            status: 'started',
+            name: 'Desconto no Pix',
+            payment_method: 'PIX',
+            seller_percentage: 1.7,
+            meli_percentage: 0.3,
+            total_price_for_boosted_offer: 93.1
+          }
+        ]
+      }),
+      getCatalogCompetition: async () => ({
+        item_id: 'MLB1234567890',
+        status: 'competing',
+        current_price: 100,
+        price_to_win: 97,
+        currency_id: 'BRL'
+      })
     },
-    getSellerShippingCost: async (sellerId, params) => {
-      shippingParams = { sellerId, params };
-      return {
-        coverage: {
-          all_country: { list_cost: 8.5, currency_id: 'BRL', billable_weight: 1200 },
-          discount: { rate: 0.2, type: 'mandatory_free_shipping', promoted_amount: 10.62 }
-        }
-      };
-    },
-    getItemPromotions: async () => ({
-      results: [{
-        id: 'P-MLB1',
-        offer_id: 'OFFER-1',
-        boosted_offer: true,
-        discount_meli_boosted_percentage: 4,
-        discount_meli_boost_amount: 3,
-        total_price_for_boosted_offer: 95,
-        seller_percentage: 7,
-        meli_percentage: 3
-      }, {
-        id: 'P-PIX',
-        type: 'BANK',
-        ref_id: 'OFFER-PIX',
-        status: 'started',
-        name: 'Desconto no Pix',
-        payment_method: 'PIX',
-        seller_percentage: 1.7,
-        meli_percentage: 0.3,
-        total_price_for_boosted_offer: 93.1
-      }]
-    }),
-    getCatalogCompetition: async () => ({ item_id: 'MLB1234567890', status: 'competing', current_price: 100, price_to_win: 97, currency_id: 'BRL' })
-  }, 'MLB1234567890');
+    'MLB1234567890'
+  );
 
   assert.strictEqual(summary.standardPrice.amount, 100);
   assert.strictEqual(summary.salePrice.promotion.type, 'PRICE_DISCOUNT');
@@ -950,34 +1237,45 @@ test('pricing summary normaliza preco, quantidade, automacao, referencia e catal
 });
 
 test('pricing summary nao calcula voce recebe quando faltam custos oficiais', async () => {
-  const summary = await buildPriceSummary({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({
-      id: 'MLB1234567890',
-      title: 'Item',
-      seller_id: 123,
-      category_id: 'MLB1055',
-      site_id: 'MLB',
-      status: 'active',
-      price: 100,
-      currency_id: 'BRL',
-      listing_type_id: 'gold_special',
-      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
-      pictures: []
-    }),
-    getItemPrices: async () => ({ prices: [{ id: '1', type: 'standard', amount: 100, currency_id: 'BRL', conditions: {} }] }),
-    getItemSalePrice: async () => ({ price_id: '1', amount: 90, regular_amount: 100, currency_id: 'BRL', metadata: {} }),
-    getPricingAutomation: async () => null,
-    getPriceReference: async () => null,
-    getListingPrices: async () => [],
-    getSellerShippingCost: async () => {
-      const err = new Error('shipping unavailable');
-      err.statusCode = 404;
-      throw err;
+  const summary = await buildPriceSummary(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({
+        id: 'MLB1234567890',
+        title: 'Item',
+        seller_id: 123,
+        category_id: 'MLB1055',
+        site_id: 'MLB',
+        status: 'active',
+        price: 100,
+        currency_id: 'BRL',
+        listing_type_id: 'gold_special',
+        shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+        pictures: []
+      }),
+      getItemPrices: async () => ({
+        prices: [{ id: '1', type: 'standard', amount: 100, currency_id: 'BRL', conditions: {} }]
+      }),
+      getItemSalePrice: async () => ({
+        price_id: '1',
+        amount: 90,
+        regular_amount: 100,
+        currency_id: 'BRL',
+        metadata: {}
+      }),
+      getPricingAutomation: async () => null,
+      getPriceReference: async () => null,
+      getListingPrices: async () => [],
+      getSellerShippingCost: async () => {
+        const err = new Error('shipping unavailable');
+        err.statusCode = 404;
+        throw err;
+      },
+      getItemPromotions: async () => ({ results: [] }),
+      getCatalogCompetition: async () => null
     },
-    getItemPromotions: async () => ({ results: [] }),
-    getCatalogCompetition: async () => null
-  }, 'MLB1234567890');
+    'MLB1234567890'
+  );
 
   assert.strictEqual(summary.costBreakdown.complete, false);
   assert.deepStrictEqual(summary.costBreakdown.missing, ['commission', 'shipping']);
@@ -985,30 +1283,37 @@ test('pricing summary nao calcula voce recebe quando faltam custos oficiais', as
 });
 
 test('pricing projection apresenta a reducao dentro da tarifa liquida', async () => {
-  const projection = await buildCostProjection({
-    getListingPrices: async () => [{
+  const projection = await buildCostProjection(
+    {
+      getListingPrices: async () => [
+        {
+          listing_type_id: 'gold_special',
+          listing_type_name: 'Clássico',
+          currency_id: 'BRL',
+          sale_fee_amount: 33.39,
+          sale_fee_details: { gross_amount: 33.39, percentage_fee: 10.5 }
+        }
+      ],
+      getSellerShippingCost: async () => ({
+        coverage: { all_country: { list_cost: 69.35, currency_id: 'BRL' } }
+      })
+    },
+    {
+      id: 'MLB1234567890',
+      seller_id: 123,
+      site_id: 'MLB',
+      category_id: 'MLB1055',
       listing_type_id: 'gold_special',
-      listing_type_name: 'Clássico',
       currency_id: 'BRL',
-      sale_fee_amount: 33.39,
-      sale_fee_details: { gross_amount: 33.39, percentage_fee: 10.5 }
-    }],
-    getSellerShippingCost: async () => ({
-      coverage: { all_country: { list_cost: 69.35, currency_id: 'BRL' } }
-    })
-  }, {
-    id: 'MLB1234567890',
-    seller_id: 123,
-    site_id: 'MLB',
-    category_id: 'MLB1055',
-    listing_type_id: 'gold_special',
-    currency_id: 'BRL',
-    condition: 'new',
-    shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true }
-  }, 318, {
-    meli_contribution: { amount: 17.02, percentage: 5.35 },
-    fee_reduction: null
-  });
+      condition: 'new',
+      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true }
+    },
+    318,
+    {
+      meli_contribution: { amount: 17.02, percentage: 5.35 },
+      fee_reduction: null
+    }
+  );
 
   assert.strictEqual(projection.costBreakdown.commission.amount, 33.39);
   assert.strictEqual(projection.costBreakdown.commission.net_amount, 16.37);
@@ -1020,24 +1325,29 @@ test('pricing projection apresenta a reducao dentro da tarifa liquida', async ()
 test('pricing update bloqueia automacao antes de alterar o item', async () => {
   let updateCalled = false;
   await assert.rejects(
-    () => updateStandardPrice({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        seller_id: 123,
-        site_id: 'MLB',
-        price: 100,
-        currency_id: 'BRL',
-        status: 'active',
-        tags: ['dynamic_standard_price']
-      }),
-      getPricingAutomation: async () => ({ status: 'ACTIVE' }),
-      getItemPromotions: async () => ({ results: [] }),
-      updateItem: async () => {
-        updateCalled = true;
-        return {};
-      }
-    }, 'MLB1234567890', { amount: 110 }),
+    () =>
+      updateStandardPrice(
+        {
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({
+            id: 'MLB1234567890',
+            seller_id: 123,
+            site_id: 'MLB',
+            price: 100,
+            currency_id: 'BRL',
+            status: 'active',
+            tags: ['dynamic_standard_price']
+          }),
+          getPricingAutomation: async () => ({ status: 'ACTIVE' }),
+          getItemPromotions: async () => ({ results: [] }),
+          updateItem: async () => {
+            updateCalled = true;
+            return {};
+          }
+        },
+        'MLB1234567890',
+        { amount: 110 }
+      ),
     /pricing_automation_active/
   );
   assert.strictEqual(updateCalled, false);
@@ -1046,25 +1356,30 @@ test('pricing update bloqueia automacao antes de alterar o item', async () => {
 test('pricing update bloqueia anuncio encerrado antes de alterar o item', async () => {
   let updateCalled = false;
   await assert.rejects(
-    () => updateStandardPrice({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        seller_id: 123,
-        site_id: 'MLB',
-        price: 100,
-        currency_id: 'BRL',
-        status: 'closed',
-        has_bids: false,
-        tags: []
-      }),
-      getPricingAutomation: async () => null,
-      getItemPromotions: async () => ({ results: [] }),
-      updateItem: async () => {
-        updateCalled = true;
-        return {};
-      }
-    }, 'MLB1234567890', { amount: 110 }),
+    () =>
+      updateStandardPrice(
+        {
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({
+            id: 'MLB1234567890',
+            seller_id: 123,
+            site_id: 'MLB',
+            price: 100,
+            currency_id: 'BRL',
+            status: 'closed',
+            has_bids: false,
+            tags: []
+          }),
+          getPricingAutomation: async () => null,
+          getItemPromotions: async () => ({ results: [] }),
+          updateItem: async () => {
+            updateCalled = true;
+            return {};
+          }
+        },
+        'MLB1234567890',
+        { amount: 110 }
+      ),
     /item_closed/
   );
   assert.strictEqual(updateCalled, false);
@@ -1120,11 +1435,7 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
     getItem: async (itemId) => items[itemId],
     getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
     getUserProductFamily: async () => ({
-      user_products: [
-        { id: 'MLBU100000001' },
-        { id: 'MLBU100000002' },
-        { id: 'MLBU100000003' }
-      ]
+      user_products: [{ id: 'MLBU100000001' }, { id: 'MLBU100000002' }, { id: 'MLBU100000003' }]
     }),
     searchItemsByUserProduct: async (sellerId, userProductIds, options) => {
       assert.strictEqual(sellerId, 123);
@@ -1132,7 +1443,7 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
       assert.deepStrictEqual(options, { status: 'active', limit: 100 });
       return { results: Object.keys(items) };
     },
-    getPricingAutomation: async (itemId) => itemId === 'MLB1000000003' ? { status: 'ACTIVE' } : null,
+    getPricingAutomation: async (itemId) => (itemId === 'MLB1000000003' ? { status: 'ACTIVE' } : null),
     getItemPromotions: async (itemId) => ({ results: appliedPromotions.get(itemId) || [] }),
     updateItem: async (itemId, payload) => {
       updated.push({ itemId, payload });
@@ -1141,12 +1452,14 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
     createPromotionOffer: async (itemId, payload) => {
       if (itemId === 'MLB1000000003') throw new Error('promotion_rejected');
       promotionOffers.push({ itemId, payload });
-      appliedPromotions.set(itemId, [{
-        id: payload.promotion_id,
-        type: payload.promotion_type,
-        status: 'pending',
-        price: payload.deal_price
-      }]);
+      appliedPromotions.set(itemId, [
+        {
+          id: payload.promotion_id,
+          type: payload.promotion_type,
+          status: 'pending',
+          price: payload.deal_price
+        }
+      ]);
       return { ok: true };
     }
   };
@@ -1160,7 +1473,10 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
   assert.strictEqual(preview.counts.total, 3);
   assert.strictEqual(preview.counts.eligible, 2);
   assert.strictEqual(preview.counts.blocked, 1);
-  assert.strictEqual(preview.targets.find((target) => target.itemId === 'MLB1000000003').reasonCode, 'pricing_automation_active');
+  assert.strictEqual(
+    preview.targets.find((target) => target.itemId === 'MLB1000000003').reasonCode,
+    'pricing_automation_active'
+  );
 
   const commit = await commitBulkAction(client, 'MLB1000000001', {
     scope: 'user_product_family',
@@ -1174,11 +1490,12 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
   assert.deepStrictEqual(updated.map((entry) => entry.itemId).sort(), ['MLB1000000001', 'MLB1000000002']);
 
   await assert.rejects(
-    () => commitBulkAction(client, 'MLB1000000001', {
-      scope: 'user_product_family',
-      action: 'pricing.standard.update',
-      payload: { amount: 130 }
-    }),
+    () =>
+      commitBulkAction(client, 'MLB1000000001', {
+        scope: 'user_product_family',
+        action: 'pricing.standard.update',
+        payload: { amount: 130 }
+      }),
     /bulk_missing_targets/
   );
 
@@ -1205,19 +1522,24 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
 
 test('bulk de promocao pagina a familia para respeitar o limite de subrequests', async () => {
   const itemIds = Array.from({ length: 7 }, (_, index) => `MLB200000000${index + 1}`);
-  const items = Object.fromEntries(itemIds.map((itemId, index) => [itemId, {
-    id: itemId,
-    title: `Variação ${index + 1}`,
-    seller_id: 123,
-    site_id: 'MLB',
-    family_name: 'Família paginada',
-    family_id: 'FAMILY2',
-    user_product_id: `MLBU20000000${index + 1}`,
-    status: 'active',
-    price: 100,
-    currency_id: 'BRL',
-    tags: []
-  }]));
+  const items = Object.fromEntries(
+    itemIds.map((itemId, index) => [
+      itemId,
+      {
+        id: itemId,
+        title: `Variação ${index + 1}`,
+        seller_id: 123,
+        site_id: 'MLB',
+        family_name: 'Família paginada',
+        family_id: 'FAMILY2',
+        user_product_id: `MLBU20000000${index + 1}`,
+        status: 'active',
+        price: 100,
+        currency_id: 'BRL',
+        tags: []
+      }
+    ])
+  );
   const applied = new Map();
   const client = {
     getMe: async () => ({ id: 123 }),
@@ -1229,12 +1551,14 @@ test('bulk de promocao pagina a familia para respeitar o limite de subrequests',
     searchItemsByUserProduct: async () => ({ results: itemIds }),
     getItemPromotions: async (itemId) => ({ results: applied.get(itemId) || [] }),
     createPromotionOffer: async (itemId, payload) => {
-      applied.set(itemId, [{
-        id: payload.promotion_id,
-        type: payload.promotion_type,
-        status: 'pending',
-        price: payload.deal_price
-      }]);
+      applied.set(itemId, [
+        {
+          id: payload.promotion_id,
+          type: payload.promotion_type,
+          status: 'pending',
+          price: payload.deal_price
+        }
+      ]);
       return { price: payload.deal_price, original_price: 100 };
     }
   };
@@ -1247,8 +1571,11 @@ test('bulk de promocao pagina a familia para respeitar o limite de subrequests',
   const pageSizes = [];
   let targetItemIds;
   do {
-    const page = await commitBulkAction(client, itemIds[0], Object.assign({}, request,
-      targetItemIds ? { targetItemIds } : {}));
+    const page = await commitBulkAction(
+      client,
+      itemIds[0],
+      Object.assign({}, request, targetItemIds ? { targetItemIds } : {})
+    );
     pageSizes.push(page.counts.total);
     targetItemIds = page.continuation && page.continuation.targetItemIds;
   } while (targetItemIds);
@@ -1260,28 +1587,35 @@ test('bulk de promocao pagina a familia para respeitar o limite de subrequests',
 test('promotion offer só confirma sucesso quando a alteração aparece no anúncio', async () => {
   let calls = 0;
   await assert.rejects(
-    () => createOffer({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-      getItemPromotions: async () => {
-        calls += 1;
-        return {
-          results: [{
-            id: 'P-MLB1',
-            type: 'DEAL',
-            status: 'candidate',
-            min_discounted_price: 70,
-            max_discounted_price: 90,
-            suggested_discounted_price: 80
-          }]
-        };
-      },
-      createPromotionOffer: async () => ({ price: 80, original_price: 100 })
-    }, 'MLB1234567890', {
-      promotionType: 'DEAL',
-      promotionId: 'P-MLB1',
-      dealPrice: 80
-    }),
+    () =>
+      createOffer(
+        {
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+          getItemPromotions: async () => {
+            calls += 1;
+            return {
+              results: [
+                {
+                  id: 'P-MLB1',
+                  type: 'DEAL',
+                  status: 'candidate',
+                  min_discounted_price: 70,
+                  max_discounted_price: 90,
+                  suggested_discounted_price: 80
+                }
+              ]
+            };
+          },
+          createPromotionOffer: async () => ({ price: 80, original_price: 100 })
+        },
+        'MLB1234567890',
+        {
+          promotionType: 'DEAL',
+          promotionId: 'P-MLB1',
+          dealPrice: 80
+        }
+      ),
     /promotion_change_not_confirmed/
   );
   assert.strictEqual(calls, 5);
@@ -1289,23 +1623,36 @@ test('promotion offer só confirma sucesso quando a alteração aparece no anún
 
 test('promotion offer aguarda a consistencia eventual antes de informar falha', async () => {
   let calls = 0;
-  const result = await createOffer({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-    getItemPromotions: async () => {
-      calls += 1;
-      return {
-        results: calls >= 4
-          ? [{ id: 'P-MLB1', type: 'DEAL', status: 'pending', price: 80 }]
-          : [{ id: 'P-MLB1', type: 'DEAL', status: 'candidate', min_discounted_price: 70, max_discounted_price: 90 }]
-      };
+  const result = await createOffer(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      getItemPromotions: async () => {
+        calls += 1;
+        return {
+          results:
+            calls >= 4
+              ? [{ id: 'P-MLB1', type: 'DEAL', status: 'pending', price: 80 }]
+              : [
+                  {
+                    id: 'P-MLB1',
+                    type: 'DEAL',
+                    status: 'candidate',
+                    min_discounted_price: 70,
+                    max_discounted_price: 90
+                  }
+                ]
+        };
+      },
+      createPromotionOffer: async () => ({ price: 80, original_price: 100 })
     },
-    createPromotionOffer: async () => ({ price: 80, original_price: 100 })
-  }, 'MLB1234567890', {
-    promotionType: 'DEAL',
-    promotionId: 'P-MLB1',
-    dealPrice: 80
-  });
+    'MLB1234567890',
+    {
+      promotionType: 'DEAL',
+      promotionId: 'P-MLB1',
+      dealPrice: 80
+    }
+  );
 
   assert.deepStrictEqual(result, { price: 80, original_price: 100 });
   assert.strictEqual(calls, 4);
@@ -1315,8 +1662,15 @@ test('bulk distingue alteração aceita que ainda aguarda confirmação', async 
   const client = {
     getMe: async () => ({ id: 123 }),
     getItem: async () => ({
-      id: 'MLB3000000001', seller_id: 123, site_id: 'MLB', family_name: 'Família',
-      family_id: 'FAMILY3', user_product_id: 'MLBU300000001', status: 'active', price: 100, tags: []
+      id: 'MLB3000000001',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Família',
+      family_id: 'FAMILY3',
+      user_product_id: 'MLBU300000001',
+      status: 'active',
+      price: 100,
+      tags: []
     }),
     getUserProduct: async () => ({ family_id: 'FAMILY3' }),
     getUserProductFamily: async () => ({ user_products: [{ id: 'MLBU300000001' }] }),
@@ -1344,77 +1698,96 @@ test('bulk distingue alteração aceita que ainda aguarda confirmação', async 
 
 test('promotion offer confirma o preço aplicado pela API', async () => {
   let applied = false;
-  const result = await createOffer({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-    getItemPromotions: async () => ({
-      results: applied
-        ? [{ id: 'P-MLB1', type: 'DEAL', status: 'pending', price: 80 }]
-        : [{ id: 'P-MLB1', type: 'DEAL', status: 'candidate', min_discounted_price: 70, max_discounted_price: 90 }]
-    }),
-    createPromotionOffer: async () => {
-      applied = true;
-      return { price: 80, original_price: 100 };
+  const result = await createOffer(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      getItemPromotions: async () => ({
+        results: applied
+          ? [{ id: 'P-MLB1', type: 'DEAL', status: 'pending', price: 80 }]
+          : [{ id: 'P-MLB1', type: 'DEAL', status: 'candidate', min_discounted_price: 70, max_discounted_price: 90 }]
+      }),
+      createPromotionOffer: async () => {
+        applied = true;
+        return { price: 80, original_price: 100 };
+      }
+    },
+    'MLB1234567890',
+    {
+      promotionType: 'DEAL',
+      promotionId: 'P-MLB1',
+      dealPrice: 80
     }
-  }, 'MLB1234567890', {
-    promotionType: 'DEAL',
-    promotionId: 'P-MLB1',
-    dealPrice: 80
-  });
+  );
 
   assert.deepStrictEqual(result, { price: 80, original_price: 100 });
 });
 
 test('promotion offer confirma campanha do vendedor pela consulta da campanha', async () => {
   let applied = false;
-  const result = await createOffer({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-    getItemPromotions: async () => ({ results: [] }),
-    getPromotionItems: async (promotionId, promotionType, options) => {
-      assert.strictEqual(promotionId, 'C-MLB1');
-      assert.strictEqual(promotionType, 'SELLER_CAMPAIGN');
-      assert.deepStrictEqual(options, { item_id: 'MLB1234567890', limit: 50 });
-      return {
-        results: [{
-          id: 'MLB1234567890',
-          status: applied ? 'pending' : 'candidate',
-          price: applied ? 80 : 0
-        }]
-      };
+  const result = await createOffer(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      getItemPromotions: async () => ({ results: [] }),
+      getPromotionItems: async (promotionId, promotionType, options) => {
+        assert.strictEqual(promotionId, 'C-MLB1');
+        assert.strictEqual(promotionType, 'SELLER_CAMPAIGN');
+        assert.deepStrictEqual(options, { item_id: 'MLB1234567890', limit: 50 });
+        return {
+          results: [
+            {
+              id: 'MLB1234567890',
+              status: applied ? 'pending' : 'candidate',
+              price: applied ? 80 : 0
+            }
+          ]
+        };
+      },
+      createPromotionOffer: async () => {
+        applied = true;
+        return { price: 80, original_price: 100 };
+      }
     },
-    createPromotionOffer: async () => {
-      applied = true;
-      return { price: 80, original_price: 100 };
+    'MLB1234567890',
+    {
+      promotionType: 'SELLER_CAMPAIGN',
+      promotionId: 'C-MLB1',
+      dealPrice: 80
     }
-  }, 'MLB1234567890', {
-    promotionType: 'SELLER_CAMPAIGN',
-    promotionId: 'C-MLB1',
-    dealPrice: 80
-  });
+  );
 
   assert.deepStrictEqual(result, { price: 80, original_price: 100 });
 });
 
 test('promotion adapter exige estoque em oferta relampago e monta payload', async () => {
   await assert.rejects(
-    () => createOffer({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-      createPromotionOffer: async () => ({})
-    }, 'MLB1234567890', { promotionType: 'LIGHTNING', dealPrice: 80 }),
+    () =>
+      createOffer(
+        {
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+          createPromotionOffer: async () => ({})
+        },
+        'MLB1234567890',
+        { promotionType: 'LIGHTNING', dealPrice: 80 }
+      ),
     /promotion_missing_stock/
   );
 
   let payload = null;
-  const result = await createOffer({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-    createPromotionOffer: async (itemId, body) => {
-      payload = { itemId, body };
-      return { ok: true };
-    }
-  }, 'MLB1234567890', { promotionType: 'LIGHTNING', dealPrice: 80, stock: 5 });
+  const result = await createOffer(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      createPromotionOffer: async (itemId, body) => {
+        payload = { itemId, body };
+        return { ok: true };
+      }
+    },
+    'MLB1234567890',
+    { promotionType: 'LIGHTNING', dealPrice: 80, stock: 5 }
+  );
 
   assert.deepStrictEqual(result, { ok: true });
   assert.deepStrictEqual(payload, {
@@ -1425,35 +1798,44 @@ test('promotion adapter exige estoque em oferta relampago e monta payload', asyn
 
 test('promotion adapter cria oferta relampago cofinanciada sem reenviar preco ou datas', async () => {
   await assert.rejects(
-    () => createOffer({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-      createPromotionOffer: async () => ({})
-    }, 'MLB1234567890', {
-      promotionType: 'SMART_LIGHTNING',
-      promotionId: 'P-MLB1',
-      offerId: 'CANDIDATE-MLB1'
-    }),
+    () =>
+      createOffer(
+        {
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+          createPromotionOffer: async () => ({})
+        },
+        'MLB1234567890',
+        {
+          promotionType: 'SMART_LIGHTNING',
+          promotionId: 'P-MLB1',
+          offerId: 'CANDIDATE-MLB1'
+        }
+      ),
     /promotion_missing_stock/
   );
 
   let payload = null;
-  const result = await createOffer({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-    createPromotionOffer: async (itemId, body) => {
-      payload = { itemId, body };
-      return { ok: true };
+  const result = await createOffer(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      createPromotionOffer: async (itemId, body) => {
+        payload = { itemId, body };
+        return { ok: true };
+      }
+    },
+    'MLB1234567890',
+    {
+      promotionType: 'SMART_LIGHTNING',
+      promotionId: 'P-MLB1',
+      offerId: 'CANDIDATE-MLB1',
+      stock: 5,
+      dealPrice: 80,
+      startDate: '2026-11-03',
+      finishDate: '2026-11-04'
     }
-  }, 'MLB1234567890', {
-    promotionType: 'SMART_LIGHTNING',
-    promotionId: 'P-MLB1',
-    offerId: 'CANDIDATE-MLB1',
-    stock: 5,
-    dealPrice: 80,
-    startDate: '2026-11-03',
-    finishDate: '2026-11-04'
-  });
+  );
 
   assert.deepStrictEqual(result, { ok: true });
   assert.deepStrictEqual(payload, {
@@ -1472,43 +1854,50 @@ test('promotion adapter valida a faixa de estoque da oferta relampago cofinancia
     getMe: async () => ({ id: 123 }),
     getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
     getItemPromotions: async () => ({
-      results: [{
-        id: 'P-MLB1',
-        type: 'SMART_LIGHTNING',
-        ref_id: 'CANDIDATE-MLB1',
-        status: 'candidate',
-        stock: { min: 5, max: 10 }
-      }]
+      results: [
+        {
+          id: 'P-MLB1',
+          type: 'SMART_LIGHTNING',
+          ref_id: 'CANDIDATE-MLB1',
+          status: 'candidate',
+          stock: { min: 5, max: 10 }
+        }
+      ]
     }),
     createPromotionOffer: async () => ({ ok: true })
   };
 
   await assert.rejects(
-    () => createOffer(client, 'MLB1234567890', {
-      promotionType: 'SMART_LIGHTNING',
-      promotionId: 'P-MLB1',
-      offerId: 'CANDIDATE-MLB1',
-      stock: 4
-    }),
+    () =>
+      createOffer(client, 'MLB1234567890', {
+        promotionType: 'SMART_LIGHTNING',
+        promotionId: 'P-MLB1',
+        offerId: 'CANDIDATE-MLB1',
+        stock: 4
+      }),
     /promotion_stock_out_of_range/
   );
 });
 
 test('promotion offer normaliza datas para formato local antes da API', async () => {
   let payload = null;
-  await createOffer({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-    createPromotionOffer: async (itemId, body) => {
-      payload = { itemId, body };
-      return { ok: true };
+  await createOffer(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+      createPromotionOffer: async (itemId, body) => {
+        payload = { itemId, body };
+        return { ok: true };
+      }
+    },
+    'MLB1234567890',
+    {
+      promotionType: 'PRICE_DISCOUNT',
+      dealPrice: 80,
+      startDate: '2026-08-01T00:00:00Z',
+      finishDate: '2026-08-10'
     }
-  }, 'MLB1234567890', {
-    promotionType: 'PRICE_DISCOUNT',
-    dealPrice: 80,
-    startDate: '2026-08-01T00:00:00Z',
-    finishDate: '2026-08-10'
-  });
+  );
 
   assert.strictEqual(payload.body.start_date, '2026-08-01T00:00:00');
   assert.strictEqual(payload.body.finish_date, '2026-08-10T23:59:59');
@@ -1517,30 +1906,35 @@ test('promotion offer normaliza datas para formato local antes da API', async ()
 test('promotion offer bloqueia preco fora da faixa atual do item', async () => {
   let called = false;
   await assert.rejects(
-    () => createOffer({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB' }),
-      getItemPromotions: async () => ([
+    () =>
+      createOffer(
         {
-          id: 'P-MLB17797034',
-          type: 'DEAL',
-          name: '8.8 e Dia dos Pais',
-          status: 'candidate',
-          original_price: 220.99,
-          min_discounted_price: 59.2,
-          max_discounted_price: 209.94,
-          suggested_discounted_price: 196.59
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB' }),
+          getItemPromotions: async () => [
+            {
+              id: 'P-MLB17797034',
+              type: 'DEAL',
+              name: '8.8 e Dia dos Pais',
+              status: 'candidate',
+              original_price: 220.99,
+              min_discounted_price: 59.2,
+              max_discounted_price: 209.94,
+              suggested_discounted_price: 196.59
+            }
+          ],
+          createPromotionOffer: async () => {
+            called = true;
+            return { ok: true };
+          }
+        },
+        'MLB7186779490',
+        {
+          promotionType: 'DEAL',
+          promotionId: 'P-MLB17797034',
+          dealPrice: 220.99
         }
-      ]),
-      createPromotionOffer: async () => {
-        called = true;
-        return { ok: true };
-      }
-    }, 'MLB7186779490', {
-      promotionType: 'DEAL',
-      promotionId: 'P-MLB17797034',
-      dealPrice: 220.99
-    }),
+      ),
     (err) => {
       assert.match(err.message, /promotion_price_out_of_range/);
       assert.strictEqual(err.body.min_discounted_price, 59.2);
@@ -1555,49 +1949,55 @@ test('promotion offer bloqueia preco fora da faixa atual do item', async () => {
 test('promotion estimate calcula custos antes de aplicar oferta', async () => {
   let listingParams = null;
   let shippingParams = null;
-  const result = await estimatePromotionImpact({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({
-      id: 'MLB1234567890',
-      seller_id: 123,
-      site_id: 'MLB',
-      category_id: 'MLB1055',
-      status: 'active',
-      price: 100,
-      currency_id: 'BRL',
-      listing_type_id: 'gold_special',
-      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
-      condition: 'new',
-      pictures: []
-    }),
-    getItemPromotions: async () => ({
-      results: [{
-        id: 'P-MLB1',
-        type: 'DEAL',
-        name: '8.8 e Dia dos Pais',
-        status: 'candidate',
-        min_discounted_price: 70,
-        max_discounted_price: 90,
-        suggested_discounted_price: 80,
-        boosted_offer: true,
-        discount_meli_boost_amount: 2,
-        seller_percentage: 8,
-        meli_percentage: 2
-      }]
-    }),
-    getListingPrices: async (siteId, params) => {
-      listingParams = { siteId, params };
-      return [{ listing_type_id: 'gold_special', sale_fee_amount: 10, sale_fee_details: { percentage_fee: 12.5 } }];
+  const result = await estimatePromotionImpact(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({
+        id: 'MLB1234567890',
+        seller_id: 123,
+        site_id: 'MLB',
+        category_id: 'MLB1055',
+        status: 'active',
+        price: 100,
+        currency_id: 'BRL',
+        listing_type_id: 'gold_special',
+        shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+        condition: 'new',
+        pictures: []
+      }),
+      getItemPromotions: async () => ({
+        results: [
+          {
+            id: 'P-MLB1',
+            type: 'DEAL',
+            name: '8.8 e Dia dos Pais',
+            status: 'candidate',
+            min_discounted_price: 70,
+            max_discounted_price: 90,
+            suggested_discounted_price: 80,
+            boosted_offer: true,
+            discount_meli_boost_amount: 2,
+            seller_percentage: 8,
+            meli_percentage: 2
+          }
+        ]
+      }),
+      getListingPrices: async (siteId, params) => {
+        listingParams = { siteId, params };
+        return [{ listing_type_id: 'gold_special', sale_fee_amount: 10, sale_fee_details: { percentage_fee: 12.5 } }];
+      },
+      getSellerShippingCost: async (sellerId, params) => {
+        shippingParams = { sellerId, params };
+        return { coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } } };
+      }
     },
-    getSellerShippingCost: async (sellerId, params) => {
-      shippingParams = { sellerId, params };
-      return { coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } } };
+    'MLB1234567890',
+    {
+      promotionType: 'DEAL',
+      promotionId: 'P-MLB1',
+      dealPrice: 80
     }
-  }, 'MLB1234567890', {
-    promotionType: 'DEAL',
-    promotionId: 'P-MLB1',
-    dealPrice: 80
-  });
+  );
 
   assert.strictEqual(listingParams.siteId, 'MLB');
   assert.strictEqual(listingParams.params.price, 80);
@@ -1620,46 +2020,52 @@ test('promotion estimate calcula custos antes de aplicar oferta', async () => {
 test('promotion estimate usa preco fixo da campanha quando oferta nao tem campo editavel', async () => {
   let listingParams = null;
   let shippingParams = null;
-  const result = await estimatePromotionImpact({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => ({
-      id: 'MLB1234567890',
-      seller_id: 123,
-      site_id: 'MLB',
-      category_id: 'MLB1055',
-      status: 'active',
-      price: 100,
-      currency_id: 'BRL',
-      listing_type_id: 'gold_special',
-      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
-      condition: 'new',
-      pictures: []
-    }),
-    getItemPromotions: async () => ({
-      results: [{
-        id: 'P-MLB2',
-        type: 'SMART',
-        name: 'Tudo de Jardim e Piscina',
-        status: 'candidate',
-        price: 75,
-        original_price: 100,
-        seller_percentage: 10,
-        meli_percentage: 5,
-        discount_meli_boost_amount: 2
-      }]
-    }),
-    getListingPrices: async (siteId, params) => {
-      listingParams = { siteId, params };
-      return [{ listing_type_id: 'gold_special', sale_fee_amount: 9, sale_fee_details: { percentage_fee: 12 } }];
+  const result = await estimatePromotionImpact(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => ({
+        id: 'MLB1234567890',
+        seller_id: 123,
+        site_id: 'MLB',
+        category_id: 'MLB1055',
+        status: 'active',
+        price: 100,
+        currency_id: 'BRL',
+        listing_type_id: 'gold_special',
+        shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+        condition: 'new',
+        pictures: []
+      }),
+      getItemPromotions: async () => ({
+        results: [
+          {
+            id: 'P-MLB2',
+            type: 'SMART',
+            name: 'Tudo de Jardim e Piscina',
+            status: 'candidate',
+            price: 75,
+            original_price: 100,
+            seller_percentage: 10,
+            meli_percentage: 5,
+            discount_meli_boost_amount: 2
+          }
+        ]
+      }),
+      getListingPrices: async (siteId, params) => {
+        listingParams = { siteId, params };
+        return [{ listing_type_id: 'gold_special', sale_fee_amount: 9, sale_fee_details: { percentage_fee: 12 } }];
+      },
+      getSellerShippingCost: async (sellerId, params) => {
+        shippingParams = { sellerId, params };
+        return { coverage: { all_country: { list_cost: 6, currency_id: 'BRL' } } };
+      }
     },
-    getSellerShippingCost: async (sellerId, params) => {
-      shippingParams = { sellerId, params };
-      return { coverage: { all_country: { list_cost: 6, currency_id: 'BRL' } } };
+    'MLB1234567890',
+    {
+      promotionType: 'SMART',
+      promotionId: 'P-MLB2'
     }
-  }, 'MLB1234567890', {
-    promotionType: 'SMART',
-    promotionId: 'P-MLB2'
-  });
+  );
 
   assert.strictEqual(listingParams.params.price, 75);
   assert.strictEqual(shippingParams.params.item_price, 75);
@@ -1679,45 +2085,49 @@ test('promotion estimates reutiliza item, promocoes e custos para preco repetido
   let promotionCalls = 0;
   let listingCalls = 0;
   let shippingCalls = 0;
-  const results = await estimatePromotionImpacts({
-    getMe: async () => ({ id: 123 }),
-    getItem: async () => {
-      itemCalls += 1;
-      return {
-        id: 'MLB1234567890',
-        seller_id: 123,
-        site_id: 'MLB',
-        category_id: 'MLB1055',
-        status: 'active',
-        price: 100,
-        currency_id: 'BRL',
-        listing_type_id: 'gold_special',
-        shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
-        condition: 'new',
-        pictures: []
-      };
+  const results = await estimatePromotionImpacts(
+    {
+      getMe: async () => ({ id: 123 }),
+      getItem: async () => {
+        itemCalls += 1;
+        return {
+          id: 'MLB1234567890',
+          seller_id: 123,
+          site_id: 'MLB',
+          category_id: 'MLB1055',
+          status: 'active',
+          price: 100,
+          currency_id: 'BRL',
+          listing_type_id: 'gold_special',
+          shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+          condition: 'new',
+          pictures: []
+        };
+      },
+      getItemPromotions: async () => {
+        promotionCalls += 1;
+        return {
+          results: [
+            { id: 'P-MLB1', type: 'DEAL', name: 'Oferta 1', price: 80, original_price: 100, seller_percentage: 10 },
+            { id: 'P-MLB2', type: 'DEAL', name: 'Oferta 2', price: 80, original_price: 100, seller_percentage: 12 }
+          ]
+        };
+      },
+      getListingPrices: async () => {
+        listingCalls += 1;
+        return [{ listing_type_id: 'gold_special', sale_fee_amount: 10, sale_fee_details: { percentage_fee: 12.5 } }];
+      },
+      getSellerShippingCost: async () => {
+        shippingCalls += 1;
+        return { coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } } };
+      }
     },
-    getItemPromotions: async () => {
-      promotionCalls += 1;
-      return {
-        results: [
-          { id: 'P-MLB1', type: 'DEAL', name: 'Oferta 1', price: 80, original_price: 100, seller_percentage: 10 },
-          { id: 'P-MLB2', type: 'DEAL', name: 'Oferta 2', price: 80, original_price: 100, seller_percentage: 12 }
-        ]
-      };
-    },
-    getListingPrices: async () => {
-      listingCalls += 1;
-      return [{ listing_type_id: 'gold_special', sale_fee_amount: 10, sale_fee_details: { percentage_fee: 12.5 } }];
-    },
-    getSellerShippingCost: async () => {
-      shippingCalls += 1;
-      return { coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } } };
-    }
-  }, 'MLB1234567890', [
-    { promotionType: 'DEAL', promotionId: 'P-MLB1', dealPrice: 80 },
-    { promotionType: 'DEAL', promotionId: 'P-MLB2', dealPrice: 80 }
-  ]);
+    'MLB1234567890',
+    [
+      { promotionType: 'DEAL', promotionId: 'P-MLB1', dealPrice: 80 },
+      { promotionType: 'DEAL', promotionId: 'P-MLB2', dealPrice: 80 }
+    ]
+  );
 
   assert.strictEqual(results.length, 2);
   assert.strictEqual(results[0].promotion.label, 'Oferta 1');
@@ -1745,21 +2155,25 @@ test('promotion estimates preserva resultados validos quando um tipo nao e supor
       pictures: []
     }),
     getItemPromotions: async () => ({
-      results: [{
-        id: 'P-MLB1',
-        type: 'SMART_LIGHTNING',
-        ref_id: 'CANDIDATE-MLB1',
-        name: 'Oferta cofinanciada',
-        price: 80,
-        original_price: 100,
-        stock: { min: 5, max: 10 }
-      }]
+      results: [
+        {
+          id: 'P-MLB1',
+          type: 'SMART_LIGHTNING',
+          ref_id: 'CANDIDATE-MLB1',
+          name: 'Oferta cofinanciada',
+          price: 80,
+          original_price: 100,
+          stock: { min: 5, max: 10 }
+        }
+      ]
     }),
-    getListingPrices: async () => ([{
-      listing_type_id: 'gold_special',
-      sale_fee_amount: 10,
-      sale_fee_details: { percentage_fee: 12.5 }
-    }]),
+    getListingPrices: async () => [
+      {
+        listing_type_id: 'gold_special',
+        sale_fee_amount: 10,
+        sale_fee_details: { percentage_fee: 12.5 }
+      }
+    ],
     getSellerShippingCost: async () => ({
       coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } }
     })
@@ -1786,26 +2200,31 @@ test('promotion estimates preserva resultados validos quando um tipo nao e supor
 });
 
 test('promotion summary expoe contrato e faixa de estoque da oferta relampago cofinanciada', async () => {
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({
-      id: 'MLB1234567890',
-      seller_id: 123,
-      site_id: 'MLB',
-      price: 100,
-      currency_id: 'BRL'
-    }),
-    getItemPromotions: async () => ([{
-      id: 'P-MLB1',
-      type: 'SMART_LIGHTNING',
-      status: 'candidate',
-      ref_id: 'CANDIDATE-MLB1',
-      price: 80,
-      original_price: 100,
-      stock: { min: 5, max: 10 }
-    }]),
-    getSellerPromotions: async () => ({ results: [] })
-  }, 'MLB1234567890');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({
+        id: 'MLB1234567890',
+        seller_id: 123,
+        site_id: 'MLB',
+        price: 100,
+        currency_id: 'BRL'
+      }),
+      getItemPromotions: async () => [
+        {
+          id: 'P-MLB1',
+          type: 'SMART_LIGHTNING',
+          status: 'candidate',
+          ref_id: 'CANDIDATE-MLB1',
+          price: 80,
+          original_price: 100,
+          stock: { min: 5, max: 10 }
+        }
+      ],
+      getSellerPromotions: async () => ({ results: [] })
+    },
+    'MLB1234567890'
+  );
 
   const offer = summary.offers.eligible[0];
   assert.deepStrictEqual(offer.stock, { min: 5, max: 10 });
@@ -1817,33 +2236,38 @@ test('promotion summary expoe contrato e faixa de estoque da oferta relampago co
 
 test('promotion summary enriquece campanhas com dados do item', async () => {
   const calls = [];
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
-    getItemPromotions: async () => ([]),
-    getSellerPromotions: async () => ({
-      results: [
-        { id: 'P-MLB17797034', type: 'DEAL', status: 'started', name: '8.8 e Dia dos Pais' },
-        { id: 'P-MLB999', type: 'SMART', status: 'started', name: 'Campanha sem este item' }
-      ]
-    }),
-    getPromotionItems: async (promotionId, promotionType, params) => {
-      calls.push({ promotionId, promotionType, params });
-      if (promotionId !== 'P-MLB17797034') return { results: [] };
-      return {
-        results: [{
-          id: 'MLB7186779490',
-          status: 'candidate',
-          original_price: 220.99,
-          min_discounted_price: 59.2,
-          max_discounted_price: 209.94,
-          suggested_discounted_price: 196.59,
-          start_date: '2026-07-20T00:00:00-03:00',
-          end_date: '2026-08-10T00:00:00-03:00'
-        }]
-      };
-    }
-  }, 'MLB7186779490');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+      getItemPromotions: async () => [],
+      getSellerPromotions: async () => ({
+        results: [
+          { id: 'P-MLB17797034', type: 'DEAL', status: 'started', name: '8.8 e Dia dos Pais' },
+          { id: 'P-MLB999', type: 'SMART', status: 'started', name: 'Campanha sem este item' }
+        ]
+      }),
+      getPromotionItems: async (promotionId, promotionType, params) => {
+        calls.push({ promotionId, promotionType, params });
+        if (promotionId !== 'P-MLB17797034') return { results: [] };
+        return {
+          results: [
+            {
+              id: 'MLB7186779490',
+              status: 'candidate',
+              original_price: 220.99,
+              min_discounted_price: 59.2,
+              max_discounted_price: 209.94,
+              suggested_discounted_price: 196.59,
+              start_date: '2026-07-20T00:00:00-03:00',
+              end_date: '2026-08-10T00:00:00-03:00'
+            }
+          ]
+        };
+      }
+    },
+    'MLB7186779490'
+  );
 
   assert.strictEqual(calls[0].params.item_id, 'MLB7186779490');
   assert.strictEqual(summary.offers.eligible.length, 1);
@@ -1855,32 +2279,39 @@ test('promotion summary enriquece campanhas com dados do item', async () => {
 
 test('promotion summary combina a vigencia geral com a participacao do item', async () => {
   let detailCalls = 0;
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
-    getItemPromotions: async () => ([{
-      id: 'P-MLB17797034',
-      type: 'SMART',
-      status: 'started',
-      price: 196.59,
-      original_price: 220.99
-    }]),
-    getSellerPromotions: async () => ({
-      results: [{
-        id: 'P-MLB17797034',
-        type: 'SMART',
-        status: 'started',
-        name: '8.8 e Dia dos Pais',
-        start_date: '2026-07-20T00:00:00-03:00',
-        finish_date: '2026-08-10T23:59:59-03:00'
-      }]
-    }),
-    getPromotion: async () => {
-      detailCalls += 1;
-      return {};
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+      getItemPromotions: async () => [
+        {
+          id: 'P-MLB17797034',
+          type: 'SMART',
+          status: 'started',
+          price: 196.59,
+          original_price: 220.99
+        }
+      ],
+      getSellerPromotions: async () => ({
+        results: [
+          {
+            id: 'P-MLB17797034',
+            type: 'SMART',
+            status: 'started',
+            name: '8.8 e Dia dos Pais',
+            start_date: '2026-07-20T00:00:00-03:00',
+            finish_date: '2026-08-10T23:59:59-03:00'
+          }
+        ]
+      }),
+      getPromotion: async () => {
+        detailCalls += 1;
+        return {};
+      },
+      getPromotionItems: async () => ({ results: [] })
     },
-    getPromotionItems: async () => ({ results: [] })
-  }, 'MLB7186779490');
+    'MLB7186779490'
+  );
 
   assert.strictEqual(detailCalls, 0);
   assert.strictEqual(summary.offers.active[0].label, '8.8 e Dia dos Pais');
@@ -1890,29 +2321,34 @@ test('promotion summary combina a vigencia geral com a participacao do item', as
 
 test('promotion summary consulta o detalhe quando a vigencia nao acompanha o item', async () => {
   const detailCalls = [];
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
-    getItemPromotions: async () => ([{
-      id: 'P-MLB17797034',
-      type: 'DEAL',
-      status: 'started',
-      name: '8.8 e Dia dos Pais',
-      price: 196.59,
-      original_price: 220.99
-    }]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotion: async (promotionId, promotionType) => {
-      detailCalls.push({ promotionId, promotionType });
-      return {
-        id: promotionId,
-        type: promotionType,
-        status: 'started',
-        start_date: '2026-07-20T00:00:00-03:00',
-        finish_date: '2026-08-10T23:59:59-03:00'
-      };
-    }
-  }, 'MLB7186779490');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+      getItemPromotions: async () => [
+        {
+          id: 'P-MLB17797034',
+          type: 'DEAL',
+          status: 'started',
+          name: '8.8 e Dia dos Pais',
+          price: 196.59,
+          original_price: 220.99
+        }
+      ],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotion: async (promotionId, promotionType) => {
+        detailCalls.push({ promotionId, promotionType });
+        return {
+          id: promotionId,
+          type: promotionType,
+          status: 'started',
+          start_date: '2026-07-20T00:00:00-03:00',
+          finish_date: '2026-08-10T23:59:59-03:00'
+        };
+      }
+    },
+    'MLB7186779490'
+  );
 
   assert.deepStrictEqual(detailCalls, [{ promotionId: 'P-MLB17797034', promotionType: 'DEAL' }]);
   assert.strictEqual(summary.offers.active[0].start_date, '2026-07-20T00:00:00-03:00');
@@ -1921,41 +2357,50 @@ test('promotion summary consulta o detalhe quando a vigencia nao acompanha o ite
 
 test('promotion summary consulta o item da campanha quando o detalhe nao informa vigencia', async () => {
   const promotionItemCalls = [];
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB4483183993', seller_id: 123, site_id: 'MLB', price: 515.05, currency_id: 'BRL' }),
-    getItemPromotions: async () => ([{
-      id: 'LGH-MLB1000',
-      type: 'LIGHTNING',
-      status: 'candidate',
-      original_price: 515.05,
-      min_discounted_price: 103.01,
-      max_discounted_price: 463.55
-    }]),
-    getSellerPromotions: async () => ({
-      results: [{ id: 'LGH-MLB1000', type: 'LIGHTNING', status: 'started' }]
-    }),
-    getPromotion: async () => ({ id: 'LGH-MLB1000', type: 'LIGHTNING', status: 'started' }),
-    getPromotionItems: async (promotionId, promotionType, params) => {
-      promotionItemCalls.push({ promotionId, promotionType, params });
-      return {
-        results: [{
-          id: 'MLB4483183993',
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB4483183993', seller_id: 123, site_id: 'MLB', price: 515.05, currency_id: 'BRL' }),
+      getItemPromotions: async () => [
+        {
+          id: 'LGH-MLB1000',
+          type: 'LIGHTNING',
           status: 'candidate',
-          start_date: '2026-11-08T15:00:00-03:00',
-          finish_date: '2026-11-08T23:00:00-03:00',
-          price: 425.14,
-          original_price: 515.05
-        }]
-      };
-    }
-  }, 'MLB4483183993');
+          original_price: 515.05,
+          min_discounted_price: 103.01,
+          max_discounted_price: 463.55
+        }
+      ],
+      getSellerPromotions: async () => ({
+        results: [{ id: 'LGH-MLB1000', type: 'LIGHTNING', status: 'started' }]
+      }),
+      getPromotion: async () => ({ id: 'LGH-MLB1000', type: 'LIGHTNING', status: 'started' }),
+      getPromotionItems: async (promotionId, promotionType, params) => {
+        promotionItemCalls.push({ promotionId, promotionType, params });
+        return {
+          results: [
+            {
+              id: 'MLB4483183993',
+              status: 'candidate',
+              start_date: '2026-11-08T15:00:00-03:00',
+              finish_date: '2026-11-08T23:00:00-03:00',
+              price: 425.14,
+              original_price: 515.05
+            }
+          ]
+        };
+      }
+    },
+    'MLB4483183993'
+  );
 
-  assert.deepStrictEqual(promotionItemCalls, [{
-    promotionId: 'LGH-MLB1000',
-    promotionType: 'LIGHTNING',
-    params: { item_id: 'MLB4483183993', limit: 50 }
-  }]);
+  assert.deepStrictEqual(promotionItemCalls, [
+    {
+      promotionId: 'LGH-MLB1000',
+      promotionType: 'LIGHTNING',
+      params: { item_id: 'MLB4483183993', limit: 50 }
+    }
+  ]);
   assert.strictEqual(summary.offers.eligible[0].start_date, '2026-11-08T15:00:00-03:00');
   assert.strictEqual(summary.offers.eligible[0].end_date, '2026-11-08T23:00:00-03:00');
 });
@@ -1963,45 +2408,48 @@ test('promotion summary consulta o item da campanha quando o detalhe nao informa
 test('promotion summary usa somente cupom participante do item e carrega os dados da campanha', async () => {
   const promotionItemCalls = [];
   const couponDetailCalls = [];
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
-    getItemPromotions: async () => ([
-      { id: 'C-MLB1', type: 'SELLER_COUPON_CAMPAIGN', status: 'candidate', name: 'Cupom para carrinhos abandonados' }
-    ]),
-    getSellerPromotions: async () => ({
-      results: [
-        { id: 'C-MLB1', type: 'SELLER_COUPON_CAMPAIGN', status: 'started', name: 'Cupom para carrinhos abandonados' },
-        { id: 'C-MLB2', type: 'SELLER_COUPON_CAMPAIGN', status: 'pending', name: 'SEGUIDORES' },
-        { id: 'P-MLB1', type: 'DEAL', status: 'started', name: 'Campanha comum' }
-      ]
-    }),
-    getPromotionItems: async (promotionId) => {
-      promotionItemCalls.push(promotionId);
-      return { results: [] };
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB7186779490', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+      getItemPromotions: async () => [
+        { id: 'C-MLB1', type: 'SELLER_COUPON_CAMPAIGN', status: 'candidate', name: 'Cupom para carrinhos abandonados' }
+      ],
+      getSellerPromotions: async () => ({
+        results: [
+          { id: 'C-MLB1', type: 'SELLER_COUPON_CAMPAIGN', status: 'started', name: 'Cupom para carrinhos abandonados' },
+          { id: 'C-MLB2', type: 'SELLER_COUPON_CAMPAIGN', status: 'pending', name: 'SEGUIDORES' },
+          { id: 'P-MLB1', type: 'DEAL', status: 'started', name: 'Campanha comum' }
+        ]
+      }),
+      getPromotionItems: async (promotionId) => {
+        promotionItemCalls.push(promotionId);
+        return { results: [] };
+      },
+      getPromotion: async (promotionId, promotionType) => {
+        couponDetailCalls.push({ promotionId, promotionType });
+        return {
+          id: 'C-MLB1',
+          type: 'SELLER_COUPON_CAMPAIGN',
+          status: 'started',
+          name: 'Cupom para carrinhos abandonados',
+          start_date: '2026-10-25T03:00:00Z',
+          finish_date: '2026-12-25T02:59:59Z',
+          sub_type: 'FIXED_PERCENTAGE',
+          fixed_amount: 0,
+          fixed_percentage: 10,
+          min_purchase_amount: 100,
+          max_purchase_amount: 200,
+          coupon_code: 'LOJACARRINHO',
+          budget: 1000,
+          remaining_budget: 800,
+          used_coupons: 20,
+          redeems_per_user: 1
+        };
+      }
     },
-    getPromotion: async (promotionId, promotionType) => {
-      couponDetailCalls.push({ promotionId, promotionType });
-      return {
-        id: 'C-MLB1',
-        type: 'SELLER_COUPON_CAMPAIGN',
-        status: 'started',
-        name: 'Cupom para carrinhos abandonados',
-        start_date: '2026-10-25T03:00:00Z',
-        finish_date: '2026-12-25T02:59:59Z',
-        sub_type: 'FIXED_PERCENTAGE',
-        fixed_amount: 0,
-        fixed_percentage: 10,
-        min_purchase_amount: 100,
-        max_purchase_amount: 200,
-        coupon_code: 'LOJACARRINHO',
-        budget: 1000,
-        remaining_budget: 800,
-        used_coupons: 20,
-        redeems_per_user: 1
-      };
-    }
-  }, 'MLB7186779490');
+    'MLB7186779490'
+  );
 
   assert.deepStrictEqual(promotionItemCalls, ['P-MLB1']);
   assert.deepStrictEqual(couponDetailCalls, [{ promotionId: 'C-MLB1', promotionType: 'SELLER_COUPON_CAMPAIGN' }]);
@@ -2025,33 +2473,36 @@ test('promotion summary usa somente cupom participante do item e carrega os dado
 });
 
 test('promotion summary preserva a participacao iniciada do cupom ao enriquecer a campanha', async () => {
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB7186779491', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
-    getItemPromotions: async () => ([
-      {
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB7186779491', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+      getItemPromotions: async () => [
+        {
+          id: 'C-MLB2',
+          type: 'SELLER_COUPON_CAMPAIGN',
+          status: 'started',
+          start_date: '2026-09-10T00:00:00Z',
+          finish_date: '2026-09-30T23:59:59Z'
+        }
+      ],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotion: async () => ({
         id: 'C-MLB2',
         type: 'SELLER_COUPON_CAMPAIGN',
-        status: 'started',
-        start_date: '2026-09-10T00:00:00Z',
-        finish_date: '2026-09-30T23:59:59Z'
-      }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotion: async () => ({
-      id: 'C-MLB2',
-      type: 'SELLER_COUPON_CAMPAIGN',
-      status: 'pending',
-      name: 'Cupom de setembro',
-      sub_type: 'FIXED_AMOUNT',
-      fixed_amount: 15,
-      min_purchase_amount: 150,
-      budget: 500,
-      remaining_budget: 350,
-      used_coupons: 10,
-      redeems_per_user: 1
-    })
-  }, 'MLB7186779491');
+        status: 'pending',
+        name: 'Cupom de setembro',
+        sub_type: 'FIXED_AMOUNT',
+        fixed_amount: 15,
+        min_purchase_amount: 150,
+        budget: 500,
+        remaining_budget: 350,
+        used_coupons: 10,
+        redeems_per_user: 1
+      })
+    },
+    'MLB7186779491'
+  );
 
   assert.strictEqual(summary.offers.active.length, 1);
   assert.strictEqual(summary.offers.active[0].label, 'Cupom de setembro');
@@ -2063,57 +2514,60 @@ test('promotion summary preserva a participacao iniciada do cupom ao enriquecer 
 });
 
 test('regressão MLB6636154166 mantém uma única promoção de preço ativa', async () => {
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB6636154166', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 149.99,
-      regular_amount: 220.99,
-      currency_id: 'BRL',
-      metadata: {
-        promotion_id: 'OFFER-MLB7186779490-13375928811',
-        promotion_type: 'campaign'
-      }
-    }),
-    getItemPromotions: async () => ([
-      {
-        id: 'C-MLB4650383',
-        ref_id: 'OFFER-MLB7186779490-OTHER',
-        type: 'SELLER_CAMPAIGN',
-        status: 'started',
-        price: 149.99,
-        original_price: 220.99,
-        start_date: '2020-07-01T00:00:00',
-        finish_date: '2099-07-31T23:59:59',
-        name: 'Desconto de Julho'
-      },
-      {
-        id: 'P-MLB17797034',
-        ref_id: 'OFFER-MLB7186779490-13375928811',
-        type: 'DEAL',
-        status: 'started',
-        price: 149.99,
-        original_price: 220.99,
-        start_date: '2021-07-20T00:00:00-03:00',
-        finish_date: '2099-08-10T00:00:00-03:00',
-        name: '8.8 e Dia dos Pais'
-      },
-      {
-        id: 'P-MLB17699006',
-        type: 'BANK',
-        ref_id: 'OFFER-MLB7186779490-PIX',
-        status: 'started',
-        original_price: 220.99,
-        benefits: { seller_percent: 1.68, meli_percent: 0.32 },
-        sub_type: 'COFINANCED',
-        payment_method: 'PIX',
-        start_date: '2021-07-20T00:00:00-03:00',
-        finish_date: '2099-07-26T00:00:00-03:00',
-        name: 'Desconto no Pix'
-      }
-    ]),
-    getSellerPromotions: async () => ({ results: [] })
-  }, 'MLB6636154166');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB6636154166', seller_id: 123, site_id: 'MLB', price: 220.99, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 149.99,
+        regular_amount: 220.99,
+        currency_id: 'BRL',
+        metadata: {
+          promotion_id: 'OFFER-MLB7186779490-13375928811',
+          promotion_type: 'campaign'
+        }
+      }),
+      getItemPromotions: async () => [
+        {
+          id: 'C-MLB4650383',
+          ref_id: 'OFFER-MLB7186779490-OTHER',
+          type: 'SELLER_CAMPAIGN',
+          status: 'started',
+          price: 149.99,
+          original_price: 220.99,
+          start_date: '2020-07-01T00:00:00',
+          finish_date: '2099-07-31T23:59:59',
+          name: 'Desconto de Julho'
+        },
+        {
+          id: 'P-MLB17797034',
+          ref_id: 'OFFER-MLB7186779490-13375928811',
+          type: 'DEAL',
+          status: 'started',
+          price: 149.99,
+          original_price: 220.99,
+          start_date: '2021-07-20T00:00:00-03:00',
+          finish_date: '2099-08-10T00:00:00-03:00',
+          name: '8.8 e Dia dos Pais'
+        },
+        {
+          id: 'P-MLB17699006',
+          type: 'BANK',
+          ref_id: 'OFFER-MLB7186779490-PIX',
+          status: 'started',
+          original_price: 220.99,
+          benefits: { seller_percent: 1.68, meli_percent: 0.32 },
+          sub_type: 'COFINANCED',
+          payment_method: 'PIX',
+          start_date: '2021-07-20T00:00:00-03:00',
+          finish_date: '2099-07-26T00:00:00-03:00',
+          name: 'Desconto no Pix'
+        }
+      ],
+      getSellerPromotions: async () => ({ results: [] })
+    },
+    'MLB6636154166'
+  );
 
   assert.strictEqual(summary.salePrice.metadata.promotion_id, 'OFFER-MLB7186779490-13375928811');
   assert.strictEqual(summary.offers.active.length, 3);
@@ -2143,20 +2597,27 @@ test('regressão MLB6636154166 mantém uma única promoção de preço ativa', a
 });
 
 test('promotion summary usa a identidade da oferta sem depender do tipo do sale price', async () => {
-  const buildSummary = (metadata) => buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({ amount: 90, regular_amount: 100, currency_id: 'BRL', metadata }),
-    getItemPromotions: async () => ([
-      { id: 'P1', ref_id: 'OFFER-ONE', type: 'DEAL', status: 'started', price: 90 },
-      { id: 'P2', ref_id: 'OFFER-TWO', type: 'SELLER_CAMPAIGN', status: 'started', price: 90 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] })
-  }, 'MLB1');
+  const buildSummary = (metadata) =>
+    buildPromotionSummary(
+      {
+        getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+        getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+        getItemSalePrice: async () => ({ amount: 90, regular_amount: 100, currency_id: 'BRL', metadata }),
+        getItemPromotions: async () => [
+          { id: 'P1', ref_id: 'OFFER-ONE', type: 'DEAL', status: 'started', price: 90 },
+          { id: 'P2', ref_id: 'OFFER-TWO', type: 'SELLER_CAMPAIGN', status: 'started', price: 90 }
+        ],
+        getSellerPromotions: async () => ({ results: [] })
+      },
+      'MLB1'
+    );
 
   const withoutMetadata = await buildSummary({});
   assert.strictEqual(withoutMetadata.offers.active.filter((entry) => entry.is_current_price).length, 0);
-  assert.deepStrictEqual(withoutMetadata.offers.active.map((entry) => entry.display_status), ['programmed', 'programmed']);
+  assert.deepStrictEqual(
+    withoutMetadata.offers.active.map((entry) => entry.display_status),
+    ['programmed', 'programmed']
+  );
 
   const differentType = await buildSummary({ promotion_id: 'OFFER-ONE', promotion_type: 'PRICE_DISCOUNT' });
   assert.strictEqual(differentType.offers.active.filter((entry) => entry.is_current_price).length, 1);
@@ -2165,29 +2626,33 @@ test('promotion summary usa a identidade da oferta sem depender do tipo do sale 
 
   const unknownOffer = await buildSummary({ promotion_id: 'OFFER-UNKNOWN', promotion_type: 'DEAL' });
   assert.strictEqual(unknownOffer.offers.active.filter((entry) => entry.is_current_price).length, 0);
-  assert.deepStrictEqual(unknownOffer.offers.active.map((entry) => entry.display_status), ['programmed', 'programmed']);
+  assert.deepStrictEqual(
+    unknownOffer.offers.active.map((entry) => entry.display_status),
+    ['programmed', 'programmed']
+  );
 });
 
 test('promotion summary reconcilia a oferta vencedora quando o estado do item está defasado', async () => {
   let reconciledOfferId = null;
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 90,
-      regular_amount: 100,
-      currency_id: 'BRL',
-      metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'DEAL' }
-    }),
-    getItemPromotions: async () => ([
-      { id: 'P1', ref_id: 'OFFER-WINNER', type: 'DEAL', status: 'pending', price: 90 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async (offerId) => {
-      reconciledOfferId = offerId;
-      return { id: 'OFFER-WINNER', item_id: 'MLB1', type: 'DEAL', status: { id: 'active' } };
-    }
-  }, 'MLB1');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 90,
+        regular_amount: 100,
+        currency_id: 'BRL',
+        metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'DEAL' }
+      }),
+      getItemPromotions: async () => [{ id: 'P1', ref_id: 'OFFER-WINNER', type: 'DEAL', status: 'pending', price: 90 }],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async (offerId) => {
+        reconciledOfferId = offerId;
+        return { id: 'OFFER-WINNER', item_id: 'MLB1', type: 'DEAL', status: { id: 'active' } };
+      }
+    },
+    'MLB1'
+  );
 
   const winner = summary.offers.scheduled[0];
   assert.strictEqual(reconciledOfferId, 'OFFER-WINNER');
@@ -2200,35 +2665,45 @@ test('promotion summary reconcilia a oferta vencedora quando o estado do item es
 
 test('promotion summary resolve a campanha vencedora pela identidade da oferta', async () => {
   let reconciledOfferId = null;
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB6554940854', seller_id: 123, site_id: 'MLB', price: 185.91, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 138.99,
-      regular_amount: 185.91,
-      currency_id: 'BRL',
-      metadata: {
-        campaign_id: 'C-MLB4902633',
-        promotion_id: 'OFFER-MLB6554940854-13432635357',
-        promotion_type: 'custom'
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB6554940854', seller_id: 123, site_id: 'MLB', price: 185.91, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 138.99,
+        regular_amount: 185.91,
+        currency_id: 'BRL',
+        metadata: {
+          campaign_id: 'C-MLB4902633',
+          promotion_id: 'OFFER-MLB6554940854-13432635357',
+          promotion_type: 'custom'
+        }
+      }),
+      getItemPromotions: async () => [
+        { id: 'C-MLB4902633', type: 'SELLER_CAMPAIGN', status: 'started', price: 138.99, original_price: 185.91 },
+        {
+          id: 'P-MLB18023310',
+          ref_id: 'OFFER-MLB6554940854-13712972217',
+          type: 'SMART',
+          status: 'started',
+          price: 161.98,
+          original_price: 185.91
+        }
+      ],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async (offerId) => {
+        reconciledOfferId = offerId;
+        return {
+          id: 'OFFER-MLB6554940854-13432635357',
+          item_id: 'MLB6554940854',
+          promotion_id: 'C-MLB4902633',
+          type: 'SELLER_CAMPAIGN',
+          status: { id: 'started' }
+        };
       }
-    }),
-    getItemPromotions: async () => ([
-      { id: 'C-MLB4902633', type: 'SELLER_CAMPAIGN', status: 'started', price: 138.99, original_price: 185.91 },
-      { id: 'P-MLB18023310', ref_id: 'OFFER-MLB6554940854-13712972217', type: 'SMART', status: 'started', price: 161.98, original_price: 185.91 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async (offerId) => {
-      reconciledOfferId = offerId;
-      return {
-        id: 'OFFER-MLB6554940854-13432635357',
-        item_id: 'MLB6554940854',
-        promotion_id: 'C-MLB4902633',
-        type: 'SELLER_CAMPAIGN',
-        status: { id: 'started' }
-      };
-    }
-  }, 'MLB6554940854');
+    },
+    'MLB6554940854'
+  );
 
   const [winner, nonWinner] = summary.offers.active;
   assert.strictEqual(reconciledOfferId, 'OFFER-MLB6554940854-13432635357');
@@ -2243,26 +2718,39 @@ test('promotion summary resolve a campanha vencedora pela identidade da oferta',
 
 test('promotion summary reconhece oferta SMART vencedora com tipo descritivo diferente no sale price', async () => {
   let promotionOfferCalls = 0;
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB6554940852', seller_id: 123, site_id: 'MLB', price: 185.91, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 134.82,
-      regular_amount: 185.91,
-      currency_id: 'BRL',
-      metadata: {
-        campaign_id: 'P-MLB17979064',
-        promotion_id: 'OFFER-MLB6554940852-13754868643',
-        promotion_type: 'marketplace_campaign'
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB6554940852', seller_id: 123, site_id: 'MLB', price: 185.91, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 134.82,
+        regular_amount: 185.91,
+        currency_id: 'BRL',
+        metadata: {
+          campaign_id: 'P-MLB17979064',
+          promotion_id: 'OFFER-MLB6554940852-13754868643',
+          promotion_type: 'marketplace_campaign'
+        }
+      }),
+      getItemPromotions: async () => [
+        { id: 'C-MLB4902633', type: 'SELLER_CAMPAIGN', status: 'started', price: 138.99, original_price: 185.91 },
+        {
+          id: 'P-MLB17979064',
+          ref_id: 'OFFER-MLB6554940852-13754868643',
+          type: 'SMART',
+          status: 'started',
+          price: 134.82,
+          original_price: 185.91
+        }
+      ],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async () => {
+        promotionOfferCalls += 1;
+        return null;
       }
-    }),
-    getItemPromotions: async () => ([
-      { id: 'C-MLB4902633', type: 'SELLER_CAMPAIGN', status: 'started', price: 138.99, original_price: 185.91 },
-      { id: 'P-MLB17979064', ref_id: 'OFFER-MLB6554940852-13754868643', type: 'SMART', status: 'started', price: 134.82, original_price: 185.91 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async () => { promotionOfferCalls += 1; return null; }
-  }, 'MLB6554940852');
+    },
+    'MLB6554940852'
+  );
 
   const winner = summary.offers.active.find((entry) => entry.id === 'P-MLB17979064');
   const nonWinner = summary.offers.active.find((entry) => entry.id === 'C-MLB4902633');
@@ -2276,31 +2764,34 @@ test('promotion summary reconhece oferta SMART vencedora com tipo descritivo dif
 
 test('promotion summary resolve participacao sem identificador pela oferta vencedora', async () => {
   let promotionOfferCalls = 0;
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB6433230052', seller_id: 123, site_id: 'MLB', price: 42.99, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 42.99,
-      regular_amount: 73.99,
-      currency_id: 'BRL',
-      metadata: { promotion_id: 'OFFER-MLB6433230052-13768607922', promotion_type: 'custom' }
-    }),
-    getItemPromotions: async () => ([
-      { type: 'PRICE_DISCOUNT', status: 'started', price: 41.5, original_price: 73.99 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async (offerId) => {
-      promotionOfferCalls += 1;
-      assert.strictEqual(offerId, 'OFFER-MLB6433230052-13768607922');
-      return {
-        id: offerId,
-        item_id: 'MLB6433230052',
-        promotion_id: '',
-        type: 'PRICE_DISCOUNT',
-        status: { id: 'started' }
-      };
-    }
-  }, 'MLB6433230052');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB6433230052', seller_id: 123, site_id: 'MLB', price: 42.99, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 42.99,
+        regular_amount: 73.99,
+        currency_id: 'BRL',
+        metadata: { promotion_id: 'OFFER-MLB6433230052-13768607922', promotion_type: 'custom' }
+      }),
+      getItemPromotions: async () => [
+        { type: 'PRICE_DISCOUNT', status: 'started', price: 41.5, original_price: 73.99 }
+      ],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async (offerId) => {
+        promotionOfferCalls += 1;
+        assert.strictEqual(offerId, 'OFFER-MLB6433230052-13768607922');
+        return {
+          id: offerId,
+          item_id: 'MLB6433230052',
+          promotion_id: '',
+          type: 'PRICE_DISCOUNT',
+          status: { id: 'started' }
+        };
+      }
+    },
+    'MLB6433230052'
+  );
 
   const directDiscount = summary.offers.active[0];
   assert.strictEqual(promotionOfferCalls, 1);
@@ -2312,27 +2803,28 @@ test('promotion summary resolve participacao sem identificador pela oferta vence
 });
 
 test('promotion summary mantém participação sem identidade como programada sem vínculo da oferta', async () => {
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 90,
-      regular_amount: 100,
-      currency_id: 'BRL',
-      metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'custom' }
-    }),
-    getItemPromotions: async () => ([
-      { type: 'PRICE_DISCOUNT', status: 'started', price: 90, original_price: 100 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async () => ({
-      id: 'OFFER-WINNER',
-      item_id: 'MLB1',
-      promotion_id: '',
-      type: 'DEAL',
-      status: { id: 'started' }
-    })
-  }, 'MLB1');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 90,
+        regular_amount: 100,
+        currency_id: 'BRL',
+        metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'custom' }
+      }),
+      getItemPromotions: async () => [{ type: 'PRICE_DISCOUNT', status: 'started', price: 90, original_price: 100 }],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async () => ({
+        id: 'OFFER-WINNER',
+        item_id: 'MLB1',
+        promotion_id: '',
+        type: 'DEAL',
+        status: { id: 'started' }
+      })
+    },
+    'MLB1'
+  );
 
   const directDiscount = summary.offers.active[0];
   assert.strictEqual(directDiscount.is_current_price, false);
@@ -2341,51 +2833,61 @@ test('promotion summary mantém participação sem identidade como programada se
 });
 
 test('promotion summary não ativa participação sem identidade quando o vínculo é ambíguo', async () => {
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 90,
-      regular_amount: 100,
-      currency_id: 'BRL',
-      metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'custom' }
-    }),
-    getItemPromotions: async () => ([
-      { type: 'PRICE_DISCOUNT', status: 'started', price: 90, original_price: 100 },
-      { type: 'PRICE_DISCOUNT', status: 'started', price: 80, original_price: 100 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async () => ({
-      id: 'OFFER-WINNER',
-      item_id: 'MLB1',
-      promotion_id: '',
-      type: 'PRICE_DISCOUNT',
-      status: { id: 'started' }
-    })
-  }, 'MLB1');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 90,
+        regular_amount: 100,
+        currency_id: 'BRL',
+        metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'custom' }
+      }),
+      getItemPromotions: async () => [
+        { type: 'PRICE_DISCOUNT', status: 'started', price: 90, original_price: 100 },
+        { type: 'PRICE_DISCOUNT', status: 'started', price: 80, original_price: 100 }
+      ],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async () => ({
+        id: 'OFFER-WINNER',
+        item_id: 'MLB1',
+        promotion_id: '',
+        type: 'PRICE_DISCOUNT',
+        status: { id: 'started' }
+      })
+    },
+    'MLB1'
+  );
 
-  assert.strictEqual(summary.offers.active.every((entry) => entry.is_current_price === false), true);
-  assert.deepStrictEqual(summary.offers.active.map((entry) => entry.display_status), ['programmed', 'programmed']);
+  assert.strictEqual(
+    summary.offers.active.every((entry) => entry.is_current_price === false),
+    true
+  );
+  assert.deepStrictEqual(
+    summary.offers.active.map((entry) => entry.display_status),
+    ['programmed', 'programmed']
+  );
   assert.strictEqual(commerceModel.getPromotionState(summary).activeCount, 0);
   assert.strictEqual(commerceModel.getPromotionState(summary).label, 'Programada');
 });
 
 test('promotion summary não transforma conflito inativo em promoção programada', async () => {
-  const summary = await buildPromotionSummary({
-    getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
-    getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
-    getItemSalePrice: async () => ({
-      amount: 90,
-      regular_amount: 100,
-      currency_id: 'BRL',
-      metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'DEAL' }
-    }),
-    getItemPromotions: async () => ([
-      { id: 'P1', ref_id: 'OFFER-WINNER', type: 'DEAL', status: 'pending', price: 90 }
-    ]),
-    getSellerPromotions: async () => ({ results: [] }),
-    getPromotionOffer: async () => ({ id: 'OFFER-WINNER', item_id: 'MLB1', type: 'DEAL', status: { id: 'inactive' } })
-  }, 'MLB1');
+  const summary = await buildPromotionSummary(
+    {
+      getMe: async () => ({ id: 123, nickname: 'LOJA', site_id: 'MLB' }),
+      getItem: async () => ({ id: 'MLB1', seller_id: 123, site_id: 'MLB', price: 90, currency_id: 'BRL' }),
+      getItemSalePrice: async () => ({
+        amount: 90,
+        regular_amount: 100,
+        currency_id: 'BRL',
+        metadata: { promotion_id: 'OFFER-WINNER', promotion_type: 'DEAL' }
+      }),
+      getItemPromotions: async () => [{ id: 'P1', ref_id: 'OFFER-WINNER', type: 'DEAL', status: 'pending', price: 90 }],
+      getSellerPromotions: async () => ({ results: [] }),
+      getPromotionOffer: async () => ({ id: 'OFFER-WINNER', item_id: 'MLB1', type: 'DEAL', status: { id: 'inactive' } })
+    },
+    'MLB1'
+  );
 
   const winner = summary.offers.scheduled[0];
   assert.strictEqual(winner.offer_status, 'inactive');
@@ -2396,17 +2898,20 @@ test('promotion summary não transforma conflito inativo em promoção programad
 
 test('promotion campaign cria campanha do vendedor com subtipo padrao', async () => {
   let payload = null;
-  await createCampaign({
-    createPromotionCampaign: async (body) => {
-      payload = body;
-      return { id: 'P-MLB1' };
+  await createCampaign(
+    {
+      createPromotionCampaign: async (body) => {
+        payload = body;
+        return { id: 'P-MLB1' };
+      }
+    },
+    {
+      promotionType: 'SELLER_CAMPAIGN',
+      name: 'Liquida',
+      startDate: '2026-07-21T00:00:00Z',
+      finishDate: '2026-07-28T00:00:00Z'
     }
-  }, {
-    promotionType: 'SELLER_CAMPAIGN',
-    name: 'Liquida',
-    startDate: '2026-07-21T00:00:00Z',
-    finishDate: '2026-07-28T00:00:00Z'
-  });
+  );
 
   assert.deepStrictEqual(payload, {
     promotion_type: 'SELLER_CAMPAIGN',
@@ -2420,65 +2925,76 @@ test('promotion campaign cria campanha do vendedor com subtipo padrao', async ()
 test('promotion delete bloqueia oferta relampago ativa antes de chamar API', async () => {
   let deleteCalled = false;
   await assert.rejects(
-    () => deleteOffer({
-      getMe: async () => ({ id: 123 }),
-      getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
-      getItemPromotions: async () => ({ results: [{ type: 'LIGHTNING', status: 'started' }] }),
-      deletePromotionOffer: async () => {
-        deleteCalled = true;
-        return {};
-      }
-    }, 'MLB1234567890', { promotionType: 'LIGHTNING' }),
+    () =>
+      deleteOffer(
+        {
+          getMe: async () => ({ id: 123 }),
+          getItem: async () => ({ id: 'MLB1234567890', seller_id: 123, site_id: 'MLB' }),
+          getItemPromotions: async () => ({ results: [{ type: 'LIGHTNING', status: 'started' }] }),
+          deletePromotionOffer: async () => {
+            deleteCalled = true;
+            return {};
+          }
+        },
+        'MLB1234567890',
+        { promotionType: 'LIGHTNING' }
+      ),
     /lightning_started_cannot_delete/
   );
   assert.strictEqual(deleteCalled, false);
 });
 
 test('api pricing e promotions expõem contratos por item', async (t) => {
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123, nickname: 'BOGU STORE', site_id: 'MLB' }),
-      getItem: async () => ({
-        id: 'MLB1234567890',
-        seller_id: 123,
-        site_id: 'MLB',
-        status: 'active',
-        price: 100,
-        currency_id: 'BRL',
-        tags: [],
-        pictures: []
-      }),
-      getItemPrices: async () => ({ prices: [{ id: '1', type: 'standard', amount: 100, currency_id: 'BRL', conditions: {} }] }),
-      getItemSalePrice: async () => ({ price_id: '1', amount: 100, currency_id: 'BRL', metadata: {} }),
-      getPricingAutomation: async () => {
-        const err = new Error('automation_not_found');
-        err.statusCode = 404;
-        throw err;
-      },
-      getPriceReference: async () => {
-        const err = new Error('not found');
-        err.statusCode = 404;
-        throw err;
-      },
-      getListingPrices: async () => [],
-      getItemPromotions: async () => ({
-        results: [
-          {
-            type: 'SMART',
-            status: 'candidate',
-            id: 'P-MLB1',
-            ref_id: 'CANDIDATE-MLB1234567890-1',
-            price: 90,
-            original_price: 100,
-            seller_percentage: 8,
-            meli_percentage: 2
-          }
-        ]
-      }),
-      getSellerPromotions: async () => ({ results: [{ type: 'SELLER_CAMPAIGN', status: 'started', id: 'P-MLB1', name: 'Semana do camping' }] })
-    }
-  }));
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123, nickname: 'BOGU STORE', site_id: 'MLB' }),
+        getItem: async () => ({
+          id: 'MLB1234567890',
+          seller_id: 123,
+          site_id: 'MLB',
+          status: 'active',
+          price: 100,
+          currency_id: 'BRL',
+          tags: [],
+          pictures: []
+        }),
+        getItemPrices: async () => ({
+          prices: [{ id: '1', type: 'standard', amount: 100, currency_id: 'BRL', conditions: {} }]
+        }),
+        getItemSalePrice: async () => ({ price_id: '1', amount: 100, currency_id: 'BRL', metadata: {} }),
+        getPricingAutomation: async () => {
+          const err = new Error('automation_not_found');
+          err.statusCode = 404;
+          throw err;
+        },
+        getPriceReference: async () => {
+          const err = new Error('not found');
+          err.statusCode = 404;
+          throw err;
+        },
+        getListingPrices: async () => [],
+        getItemPromotions: async () => ({
+          results: [
+            {
+              type: 'SMART',
+              status: 'candidate',
+              id: 'P-MLB1',
+              ref_id: 'CANDIDATE-MLB1234567890-1',
+              price: 90,
+              original_price: 100,
+              seller_percentage: 8,
+              meli_percentage: 2
+            }
+          ]
+        }),
+        getSellerPromotions: async () => ({
+          results: [{ type: 'SELLER_CAMPAIGN', status: 'started', id: 'P-MLB1', name: 'Semana do camping' }]
+        })
+      }
+    })
+  );
   t.after(() => server.close());
 
   const priceResponse = await fetch(`${server.url}/api/items/MLB1234567890/pricing/summary`);
@@ -2550,20 +3066,22 @@ test('api bulk preview expõe contrato por item', async (t) => {
       tags: []
     }
   };
-  const server = await listen(createApp({
-    store: { read: async () => ({ refresh_token: 'TG-secret' }) },
-    client: {
-      getMe: async () => ({ id: 123 }),
-      getItem: async (itemId) => items[itemId],
-      getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
-      getUserProductFamily: async () => ({
-        results: [{ id: 'MLBU200000001' }, { id: 'MLBU200000002' }]
-      }),
-      searchItemsByUserProduct: async () => ({ results: Object.keys(items) }),
-      getPricingAutomation: async () => null,
-      getItemPromotions: async () => ({ results: [] })
-    }
-  }));
+  const server = await listen(
+    createApp({
+      store: { read: async () => ({ refresh_token: 'TG-secret' }) },
+      client: {
+        getMe: async () => ({ id: 123 }),
+        getItem: async (itemId) => items[itemId],
+        getUserProduct: async (userProductId) => ({ id: userProductId, family_id: 'FAMILY1' }),
+        getUserProductFamily: async () => ({
+          results: [{ id: 'MLBU200000001' }, { id: 'MLBU200000002' }]
+        }),
+        searchItemsByUserProduct: async () => ({ results: Object.keys(items) }),
+        getPricingAutomation: async () => null,
+        getItemPromotions: async () => ({ results: [] })
+      }
+    })
+  );
   t.after(() => server.close());
 
   const response = await fetch(`${server.url}/api/items/MLB2000000001/bulk/preview`, {

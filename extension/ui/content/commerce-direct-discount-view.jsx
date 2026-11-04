@@ -41,9 +41,16 @@ function ResultValue({ loading, value }) {
 
 function ResultRow({ label, description = '', value, loading = false, tone = '', separated = false }) {
   return (
-    <div className={`onframe-commerce-direct-discount-line${tone ? ` ${tone}` : ''}${separated ? ' is-separated' : ''}`}>
-      <span>{label}{description && <small>{description}</small>}</span>
-      <strong><ResultValue loading={loading} value={value} /></strong>
+    <div
+      className={`onframe-commerce-direct-discount-line${tone ? ` ${tone}` : ''}${separated ? ' is-separated' : ''}`}
+    >
+      <span>
+        {label}
+        {description && <small>{description}</small>}
+      </span>
+      <strong>
+        <ResultValue loading={loading} value={value} />
+      </strong>
     </div>
   );
 }
@@ -52,9 +59,18 @@ function Estimate({ estimate }) {
   return (
     <div className="onframe-commerce-direct-discount-results" aria-busy={estimate.loading || undefined}>
       {estimate.message && <Alert tone={estimate.tone || 'danger'}>{estimate.message}</Alert>}
-      <ResultRow {...estimate.commission} loading={estimate.loading} tone="onframe-commerce-direct-discount-cost" separated />
+      <ResultRow
+        {...estimate.commission}
+        loading={estimate.loading}
+        tone="onframe-commerce-direct-discount-cost"
+        separated
+      />
       {estimate.benefits.map((benefit) => (
-        <ResultRow key={`${benefit.label}:${benefit.value}`} {...benefit} tone="onframe-commerce-direct-discount-benefit" />
+        <ResultRow
+          key={`${benefit.label}:${benefit.value}`}
+          {...benefit}
+          tone="onframe-commerce-direct-discount-benefit"
+        />
       ))}
       <ResultRow {...estimate.shipping} loading={estimate.loading} tone="onframe-commerce-direct-discount-cost" />
       <ResultRow {...estimate.total} loading={estimate.loading} tone="onframe-commerce-direct-discount-total" />
@@ -160,13 +176,16 @@ function render(host, model, actions = {}) {
   flushSync(() => {
     root.render(
       <DirectDiscountBoundary onError={actions.onError || (() => {})}>
-        <DirectDiscountModal model={model} actions={{
-          onClose: actions.onClose || (() => {}),
-          onPercentageChange: actions.onPercentageChange || (() => {}),
-          onPriceChange: actions.onPriceChange || (() => {}),
-          onDateChange: actions.onDateChange || (() => {}),
-          onSubmit: actions.onSubmit || (() => {})
-        }} />
+        <DirectDiscountModal
+          model={model}
+          actions={{
+            onClose: actions.onClose || (() => {}),
+            onPercentageChange: actions.onPercentageChange || (() => {}),
+            onPriceChange: actions.onPriceChange || (() => {}),
+            onDateChange: actions.onDateChange || (() => {}),
+            onSubmit: actions.onSubmit || (() => {})
+          }}
+        />
       </DirectDiscountBoundary>
     );
   });

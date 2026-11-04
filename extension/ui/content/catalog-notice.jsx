@@ -34,8 +34,7 @@ export function CatalogNotice({ children }) {
       <div role="note" aria-label="Anúncio de catálogo" style={containerStyle}>
         <Ph n="info" size={16} weight="fill" style={iconStyle} />
         <p style={copyStyle}>
-          <strong style={titleStyle}>Este é um anúncio de catálogo.</strong>{' '}
-          {children}
+          <strong style={titleStyle}>Este é um anúncio de catálogo.</strong> {children}
         </p>
       </div>
     </Card>

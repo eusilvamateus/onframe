@@ -15,7 +15,7 @@ export function base64Url(bytes: Uint8Array): string {
 
 function base64UrlBytes(value: string): Uint8Array {
   const normalized = value.replaceAll('-', '+').replaceAll('_', '/');
-  const padding = '='.repeat((4 - normalized.length % 4) % 4);
+  const padding = '='.repeat((4 - (normalized.length % 4)) % 4);
   const binary = atob(`${normalized}${padding}`);
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
@@ -50,9 +50,13 @@ export async function decryptValue(key: CryptoKey, encrypted: EncryptedValue): P
   const payload = new Uint8Array(ciphertext.length + authTag.length);
   payload.set(ciphertext);
   payload.set(authTag, ciphertext.length);
-  const plaintext = await crypto.subtle.decrypt({
-    name: 'AES-GCM',
-    iv: base64UrlBytes(encrypted.iv)
-  }, key, payload);
+  const plaintext = await crypto.subtle.decrypt(
+    {
+      name: 'AES-GCM',
+      iv: base64UrlBytes(encrypted.iv)
+    },
+    key,
+    payload
+  );
   return new TextDecoder().decode(plaintext);
 }

@@ -1,9 +1,5 @@
-const {
-  pickMode
-} = require('./items');
-const {
-  normalizeOwnerUserId
-} = require('./account-client');
+const { pickMode } = require('./items');
+const { normalizeOwnerUserId } = require('./account-client');
 const { sanitizeError } = require('./errors');
 
 function buildPageIdentity(body) {
@@ -26,27 +22,26 @@ function buildPageIdentity(body) {
     pdpFilterItemId: explicit.pdpFilterItemId || urlIdentity.pdpFilterItemId,
     productTriggerItemId: explicit.productTriggerItemId || urlIdentity.productTriggerItemId,
     catalogProductId: explicit.catalogProductId || urlIdentity.catalogProductId,
-    weakItemCandidates: [
-      ...explicit.weakItemCandidates,
-      ...requestWeakItems
-    ],
-    weakUserProductCandidates: [
-      ...explicit.weakUserProductCandidates,
-      ...requestWeakUserProducts
-    ]
+    weakItemCandidates: [...explicit.weakItemCandidates, ...requestWeakItems],
+    weakUserProductCandidates: [...explicit.weakUserProductCandidates, ...requestWeakUserProducts]
   });
 
-  identity.weakItemCandidates = identity.weakItemCandidates.filter((itemId) => !strongItemIds(identity).includes(itemId));
-  identity.weakUserProductCandidates = identity.weakUserProductCandidates.filter((userProductId) => userProductId !== identity.urlUserProductId);
+  identity.weakItemCandidates = identity.weakItemCandidates.filter(
+    (itemId) => !strongItemIds(identity).includes(itemId)
+  );
+  identity.weakUserProductCandidates = identity.weakUserProductCandidates.filter(
+    (userProductId) => userProductId !== identity.urlUserProductId
+  );
   return identity;
 }
 
 async function resolveItemContext(client, options) {
   const config = options || {};
   const pageIdentity = normalizePageIdentity(config.pageIdentity || {});
-  if (hasAnyPageIdentity(pageIdentity)) return resolveStrictPageIdentity(client, pageIdentity, {
-    ownerUserId: config.ownerUserId
-  });
+  if (hasAnyPageIdentity(pageIdentity))
+    return resolveStrictPageIdentity(client, pageIdentity, {
+      ownerUserId: config.ownerUserId
+    });
 
   const err = new Error('Anúncio não detectado.');
   err.statusCode = 400;
@@ -145,12 +140,20 @@ function isRetryableItemTargetError(err) {
 function buildUnresolvedItemTargetsError(rejected) {
   const entries = Array.isArray(rejected) ? rejected : [];
   const statusCodes = entries.map((entry) => Number(entry.statusCode || 0)).filter(Boolean);
-  const statusCode = statusCodes.includes(403) ? 403 : statusCodes.includes(401) ? 401 : statusCodes.includes(404) ? 404 : 409;
-  const err = new Error(statusCode === 404
-    ? 'Item nao encontrado.'
-    : statusCode === 403
-      ? 'Este anuncio nao pertence ao seller autenticado.'
-      : 'Não consegui confirmar este anúncio. Recarregue a página.');
+  const statusCode = statusCodes.includes(403)
+    ? 403
+    : statusCodes.includes(401)
+      ? 401
+      : statusCodes.includes(404)
+        ? 404
+        : 409;
+  const err = new Error(
+    statusCode === 404
+      ? 'Item nao encontrado.'
+      : statusCode === 403
+        ? 'Este anuncio nao pertence ao seller autenticado.'
+        : 'Não consegui confirmar este anúncio. Recarregue a página.'
+  );
   err.statusCode = statusCode;
   err.rejectedItemCandidates = entries;
   return err;
@@ -217,17 +220,23 @@ async function loadQuickUserProductItemContext(client, userProductIds, options =
           limit: 1
         })
       ]);
-      const ids = search.status === 'fulfilled' && Array.isArray(search.value && search.value.results)
-        ? search.value.results
-        : [];
+      const ids =
+        search.status === 'fulfilled' && Array.isArray(search.value && search.value.results)
+          ? search.value.results
+          : [];
       if (!ids.length) {
-        rejected.push({ userProductId, statusCode: 404, error: 'Nenhum anuncio ativo encontrado para este user_product.' });
+        rejected.push({
+          userProductId,
+          statusCode: 404,
+          error: 'Nenhum anuncio ativo encontrado para este user_product.'
+        });
         continue;
       }
       const context = await loadQuickItemContext(client, ids[0], options);
-      context.userProduct = userProductResult.status === 'fulfilled'
-        ? userProductResult.value
-        : { error: sanitizeError(userProductResult.reason) };
+      context.userProduct =
+        userProductResult.status === 'fulfilled'
+          ? userProductResult.value
+          : { error: sanitizeError(userProductResult.reason) };
       context.resolvedFromUserProductId = userProductId;
       if (rejected.length) context.rejectedUserProductCandidates = rejected;
       return context;
@@ -259,14 +268,16 @@ async function loadOwnedItemContextCandidates(client, candidates, options = {}) 
 }
 
 function selectBestUserProductItemContext(contexts, userProductId) {
-  return contexts
-    .map((context, index) => ({
-      context,
-      index,
-      score: scoreUserProductItemContext(context, userProductId)
-    }))
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-    .map((entry) => entry.context)[0] || null;
+  return (
+    contexts
+      .map((context, index) => ({
+        context,
+        index,
+        score: scoreUserProductItemContext(context, userProductId)
+      }))
+      .sort((left, right) => right.score - left.score || left.index - right.index)
+      .map((entry) => entry.context)[0] || null
+  );
 }
 
 function isExactUserProductContext(context, userProductId) {
@@ -295,10 +306,7 @@ async function loadItemContext(client, itemId, options = {}) {
   const userProductPromise = item.user_product_id
     ? loadUserProductDetails(client, item)
     : Promise.resolve({ userProduct: null, family: null });
-  const [pictureLimits, userProductDetails] = await Promise.all([
-    pictureLimitsPromise,
-    userProductPromise
-  ]);
+  const [pictureLimits, userProductDetails] = await Promise.all([pictureLimitsPromise, userProductPromise]);
 
   return {
     mode: pickMode(item),
@@ -438,8 +446,10 @@ function summarizePictureEditability(item) {
 function findItemPicture(item, pictureId) {
   const id = String(pictureId || '');
   if (!id) return null;
-  return (Array.isArray(item && item.pictures) ? item.pictures : [])
-    .find((picture) => String(picture.id || '') === id) || null;
+  return (
+    (Array.isArray(item && item.pictures) ? item.pictures : []).find((picture) => String(picture.id || '') === id) ||
+    null
+  );
 }
 
 function summarizeItem(item) {
@@ -492,12 +502,17 @@ function summarizeCapabilities(item) {
 }
 
 function normalizeUserProductId(value) {
-  const match = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').match(/MLBU\d{6,}/);
+  const match = String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .match(/MLBU\d{6,}/);
   return match ? match[0] : null;
 }
 
 function normalizeStrongItemId(value) {
-  const raw = String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const raw = String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
   const match = raw.match(/MLB\d{6,13}/);
   return match ? match[0] : null;
 }

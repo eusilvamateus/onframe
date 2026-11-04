@@ -34,14 +34,7 @@ function PriceHeader({ title, badge, onClose }) {
           {badge.label}
         </Badge>
       )}
-      <Button
-        kind="neutral"
-        size="sm"
-        iconOnly
-        aria-label="Fechar"
-        icon={<Ph n="x" size={14} />}
-        onClick={onClose}
-      />
+      <Button kind="neutral" size="sm" iconOnly aria-label="Fechar" icon={<Ph n="x" size={14} />} onClick={onClose} />
     </header>
   );
 }
@@ -56,7 +49,11 @@ function PriceSummaryTitle({ field, promoted }) {
         <span>{field?.label || 'Preço atual'}</span>
         <strong>{field?.value || '—'}</strong>
       </span>
-      {promoted && <Badge tone="success" appearance="soft" size="sm" dot>Com promoção</Badge>}
+      {promoted && (
+        <Badge tone="success" appearance="soft" size="sm" dot>
+          Com promoção
+        </Badge>
+      )}
     </span>
   );
 }
@@ -103,32 +100,34 @@ function PriceSummary({ model, actions }) {
   const breakdown = model.fields.filter((field) => field !== heroField);
   const promoted = Boolean(priceField?.originalPrice);
   const basePrice = priceField?.originalPrice || priceField?.value || '—';
-  const summaryItems = [{
-    id: 'price-summary',
-    title: <PriceSummaryTitle field={heroField} promoted={promoted} />,
-    content: (
-      <div className="onframe-commerce-price-breakdown">
-        {model.sellingIn && (
-          <div className="onframe-commerce-price-promotion-link">
-            <small>Vendendo em:</small>
-            <Button
-              kind="quiet"
-              tone="primary"
-              size="sm"
-              icon={<Ph n="tag" size={14} />}
-              onClick={actions.onOpenPromotion}
-            >
-              <span className="onframe-commerce-price-promotion-link-label">{model.sellingIn.label}</span>
-            </Button>
-          </div>
-        )}
-        {breakdown.map((field) => (
-          <PriceBreakdownRow key={`${field.label}:${field.value}`} field={field} />
-        ))}
-        <PriceScenarios scenarios={model.scenarios} />
-      </div>
-    )
-  }];
+  const summaryItems = [
+    {
+      id: 'price-summary',
+      title: <PriceSummaryTitle field={heroField} promoted={promoted} />,
+      content: (
+        <div className="onframe-commerce-price-breakdown">
+          {model.sellingIn && (
+            <div className="onframe-commerce-price-promotion-link">
+              <small>Vendendo em:</small>
+              <Button
+                kind="quiet"
+                tone="primary"
+                size="sm"
+                icon={<Ph n="tag" size={14} />}
+                onClick={actions.onOpenPromotion}
+              >
+                <span className="onframe-commerce-price-promotion-link-label">{model.sellingIn.label}</span>
+              </Button>
+            </div>
+          )}
+          {breakdown.map((field) => (
+            <PriceBreakdownRow key={`${field.label}:${field.value}`} field={field} />
+          ))}
+          <PriceScenarios scenarios={model.scenarios} />
+        </div>
+      )
+    }
+  ];
 
   return (
     <div className="onframe-commerce-popover-summary">
@@ -142,7 +141,10 @@ function PriceSummary({ model, actions }) {
           <strong>{basePrice}</strong>
           <span>{promoted ? 'Preço original antes da promoção' : 'Preço atual do anúncio'}</span>
         </span>
-        <Tooltip label={model.canEdit ? 'Editar preço base' : 'Este preço não pode ser editado agora'} placement="bottom">
+        <Tooltip
+          label={model.canEdit ? 'Editar preço base' : 'Este preço não pode ser editado agora'}
+          placement="bottom"
+        >
           <span>
             <Button
               kind="neutral"
@@ -184,20 +186,30 @@ function BulkStatus({ status }) {
     );
   }
 
-  const blockedItems = status.blocked.length ? [{
-    id: 'blocked-variations',
-    title: status.blockedLabel,
-    content: (
-      <ul className="onframe-commerce-bulk-status-list">
-        {status.blocked.map((entry, index) => <li key={`${entry.label}:${index}`}>{entry.label}: {entry.message}</li>)}
-      </ul>
-    )
-  }] : [];
+  const blockedItems = status.blocked.length
+    ? [
+        {
+          id: 'blocked-variations',
+          title: status.blockedLabel,
+          content: (
+            <ul className="onframe-commerce-bulk-status-list">
+              {status.blocked.map((entry, index) => (
+                <li key={`${entry.label}:${index}`}>
+                  {entry.label}: {entry.message}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      ]
+    : [];
 
   return (
     <div className="onframe-commerce-bulk-status">
       <Alert tone={status.tone === 'warn' ? 'danger' : 'success'} title={status.message}>
-        {!!blockedItems.length && <Accordion items={blockedItems} type="single" ariaLabel="Variações não atualizadas" />}
+        {!!blockedItems.length && (
+          <Accordion items={blockedItems} type="single" ariaLabel="Variações não atualizadas" />
+        )}
       </Alert>
     </div>
   );
@@ -316,17 +328,20 @@ function render(host, model, actions = {}) {
   flushSync(() => {
     root.render(
       <CommercePriceViewBoundary onError={actions.onError || (() => {})}>
-        <CommercePricePopover model={model} actions={{
-          onClose: actions.onClose || (() => {}),
-          onReload: actions.onReload || (() => {}),
-          onToggleDetails: actions.onToggleDetails || (() => {}),
-          onOpenPromotion: actions.onOpenPromotion || (() => {}),
-          onEdit: actions.onEdit || (() => {}),
-          onDraftChange: actions.onDraftChange || (() => {}),
-          onBulkChange: actions.onBulkChange || (() => {}),
-          onSave: actions.onSave || (() => {}),
-          onCancel: actions.onCancel || (() => {})
-        }} />
+        <CommercePricePopover
+          model={model}
+          actions={{
+            onClose: actions.onClose || (() => {}),
+            onReload: actions.onReload || (() => {}),
+            onToggleDetails: actions.onToggleDetails || (() => {}),
+            onOpenPromotion: actions.onOpenPromotion || (() => {}),
+            onEdit: actions.onEdit || (() => {}),
+            onDraftChange: actions.onDraftChange || (() => {}),
+            onBulkChange: actions.onBulkChange || (() => {}),
+            onSave: actions.onSave || (() => {}),
+            onCancel: actions.onCancel || (() => {})
+          }}
+        />
       </CommercePriceViewBoundary>
     );
   });

@@ -19,7 +19,8 @@
       typeof DescriptionView.unmount === 'function'
     );
     if (!hasDescriptionView) throw new Error('Interface de descrição indisponível.');
-    const toUserError = (err) => DescriptionModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame descrição] detalhe tecnico:' }));
+    const toUserError = (err) =>
+      DescriptionModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame descrição] detalhe tecnico:' }));
 
     const state = {
       context: null,
@@ -126,7 +127,8 @@
 
       const context = update && update.context ? update.context : null;
       const nextItemId = context && context.item && context.item.id ? String(context.item.id) : '';
-      const nextOwnerUserId = context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
+      const nextOwnerUserId =
+        context && context.ownerAccount && context.ownerAccount.user_id ? String(context.ownerAccount.user_id) : '';
       const changedItem = nextItemId && state.itemId && nextItemId !== String(state.itemId);
 
       if (changedItem) closeEditor({ restoreText: false });
@@ -167,17 +169,21 @@
     }
 
     function getDescriptionElements() {
-      const title = document.querySelector('.ui-pdp-description__title') ||
-        Array.from(document.querySelectorAll('h2, h3')).find((node) => String(node.textContent || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim()
-          .toLowerCase()
-          .startsWith('descricao'));
+      const title =
+        document.querySelector('.ui-pdp-description__title') ||
+        Array.from(document.querySelectorAll('h2, h3')).find((node) =>
+          String(node.textContent || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase()
+            .startsWith('descricao')
+        );
       const description = title ? title.closest('.ui-pdp-description') : document.querySelector('.ui-pdp-description');
       const collapsable = (description || title) && (description || title).closest('.ui-pdp-collapsable');
       const container = (description || title) && (description || title).closest('.ui-pdp-collapsable__container');
-      const section = collapsable ||
+      const section =
+        collapsable ||
         (description && description.closest('section')) ||
         (title && title.closest('section')) ||
         description ||
@@ -198,8 +204,11 @@
         elements && elements.section,
         elements && elements.description
       ].filter(Boolean);
-      return candidates.some((element) => element.classList.contains('ui-pdp-collapsable--is-collapsed') ||
-        Boolean(element.querySelector('.ui-pdp-collapsable--is-collapsed')));
+      return candidates.some(
+        (element) =>
+          element.classList.contains('ui-pdp-collapsable--is-collapsed') ||
+          Boolean(element.querySelector('.ui-pdp-collapsable--is-collapsed'))
+      );
     }
 
     function injectEditAction(elements, disabled) {
@@ -211,10 +220,14 @@
         actionRoot.className = 'onframe-description-action-root';
         elements.title.insertAdjacentElement('afterend', actionRoot);
       }
-      DescriptionView.renderAction(actionRoot, { disabled }, {
-        onEdit: () => void openEditor(),
-        onError: handleDescriptionViewFailure
-      });
+      DescriptionView.renderAction(
+        actionRoot,
+        { disabled },
+        {
+          onEdit: () => void openEditor(),
+          onError: handleDescriptionViewFailure
+        }
+      );
     }
 
     function injectCatalogNotice(elements) {
@@ -238,10 +251,18 @@
     }
 
     async function openEditor() {
-      if (!state.visible || !state.itemId || state.loading || state.saving || !DescriptionModel.canEditDescription(state.context)) return;
+      if (
+        !state.visible ||
+        !state.itemId ||
+        state.loading ||
+        state.saving ||
+        !DescriptionModel.canEditDescription(state.context)
+      )
+        return;
       const elements = getDescriptionElements();
       if (!elements.content || !elements.description || isDescriptionCollapsed(elements)) return;
-      const visibleText = DescriptionModel.normalizeText(elements.content.innerText) ||
+      const visibleText =
+        DescriptionModel.normalizeText(elements.content.innerText) ||
         DescriptionModel.normalizeText(elements.content.textContent);
       state.editing = true;
       state.loading = true;
@@ -317,19 +338,16 @@
       const canBulk = DescriptionModel.canBulkEditDescription(state.context);
       if (!canBulk) state.bulkEnabled = false;
       const result = state.bulkResult;
-      const failures = result && Array.isArray(result.targets)
-        ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
-        : [];
+      const failures =
+        result && Array.isArray(result.targets)
+          ? result.targets.filter((target) => target.status === 'failed' || target.status === 'blocked')
+          : [];
       return {
         inputKey: `${state.requestId}:${state.loading ? 'loading' : 'ready'}`,
         text: state.text,
         disabled,
         saving: state.saving,
-        status: state.loading
-          ? 'Carregando descrição completa...'
-          : state.saving
-            ? 'Salvando...'
-            : '',
+        status: state.loading ? 'Carregando descrição completa...' : state.saving ? 'Salvando...' : '',
         canBulk,
         bulkEnabled: state.bulkEnabled,
         error: state.error,
@@ -441,10 +459,12 @@
     }
 
     function removeInjectedActions() {
-      document.querySelectorAll('.onframe-description-action-root, .onframe-description-catalog-notice').forEach((node) => {
-        DescriptionView.unmount(node);
-        node.remove();
-      });
+      document
+        .querySelectorAll('.onframe-description-action-root, .onframe-description-catalog-notice')
+        .forEach((node) => {
+          DescriptionView.unmount(node);
+          node.remove();
+        });
     }
 
     function isCatalogListing() {

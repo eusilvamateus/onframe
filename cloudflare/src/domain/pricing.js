@@ -3,26 +3,19 @@ const { sanitizeError } = require('./errors');
 const { isStackablePromotionEntry, summarizePromotionFinancial } = require('./promotion-financial');
 
 const MARKETPLACE_CONTEXT = 'channel_marketplace';
-const BUSINESS_CONTEXT = 'channel_marketplace,user_type_business';
 
 async function buildPriceSummary(client, itemId) {
   const item = await assertOwnedItem(client, itemId);
-  const [
-    prices,
-    salePrice,
-    automation,
-    reference,
-    catalogCompetition,
-    catalogSync,
-    promotions
-  ] = await Promise.all([
+  const [prices, salePrice, automation, reference, catalogCompetition, catalogSync, promotions] = await Promise.all([
     optional(() => client.getItemPrices(item.id, { showAllPrices: true, displayVersion: true })),
     optional(() => client.getItemSalePrice(item.id, { context: MARKETPLACE_CONTEXT })),
     optional(() => client.getPricingAutomation(item.id), { nullableStatuses: [404] }),
     optional(() => client.getPriceReference(item.id), { nullableStatuses: [404] }),
     optional(() => loadCatalogCompetition(client, item), { nullableStatuses: [400, 404] }),
     optional(() => loadCatalogSync(client, item), { nullableStatuses: [400, 404] }),
-    optional(() => typeof client.getItemPromotions === 'function' ? client.getItemPromotions(item.id) : null, { nullableStatuses: [400, 404] })
+    optional(() => (typeof client.getItemPromotions === 'function' ? client.getItemPromotions(item.id) : null), {
+      nullableStatuses: [400, 404]
+    })
   ]);
   const standardPrice = summarizeStandardPrice(prices, item);
   const summarizedSalePrice = summarizeSalePrice(salePrice);
@@ -54,7 +47,11 @@ async function buildPriceSummary(client, itemId) {
     promotionFinancials,
     costBreakdown: buildCostBreakdown({
       activePrice,
-      currency: item.currency_id || standardPrice.currency_id || summarizedSalePrice && summarizedSalePrice.currency_id || 'BRL',
+      currency:
+        item.currency_id ||
+        standardPrice.currency_id ||
+        (summarizedSalePrice && summarizedSalePrice.currency_id) ||
+        'BRL',
       costs: summarizedCosts,
       shippingCost: summarizedShippingCost,
       promotionFinancial,
@@ -67,7 +64,7 @@ async function buildPriceSummary(client, itemId) {
 }
 
 async function buildCostProjection(client, item, price, promotionFinancial = null, baseProjection = null) {
-  const base = baseProjection || await buildBaseCostProjection(client, item, price);
+  const base = baseProjection || (await buildBaseCostProjection(client, item, price));
   const costBreakdown = buildCostBreakdown({
     activePrice: base.activePrice,
     currency: base.currency_id,
@@ -236,11 +233,13 @@ function summarizePricingItem(item) {
     base_price: normalizeAmount(item.base_price),
     original_price: normalizeAmount(item.original_price),
     listing_type_id: item.listing_type_id || null,
-    shipping: item.shipping ? {
-      mode: item.shipping.mode || null,
-      logistic_type: item.shipping.logistic_type || null,
-      free_shipping: Boolean(item.shipping.free_shipping)
-    } : null,
+    shipping: item.shipping
+      ? {
+          mode: item.shipping.mode || null,
+          logistic_type: item.shipping.logistic_type || null,
+          free_shipping: Boolean(item.shipping.free_shipping)
+        }
+      : null,
     catalog_product_id: item.catalog_product_id || null,
     domain_id: item.domain_id || null,
     channels: Array.isArray(item.channels) ? item.channels : []
@@ -267,10 +266,13 @@ function summarizeSalePrice(salePrice) {
     regular_amount: normalizeAmount(salePrice.regular_amount),
     currency_id: salePrice.currency_id || null,
     reference_date: salePrice.reference_date || null,
-    promotion: salePrice.metadata && salePrice.metadata.promotion_id ? {
-      id: salePrice.metadata.promotion_id,
-      type: salePrice.metadata.promotion_type || null
-    } : null,
+    promotion:
+      salePrice.metadata && salePrice.metadata.promotion_id
+        ? {
+            id: salePrice.metadata.promotion_id,
+            type: salePrice.metadata.promotion_type || null
+          }
+        : null,
     metadata: salePrice.metadata || {}
   };
 }
@@ -370,7 +372,10 @@ function summarizeReference(reference) {
 function summarizeCosts(costs) {
   if (!costs || costs.error) return errorOrNull(costs);
   const rows = Array.isArray(costs) ? costs : [costs];
-  return rows.flatMap((row) => Array.isArray(row) ? row : [row]).map(summarizeCostRow).filter(Boolean);
+  return rows
+    .flatMap((row) => (Array.isArray(row) ? row : [row]))
+    .map(summarizeCostRow)
+    .filter(Boolean);
 }
 
 function summarizeCostRow(row) {
@@ -393,7 +398,7 @@ function summarizeSellerShippingCost(value, item) {
   if ((!value || value.error) && shipping.free_shipping !== true) {
     return {
       amount: 0,
-      currency_id: item && item.currency_id || null,
+      currency_id: (item && item.currency_id) || null,
       free_shipping: false,
       paid_by: 'buyer',
       source: 'items.shipping',
@@ -408,7 +413,7 @@ function summarizeSellerShippingCost(value, item) {
   const amount = amountOrNull(allCountry.list_cost);
   return {
     amount,
-    currency_id: allCountry.currency_id || item && item.currency_id || null,
+    currency_id: allCountry.currency_id || (item && item.currency_id) || null,
     billable_weight: normalizeInteger(allCountry.billable_weight),
     free_shipping: shipping.free_shipping === true,
     paid_by: shipping.free_shipping === true ? 'seller' : 'buyer',
@@ -430,7 +435,8 @@ function summarizeShippingDiscount(value) {
 
 function summarizePromotionFinancials(promotions, salePrice, options = {}) {
   const entries = extractPromotionEntries(promotions);
-  const primaryEntry = findSalePricePromotionEntry(entries, salePrice) ||
+  const primaryEntry =
+    findSalePricePromotionEntry(entries, salePrice) ||
     entries.find((candidate) => candidate && candidate.boosted_offer === true) ||
     null;
   const primary = summarizePromotionFinancial(primaryEntry, {
@@ -440,11 +446,13 @@ function summarizePromotionFinancials(promotions, salePrice, options = {}) {
   });
   const conditional = entries
     .filter((entry) => entry !== primaryEntry && isStackablePromotionEntry(entry))
-    .map((entry) => summarizePromotionFinancial(entry, {
-      role: 'conditional',
-      originalPrice: entry && entry.original_price,
-      activePrice: stackableFinancialActivePrice(entry, options.activePrice)
-    }))
+    .map((entry) =>
+      summarizePromotionFinancial(entry, {
+        role: 'conditional',
+        originalPrice: entry && entry.original_price,
+        activePrice: stackableFinancialActivePrice(entry, options.activePrice)
+      })
+    )
     .filter(Boolean);
 
   return {
@@ -458,11 +466,18 @@ function stackableFinancialActivePrice(entry, activePrice) {
   return amountOrNull(entry && entry.total_price_for_boosted_offer) || amountOrNull(activePrice);
 }
 
-function buildCostBreakdown({ activePrice, currency, costs, shippingCost, promotionFinancial, conditionalFinancials = [] }) {
+function buildCostBreakdown({
+  activePrice,
+  currency,
+  costs,
+  shippingCost,
+  promotionFinancial,
+  conditionalFinancials = []
+}) {
   const baseCommission = summarizeCommissionCost(costs);
   const shipping = shippingCost && !shippingCost.error ? shippingCost : null;
-  const meliContribution = promotionFinancial && promotionFinancial.meli_contribution || null;
-  const feeReduction = promotionFinancial && promotionFinancial.fee_reduction || null;
+  const meliContribution = (promotionFinancial && promotionFinancial.meli_contribution) || null;
+  const feeReduction = (promotionFinancial && promotionFinancial.fee_reduction) || null;
   const meliContributionAmount = amountOrNull(meliContribution && meliContribution.amount) || 0;
   const feeReductionAmount = amountOrNull(feeReduction && feeReduction.amount) || 0;
   const commission = summarizePromotionAdjustedCommission(
@@ -503,7 +518,9 @@ function buildCostBreakdown({ activePrice, currency, costs, shippingCost, promot
 }
 
 function summarizeCommissionCost(costs) {
-  const row = Array.isArray(costs) ? costs.find((entry) => amountOrNull(entry && entry.sale_fee_amount) !== null) : null;
+  const row = Array.isArray(costs)
+    ? costs.find((entry) => amountOrNull(entry && entry.sale_fee_amount) !== null)
+    : null;
   if (!row) return null;
   const details = row.sale_fee_details || {};
   return {
@@ -530,9 +547,8 @@ function summarizePromotionAdjustedCommission(commission, activePrice, promotion
     net_amount: netAmount,
     promotion_reduction_amount: roundMoney(appliedReduction),
     promotion_credit_amount: grossAmount === null ? 0 : roundMoney(Math.max(0, reductionAmount - grossAmount)),
-    effective_percentage: netAmount !== null && normalizedActivePrice
-      ? roundPercentage(netAmount / normalizedActivePrice * 100)
-      : null
+    effective_percentage:
+      netAmount !== null && normalizedActivePrice ? roundPercentage((netAmount / normalizedActivePrice) * 100) : null
   });
 }
 
@@ -548,15 +564,14 @@ function findSalePricePromotionEntry(entries, salePrice) {
   const campaignId = String(metadata.campaign_id || '').trim();
   const promotionId = String(metadata.promotion_id || '').trim();
   if (!campaignId && !promotionId) return null;
-  return (Array.isArray(entries) ? entries : []).find((entry) => {
-    const ids = [
-      entry && entry.id,
-      entry && entry.promotion_id,
-      entry && entry.offer_id,
-      entry && entry.ref_id
-    ].map((value) => String(value || '').trim()).filter(Boolean);
-    return Boolean(campaignId && ids.includes(campaignId) || promotionId && ids.includes(promotionId));
-  }) || null;
+  return (
+    (Array.isArray(entries) ? entries : []).find((entry) => {
+      const ids = [entry && entry.id, entry && entry.promotion_id, entry && entry.offer_id, entry && entry.ref_id]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean);
+      return Boolean((campaignId && ids.includes(campaignId)) || (promotionId && ids.includes(promotionId)));
+    }) || null
+  );
 }
 
 function summarizeCatalogCompetition(competition) {
@@ -614,8 +629,11 @@ function buildPriceRestrictions(item, automation, promotions) {
 function findPromotionPriceBlocker(promotions) {
   const entries = extractPromotionEntries(promotions);
   const blockedTypes = new Set(['MARKETPLACE_CAMPAIGN', 'VOLUME', 'BANK']);
-  const blocked = entries.find((entry) => blockedTypes.has(String(entry.type || entry.promotion_type || '').toUpperCase()) &&
-    isLivePromotionStatus(entry.status));
+  const blocked = entries.find(
+    (entry) =>
+      blockedTypes.has(String(entry.type || entry.promotion_type || '').toUpperCase()) &&
+      isLivePromotionStatus(entry.status)
+  );
   if (!blocked) return null;
   return {
     code: 'price_blocked_by_promotion',
@@ -629,10 +647,12 @@ function findPromotionPriceBlocker(promotions) {
 
 function findPriceIgnoredWarning(updated) {
   const warnings = Array.isArray(updated && updated.warnings) ? updated.warnings : [];
-  return warnings.find((warning) => {
-    const text = JSON.stringify(warning || {}).toLowerCase();
-    return text.includes('item.price.not_modifiable') || text.includes('dynamic pricing');
-  }) || null;
+  return (
+    warnings.find((warning) => {
+      const text = JSON.stringify(warning || {}).toLowerCase();
+      return text.includes('item.price.not_modifiable') || text.includes('dynamic pricing');
+    }) || null
+  );
 }
 
 function summarizeUpdateWarnings(updated) {
@@ -670,9 +690,13 @@ async function optional(load, options = {}) {
 
 function findStandardPrice(prices) {
   const rows = Array.isArray(prices && prices.prices) ? prices.prices : [];
-  return rows.find((price) => price.type === 'standard' && !hasMinPurchaseUnit(price) && !hasContext(price, 'user_type_business')) ||
+  return (
+    rows.find(
+      (price) => price.type === 'standard' && !hasMinPurchaseUnit(price) && !hasContext(price, 'user_type_business')
+    ) ||
     rows.find((price) => price.type === 'standard') ||
-    null;
+    null
+  );
 }
 
 function hasMinPurchaseUnit(price) {
@@ -680,9 +704,10 @@ function hasMinPurchaseUnit(price) {
 }
 
 function hasContext(price, context) {
-  const values = price && price.conditions && Array.isArray(price.conditions.context_restrictions)
-    ? price.conditions.context_restrictions
-    : [];
+  const values =
+    price && price.conditions && Array.isArray(price.conditions.context_restrictions)
+      ? price.conditions.context_restrictions
+      : [];
   return values.includes(context);
 }
 
@@ -721,10 +746,6 @@ function errorOrNull(value) {
   if (!value) return null;
   if (value.error) return { error: value.error, statusCode: value.statusCode || null };
   return null;
-}
-
-function isClosedWithBids(item) {
-  return Boolean(isClosedItem(item) && item.has_bids === true);
 }
 
 function isClosedItem(item) {

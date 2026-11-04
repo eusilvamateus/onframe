@@ -29,15 +29,12 @@ function PromotionsHeader({ badge, onClose }) {
   return (
     <header className="onframe-commerce-promotions-view-head">
       <strong>Promoções</strong>
-      {badge?.label && <Badge tone={badge.tone} appearance="soft" size="sm">{badge.label}</Badge>}
-      <Button
-        kind="neutral"
-        size="sm"
-        iconOnly
-        aria-label="Fechar"
-        icon={<Ph n="x" size={14} />}
-        onClick={onClose}
-      />
+      {badge?.label && (
+        <Badge tone={badge.tone} appearance="soft" size="sm">
+          {badge.label}
+        </Badge>
+      )}
+      <Button kind="neutral" size="sm" iconOnly aria-label="Fechar" icon={<Ph n="x" size={14} />} onClick={onClose} />
     </header>
   );
 }
@@ -118,13 +115,7 @@ function couponItem(coupon, applicationLabel, index) {
   return {
     id: `coupon-${index}`,
     title: (
-      <SummaryTitle
-        icon="ticket"
-        tone="coupon"
-        title={coupon.label}
-        subtitle={coupon.benefit}
-        status={coupon.status}
-      />
+      <SummaryTitle icon="ticket" tone="coupon" title={coupon.label} subtitle={coupon.benefit} status={coupon.status} />
     ),
     content: (
       <div className="onframe-commerce-popover-summary-content">
@@ -291,11 +282,14 @@ function render(host, model, actions = {}) {
   flushSync(() => {
     root.render(
       <CommercePromotionsViewBoundary onError={actions.onError || (() => {})}>
-        <CommercePromotionsPopover model={model} actions={{
-          onClose: actions.onClose || (() => {}),
-          onReload: actions.onReload || (() => {}),
-          onManage: actions.onManage || (() => {})
-        }} />
+        <CommercePromotionsPopover
+          model={model}
+          actions={{
+            onClose: actions.onClose || (() => {}),
+            onReload: actions.onReload || (() => {}),
+            onManage: actions.onManage || (() => {})
+          }}
+        />
       </CommercePromotionsViewBoundary>
     );
   });
