@@ -1075,6 +1075,23 @@ test('feedback de promoções permanece contextual e só escala eventos de fundo
   assert.match(view, /feedback=\{model\.feedback\}/);
 });
 
+test('feedback de preço permanece no popover e não confirma sucesso individual por toast', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-price-view.jsx'),
+    'utf8'
+  );
+  const save = source.slice(source.indexOf('async function savePrice'), source.indexOf('function openPromotionModal'));
+
+  assert.match(source, /priceFeedback: null/);
+  assert.match(save, /publishPriceBulkFeedback\(result\)/);
+  assert.match(save, /if \(feedback\.changed\)/);
+  assert.doesNotMatch(save, /showToast\('success', 'Preço salvo'/);
+  assert.match(source, /function publishPriceBulkFeedback\(/);
+  assert.match(view, /function PriceFeedback\(/);
+  assert.match(view, /feedback=\{model\.feedback\}/);
+});
+
 test('modais de promocoes reconciliam as views React sem reconstruir o host', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const managerView = fs.readFileSync(

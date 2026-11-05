@@ -107,6 +107,7 @@
       priceBulkPreview: null,
       priceBulkHash: '',
       priceBulkError: '',
+      priceFeedback: null,
       operationPending: '',
       operationPendingKey: '',
       operationPendingAction: '',
@@ -174,6 +175,7 @@
       state.priceBulkPreview = null;
       state.priceBulkHash = '';
       state.priceBulkError = '';
+      state.priceFeedback = null;
       state.operationPending = '';
       state.operationPendingKey = '';
       state.operationPendingAction = '';
@@ -1076,6 +1078,7 @@
           title: 'Editar preço base',
           badge,
           error: shortMessage(state.actionError),
+          feedback: state.priceFeedback ? Object.assign({}, state.priceFeedback) : null,
           draft: state.priceDraft,
           draftKey: `${state.itemId || 'item'}:price-edit`,
           busy: state.busy,
@@ -1092,6 +1095,7 @@
         title: 'Preço',
         badge: null,
         error: shortMessage(state.actionError),
+        feedback: state.priceFeedback ? Object.assign({}, state.priceFeedback) : null,
         fields: [snapshot].concat(priceSummaryCosts(state.priceSummary).fields),
         sellingIn: snapshot.originalPrice ? priceSellingPromotion() : null,
         scenarios: priceStackableScenarios(state.priceSummary),
@@ -3045,6 +3049,7 @@
       state.priceBulkPreview = null;
       state.priceBulkHash = '';
       state.priceBulkError = '';
+      state.priceFeedback = null;
       state.actionError = '';
       rerenderPopover();
     }
@@ -3054,6 +3059,7 @@
       state.priceBulkPreview = null;
       state.priceBulkHash = '';
       state.priceBulkError = '';
+      state.priceFeedback = null;
     }
 
     function updatePriceBulkEnabled(enabled) {
@@ -3062,6 +3068,7 @@
       state.priceBulkPreview = null;
       state.priceBulkHash = '';
       state.priceBulkError = '';
+      state.priceFeedback = null;
       state.actionError = '';
       rerenderPopover();
     }
@@ -3073,6 +3080,7 @@
       state.priceBulkPreview = null;
       state.priceBulkHash = '';
       state.priceBulkError = '';
+      state.priceFeedback = null;
       state.actionError = '';
       rerenderPopover();
     }
@@ -3102,7 +3110,6 @@
         });
         state.priceEditing = false;
         state.priceDraft = '';
-        showToast('success', 'Preço salvo');
         await loadSummaries(state.requestId);
       } catch (err) {
         state.actionError = toUserError(err);
@@ -3153,12 +3160,14 @@
       rerenderPopover();
       try {
         const result = await commitBulkInBatches('pricing.standard.update', payload, targetItemIds);
-        state.priceEditing = false;
-        state.priceDraft = '';
-        state.priceBulkPreview = null;
-        state.priceBulkHash = '';
-        state.priceBulkError = '';
-        notifyBulkResult(result, 'Preço salvo');
+        const feedback = publishPriceBulkFeedback(result);
+        if (feedback.changed) {
+          state.priceEditing = false;
+          state.priceDraft = '';
+          state.priceBulkPreview = null;
+          state.priceBulkHash = '';
+          state.priceBulkError = '';
+        }
         await loadSummaries(state.requestId);
       } catch (err) {
         state.actionError = toUserError(err);
@@ -3847,7 +3856,7 @@
       return `${action}:${JSON.stringify(payload || {})}`;
     }
 
-    function notifyBulkResult(result, title) {
+    function publishPriceBulkFeedback(result) {
       const counts = result && result.counts ? result.counts : {};
       const applied = Number(counts.applied || 0);
       const failed = Number(counts.failed || 0);
@@ -3856,9 +3865,14 @@
       const pending = Number(counts.pending || 0);
       const unconfirmed = Number(counts.unconfirmed || 0);
       const unchanged = failed + blocked + skipped;
+      const changed = applied + pending > 0;
       if (!applied && !pending && !unconfirmed) {
-        state.actionError = 'Nenhuma variação foi alterada.';
-        return;
+        state.priceFeedback = {
+          tone: 'danger',
+          title: 'Nenhuma variação foi alterada',
+          message: 'Revise a elegibilidade das variações e tente novamente.'
+        };
+        return { changed, feedback: state.priceFeedback };
       }
       const appliedText = `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
       const pendingText = `${pending} aguarda${pending === 1 ? '' : 'm'} confirmação do Mercado Livre.`;
@@ -3872,11 +3886,12 @@
       ]
         .filter(Boolean)
         .join(' ');
-      showToast(
-        pending || unconfirmed || unchanged ? 'warning' : 'success',
-        pending && !applied ? 'Alteração enviada' : unconfirmed && !applied ? 'Confirmação inconclusiva' : title,
-        body
-      );
+      state.priceFeedback = {
+        tone: pending || unconfirmed || unchanged ? 'warning' : 'success',
+        title: pending && !applied ? 'Sincronizando variações' : 'Preço atualizado',
+        message: body
+      };
+      return { changed, feedback: state.priceFeedback };
     }
 
     function promotionActionSuccessLabel(action) {

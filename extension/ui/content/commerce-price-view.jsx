@@ -215,6 +215,15 @@ function BulkStatus({ status }) {
   );
 }
 
+function PriceFeedback({ feedback }) {
+  if (!feedback) return null;
+  return (
+    <Alert appearance="soft" tone={feedback.tone || 'danger'} title={feedback.title || undefined}>
+      {feedback.message}
+    </Alert>
+  );
+}
+
 function PriceEditor({ model, actions }) {
   const [draft, setDraft] = useState(model.draft);
 
@@ -290,6 +299,8 @@ function CommercePricePopover({ model, actions }) {
             {model.error}
           </Alert>
         )}
+
+        {model.mode !== 'loading' && model.mode !== 'error' && <PriceFeedback feedback={model.feedback} />}
 
         {model.mode === 'summary' && <PriceSummary model={model} actions={actions} />}
 
