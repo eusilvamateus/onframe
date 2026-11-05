@@ -321,7 +321,17 @@ function Home({
   );
 }
 
-function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove, loading }) {
+function Integrations({
+  accounts,
+  admin,
+  feedback,
+  onDismissFeedback,
+  onConnect,
+  onUpdate,
+  onRename,
+  onRemove,
+  loading
+}) {
   const [mode, setMode] = useState('list');
   return (
     <div className="onframe-stack">
@@ -343,6 +353,11 @@ function Integrations({ accounts, admin, onConnect, onUpdate, onRename, onRemove
           }
         />
       </div>
+      {feedback && (
+        <Alert appearance="soft" tone={feedback.tone} dismissible onClose={onDismissFeedback}>
+          {feedback.message}
+        </Alert>
+      )}
       {accounts.length > 0 && (
         <div className="onframe-integration-view-bar">
           <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="md">
@@ -901,6 +916,7 @@ function OptionsApp() {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
+  const [integrationFeedback, setIntegrationFeedback] = useState(null);
   const [dialog, setDialog] = useState(null);
   const [productHeaderActions, setProductHeaderActions] = useState(null);
   const acceptingInvitation = useRef(false);
@@ -1083,25 +1099,53 @@ function OptionsApp() {
   }
 
   async function connectAccount() {
-    await run(async () => {
+    setLoading(true);
+    setIntegrationFeedback(null);
+    try {
       await sendRemoteMessage('oauth-start');
-    });
+      const feedback = {
+        tone: 'info',
+        message: 'Autorização aberta. Conclua a conexão no Mercado Livre e retorne ao OnFrame.'
+      };
+      if (view === 'integrations') setIntegrationFeedback(feedback);
+      else setNotice(feedback);
+    } catch (error) {
+      const feedback = { tone: 'danger', message: userError(error) };
+      if (view === 'integrations') setIntegrationFeedback(feedback);
+      else setNotice(feedback);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runIntegration(action) {
+    setLoading(true);
+    setIntegrationFeedback(null);
+    try {
+      return await action();
+    } catch (error) {
+      setIntegrationFeedback({ tone: 'danger', message: userError(error) });
+      if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
+        setConnection({ connected: false, reason: 'unauthorized' });
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function updateAccount(account, enabled) {
-    await run(
-      async () => {
-        await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
-        await loadAccounts();
-      },
-      enabled ? 'Conta ativada.' : 'Conta desativada.'
-    );
+    await runIntegration(async () => {
+      const result = await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
+      setAccounts(result.accounts || []);
+      return true;
+    });
   }
 
   async function renameAccount(account, displayName) {
-    const result = await run(async () => {
-      await sendRemoteMessage('account-update', { userId: account.user_id, payload: { displayName } });
-      await loadAccounts();
+    const result = await runIntegration(async () => {
+      const response = await sendRemoteMessage('account-update', { userId: account.user_id, payload: { displayName } });
+      setAccounts(response.accounts || []);
       return true;
     });
     return result === true;
@@ -1120,11 +1164,19 @@ function OptionsApp() {
       return;
     }
     if (dialog.type === 'account-delete') {
-      const result = await run(async () => {
-        await sendRemoteMessage('account-remove', { userId: dialog.account.user_id });
-        await loadAccounts();
-      });
-      if (result !== null) setDialog(null);
+      setLoading(true);
+      setDialog((current) => (current?.type === 'account-delete' ? { ...current, error: '' } : current));
+      try {
+        const result = await sendRemoteMessage('account-remove', { userId: dialog.account.user_id });
+        setAccounts(result.accounts || []);
+        setDialog(null);
+      } catch (error) {
+        setDialog((current) =>
+          current?.type === 'account-delete' ? { ...current, error: userError(error) } : current
+        );
+      } finally {
+        setLoading(false);
+      }
       return;
     }
     if (dialog.type === 'member-delete') {
@@ -1498,6 +1550,8 @@ function OptionsApp() {
                 <Integrations
                   accounts={accounts}
                   admin={admin}
+                  feedback={integrationFeedback}
+                  onDismissFeedback={() => setIntegrationFeedback(null)}
                   loading={loading}
                   onConnect={() => void connectAccount()}
                   onUpdate={(account, enabled) => void updateAccount(account, enabled)}
@@ -1607,13 +1661,22 @@ function OptionsApp() {
             </>
           }
         >
-          {dialog?.type === 'workspace-leave'
-            ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
-            : dialog?.type === 'account-delete'
-              ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
-              : dialog?.member
-                ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.`
-                : ''}
+          <div className="onframe-stack">
+            {dialog?.error && (
+              <Alert appearance="soft" tone="danger">
+                {dialog.error}
+              </Alert>
+            )}
+            <p>
+              {dialog?.type === 'workspace-leave'
+                ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
+                : dialog?.type === 'account-delete'
+                  ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
+                  : dialog?.member
+                    ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.`
+                    : ''}
+            </p>
+          </div>
         </Modal>
       </main>
     </FeedbackRoot>

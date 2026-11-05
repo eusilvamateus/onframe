@@ -87,9 +87,9 @@ test('feedback transitorio usa toast e problemas que exigem atencao permanecem e
   assert.equal(feedbackSurface({ tone: 'danger', visible: true }), 'alert');
   assert.equal(feedbackSurface({ tone: 'warning' }), 'alert');
   assert.match(source, /<ToastStack position="bottom-right"/);
-  assert.match(
+  assert.doesNotMatch(
     source.slice(source.indexOf('async function updateAccount'), source.indexOf('async function renameAccount')),
-    /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/
+    /Conta (?:ativada|desativada)\./
   );
 });
 
@@ -493,6 +493,22 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
     renderer.root.findAllByProps({ 'aria-label': 'Abrir página da loja de Loja' })[0].props.onClick()
   );
   assert.deepEqual(opened, ['https://perfil.mercadolivre.com.br/loja']);
+});
+
+test('integrações refletem alterações na conta e mantêm falhas no contexto', () => {
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'IntegrationsSession.jsx'), 'utf8');
+
+  assert.match(options, /const \[integrationFeedback, setIntegrationFeedback\] = useState\(null\)/);
+  assert.match(options, /feedback=\{integrationFeedback\}/);
+  assert.match(options, /dialog\?\.error[^]*<Alert appearance="soft" tone="danger">/u);
+  assert.doesNotMatch(options, /enabled \? 'Conta ativada\.' : 'Conta desativada\.'/);
+  assert.doesNotMatch(
+    popup,
+    /Conta removida do workspace\.|Nome da conta atualizado\.|Conta ativada\.|Conta desativada\./
+  );
+  assert.match(popup, /const \[removalError, setRemovalError\] = useState\(''\)/);
+  assert.match(popup, /removalError[^]*<Alert appearance="soft" tone="danger">/u);
 });
 
 test('upload de foto estima progresso sem concluir antes da resposta e libera o controle apos falha', async () => {

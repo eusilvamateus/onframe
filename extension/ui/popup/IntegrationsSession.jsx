@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, ButtonGroup, Card, Modal, Ph, Skeleton, ToggleButton, Tooltip, toast } from '@onblide/ui';
+import { Alert, Button, ButtonGroup, Card, Modal, Ph, Skeleton, ToggleButton, Tooltip } from '@onblide/ui';
 import { IntegrationAccount, accountName } from '../shared/IntegrationAccount';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { PopupSessionHeader } from './PopupSessionHeader';
@@ -28,6 +28,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [accountToRemove, setAccountToRemove] = useState(null);
+  const [removalError, setRemovalError] = useState('');
 
   const loadAccounts = useCallback(async () => {
     const result = await sendRemoteMessage('accounts');
@@ -50,12 +51,11 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
     };
   }, [loadAccounts]);
 
-  async function run(action, successMessage) {
+  async function run(action) {
     setBusy(true);
     setFeedback(null);
     try {
       const result = await action();
-      if (successMessage) toast({ tone: 'success', title: successMessage });
       return result;
     } catch (error) {
       setFeedback({ tone: 'danger', message: userError(error) });
@@ -66,18 +66,21 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
   }
 
   async function connectAccount() {
-    await run(() => sendRemoteMessage('oauth-start'));
+    const result = await run(() => sendRemoteMessage('oauth-start'));
+    if (result !== null) {
+      setFeedback({
+        tone: 'info',
+        message: 'Autorização aberta. Conclua a conexão no Mercado Livre e retorne ao OnFrame.'
+      });
+    }
   }
 
   async function updateAccount(account, enabled) {
-    await run(
-      async () => {
-        const result = await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
-        setAccounts(result.accounts || []);
-        return true;
-      },
-      enabled ? 'Conta ativada.' : 'Conta desativada.'
-    );
+    await run(async () => {
+      const result = await sendRemoteMessage('account-update', { userId: account.user_id, payload: { enabled } });
+      setAccounts(result.accounts || []);
+      return true;
+    });
   }
 
   async function renameAccount(account, displayName) {
@@ -85,19 +88,24 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
       const response = await sendRemoteMessage('account-update', { userId: account.user_id, payload: { displayName } });
       setAccounts(response.accounts || []);
       return true;
-    }, 'Nome da conta atualizado.');
+    });
     return result === true;
   }
 
   async function removeAccount() {
     const account = accountToRemove;
     if (!account) return;
-    const result = await run(async () => {
+    setBusy(true);
+    setRemovalError('');
+    try {
       const response = await sendRemoteMessage('account-remove', { userId: account.user_id });
       setAccounts(response.accounts || []);
-      return true;
-    }, 'Conta removida do workspace.');
-    if (result) setAccountToRemove(null);
+      setAccountToRemove(null);
+    } catch (error) {
+      setRemovalError(userError(error));
+    } finally {
+      setBusy(false);
+    }
   }
 
   const unavailable = loading || busy;
@@ -212,12 +220,22 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
 
       <Modal
         open={Boolean(accountToRemove)}
-        onClose={() => setAccountToRemove(null)}
+        onClose={() => {
+          setAccountToRemove(null);
+          setRemovalError('');
+        }}
         title="Remover conta"
         role="alertdialog"
         footer={
           <>
-            <Button kind="secondary" disabled={busy} onClick={() => setAccountToRemove(null)}>
+            <Button
+              kind="secondary"
+              disabled={busy}
+              onClick={() => {
+                setAccountToRemove(null);
+                setRemovalError('');
+              }}
+            >
               Cancelar
             </Button>
             <Button kind="danger" disabled={busy} onClick={() => void removeAccount()}>
@@ -226,9 +244,18 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
           </>
         }
       >
-        {accountToRemove
-          ? `Remover ${accountName(accountToRemove)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
-          : ''}
+        <div className="onframe-stack">
+          {removalError && (
+            <Alert appearance="soft" tone="danger">
+              {removalError}
+            </Alert>
+          )}
+          <p>
+            {accountToRemove
+              ? `Remover ${accountName(accountToRemove)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
+              : ''}
+          </p>
+        </div>
       </Modal>
     </main>
   );
