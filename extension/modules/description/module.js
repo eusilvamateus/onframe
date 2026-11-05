@@ -8,7 +8,6 @@
     const Detection = services.Detection;
     const DescriptionModel = services.DescriptionModel;
     const api = services.api;
-    const toast = services.toast;
     const isProductPageUrl = Detection.isProductPageUrl;
     const DescriptionView = rootScope.OnFrameDescriptionView;
     const hasDescriptionView = Boolean(
@@ -37,6 +36,7 @@
       originalText: '',
       bulkEnabled: false,
       bulkResult: null,
+      feedback: null,
       error: '',
       editorRoot: null,
       contentElement: null,
@@ -71,6 +71,7 @@
       state.originalText = '';
       state.bulkEnabled = false;
       state.bulkResult = null;
+      state.feedback = null;
       state.error = '';
       state.renderTimer = null;
       state.requestId += 1;
@@ -270,6 +271,8 @@
       state.originalText = visibleText;
       state.error = '';
       state.bulkEnabled = false;
+      state.bulkResult = null;
+      state.feedback = null;
       const requestId = ++state.requestId;
       mountDescription();
 
@@ -303,10 +306,14 @@
       DescriptionView.renderEditor(state.editorRoot, buildEditorViewModel(), {
         onTextChange: (value) => {
           state.text = value;
+          state.error = '';
+          state.feedback = null;
         },
         onBulkChange: (checked) => {
           if (state.saving) return;
           state.bulkEnabled = checked;
+          state.error = '';
+          state.feedback = null;
           mountDescription();
         },
         onSave: () => void saveDescription(),
@@ -350,6 +357,7 @@
         status: state.loading ? 'Carregando descrição completa...' : state.saving ? 'Salvando...' : '',
         canBulk,
         bulkEnabled: state.bulkEnabled,
+        feedback: state.feedback ? Object.assign({}, state.feedback) : null,
         error: state.error,
         failures: failures.map((failure) => ({
           itemId: String(failure.itemId || 'Variação'),
@@ -370,6 +378,7 @@
       state.saving = true;
       state.error = '';
       state.bulkResult = null;
+      state.feedback = null;
       mountDescription();
 
       try {
@@ -389,8 +398,8 @@
         if (state.contentElement) state.contentElement.textContent = plainText;
         state.bulkResult = state.bulkEnabled ? result : null;
         state.saving = false;
-        const saved = notifySaveResult(result, 'Descrição salva', state.bulkEnabled);
-        if (!saved || (state.bulkEnabled && countNotChanged(result) > 0)) {
+        if (state.bulkEnabled) {
+          publishDescriptionBulkFeedback(result);
           mountDescription();
           return;
         }
@@ -432,30 +441,29 @@
       state.loading = false;
       state.saving = false;
       state.error = '';
+      state.feedback = null;
     }
 
-    function notifySaveResult(result, title, bulk) {
-      if (!bulk) {
-        showToast('success', title);
-        return true;
-      }
+    function publishDescriptionBulkFeedback(result) {
       const counts = result && result.counts ? result.counts : {};
       const applied = Number(counts.applied || 0);
       const notChanged = countNotChanged(result);
       if (!applied) {
-        state.error = 'Nenhuma variação foi alterada.';
-        return false;
+        state.feedback = {
+          tone: 'danger',
+          title: 'Nenhuma variação foi alterada',
+          message: 'Revise as variações indicadas e tente novamente.'
+        };
+        return;
       }
-      const body = notChanged
+      const message = notChanged
         ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${notChanged} não foi${notChanged === 1 ? '' : 'ram'} alterada${notChanged === 1 ? '' : 's'}.`
         : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
-      showToast(notChanged ? 'warning' : 'success', title, body);
-      return true;
-    }
-
-    function showToast(tone, title, body) {
-      if (!toast || typeof toast.show !== 'function') return;
-      toast.show({ tone, title, body });
+      state.feedback = {
+        tone: notChanged ? 'warning' : 'success',
+        title: notChanged ? 'Descrição alterada parcialmente' : 'Descrições atualizadas',
+        message
+      };
     }
 
     function removeInjectedActions() {

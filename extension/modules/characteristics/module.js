@@ -8,7 +8,6 @@
     const Detection = services.Detection;
     const CharacteristicsModel = services.CharacteristicsModel;
     const api = services.api;
-    const toast = services.toast;
     const isProductPageUrl = Detection.isProductPageUrl;
     const CharacteristicsView = rootScope.OnFrameCharacteristicsView;
     const hasCharacteristicsView = Boolean(
@@ -43,6 +42,7 @@
       originalDraft: {},
       bulkEnabled: false,
       bulkResult: null,
+      feedback: null,
       error: '',
       editorRoot: null,
       sectionElement: null,
@@ -77,6 +77,7 @@
       state.originalDraft = {};
       state.bulkEnabled = false;
       state.bulkResult = null;
+      state.feedback = null;
       state.error = '';
       state.inlineCellRecords = new Map();
       state.inlineSyntheticRows = [];
@@ -291,6 +292,7 @@
       state.error = '';
       state.bulkEnabled = false;
       state.bulkResult = null;
+      state.feedback = null;
       const requestId = ++state.requestId;
       mountCharacteristics();
 
@@ -356,6 +358,7 @@
           if (state.saving || state.loading) return;
           state.bulkEnabled = checked;
           state.bulkResult = null;
+          state.feedback = null;
           state.error = '';
           mountCharacteristics();
         },
@@ -393,6 +396,7 @@
         notice: getInlineNoticeMessage(),
         canBulk,
         bulkEnabled: state.bulkEnabled,
+        feedback: state.feedback ? Object.assign({}, state.feedback) : null,
         error: state.error,
         failures: failures.map((failure) => ({
           itemId: String(failure.itemId || 'Variação'),
@@ -843,6 +847,7 @@
         [fieldPart]: value
       });
       state.bulkResult = null;
+      state.feedback = null;
       state.error = '';
     }
 
@@ -859,6 +864,7 @@
       state.saving = true;
       state.error = '';
       state.bulkResult = null;
+      state.feedback = null;
       mountCharacteristics();
 
       try {
@@ -885,7 +891,7 @@
           applyDraftToSnapshotFields(updates);
         }
         state.saving = false;
-        notifySaveResult(result, 'Características salvas', state.bulkEnabled);
+        if (state.bulkEnabled) publishCharacteristicsBulkFeedback(result);
         mountCharacteristics();
       } catch (err) {
         state.saving = false;
@@ -894,27 +900,26 @@
       }
     }
 
-    function notifySaveResult(result, title, bulk) {
-      if (!bulk) {
-        showToast('success', title);
-        return;
-      }
+    function publishCharacteristicsBulkFeedback(result) {
       const counts = result && result.counts ? result.counts : {};
       const applied = Number(counts.applied || 0);
       const notChanged = Number(counts.failed || 0) + Number(counts.blocked || 0) + Number(counts.skipped || 0);
       if (!applied) {
-        state.error = 'Nenhuma variação foi alterada.';
+        state.feedback = {
+          tone: 'danger',
+          title: 'Nenhuma variação foi alterada',
+          message: 'Revise as variações indicadas e tente novamente.'
+        };
         return;
       }
-      const body = notChanged
+      const message = notChanged
         ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}. ${notChanged} não foi${notChanged === 1 ? '' : 'ram'} alterada${notChanged === 1 ? '' : 's'}.`
         : `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.`;
-      showToast(notChanged ? 'warning' : 'success', title, body);
-    }
-
-    function showToast(tone, title, body) {
-      if (!toast || typeof toast.show !== 'function') return;
-      toast.show({ tone, title, body });
+      state.feedback = {
+        tone: notChanged ? 'warning' : 'success',
+        title: notChanged ? 'Características alteradas parcialmente' : 'Características atualizadas',
+        message
+      };
     }
 
     function buildChangedUpdates() {
@@ -1026,6 +1031,7 @@
       state.originalDraft = {};
       state.bulkEnabled = false;
       state.bulkResult = null;
+      state.feedback = null;
       state.error = '';
       state.inlineCellRecords = new Map();
       state.inlineSyntheticRows = [];

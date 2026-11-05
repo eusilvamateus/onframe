@@ -8,7 +8,6 @@
     const Detection = services.Detection;
     const PhotosModel = services.PhotosModel;
     const api = services.api;
-    const toast = services.toast;
     const requestPageContextReload = services.requestPageContextReload || (() => Promise.resolve(null));
     const isProductPageUrl = Detection.isProductPageUrl;
     const PhotosView = rootScope.OnFramePhotosView;
@@ -531,7 +530,7 @@
     function buildEditorAlertViewModel(dialog, limitState) {
       const error = (dialog && dialog.error) || state.error || (limitState && limitState.message);
       if (error) return { tone: 'danger', message: error };
-      if (dialog && dialog.notice) return { tone: 'success', message: dialog.notice };
+      if (dialog && dialog.notice) return { tone: dialog.noticeTone || 'success', message: dialog.notice };
       return null;
     }
 
@@ -828,12 +827,10 @@
         state.error = '';
         rerenderTray();
         await sendRemoteMessage('oauth-start');
-        state.message = '';
-        showToast('info', 'Autorização aberta', 'Conclua a autorização e recarregue a página.');
+        state.message = 'Autorização aberta. Conclua a autorização e recarregue a página.';
       } catch (err) {
-        state.error = '';
+        state.error = toUserError(err);
         state.message = '';
-        showToast('danger', toUserError(err));
       } finally {
         state.busy = false;
         rerenderTray();
@@ -924,10 +921,13 @@
       const items = getOptimizablePictures();
       if (!items.length) {
         if (state.qualityDialog && state.qualityDialog.mode === 'editor') {
-          state.qualityDialog = Object.assign({}, state.qualityDialog, { notice: '', error: '' });
-        } else state.message = '';
+          state.qualityDialog = Object.assign({}, state.qualityDialog, {
+            notice: 'Nenhuma foto precisa ser otimizada.',
+            noticeTone: 'info',
+            error: ''
+          });
+        } else state.message = 'Nenhuma foto precisa ser otimizada.';
         state.error = '';
-        showToast('info', 'Nada para otimizar');
         rerenderTray();
         return;
       }
@@ -1381,7 +1381,6 @@
         processed: results.length,
         total
       };
-      showToast('success', 'Fotos otimizadas');
       finishPhotoSave();
     }
 
@@ -1467,7 +1466,6 @@
       try {
         const finalSelectedPictures = await prepareFinalSelectedPictures();
         await commitFinalSelectedPictures(finalSelectedPictures);
-        showToast('success', 'Fotos salvas');
         finishPhotoSave();
       } catch (err) {
         state.error = toUserError(err);
@@ -1632,11 +1630,6 @@
       state.error = '';
       state.message = '';
       rerenderTray();
-    }
-
-    function showToast(tone, title, body) {
-      if (!toast || typeof toast.show !== 'function') return;
-      toast.show({ tone, title, body });
     }
 
     function getPictureQuality(picture) {

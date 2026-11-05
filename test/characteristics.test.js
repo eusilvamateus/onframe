@@ -158,3 +158,13 @@ test('ação e aviso da ficha técnica usam a view React e o design system', () 
     /isCharacteristicsModalNode\(mutation\.target\) \|\| added\.concat\(removed\)\.some\(isCharacteristicsModalNode\)/
   );
 });
+
+test('ficha técnica mantém resultados em massa no editor', () => {
+  const view = fs.readFileSync(path.join(extensionRoot, 'ui', 'content', 'characteristics-view.jsx'), 'utf8');
+  const controller = fs.readFileSync(path.join(extensionRoot, 'modules', 'characteristics', 'module.js'), 'utf8');
+
+  assert.match(controller, /function publishCharacteristicsBulkFeedback\(/);
+  assert.match(controller, /feedback: state\.feedback \? Object\.assign\(\{\}, state\.feedback\) : null/);
+  assert.doesNotMatch(controller, /showToast\('success', title\)/);
+  assert.match(view, /model\.feedback[^]*tone=\{model\.feedback\.tone\}[^]*model\.feedback\.message/u);
+});

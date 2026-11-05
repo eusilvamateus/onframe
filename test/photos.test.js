@@ -495,6 +495,17 @@ test('editor de fotos preserva o estado salvo sem recarregar a página', () => {
   assert.doesNotMatch(styles, /onblide-ml-dock-refresh/);
 });
 
+test('editor de fotos comunica resultados na própria superfície', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'photos', 'module.js'), 'utf8');
+
+  assert.doesNotMatch(source, /showToast\('success', 'Fotos salvas'\)/);
+  assert.doesNotMatch(source, /showToast\('success', 'Fotos otimizadas'\)/);
+  assert.doesNotMatch(source, /showToast\('info', 'Nada para otimizar'\)/);
+  assert.match(source, /notice: 'Nenhuma foto precisa ser otimizada\.'/);
+  assert.match(source, /state\.error = toUserError\(err\);\s+state\.message = '';/);
+  assert.match(source, /mode: 'result',[\s\S]*finishPhotoSave\(\)/);
+});
+
 test('picture quality extrai dimensoes oficiais do Mercado Livre', () => {
   assert.deepStrictEqual(
     extractOfficialDimensions({

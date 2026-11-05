@@ -98,3 +98,13 @@ test('modelo da descrição resolve texto remoto e preserva o conteúdo visível
   assert.equal(model.resolveDescriptionText({ plainText: '' }, 'Texto visível'), 'Texto visível');
   assert.equal(model.resolveDescriptionText(null, 'Texto visível'), 'Texto visível');
 });
+
+test('descrição usa o conteúdo atualizado e o editor para comunicar resultados', () => {
+  const view = fs.readFileSync(path.join(extensionRoot, 'ui', 'content', 'description-view.jsx'), 'utf8');
+  const controller = fs.readFileSync(path.join(extensionRoot, 'modules', 'description', 'module.js'), 'utf8');
+
+  assert.match(controller, /function publishDescriptionBulkFeedback\(/);
+  assert.match(controller, /feedback: state\.feedback \? Object\.assign\(\{\}, state\.feedback\) : null/);
+  assert.doesNotMatch(controller, /showToast\('success', title\)/);
+  assert.match(view, /model\.feedback[^]*tone=\{model\.feedback\.tone\}[^]*model\.feedback\.message/u);
+});

@@ -151,6 +151,12 @@ function DescriptionEditor({ model, actions }) {
             </Alert>
           )}
 
+          {model.feedback && (
+            <Alert appearance="soft" tone={model.feedback.tone} title={model.feedback.title}>
+              {model.feedback.message}
+            </Alert>
+          )}
+
           <FailureList failures={model.failures} />
 
           <div className="onframe-description-actions">
