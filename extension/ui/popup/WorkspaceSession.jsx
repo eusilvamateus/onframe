@@ -86,15 +86,16 @@ export function WorkspaceSession({
     };
   }, [admin, loadWorkspace]);
 
-  async function run(action, successMessage) {
+  async function run(action) {
     setBusy(true);
     setFeedback(null);
+    if (dialog) setDialog((current) => (current ? { ...current, error: '' } : current));
     try {
-      const result = await action();
-      if (successMessage) toast({ tone: 'success', title: successMessage });
-      return result;
+      return await action();
     } catch (error) {
-      setFeedback({ tone: 'danger', message: userError(error) });
+      const message = userError(error);
+      if (dialog) setDialog((current) => (current ? { ...current, error: message } : current));
+      else setFeedback({ tone: 'danger', message });
       return null;
     } finally {
       setBusy(false);
@@ -121,23 +122,20 @@ export function WorkspaceSession({
 
   async function submitAccess(values) {
     const currentDialog = dialog;
-    const result = await run(
-      async () => {
-        if (currentDialog.type === 'member') {
-          await sendRemoteMessage('member-update', {
-            userId: currentDialog.member.id,
-            payload: { role: values.role, accountIds: values.accountIds }
-          });
-          await loadWorkspace();
-          return { updated: true };
-        }
-
-        const response = await sendRemoteMessage('invitation-create', { payload: values });
+    const result = await run(async () => {
+      if (currentDialog.type === 'member') {
+        await sendRemoteMessage('member-update', {
+          userId: currentDialog.member.id,
+          payload: { role: values.role, accountIds: values.accountIds }
+        });
         await loadWorkspace();
-        return response;
-      },
-      currentDialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null
-    );
+        return { updated: true };
+      }
+
+      const response = await sendRemoteMessage('invitation-create', { payload: values });
+      await loadWorkspace();
+      return response;
+    });
 
     if (!result) return;
     closeAccessDialog();
@@ -170,27 +168,20 @@ export function WorkspaceSession({
   async function confirmDestructive() {
     const currentDialog = dialog;
     if (!currentDialog) return;
-    const result = await run(
-      async () => {
-        if (currentDialog.type === 'member-delete') {
-          await sendRemoteMessage('member-remove', { userId: currentDialog.member.id });
-          await loadWorkspace();
-        }
-        if (currentDialog.type === 'invitation-delete') {
-          await sendRemoteMessage('invitation-revoke', { invitationId: currentDialog.invitation.id });
-          await loadWorkspace();
-        }
-        if (currentDialog.type === 'workspace-leave') {
-          await sendRemoteMessage('workspace-leave');
-        }
-        return true;
-      },
-      currentDialog.type === 'member-delete'
-        ? 'Pessoa removida.'
-        : currentDialog.type === 'invitation-delete'
-          ? 'Convite revogado.'
-          : 'Você saiu do workspace.'
-    );
+    const result = await run(async () => {
+      if (currentDialog.type === 'member-delete') {
+        await sendRemoteMessage('member-remove', { userId: currentDialog.member.id });
+        await loadWorkspace();
+      }
+      if (currentDialog.type === 'invitation-delete') {
+        await sendRemoteMessage('invitation-revoke', { invitationId: currentDialog.invitation.id });
+        await loadWorkspace();
+      }
+      if (currentDialog.type === 'workspace-leave') {
+        await sendRemoteMessage('workspace-leave');
+      }
+      return true;
+    });
 
     if (!result) return;
     setDialog(null);
@@ -395,7 +386,14 @@ export function WorkspaceSession({
           </>
         }
       >
-        {confirmationCopy}
+        <div className="onframe-stack">
+          {dialog?.error && (
+            <Alert appearance="soft" tone="danger">
+              {dialog.error}
+            </Alert>
+          )}
+          <p>{confirmationCopy}</p>
+        </div>
       </Modal>
     </main>
   );

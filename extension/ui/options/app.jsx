@@ -1063,7 +1063,6 @@ function OptionsApp() {
     void sendRemoteMessage('invitation-accept', { token })
       .then(() => {
         window.history.replaceState(null, document.title, window.location.pathname);
-        showFeedback({ tone: 'success', message: 'Convite aceito. O workspace foi ativado.' });
         return reload();
       })
       .catch((error) => {
@@ -1072,15 +1071,16 @@ function OptionsApp() {
       });
   }, [connection?.connected, reload]);
 
-  async function run(action, successMessage) {
+  async function run(action) {
     setLoading(true);
     setNotice(null);
+    if (dialog) setDialog((current) => (current ? { ...current, error: '' } : current));
     try {
-      const result = await action();
-      if (successMessage) showFeedback({ tone: 'success', message: successMessage });
-      return result;
+      return await action();
     } catch (error) {
-      setNotice({ tone: 'danger', message: userError(error) });
+      const message = userError(error);
+      if (dialog) setDialog((current) => (current ? { ...current, error: message } : current));
+      else setNotice({ tone: 'danger', message });
       if (error?.code === 'identity_session_invalid' || error?.code === 'extension_session_unauthorized') {
         setConnection({ connected: false, reason: 'unauthorized' });
       }
@@ -1159,7 +1159,7 @@ function OptionsApp() {
         setView('home');
         setSettingsPage('index');
         await reload();
-      }, 'Você saiu do workspace.');
+      });
       if (result !== null) setDialog(null);
       return;
     }
@@ -1183,50 +1183,46 @@ function OptionsApp() {
       const result = await run(async () => {
         await sendRemoteMessage('member-remove', { userId: dialog.member.id });
         await loadView();
-      }, 'Pessoa removida do workspace.');
+      });
       if (result !== null) setDialog(null);
     }
   }
 
   async function submitMember(values) {
-    const result = await run(
-      async () => {
-        if (dialog.type === 'member') {
-          await sendRemoteMessage('member-update', {
-            userId: dialog.member.id,
-            payload: { role: values.role, accountIds: values.accountIds }
-          });
-        } else {
-          const response = await sendRemoteMessage('invitation-create', { payload: values });
-          if (response.invitation?.url) {
-            try {
-              await navigator.clipboard.writeText(response.invitation.url);
-              showFeedback({ tone: 'success', message: 'Link de convite criado e copiado.' });
-            } catch {
-              const retryCopy = () =>
-                void navigator.clipboard
-                  .writeText(response.invitation.url)
-                  .then(() => showFeedback({ tone: 'success', message: 'Link copiado.' }))
-                  .catch(() =>
-                    setNotice(
-                      (current) =>
-                        current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }
-                    )
-                  );
-              showFeedback({
-                tone: 'warning',
-                message: 'Convite criado, mas o link não foi copiado.',
-                needsAttention: true,
-                action: 'Copiar link',
-                onAction: retryCopy
-              });
-            }
+    const result = await run(async () => {
+      if (dialog.type === 'member') {
+        await sendRemoteMessage('member-update', {
+          userId: dialog.member.id,
+          payload: { role: values.role, accountIds: values.accountIds }
+        });
+      } else {
+        const response = await sendRemoteMessage('invitation-create', { payload: values });
+        if (response.invitation?.url) {
+          try {
+            await navigator.clipboard.writeText(response.invitation.url);
+            showFeedback({ tone: 'success', message: 'Link de convite criado e copiado.' });
+          } catch {
+            const retryCopy = () =>
+              void navigator.clipboard
+                .writeText(response.invitation.url)
+                .then(() => showFeedback({ tone: 'success', message: 'Link copiado.' }))
+                .catch(() =>
+                  setNotice(
+                    (current) => current && { ...current, message: 'Não foi possível copiar o link. Tente novamente.' }
+                  )
+                );
+            showFeedback({
+              tone: 'warning',
+              message: 'Convite criado, mas o link não foi copiado.',
+              needsAttention: true,
+              action: 'Copiar link',
+              onAction: retryCopy
+            });
           }
         }
-        await loadView();
-      },
-      dialog.type === 'member' ? 'Acesso atualizado.' : values.kind === 'email' ? 'Convite enviado.' : null
-    );
+      }
+      await loadView();
+    });
     if (result !== null) setDialog(null);
   }
 
@@ -1234,7 +1230,7 @@ function OptionsApp() {
     await run(async () => {
       await sendRemoteMessage('invitation-revoke', { invitationId: invitation.id });
       await loadView();
-    }, 'Convite revogado.');
+    });
   }
 
   async function saveProfile(name) {
@@ -1242,7 +1238,7 @@ function OptionsApp() {
       const result = await sendRemoteMessage('profile-update', { payload: { displayName: name } });
       setProfile(result);
       setConnection((current) => ({ ...current, user: { ...current.user, name: name.trim() || current.user.name } }));
-    }, 'Perfil salvo.');
+    });
   }
 
   async function uploadAvatar(file) {
@@ -1265,7 +1261,7 @@ function OptionsApp() {
       setProfile(result);
       setConnection((current) => ({ ...current, user: { ...current.user, avatarUrl: result.user.avatarUrl } }));
       return result;
-    }, 'Foto removida.');
+    });
   }
 
   async function saveWorkspace(name) {
@@ -1275,7 +1271,7 @@ function OptionsApp() {
       });
       setProfile(result);
       await reload();
-    }, 'Nome do workspace salvo.');
+    });
   }
 
   async function removeSession(session) {
@@ -1284,7 +1280,7 @@ function OptionsApp() {
       if (session.current) await disconnect();
       else setSecurityOverview(await sendRemoteMessage('security'));
       return true;
-    }, 'Sessão encerrada.');
+    });
   }
 
   async function removeAllSessions() {
@@ -1293,7 +1289,7 @@ function OptionsApp() {
       await reload();
       setSecurityOverview(null);
       return true;
-    }, 'Todas as sessões foram encerradas.');
+    });
   }
 
   async function disconnect() {

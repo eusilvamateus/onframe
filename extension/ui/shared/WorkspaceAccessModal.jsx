@@ -65,6 +65,11 @@ export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, on
       }
     >
       <div className="onframe-stack">
+        {dialog.error && (
+          <Alert appearance="soft" tone="danger">
+            {dialog.error}
+          </Alert>
+        )}
         {isInvite && (
           <Tabs
             tabs={[

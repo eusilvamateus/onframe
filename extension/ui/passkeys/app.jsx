@@ -293,7 +293,7 @@ function PasskeyPage() {
                             tone: 'warning',
                             message: 'Chave adicionada. Não foi possível salvar o nome; use Renomear para ajustá-lo.'
                           }
-                        : { tone: 'success', message: 'Chave de acesso adicionada.' }
+                        : null
                     );
                   })
                 }

@@ -249,7 +249,6 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
       pendingRef.current = null;
       setEnrollment(null);
       setCode('');
-      setNotice({ tone: 'success', message: 'Verificação em duas etapas ativada. Entre novamente para continuar.' });
       await onDisconnect();
     });
   }

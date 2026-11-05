@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, NumberField, Ph, Spinner, toast } from '@onblide/ui';
+import { Alert, Button, NumberField, Ph, Spinner } from '@onblide/ui';
 import { SectionHeader } from '../shared/SectionHeader';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 
@@ -7,11 +7,17 @@ function accountName(account) {
   return account.displayName || account.nickname || `Conta ${account.userId}`;
 }
 
+function configurationSignature(values) {
+  return JSON.stringify(values);
+}
+
 export function TaxSettings({ workspaceId }) {
   const [configuration, setConfiguration] = useState(null);
   const [values, setValues] = useState({ workspaceTaxRate: null, accounts: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [baseline, setBaseline] = useState('');
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -20,10 +26,13 @@ export function TaxSettings({ workspaceId }) {
     try {
       const result = await sendRemoteMessage('tax-configuration');
       setConfiguration(result);
-      setValues({
+      const nextValues = {
         workspaceTaxRate: result.workspaceTaxRate,
         accounts: (result.accounts || []).map((account) => ({ sellerAccountId: account.id, taxRate: account.taxRate }))
-      });
+      };
+      setValues(nextValues);
+      setBaseline(configurationSignature(nextValues));
+      setSaved(false);
     } catch (failure) {
       setError(userError(failure, 'Não foi possível carregar as configurações de imposto.'));
     } finally {
@@ -36,6 +45,8 @@ export function TaxSettings({ workspaceId }) {
   }, [load]);
 
   const setAccountRate = (sellerAccountId, taxRate) => {
+    setSaved(false);
+    setError('');
     setValues((state) => ({
       ...state,
       accounts: state.accounts.map((account) =>
@@ -44,17 +55,21 @@ export function TaxSettings({ workspaceId }) {
     }));
   };
 
+  const dirty = configurationSignature(values) !== baseline;
+
   async function save() {
     setSaving(true);
     setError('');
     try {
       const result = await sendRemoteMessage('tax-configuration-update', { payload: values });
       setConfiguration(result);
-      setValues({
+      const nextValues = {
         workspaceTaxRate: result.workspaceTaxRate,
         accounts: (result.accounts || []).map((account) => ({ sellerAccountId: account.id, taxRate: account.taxRate }))
-      });
-      toast({ tone: 'success', title: 'Configurações de imposto salvas.' });
+      };
+      setValues(nextValues);
+      setBaseline(configurationSignature(nextValues));
+      setSaved(true);
     } catch (failure) {
       setError(userError(failure, 'Não foi possível salvar as configurações de imposto.'));
     } finally {
@@ -98,7 +113,11 @@ export function TaxSettings({ workspaceId }) {
           endAddon="%"
           width={240}
           disabled={saving}
-          onChange={(workspaceTaxRate) => setValues((state) => ({ ...state, workspaceTaxRate }))}
+          onChange={(workspaceTaxRate) => {
+            setSaved(false);
+            setError('');
+            setValues((state) => ({ ...state, workspaceTaxRate }));
+          }}
         />
       </section>
       <section className="onframe-tax-settings-section onframe-tax-settings-section--accounts">
@@ -141,11 +160,19 @@ export function TaxSettings({ workspaceId }) {
       </section>
       <div className="onframe-tax-settings-actions">
         <Button
-          disabled={saving}
-          icon={saving ? <Spinner size="xs" label="Salvando" /> : <Ph n="floppy-disk" size={17} />}
+          disabled={saving || !dirty}
+          icon={
+            saving ? (
+              <Spinner size="xs" label="Salvando" />
+            ) : saved ? (
+              <Ph n="check-circle" size={17} />
+            ) : (
+              <Ph n="floppy-disk" size={17} />
+            )
+          }
           onClick={() => void save()}
         >
-          {saving ? 'Salvando...' : 'Salvar configurações'}
+          {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar configurações'}
         </Button>
       </div>
     </div>

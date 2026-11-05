@@ -511,6 +511,36 @@ test('integrações refletem alterações na conta e mantêm falhas no contexto'
   assert.match(popup, /removalError[^]*<Alert appearance="soft" tone="danger">/u);
 });
 
+test('perfil, segurança e workspace usam o estado visível como confirmação', () => {
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const accessModal = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'WorkspaceAccessModal.jsx'), 'utf8');
+  const workspacePopup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'WorkspaceSession.jsx'), 'utf8');
+  const taxes = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'TaxSettings.jsx'), 'utf8');
+  const twoFactor = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'TwoFactorSettings.jsx'), 'utf8');
+  const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
+
+  for (const message of [
+    'Perfil salvo.',
+    'Foto removida.',
+    'Nome do workspace salvo.',
+    'Sessão encerrada.',
+    'Todas as sessões foram encerradas.',
+    'Acesso atualizado.',
+    'Convite enviado.'
+  ]) {
+    assert.doesNotMatch(options, new RegExp(message.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(options, /if \(dialog\)[^]*error: message/u);
+  assert.match(accessModal, /dialog\.error[^]*<Alert appearance="soft" tone="danger">/u);
+  assert.doesNotMatch(workspacePopup, /Acesso atualizado\.|Convite enviado\.|Pessoa removida\.|Convite revogado\./);
+  assert.match(workspacePopup, /dialog\?\.error[^]*<Alert appearance="soft" tone="danger">/u);
+  assert.doesNotMatch(taxes, /toast\(/);
+  assert.match(taxes, /const dirty = configurationSignature\(values\) !== baseline/);
+  assert.match(taxes, /saved \? 'Salvo' : 'Salvar configurações'/);
+  assert.doesNotMatch(twoFactor, /Verificação em duas etapas ativada\./);
+  assert.doesNotMatch(passkeys, /Chave de acesso adicionada\./);
+});
+
 test('upload de foto estima progresso sem concluir antes da resposta e libera o controle apos falha', async () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const profileSettings = source.slice(
