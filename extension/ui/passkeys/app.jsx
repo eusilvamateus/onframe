@@ -184,7 +184,11 @@ function PasskeyPage() {
               error={notice?.tone === 'danger'}
               disabled={busy}
             />
-            {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+            {notice && (
+              <Alert appearance="soft" tone={notice.tone}>
+                {notice.message}
+              </Alert>
+            )}
             <Button type="submit" disabled={busy || code.length !== 6} style={{ width: '100%' }}>
               Verificar e entrar
             </Button>
@@ -208,7 +212,11 @@ function PasskeyPage() {
         <h1 className="onframe-page-title">
           {verifying ? 'Verificação em duas etapas' : managing ? 'Chaves de acesso' : 'Entrar com chave de acesso'}
         </h1>
-        {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+        {notice && (
+          <Alert appearance="soft" tone={notice.tone}>
+            {notice.message}
+          </Alert>
+        )}
         {ready && !managing && !verifying && !complete && !factor && (
           <div className="onframe-captcha" ref={challengeRef} />
         )}
@@ -348,7 +356,7 @@ function PasskeyPage() {
             )}
             {removal && (
               <div className="onframe-stack">
-                <Alert tone="warning">
+                <Alert appearance="soft" tone="warning">
                   Remover a chave {removal.friendly_name || 'selecionada'}? Ela não poderá mais ser usada para entrar.
                 </Alert>
                 <div className="onframe-actions">

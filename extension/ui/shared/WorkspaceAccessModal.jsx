@@ -96,7 +96,7 @@ export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, on
           <p className="onframe-muted">Administradores acessam todas as contas e podem gerenciar pessoas e convites.</p>
         )}
         {demotingAdmin && (
-          <Alert tone="warning">
+          <Alert appearance="soft" tone="warning">
             Esta pessoa perderá a administração e terá acesso somente às contas atribuídas abaixo.
           </Alert>
         )}

@@ -89,7 +89,11 @@ export function CredentialSettings({ kind, profile, onChanged }) {
           ]}
         />
       )}
-      {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+      {notice && (
+        <Alert appearance="soft" tone={notice.tone}>
+          {notice.message}
+        </Alert>
+      )}
       {!verified ? (
         <EmailVerification
           email={profile.user.email}

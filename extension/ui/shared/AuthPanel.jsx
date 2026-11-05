@@ -533,7 +533,11 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
                 )}
               </>
             )}
-            {feedback && <Alert tone={feedback.tone}>{feedback.message}</Alert>}
+            {feedback && (
+              <Alert appearance="soft" tone={feedback.tone}>
+                {feedback.message}
+              </Alert>
+            )}
             {captchaMounted && <div className="onframe-captcha" ref={challengeRef} />}
             {mode === 'magic' && phase === 'email' && cooldown > 0 && (
               <p className="onframe-help" role="status">

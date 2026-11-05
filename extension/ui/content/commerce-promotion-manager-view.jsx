@@ -175,7 +175,9 @@ function EditPanel({ row, actions }) {
             </div>
             {row.margin && !row.margin.available && (
               <div className="onframe-promotion-manager-margin-alert">
-                <Alert tone="info">{row.margin.message}</Alert>
+                <Alert appearance="soft" tone="info">
+                  {row.margin.message}
+                </Alert>
               </div>
             )}
           </div>
@@ -277,7 +279,7 @@ function CardActions({ row, actions }) {
 function PromotionCard({ row, actions }) {
   if (row.removed) {
     return (
-      <Alert tone="success" action="Desfazer" onAction={() => actions.onUndoRemove(row.key)}>
+      <Alert appearance="soft" tone="success" action="Desfazer" onAction={() => actions.onUndoRemove(row.key)}>
         {row.name} removida.
       </Alert>
     );
@@ -499,7 +501,9 @@ function PromotionManager({ model, actions }) {
 
         {model.error && (
           <div className="onframe-promotion-manager-alert">
-            <Alert tone="danger">{model.error}</Alert>
+            <Alert appearance="soft" tone="danger">
+              {model.error}
+            </Alert>
           </div>
         )}
 

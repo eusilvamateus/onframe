@@ -242,7 +242,9 @@ function CommercePromotionsPopover({ model, actions }) {
 
         {model.mode === 'error' && (
           <>
-            <Alert tone="danger">{model.error}</Alert>
+            <Alert appearance="soft" tone="danger">
+              {model.error}
+            </Alert>
             <div className="onframe-commerce-actions">
               <Button kind="primary" size="sm" icon={<Ph n="arrow-clockwise" size={14} />} onClick={actions.onReload}>
                 Recarregar
@@ -253,7 +255,11 @@ function CommercePromotionsPopover({ model, actions }) {
 
         {model.mode === 'summary' && (
           <>
-            {model.error && <Alert tone="danger">{model.error}</Alert>}
+            {model.error && (
+              <Alert appearance="soft" tone="danger">
+                {model.error}
+              </Alert>
+            )}
             <PromotionSummary model={model} />
             <div className="onframe-commerce-popover-footer">
               <Button kind="primary" size="sm" icon={<Ph n="tag" size={14} />} onClick={actions.onManage}>

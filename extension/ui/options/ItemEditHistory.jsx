@@ -479,7 +479,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
         </div>
       </div>
       {error && (
-        <Alert tone="danger" action="Tentar novamente" onAction={() => void load()}>
+        <Alert appearance="soft" tone="danger" action="Tentar novamente" onAction={() => void load()}>
           {error}
         </Alert>
       )}

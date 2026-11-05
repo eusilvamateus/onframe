@@ -292,7 +292,7 @@ test('view React e a unica rota da interface de fotos', () => {
   assert.match(view, /function EditorDiagnostics\(/);
   assert.match(
     view,
-    /className="onblide-ml-editor-alert"[\s\S]*<Alert tone=\{model\.alert\.tone\}>\{model\.alert\.message\}<\/Alert>/
+    /className="onblide-ml-editor-alert"[\s\S]*<Alert appearance="soft" tone=\{model\.alert\.tone\}>\s*\{model\.alert\.message\}\s*<\/Alert>/
   );
   assert.match(view, /<Spinner size="sm" label="Analisando dimensões" \/>/);
   assert.match(view, /onClick=\{actions\.onOpenOptimize\}/);

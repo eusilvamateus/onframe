@@ -141,7 +141,11 @@ export function EmailVerification({ email, onVerified, purpose = 'confirmar sua 
         {sent && !factor && (
           <p className="onframe-help">Enviamos um código de {codeLength} dígitos para este e-mail.</p>
         )}
-        {feedback && <Alert tone="danger">{feedback}</Alert>}
+        {feedback && (
+          <Alert appearance="soft" tone="danger">
+            {feedback}
+          </Alert>
+        )}
         {!sent && <div className="onframe-captcha" ref={challengeRef} />}
         <Button
           type="submit"
@@ -267,7 +271,11 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
           />
         </>
       )}
-      {notice && !enrollment && !removal && <Alert tone={notice.tone}>{notice.message}</Alert>}
+      {notice && !enrollment && !removal && (
+        <Alert appearance="soft" tone={notice.tone}>
+          {notice.message}
+        </Alert>
+      )}
       {!verified ? (
         <EmailVerification
           email={profile.user.email}
@@ -303,7 +311,11 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
               error={notice?.tone === 'danger'}
               disabled={busy}
             />
-            {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+            {notice && (
+              <Alert appearance="soft" tone={notice.tone}>
+                {notice.message}
+              </Alert>
+            )}
             <div className="onframe-actions">
               <Button type="submit" disabled={busy || code.length !== 6} icon={<Ph n="shield-check" size={18} />}>
                 Ativar verificação em duas etapas
@@ -371,7 +383,7 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
                 }}
               >
                 <VerificationEmailField email={profile.user.email} />
-                <Alert tone="warning">
+                <Alert appearance="soft" tone="warning">
                   Remover este autenticador encerra suas sessões. Se for o último, sua conta deixará de exigir o código
                   do aplicativo.
                 </Alert>
@@ -386,7 +398,11 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
                   error={notice?.tone === 'danger'}
                   disabled={busy}
                 />
-                {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+                {notice && (
+                  <Alert appearance="soft" tone={notice.tone}>
+                    {notice.message}
+                  </Alert>
+                )}
                 <div className="onframe-actions">
                   <Button kind="secondary" disabled={busy} onClick={() => setRemoval(null)}>
                     Cancelar
@@ -442,7 +458,9 @@ export function PasskeySettings({ profile, securityOverview }) {
         </>
       )}
       {opened ? (
-        <Alert tone="info">Continue na aba segura aberta para criar, renomear ou remover suas chaves de acesso.</Alert>
+        <Alert appearance="soft" tone="info">
+          Continue na aba segura aberta para criar, renomear ou remover suas chaves de acesso.
+        </Alert>
       ) : (
         <EmailVerification
           email={profile.user.email}

@@ -176,7 +176,7 @@ function BulkStatus({ status }) {
   if (status.loading) {
     return (
       <div className="onframe-commerce-bulk-status" aria-live="polite">
-        <Alert tone="info">
+        <Alert appearance="soft" tone="info">
           <span className="onframe-commerce-bulk-status-loading">
             <Spinner size="xs" label={status.message} />
             {status.message}
@@ -206,7 +206,7 @@ function BulkStatus({ status }) {
 
   return (
     <div className="onframe-commerce-bulk-status">
-      <Alert tone={status.tone === 'warn' ? 'danger' : 'success'} title={status.message}>
+      <Alert appearance="soft" tone={status.tone === 'warn' ? 'danger' : 'success'} title={status.message}>
         {!!blockedItems.length && (
           <Accordion items={blockedItems} type="single" ariaLabel="Variações não atualizadas" />
         )}
@@ -274,7 +274,9 @@ function CommercePricePopover({ model, actions }) {
 
         {model.mode === 'error' && (
           <>
-            <Alert tone="danger">{model.error}</Alert>
+            <Alert appearance="soft" tone="danger">
+              {model.error}
+            </Alert>
             <div className="onframe-commerce-actions">
               <Button kind="primary" size="sm" icon={<Ph n="arrow-clockwise" size={14} />} onClick={actions.onReload}>
                 Recarregar
@@ -284,7 +286,9 @@ function CommercePricePopover({ model, actions }) {
         )}
 
         {model.mode !== 'loading' && model.mode !== 'error' && model.error && (
-          <Alert tone="danger">{model.error}</Alert>
+          <Alert appearance="soft" tone="danger">
+            {model.error}
+          </Alert>
         )}
 
         {model.mode === 'summary' && <PriceSummary model={model} actions={actions} />}

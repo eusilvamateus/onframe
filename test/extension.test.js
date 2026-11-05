@@ -4,11 +4,44 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
 const { act, create } = require('react-test-renderer');
 const { transformSync } = require('esbuild');
+const { Alert } = require('@onblide/ui');
 
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
+
+test('Alert do design system mantém aparência, semântica e ação oficiais', () => {
+  const outline = renderToStaticMarkup(React.createElement(Alert, { tone: 'info', title: 'Informação' }, 'Detalhe'));
+  assert.match(outline, /role="status"/);
+  assert.match(outline, /background:var\(--ob-surface\)/);
+  assert.match(outline, /border:1px solid var\(--ob-border\)/);
+
+  const soft = renderToStaticMarkup(
+    React.createElement(
+      Alert,
+      {
+        tone: 'danger',
+        appearance: 'soft',
+        action: 'Tentar novamente',
+        onAction() {}
+      },
+      'Falha'
+    )
+  );
+  assert.match(soft, /role="alert"/);
+  assert.match(soft, /background:var\(--ob-red-050\)/);
+  assert.match(soft, /<button[^>]*>/);
+  assert.match(soft, />Tentar novamente</);
+  assert.match(soft, /ph-arrow-right/);
+
+  const custom = renderToStaticMarkup(
+    React.createElement(Alert, { tone: 'success', role: 'note', className: 'alert-customizado' }, 'Concluído')
+  );
+  assert.match(custom, /class="alert-customizado"/);
+  assert.match(custom, /role="note"/);
+});
 
 test('pacote da extensão mantém o orçamento de tamanho e não duplica assets da interface', () => {
   const generatedFiles = [
@@ -77,8 +110,11 @@ test('interfaces React não reintroduzem controles HTML ou folhas legadas', () =
   const uiRoot = path.join(extensionRoot, 'ui');
   const jsxFiles = fs.readdirSync(uiRoot, { recursive: true }).filter((file) => String(file).endsWith('.jsx'));
   const source = jsxFiles.map((file) => fs.readFileSync(path.join(uiRoot, file), 'utf8')).join('\n');
+  const alerts = source.match(/<Alert\b/gu) || [];
+  const softAlerts = source.match(/<Alert\s+appearance="soft"/gu) || [];
 
   assert.doesNotMatch(source, /<(?:button|input|select|textarea|details|summary)\b/u);
+  assert.equal(softAlerts.length, alerts.length, 'Todo Alert da interface deve usar appearance="soft".');
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'components.css')), false);
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'shell.css')), false);
 });
@@ -809,7 +845,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
     options.indexOf('function settingsOptionItems')
   );
 
-  assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/project/package');
+  assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/packages/ui');
   assert.match(history, /formatarPeriodo\(dateFromIso\(period\.start\), dateFromIso\(period\.end\), \{ hoje \}\)/);
   assert.doesNotMatch(history, /Intl\.DateTimeFormat|formatPeriodDate/);
   assert.match(periodGlobal, /import \{ formatarPeriodo \} from '@onblide\/ui\/periodo'/);

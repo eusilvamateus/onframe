@@ -211,7 +211,7 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
           steps={[{ label: 'Arquivo' }, { label: 'Revisão' }, { label: 'Resultado' }]}
         />
         {error && (
-          <Alert tone="danger" dismissible onClose={() => setError('')}>
+          <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
             {error}
           </Alert>
         )}
@@ -280,7 +280,7 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
             </div>
             <Summary values={preview.summary} />
             {preview.summary.error > 0 && (
-              <Alert tone="warning">
+              <Alert appearance="soft" tone="warning">
                 As linhas com erro serão ignoradas. Corrija a planilha para importar todo o catálogo.
               </Alert>
             )}
@@ -295,7 +295,7 @@ export function ProductSpreadsheetModal({ onClose, onImported }) {
             </div>
             <Summary values={result.summary} result />
             {result.summary.rejected > 0 && (
-              <Alert tone="warning">
+              <Alert appearance="soft" tone="warning">
                 Algumas linhas não foram gravadas. Consulte a observação e importe novamente após a correção.
               </Alert>
             )}

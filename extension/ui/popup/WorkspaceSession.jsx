@@ -224,6 +224,7 @@ export function WorkspaceSession({
       <div className="onframe-popup-session-body">
         {feedback && (
           <Alert
+            appearance="soft"
             tone={feedback.tone}
             action={feedback.action}
             onAction={feedback.onAction}
@@ -234,7 +235,7 @@ export function WorkspaceSession({
           </Alert>
         )}
         {!admin && (
-          <Alert tone="info">
+          <Alert appearance="soft" tone="info">
             Somente administradores podem gerenciar pessoas, convites e permissões deste workspace.
           </Alert>
         )}

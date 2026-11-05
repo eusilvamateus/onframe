@@ -276,7 +276,7 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
       <div className="onframe-product-drawer">
         {error && (
           <div className="onframe-product-form-error">
-            <Alert tone="danger" dismissible onClose={() => setError('')}>
+            <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
               {error}
             </Alert>
           </div>
@@ -715,7 +715,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
   return (
     <div className="onframe-products onframe-stack">
       {error && (
-        <Alert tone="danger" dismissible onClose={() => setError('')}>
+        <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
       )}

@@ -639,7 +639,7 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
       />
       {confirmation && (
         <div className="onframe-stack" role="region" aria-label="Confirmar encerramento">
-          <Alert tone="warning">
+          <Alert appearance="soft" tone="warning">
             {confirmation === 'all'
               ? 'Você precisará entrar novamente em todos os dispositivos.'
               : `Encerrar a sessão de ${confirmation.browser}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}
@@ -1285,6 +1285,7 @@ function OptionsApp() {
           <div className="onframe-auth-surface onframe-stack">
             {notice && (
               <Alert
+                appearance="soft"
                 tone={notice.tone}
                 action={notice.action}
                 onAction={notice.onAction}
@@ -1470,6 +1471,7 @@ function OptionsApp() {
               <PageHeader meta={meta} actions={pageHeaderActions} reserveContextSpace />
               {notice && (
                 <Alert
+                  appearance="soft"
                   tone={notice.tone}
                   action={notice.action}
                   onAction={notice.onAction}

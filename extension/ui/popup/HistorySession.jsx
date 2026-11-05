@@ -70,7 +70,7 @@ export function HistorySession({ connection, onBack, onOpenFullHistory, footer, 
       <PopupSessionHeader title="Histórico" subtitle={connection.workspace.name} onBack={onBack} />
       <div className="onframe-popup-session-body">
         {feedback && (
-          <Alert tone="danger" dismissible onClose={() => setFeedback('')}>
+          <Alert appearance="soft" tone="danger" dismissible onClose={() => setFeedback('')}>
             {feedback}
           </Alert>
         )}

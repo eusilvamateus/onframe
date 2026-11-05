@@ -214,7 +214,11 @@ function ConnectionPage({ config }) {
           </Button>
         </form>
       )}
-      {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
+      {notice && (
+        <Alert appearance="soft" tone={notice.tone}>
+          {notice.message}
+        </Alert>
+      )}
     </HostedSurface>
   );
 }
@@ -222,7 +226,9 @@ function ConnectionPage({ config }) {
 function ResultPage({ config }) {
   return (
     <HostedSurface eyebrow={config.eyebrow} title={config.heading}>
-      <Alert tone={config.tone}>{config.message}</Alert>
+      <Alert appearance="soft" tone={config.tone}>
+        {config.message}
+      </Alert>
     </HostedSurface>
   );
 }
@@ -246,7 +252,9 @@ function HostedApp({ config }) {
     return (
       <HostedLayout>
         <HostedSurface eyebrow="ONFRAME" title="Página indisponível">
-          <Alert tone="danger">Não foi possível carregar esta página.</Alert>
+          <Alert appearance="soft" tone="danger">
+            Não foi possível carregar esta página.
+          </Alert>
         </HostedSurface>
       </HostedLayout>
     );

@@ -58,7 +58,11 @@ function ResultRow({ label, description = '', value, loading = false, tone = '',
 function Estimate({ estimate }) {
   return (
     <div className="onframe-commerce-direct-discount-results" aria-busy={estimate.loading || undefined}>
-      {estimate.message && <Alert tone={estimate.tone || 'danger'}>{estimate.message}</Alert>}
+      {estimate.message && (
+        <Alert appearance="soft" tone={estimate.tone || 'danger'}>
+          {estimate.message}
+        </Alert>
+      )}
       <ResultRow
         {...estimate.commission}
         loading={estimate.loading}
@@ -112,7 +116,11 @@ function DirectDiscountModal({ model, actions }) {
       footer={footer}
     >
       <div className="onframe-commerce-direct-discount">
-        {model.error && <Alert tone="danger">{model.error}</Alert>}
+        {model.error && (
+          <Alert appearance="soft" tone="danger">
+            {model.error}
+          </Alert>
+        )}
         <div className="onframe-commerce-direct-discount-calculation" role="group" aria-label="Cálculo do desconto">
           <div className="onframe-commerce-direct-discount-date-range">
             <Datepicker

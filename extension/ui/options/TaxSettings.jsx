@@ -72,7 +72,7 @@ export function TaxSettings({ workspaceId }) {
   return (
     <div className="onframe-tax-settings onframe-stack">
       {error && (
-        <Alert tone="danger" dismissible onClose={() => setError('')}>
+        <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
       )}

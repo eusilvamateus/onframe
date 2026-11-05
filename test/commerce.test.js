@@ -412,7 +412,10 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(source, /function priceSummaryCosts/);
   assert.match(view, /<Accordion items=\{summaryItems\} type="single" ariaLabel="Resumo do preço"/);
   assert.match(view, /<Accordion items=\{blockedItems\} type="single" ariaLabel="Variações não atualizadas"/);
-  assert.match(view, /<Alert tone=\{status\.tone === 'warn' \? 'danger' : 'success'\} title=\{status\.message\}>/);
+  assert.match(
+    view,
+    /<Alert appearance="soft" tone=\{status\.tone === 'warn' \? 'danger' : 'success'\} title=\{status\.message\}>/
+  );
   assert.doesNotMatch(view, /<(?:details|summary)>/);
   assert.match(
     view,
@@ -720,7 +723,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     styles,
     /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s
   );
-  assert.match(view, /<Alert tone="success" action="Desfazer" onAction=\{\(\) => actions\.onUndoRemove\(row\.key\)\}>/);
+  assert.match(
+    view,
+    /<Alert appearance="soft" tone="success" action="Desfazer" onAction=\{\(\) => actions\.onUndoRemove\(row\.key\)\}>/
+  );
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-removed\b/);
 });
 
@@ -766,7 +772,7 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   assert.match(priceView, /<Input[\s\S]*label="Novo preço base"[\s\S]*startAddon="R\$"/s);
   assert.match(view, /<Button kind="secondary" size="sm"/);
   assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*size="sm"/s);
-  assert.match(view, /<Alert tone="danger">/);
+  assert.match(view, /<Alert appearance="soft" tone="danger">/);
   assert.match(view, /<Skeleton width=\{72\} height=\{16\}/);
   assert.match(view, /globalThis\.OnFrameCommerceDirectDiscountView = Object\.freeze\(\{ render, unmount \}\)/);
   assert.match(build, /commerce-direct-discount-view\.jsx/);

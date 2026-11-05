@@ -120,7 +120,11 @@ function EditorFooter({ model, actions }) {
             <EditorStatus status={model.status} />
           </div>
 
-          {model.notice && <Alert tone="info">{model.notice}</Alert>}
+          {model.notice && (
+            <Alert appearance="soft" tone="info">
+              {model.notice}
+            </Alert>
+          )}
 
           {model.canBulk && (
             <div className="onframe-characteristics-bulk-switch">
@@ -134,7 +138,11 @@ function EditorFooter({ model, actions }) {
             </div>
           )}
 
-          {model.error && <Alert tone="danger">{model.error}</Alert>}
+          {model.error && (
+            <Alert appearance="soft" tone="danger">
+              {model.error}
+            </Alert>
+          )}
 
           <FailureList failures={model.failures} />
 

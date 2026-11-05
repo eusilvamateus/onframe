@@ -40,7 +40,7 @@
     "typescript-eslint": "^8.72.1"
   },
   "dependencies": {
-    "@onblide/ui": "file:../../onblide-design-system/project/package",
+    "@onblide/ui": "file:../../onblide-design-system/packages/ui",
     "@supabase/supabase-js": "2.117.2",
     "react": "18.3.1",
     "react-dom": "18.3.1",

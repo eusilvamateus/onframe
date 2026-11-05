@@ -214,7 +214,11 @@ function Popup() {
         <div className="onframe-auth-theme-control">
           <ThemeCycleButton />
         </div>
-        {feedback && <Alert tone="danger">{feedback}</Alert>}
+        {feedback && (
+          <Alert appearance="soft" tone="danger">
+            {feedback}
+          </Alert>
+        )}
         <AuthPanel
           initialState={popupSession?.auth}
           onStateChange={persistAuthState}
@@ -286,7 +290,11 @@ function Popup() {
   return (
     <main className="onframe-popup onframe-popup-home">
       {userHeader}
-      {feedback && <Alert tone="danger">{feedback}</Alert>}
+      {feedback && (
+        <Alert appearance="soft" tone="danger">
+          {feedback}
+        </Alert>
+      )}
       <List className="onframe-popup-home-list" ariaLabel="Sessões da extensão">
         <ListItem
           className="onframe-popup-card-row onframe-popup-home-row"

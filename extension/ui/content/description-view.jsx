@@ -145,7 +145,11 @@ function DescriptionEditor({ model, actions }) {
             </div>
           )}
 
-          {model.error && <Alert tone="danger">{model.error}</Alert>}
+          {model.error && (
+            <Alert appearance="soft" tone="danger">
+              {model.error}
+            </Alert>
+          )}
 
           <FailureList failures={model.failures} />
 

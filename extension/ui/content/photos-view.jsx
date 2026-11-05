@@ -123,7 +123,9 @@ function EditorDialog({ model, actions, onRendered }) {
         <div className="onblide-ml-editor-modal-content">
           {model.alert && (
             <div className="onblide-ml-editor-alert">
-              <Alert tone={model.alert.tone}>{model.alert.message}</Alert>
+              <Alert appearance="soft" tone={model.alert.tone}>
+                {model.alert.message}
+              </Alert>
             </div>
           )}
           <div className="onblide-ml-editor-actions">

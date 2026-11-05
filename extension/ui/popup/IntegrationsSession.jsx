@@ -115,7 +115,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
 
       <div className="onframe-popup-session-body">
         {feedback && (
-          <Alert tone={feedback.tone} dismissible onClose={() => setFeedback(null)}>
+          <Alert appearance="soft" tone={feedback.tone} dismissible onClose={() => setFeedback(null)}>
             {feedback.message}
           </Alert>
         )}
