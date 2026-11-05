@@ -21,6 +21,8 @@ tenha uma fonte canonica.
 
 ## Produto
 
+- [Feedback de operacoes](product/feedback-de-operacoes.md) - estados de
+  retorno e regras para feedback contextual, sincronizacao e notificacoes.
 - [Estados de promocoes](product/promocoes.md) - regras que distinguem uma
   oportunidade, uma participacao programada e a promocao de preco vigente.
 - [Workspaces e acessos](product/workspaces-e-acessos.md) - papeis,

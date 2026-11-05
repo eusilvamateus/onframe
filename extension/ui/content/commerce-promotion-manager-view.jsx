@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
   Alert,
+  AlertDialog,
   Badge,
   Button,
   Card,
@@ -47,13 +48,14 @@ const icon = (name, size = 16) => <Ph n={name} size={size} />;
 function StatusBadge({ status }) {
   if (!status) return null;
   const tone =
-    status.id === 'active'
+    status.tone ||
+    (status.id === 'active'
       ? 'success'
       : status.id === 'programmed'
         ? 'primary'
         : status.id === 'available'
           ? 'warning'
-          : 'neutral';
+          : 'neutral');
   return (
     <Badge tone={tone} appearance="soft" size="sm" dot>
       {status.label}
@@ -115,6 +117,17 @@ function Calculation({ row }) {
   );
 }
 
+function ContextFeedback({ feedback, className = '' }) {
+  if (!feedback) return null;
+  return (
+    <div className={className}>
+      <Alert appearance="soft" tone={feedback.tone || 'danger'} title={feedback.title || undefined}>
+        {feedback.message}
+      </Alert>
+    </div>
+  );
+}
+
 function EditPanel({ row, actions }) {
   const confirm = () => {
     if (!row.validationError && !row.busy) actions.onConfirm(row.key, row.formAction);
@@ -122,6 +135,7 @@ function EditPanel({ row, actions }) {
 
   return (
     <>
+      <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-editor-feedback" />
       <div className={`onframe-promotion-manager-editor${row.readOnly ? ' is-readonly' : ''}`}>
         {row.type === 'coupon' ? (
           <div>
@@ -277,14 +291,6 @@ function CardActions({ row, actions }) {
 }
 
 function PromotionCard({ row, actions }) {
-  if (row.removed) {
-    return (
-      <Alert appearance="soft" tone="success" action="Desfazer" onAction={() => actions.onUndoRemove(row.key)}>
-        {row.name} removida.
-      </Alert>
-    );
-  }
-
   return (
     <Card
       padding={0}
@@ -316,6 +322,7 @@ function PromotionCard({ row, actions }) {
           <CardActions row={row} actions={actions} />
         </div>
       </div>
+      {!row.formOpen && <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-card-feedback" />}
       {row.formOpen && <EditPanel row={row} actions={actions} />}
     </Card>
   );
@@ -383,160 +390,183 @@ function PromotionManager({ model, actions }) {
     { id: 'coupon', label: 'Cupons' }
   ];
   const filterCount = model.statusFilters.length + model.typeFilters.length + model.financialFilters.length;
+  const removalRow = model.removalKey ? model.rows.find((row) => row.key === model.removalKey) : null;
 
   return (
-    <Modal
-      open
-      onClose={model.openKey ? actions.onCancelEdit : actions.onClose}
-      title={<HeaderTitle />}
-      width={1080}
-      maxHeight="min(88vh, 900px)"
-      footer={
-        <Button kind="neutral" onClick={actions.onClose}>
-          Fechar
-        </Button>
-      }
-    >
-      <div className="onframe-promotion-manager">
-        <div className="onframe-promotion-manager-toolbar">
-          <div className="onframe-promotion-manager-toolbar-line">
-            <div className="onframe-promotion-manager-toolbar-actions">
-              <Tooltip
-                label={model.loading ? 'Atualizando…' : 'Atualizado agora · clique para atualizar'}
-                placement="bottom"
-              >
-                <Button
-                  kind="neutral"
-                  iconOnly
-                  aria-label="Atualizar promoções"
-                  icon={icon(model.loading ? 'circle-notch' : 'arrow-clockwise', 18)}
-                  onClick={actions.onReload}
-                  disabled={model.loading}
+    <>
+      <Modal
+        open
+        onClose={removalRow ? actions.onCancelRemove : model.openKey ? actions.onCancelEdit : actions.onClose}
+        title={<HeaderTitle />}
+        width={1080}
+        maxHeight="min(88vh, 900px)"
+        footer={
+          <Button kind="neutral" onClick={actions.onClose}>
+            Fechar
+          </Button>
+        }
+      >
+        <div className="onframe-promotion-manager">
+          <div className="onframe-promotion-manager-toolbar">
+            <div className="onframe-promotion-manager-toolbar-line">
+              <div className="onframe-promotion-manager-toolbar-actions">
+                <Tooltip
+                  label={model.loading ? 'Atualizando…' : 'Atualizado agora · clique para atualizar'}
+                  placement="bottom"
+                >
+                  <Button
+                    kind="neutral"
+                    iconOnly
+                    aria-label="Atualizar promoções"
+                    icon={icon(model.loading ? 'circle-notch' : 'arrow-clockwise', 18)}
+                    onClick={actions.onReload}
+                    disabled={model.loading}
+                  />
+                </Tooltip>
+                {model.canCreateDiscount && (
+                  <Button
+                    kind="primary"
+                    icon={icon('tag', 18)}
+                    onClick={actions.onCreateDiscount}
+                    disabled={model.busy}
+                  >
+                    Criar desconto
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="onframe-promotion-manager-search-line">
+              <div className="onframe-promotion-manager-search">
+                <SearchInput
+                  width="100%"
+                  value={model.search}
+                  onChange={actions.onSearchChange}
+                  placeholder="Buscar promoção ou cupom…"
+                  ariaLabel="Buscar promoção ou cupom"
                 />
-              </Tooltip>
-              {model.canCreateDiscount && (
-                <Button kind="primary" icon={icon('tag', 18)} onClick={actions.onCreateDiscount} disabled={model.busy}>
-                  Criar desconto
-                </Button>
-              )}
+              </div>
+              <div className="onframe-promotion-manager-filter-controls">
+                <Popover
+                  trigger={
+                    <Button
+                      kind="secondary"
+                      icon={icon('sliders-horizontal', 18)}
+                      count={filterCount || undefined}
+                      countTone="primary"
+                    >
+                      Filtros
+                    </Button>
+                  }
+                  title="Filtrar promoções"
+                  width={280}
+                  align="start"
+                  footer={
+                    filterCount ? (
+                      <Button kind="ghost" size="sm" onClick={actions.onClearAdvancedFilters}>
+                        Limpar filtros
+                      </Button>
+                    ) : undefined
+                  }
+                >
+                  <div className="onframe-promotion-manager-filter-group">
+                    <strong>Estado</strong>
+                    <Checkbox
+                      checked={model.statusFilters.includes('active')}
+                      onChange={() => actions.onToggleStatus('active')}
+                      label="Ativas"
+                    />
+                    <Checkbox
+                      checked={model.statusFilters.includes('programmed')}
+                      onChange={() => actions.onToggleStatus('programmed')}
+                      label="Programadas"
+                    />
+                    <Checkbox
+                      checked={model.statusFilters.includes('available')}
+                      onChange={() => actions.onToggleStatus('available')}
+                      label="Elegíveis"
+                    />
+                  </div>
+                  <div className="onframe-promotion-manager-filter-group">
+                    <strong>Tipo</strong>
+                    <Checkbox
+                      checked={model.typeFilters.includes('direct')}
+                      onChange={() => actions.onToggleType('direct')}
+                      label="Descontos diretos"
+                    />
+                    <Checkbox
+                      checked={model.typeFilters.includes('payment')}
+                      onChange={() => actions.onToggleType('payment')}
+                      label="Descontos por pagamento"
+                    />
+                  </div>
+                  <div className="onframe-promotion-manager-filter-group">
+                    <strong>Financeiro</strong>
+                    <Checkbox
+                      checked={model.financialFilters.includes('fee_reduction')}
+                      onChange={() => actions.onToggleFinancial('fee_reduction')}
+                      label="Com redução de tarifa"
+                    />
+                  </div>
+                </Popover>
+                <Tabs tabs={tabs} active={model.tab} onChange={actions.onTabChange} variant="pill" size="sm" />
+              </div>
             </div>
           </div>
-          <div className="onframe-promotion-manager-search-line">
-            <div className="onframe-promotion-manager-search">
-              <SearchInput
-                width="100%"
-                value={model.search}
-                onChange={actions.onSearchChange}
-                placeholder="Buscar promoção ou cupom…"
-                ariaLabel="Buscar promoção ou cupom"
-              />
+
+          {model.error && (
+            <div className="onframe-promotion-manager-alert">
+              <Alert appearance="soft" tone="danger">
+                {model.error}
+              </Alert>
             </div>
-            <div className="onframe-promotion-manager-filter-controls">
-              <Popover
-                trigger={
-                  <Button
-                    kind="secondary"
-                    icon={icon('sliders-horizontal', 18)}
-                    count={filterCount || undefined}
-                    countTone="primary"
-                  >
-                    Filtros
+          )}
+
+          <ContextFeedback feedback={model.feedback} className="onframe-promotion-manager-alert" />
+
+          <div className="onframe-promotion-manager-content">
+            {model.loading && !model.rows.length ? (
+              <div className="onframe-promotion-manager-loading">
+                <Spinner size="sm" label="Lendo promoções do anúncio" />
+                <span>Lendo promoções do anúncio.</span>
+              </div>
+            ) : !model.rows.length ? (
+              <EmptyState
+                icon="magnifying-glass"
+                title="Nenhuma promoção encontrada"
+                description="Tente outro nome ou limpe a busca e os filtros."
+                action={
+                  <Button kind="secondary" size="sm" onClick={actions.onClearFilters}>
+                    Limpar filtros
                   </Button>
                 }
-                title="Filtrar promoções"
-                width={280}
-                align="start"
-                footer={
-                  filterCount ? (
-                    <Button kind="ghost" size="sm" onClick={actions.onClearAdvancedFilters}>
-                      Limpar filtros
-                    </Button>
-                  ) : undefined
-                }
-              >
-                <div className="onframe-promotion-manager-filter-group">
-                  <strong>Estado</strong>
-                  <Checkbox
-                    checked={model.statusFilters.includes('active')}
-                    onChange={() => actions.onToggleStatus('active')}
-                    label="Ativas"
-                  />
-                  <Checkbox
-                    checked={model.statusFilters.includes('programmed')}
-                    onChange={() => actions.onToggleStatus('programmed')}
-                    label="Programadas"
-                  />
-                  <Checkbox
-                    checked={model.statusFilters.includes('available')}
-                    onChange={() => actions.onToggleStatus('available')}
-                    label="Elegíveis"
-                  />
-                </div>
-                <div className="onframe-promotion-manager-filter-group">
-                  <strong>Tipo</strong>
-                  <Checkbox
-                    checked={model.typeFilters.includes('direct')}
-                    onChange={() => actions.onToggleType('direct')}
-                    label="Descontos diretos"
-                  />
-                  <Checkbox
-                    checked={model.typeFilters.includes('payment')}
-                    onChange={() => actions.onToggleType('payment')}
-                    label="Descontos por pagamento"
-                  />
-                </div>
-                <div className="onframe-promotion-manager-filter-group">
-                  <strong>Financeiro</strong>
-                  <Checkbox
-                    checked={model.financialFilters.includes('fee_reduction')}
-                    onChange={() => actions.onToggleFinancial('fee_reduction')}
-                    label="Com redução de tarifa"
-                  />
-                </div>
-              </Popover>
-              <Tabs tabs={tabs} active={model.tab} onChange={actions.onTabChange} variant="pill" size="sm" />
-            </div>
-          </div>
-        </div>
-
-        {model.error && (
-          <div className="onframe-promotion-manager-alert">
-            <Alert appearance="soft" tone="danger">
-              {model.error}
-            </Alert>
-          </div>
-        )}
-
-        <div className="onframe-promotion-manager-content">
-          {model.loading && !model.rows.length ? (
-            <div className="onframe-promotion-manager-loading">
-              <Spinner size="sm" label="Lendo promoções do anúncio" />
-              <span>Lendo promoções do anúncio.</span>
-            </div>
-          ) : !model.rows.length ? (
-            <EmptyState
-              icon="magnifying-glass"
-              title="Nenhuma promoção encontrada"
-              description="Tente outro nome ou limpe a busca e os filtros."
-              action={
-                <Button kind="secondary" size="sm" onClick={actions.onClearFilters}>
-                  Limpar filtros
-                </Button>
-              }
-            />
-          ) : (
-            sectionDefinitions.map((definition) => (
-              <PromotionSection
-                key={definition.id}
-                definition={definition}
-                rows={model.rows.filter((row) => row.group === definition.id)}
-                actions={actions}
               />
-            ))
-          )}
+            ) : (
+              sectionDefinitions.map((definition) => (
+                <PromotionSection
+                  key={definition.id}
+                  definition={definition}
+                  rows={model.rows.filter((row) => row.group === definition.id)}
+                  actions={actions}
+                />
+              ))
+            )}
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      <AlertDialog
+        open={Boolean(removalRow)}
+        onClose={actions.onCancelRemove}
+        title="Remover promoção?"
+        confirmLabel="Remover promoção"
+        cancelLabel="Cancelar"
+        onConfirm={() => removalRow && actions.onConfirmRemove(removalRow.key)}
+        tone="danger"
+      >
+        {removalRow
+          ? `${removalRow.name} deixará de participar deste anúncio. Você poderá aplicá-la novamente enquanto ela continuar disponível.`
+          : null}
+      </AlertDialog>
+    </>
   );
 }
 

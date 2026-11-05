@@ -49,7 +49,13 @@ test('promoções pendentes usam Workflow durável e reconciliação consultáve
   assert.match(workflow, /class PromotionReconciliationWorkflow extends WorkflowEntrypoint/);
   assert.match(worker, /GET \/bulk\/reconciliations/);
   assert.match(worker, /PROMOTION_RECONCILIATION\.create/);
+  assert.match(worker, /runPromotionOfferMutation/);
+  assert.match(worker, /acceptedPromotionMutation/);
+  assert.match(worker, /status: 'pending_confirmation'/);
+  assert.match(worker, /registerPendingPromotionReconciliation/);
   assert.match(extension, /\/api\/bulk\/reconciliations\?ids=/);
+  assert.match(extension, /function applyOptimisticPromotionMutation/);
+  assert.match(extension, /function reconcilePromotionManagerMutation/);
   assert.match(migration, /CREATE TABLE promotion_reconciliations/);
   assert.match(migration, /idx_item_edit_events_idempotent/);
 });

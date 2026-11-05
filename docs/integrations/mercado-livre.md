@@ -95,6 +95,11 @@ do anúncio. O histórico paginado fica disponível em
 promoções não são copiadas para esse registro. As regras de conteúdo e acesso
 estão em [Histórico de edições](../product/historico-de-edicoes.md).
 
+Uma mutação de promoção aceita cuja leitura ainda esteja defasada não é tratada
+como falha. O Worker registra a reconciliação pendente no D1, inicia o Workflow
+durável e devolve o estado `pending_confirmation` para a extensão. O histórico
+da edição só é gravado quando a reconciliação confirma a alteração.
+
 Para promoções, `GET /seller-promotions/items/{itemId}` informa a
 participação, enquanto
 `GET /items/{itemId}/sale_price?context=channel_marketplace` identifica a

@@ -253,6 +253,35 @@ export async function handleRemoteApiRequest(input: {
     });
     return result;
   };
+  const runPromotionOfferMutation = async (
+    operation: string,
+    itemId: string,
+    client: RemoteMeliClient,
+    execute: () => Promise<unknown>
+  ): Promise<unknown> => {
+    try {
+      return await runItemMutation(operation, itemId, client, execute);
+    } catch (error) {
+      const accepted = acceptedPromotionMutation(error);
+      if (!accepted) throw error;
+      const reconciliationId = await registerPendingPromotionReconciliation({
+        actor: input.actor,
+        client,
+        env: input.env,
+        requestId: input.requestId,
+        sourceItemId: itemId,
+        itemId,
+        operation,
+        payload: accepted.payload,
+        result: accepted.result
+      });
+      return {
+        status: 'pending_confirmation',
+        reconciliationId,
+        result: accepted.result
+      };
+    }
+  };
 
   try {
     if (route === 'GET /bulk/reconciliations') {
@@ -436,19 +465,19 @@ export async function handleRemoteApiRequest(input: {
     const offer = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/offers$/u);
     if (input.request.method === 'POST' && offer) {
       const client = await resolveItemClient(offer[1]);
-      return runItemMutation('promotion.offer.create', offer[1], client, () =>
+      return runPromotionOfferMutation('promotion.offer.create', offer[1], client, () =>
         handleCreateOffer({ req: input.request, client, itemId: offer[1], readJson })
       );
     }
     if (input.request.method === 'PUT' && offer) {
       const client = await resolveItemClient(offer[1]);
-      return runItemMutation('promotion.offer.update', offer[1], client, () =>
+      return runPromotionOfferMutation('promotion.offer.update', offer[1], client, () =>
         handleUpdateOffer({ req: input.request, client, itemId: offer[1], readJson })
       );
     }
     if (input.request.method === 'DELETE' && offer) {
       const client = await resolveItemClient(offer[1]);
-      return runItemMutation('promotion.offer.delete', offer[1], client, () =>
+      return runPromotionOfferMutation('promotion.offer.delete', offer[1], client, () =>
         handleDeleteOffer({ req: input.request, client, itemId: offer[1], readJson })
       );
     }
@@ -567,7 +596,6 @@ async function registerPendingPromotionReconciliations(input: {
   const targets = Array.isArray(result?.targets) ? result.targets : [];
   if (!/^promotion\.offer\.(create|update|delete)$/u.test(action) || !targets.length) return;
 
-  const account = input.client.historyAccount();
   for (const candidate of targets) {
     const target = recordOrNull(candidate);
     if (!target || target.status !== 'pending_confirmation') continue;
@@ -575,52 +603,88 @@ async function registerPendingPromotionReconciliations(input: {
     const metadata = recordOrNull(target._reconciliation);
     const payload = recordOrNull(metadata?.payload);
     if (!itemId || !payload) continue;
-
-    const reconciliationId = crypto.randomUUID();
-    const now = Date.now();
-    try {
-      await input.env.ONFRAME_DB.prepare(
-        `
-        INSERT INTO promotion_reconciliations (
-          id, workspace_id, seller_account_id, user_id, request_id,
-          source_item_id, item_id, operation, payload_json, accepted_result_json, history_before_json,
-          actor_name, actor_email, status, attempts, created_at, updated_at, expires_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
-      `
-      )
-        .bind(
-          reconciliationId,
-          input.actor.workspaceId,
-          account.id,
-          input.actor.userId,
-          input.requestId,
-          input.sourceItemId,
-          itemId,
-          action,
-          JSON.stringify(payload),
-          JSON.stringify(metadata?.result ?? target.result ?? {}),
-          JSON.stringify(input.client.historyPromotionSnapshots(itemId).first ?? null),
-          input.actor.displayName || null,
-          input.actor.email || null,
-          now,
-          now,
-          now + RECONCILIATION_RETENTION_MS
-        )
-        .run();
-      target.reconciliationId = reconciliationId;
-      await startPromotionReconciliation(input.env, reconciliationId);
-    } catch (error) {
-      console.error(
-        JSON.stringify({
-          event: 'promotion_reconciliation_registration_failed',
-          itemId,
-          reconciliationId,
-          requestId: input.requestId,
-          error: sanitizeError(error)
-        })
-      );
-    }
+    target.reconciliationId = await registerPendingPromotionReconciliation({
+      actor: input.actor,
+      client: input.client,
+      env: input.env,
+      requestId: input.requestId,
+      sourceItemId: input.sourceItemId,
+      itemId,
+      operation: action,
+      payload,
+      result: metadata?.result ?? target.result ?? {}
+    });
   }
+}
+
+async function registerPendingPromotionReconciliation(input: {
+  actor: RemoteApiActor;
+  client: RemoteMeliClient;
+  env: RemoteRuntimeEnv;
+  requestId: string;
+  sourceItemId: string;
+  itemId: string;
+  operation: string;
+  payload: Record<string, unknown>;
+  result: unknown;
+}): Promise<string | null> {
+  const reconciliationId = crypto.randomUUID();
+  const now = Date.now();
+  const account = input.client.historyAccount();
+  try {
+    await input.env.ONFRAME_DB.prepare(
+      `
+      INSERT INTO promotion_reconciliations (
+        id, workspace_id, seller_account_id, user_id, request_id,
+        source_item_id, item_id, operation, payload_json, accepted_result_json, history_before_json,
+        actor_name, actor_email, status, attempts, created_at, updated_at, expires_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
+    `
+    )
+      .bind(
+        reconciliationId,
+        input.actor.workspaceId,
+        account.id,
+        input.actor.userId,
+        input.requestId,
+        input.sourceItemId,
+        input.itemId,
+        input.operation,
+        JSON.stringify(input.payload),
+        JSON.stringify(input.result ?? {}),
+        JSON.stringify(input.client.historyPromotionSnapshots(input.itemId).first ?? null),
+        input.actor.displayName || null,
+        input.actor.email || null,
+        now,
+        now,
+        now + RECONCILIATION_RETENTION_MS
+      )
+      .run();
+    await startPromotionReconciliation(input.env, reconciliationId);
+    return reconciliationId;
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'promotion_reconciliation_registration_failed',
+        itemId: input.itemId,
+        reconciliationId,
+        requestId: input.requestId,
+        error: sanitizeError(error)
+      })
+    );
+    return null;
+  }
+}
+
+function acceptedPromotionMutation(error: unknown): { payload: Record<string, unknown>; result: unknown } | null {
+  const candidate = error as {
+    accepted?: unknown;
+    acceptedResult?: unknown;
+    verificationPayload?: unknown;
+  } | null;
+  const payload = recordOrNull(candidate?.verificationPayload);
+  if (candidate?.accepted !== true || !payload) return null;
+  return { payload, result: candidate.acceptedResult ?? {} };
 }
 
 async function listPromotionReconciliations(

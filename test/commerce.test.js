@@ -560,7 +560,10 @@ test('modal de promocoes usa uma view React sem reconstruir o DOM ao editar', ()
   assert.match(source, /function updatePromotionManagerDraft/);
   assert.match(source, /state\.promotionDraftValues\[key\] = Object\.assign/);
   assert.match(view, /value=\{row\.draftPrice\}/);
-  assert.match(view, /onClose=\{model\.openKey \? actions\.onCancelEdit : actions\.onClose\}/);
+  assert.match(
+    view,
+    /onClose=\{removalRow \? actions\.onCancelRemove : model\.openKey \? actions\.onCancelEdit : actions\.onClose\}/
+  );
   assert.doesNotMatch(view, /danger[^\n]+Descartar alterações/);
 });
 
@@ -614,7 +617,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /<Kbd size="sm">Esc<\/Kbd> cancela/);
   assert.match(view, /<Kbd size="sm">Enter<\/Kbd> confirma/);
   assert.match(view, /Nenhuma promoção encontrada/);
-  assert.match(view, /Desfazer/);
+  assert.match(view, /AlertDialog,[\s\S]*from '@onblide\/ui'/s);
+  assert.match(view, /title="Remover promoção\?"/);
+  assert.match(view, /confirmLabel="Remover promoção"/);
+  assert.match(view, /tone="danger"/);
+  assert.doesNotMatch(view, /Desfazer/);
   assert.match(source, /function buildPromotionManagerViewModel/);
   assert.doesNotMatch(source, /buildPromotionRows\(\)\.filter\(\(row\) => row\.type !== 'payment'\)/);
   assert.match(source, /state\.promotionStatusFilters\.includes\(row\.status\.id\)/);
@@ -630,9 +637,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /if \(status === 'available'\) return 'Elegível';/);
   assert.doesNotMatch(source, /if \(status === 'available'\) return 'Disponível';/);
   assert.match(source, /function commitPromotionManagerAction/);
-  assert.match(source, /function queuePromotionManagerRemoval/);
-  assert.match(source, /setTimeout\(\(\) => commitQueuedPromotionManagerRemoval\(key, row\.entry\), 5000\)/);
-  assert.match(source, /function commitQueuedPromotionManagerRemoval/);
+  assert.match(source, /function openPromotionManagerRemoval/);
+  assert.match(source, /function closePromotionManagerRemoval/);
+  assert.match(source, /function confirmPromotionManagerRemoval/);
+  assert.doesNotMatch(source, /promotionRemoved|promotionRemovalTimers|commitQueuedPromotionManagerRemoval/);
   assert.match(styles, /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\)/s);
   assert.match(
     styles,
@@ -723,10 +731,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     styles,
     /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s
   );
-  assert.match(
-    view,
-    /<Alert appearance="soft" tone="success" action="Desfazer" onAction=\{\(\) => actions\.onUndoRemove\(row\.key\)\}>/
-  );
+  assert.match(view, /onConfirm=\{\(\) => removalRow && actions\.onConfirmRemove\(removalRow\.key\)\}/);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-removed\b/);
 });
 
@@ -1020,8 +1025,54 @@ test('campo de preço promocional valida faixa e limpa o erro pela view React', 
     view,
     /onChange=\{\(event\) => actions\.onDraftChange\(row\.key, 'deal_price', event\.target\.value\)\}/
   );
-  assert.match(source, /showToast\('success', promotionActionSuccessLabel\(action\)\)/);
+  assert.doesNotMatch(source, /showToast\('success', promotionActionSuccessLabel\(action\)\)/);
   assert.doesNotMatch(source, /updatePromotionPriceFieldFeedback|savePromotionFieldDraft|onframe-commerce-alert/);
+});
+
+test('promoção aceita fecha a edição e permanece aplicada enquanto reconcilia', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const commit = source.slice(
+    source.indexOf('async function commitPromotionManagerAction'),
+    source.indexOf('function openPromotionManagerRemoval')
+  );
+
+  assert.match(source, /promotionOptimistic: \{\}/);
+  assert.match(source, /function effectivePromotionSummary\(\)/);
+  assert.match(source, /function applyOptimisticPromotionMutation\(/);
+  assert.match(source, /function reconcilePromotionManagerMutation\(/);
+  assert.match(source, /locallyApplied \? 'Aplicada' : promotionListStatusLabel\(status\)/);
+  assert.match(source, /display_status: stackable \? 'active' : 'programmed'/);
+  assert.match(source, /is_current_price: false/);
+  assert.match(commit, /applyOptimisticPromotionMutation\(entry, action, values, response, estimateRecord\)/);
+  assert.match(commit, /state\.promotionFormKey = '';/);
+  assert.doesNotMatch(commit, /await loadSummaries\(state\.requestId\)/);
+  assert.doesNotMatch(commit, /showToast\('success'/);
+});
+
+test('feedback de promoções permanece contextual e só escala eventos de fundo', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
+  const commit = source.slice(
+    source.indexOf('async function commitPromotionManagerAction'),
+    source.indexOf('function currentBulkPromotionTarget')
+  );
+
+  assert.match(source, /promotionFeedback: null/);
+  assert.match(source, /function setPromotionFeedback\(/);
+  assert.match(commit, /scope: action === 'delete' \? 'card' : 'form'/);
+  assert.match(commit, /keepFormOpen = !publishPromotionBulkFeedback\(result, action\)\.changed/);
+  assert.doesNotMatch(commit, /notifyBulkResult\(/);
+  assert.match(source, /function publishPromotionBulkFeedback\(/);
+  assert.match(source, /function reconcilePromotionBulkResult\(/);
+  assert.match(source, /function markPromotionMutationSyncing\(/);
+  assert.match(source, /function rejectOptimisticPromotionMutation\(/);
+  assert.match(source, /state\.promotionModalOpen[\s\S]*setPromotionFeedback[\s\S]*showToast\('warning'/s);
+  assert.match(view, /function ContextFeedback\(/);
+  assert.match(view, /feedback=\{row\.feedback\}/);
+  assert.match(view, /feedback=\{model\.feedback\}/);
 });
 
 test('modais de promocoes reconciliam as views React sem reconstruir o host', () => {

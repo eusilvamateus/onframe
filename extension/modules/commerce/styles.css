@@ -1131,6 +1131,17 @@ body:has(
   padding: var(--ob-space-12) var(--ob-space-24) 0;
 }
 
+.onframe-promotion-manager-card-feedback,
+.onframe-promotion-manager-editor-feedback {
+  padding: 0 var(--ob-space-16) var(--ob-space-16);
+}
+
+.onframe-promotion-manager-editor-feedback {
+  padding-top: var(--ob-space-16);
+  background: var(--ob-bg-alt);
+  border-top: 1px solid var(--ob-line-soft);
+}
+
 .onframe-promotion-manager-content {
   display: flex;
   flex-direction: column;

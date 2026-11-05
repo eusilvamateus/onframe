@@ -126,8 +126,9 @@
       promotionStatusFilters: [],
       promotionTypeFilters: [],
       promotionFinancialFilters: [],
-      promotionRemoved: {},
-      promotionRemovalTimers: {},
+      promotionOptimistic: {},
+      promotionFeedback: null,
+      promotionRemovalKey: '',
       renderTimer: null,
       requestId: 0,
       pageSignature: '',
@@ -184,9 +185,10 @@
       state.promotionFormEstimate = null;
       state.promotionDraftValues = {};
       clearPromotionEstimateTimers();
-      clearPromotionRemovalTimers();
       state.promotionEstimates = {};
-      state.promotionRemoved = {};
+      state.promotionOptimistic = {};
+      state.promotionFeedback = null;
+      state.promotionRemovalKey = '';
       state.promotionBulkEnabled = false;
       resetPromotionListFilters();
       state.renderTimer = null;
@@ -349,6 +351,7 @@
 
       if (promotionResult.status === 'fulfilled') {
         state.promotionSummary = promotionResult.value;
+        reconcileOptimisticPromotionsFromSummary();
         state.promotionError = '';
       } else {
         state.promotionSummary = null;
@@ -960,7 +963,8 @@
       }
 
       const priceState = state.priceSummary ? CommerceModel.getPriceState(state.priceSummary) : null;
-      const promotionState = state.promotionSummary ? CommerceModel.getPromotionState(state.promotionSummary) : null;
+      const promotionSummary = effectivePromotionSummary();
+      const promotionState = promotionSummary ? CommerceModel.getPromotionState(promotionSummary) : null;
       const priceTone = state.priceError ? 'warn' : priceState ? priceState.tone : 'muted';
       const promotionTone = state.promotionError ? 'warn' : promotionState ? promotionState.tone : 'muted';
       const promotionLabel = state.promotionLoading ? 'Promoção' : promotionState ? promotionState.label : 'Promoção';
@@ -1114,7 +1118,7 @@
         };
       }
 
-      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const groups = CommerceModel.collectPromotionGroups(effectivePromotionSummary());
       const campaignEntry = promotionPopoverCampaignEntry(groups);
       const couponEntries = promotionPopoverCouponEntries(groups);
       const paymentEntries = promotionPopoverPaymentEntries(groups);
@@ -1132,7 +1136,7 @@
     }
 
     function priceSellingPromotion() {
-      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const groups = CommerceModel.collectPromotionGroups(effectivePromotionSummary());
       const entry = currentPromotionEntry(pricePromotionEntries(groups));
       if (!entry) return null;
       return {
@@ -1168,8 +1172,9 @@
         onDraftChange: updatePromotionManagerDraft,
         onToggleBulk: togglePromotionManagerBulk,
         onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
-        onRemove: queuePromotionManagerRemoval,
-        onUndoRemove: undoPromotionManagerRemoval,
+        onRemove: openPromotionManagerRemoval,
+        onCancelRemove: closePromotionManagerRemoval,
+        onConfirmRemove: confirmPromotionManagerRemoval,
         onError: handlePromotionManagerViewError
       });
     }
@@ -1280,7 +1285,11 @@
       return {
         loading: state.promotionLoading,
         busy: state.busy,
-        error: shortMessage(state.actionError || state.promotionError),
+        error: shortMessage(state.promotionError),
+        feedback:
+          state.promotionFeedback && state.promotionFeedback.scope === 'section'
+            ? Object.assign({}, state.promotionFeedback)
+            : null,
         tab: state.promotionTab,
         search: state.promotionSearch,
         statusFilters: state.promotionStatusFilters.slice(),
@@ -1288,6 +1297,7 @@
         financialFilters: state.promotionFinancialFilters.slice(),
         canCreateDiscount: canCreateDirectDiscount(),
         openKey: state.promotionFormKey,
+        removalKey: state.promotionRemovalKey,
         rows: filteredRows
       };
     }
@@ -1296,13 +1306,17 @@
       const { entry, kind, key, status } = row;
       const type = ['campaign', 'coupon', 'direct', 'payment'].includes(row.type) ? row.type : 'campaign';
       const available = status === 'available';
+      const locallyApplied = entry && entry._onframeLocalState === 'applied';
+      const locallySyncing = entry && entry._onframeLocalState === 'syncing';
+      const locallyPending = locallyApplied || locallySyncing;
       const canCreate =
         available &&
+        !locallyPending &&
         (kind === 'eligible-offer' ||
           (kind === 'stackable-offer' && isCandidatePromotion(entry)) ||
           (kind === 'discount-offer' && isCandidatePromotion(entry)));
-      const canUpdate = !available && CommerceModel.canUpdateOffer(entry);
-      const canDelete = !available && CommerceModel.canDeleteOffer(entry);
+      const canUpdate = !available && !locallyPending && CommerceModel.canUpdateOffer(entry);
+      const canDelete = !available && !locallyPending && CommerceModel.canDeleteOffer(entry);
       const formAction = state.promotionFormKey === key ? state.promotionFormAction : '';
       const readOnly = formAction === 'details';
       const fields = CommerceModel.getUserFields(
@@ -1323,7 +1337,7 @@
       const displayPrice = promotionDisplayPrice(entry);
       const originalPrice = promotionManagerOriginalPrice(entry);
       const discount = discountPercent(originalPrice, displayPrice);
-      const estimateRecord = state.promotionEstimates[key] || null;
+      const estimateRecord = state.promotionEstimates[key] || entry._onframeEstimate || null;
       const estimate = estimateRecord && estimateRecord.status === 'ready' ? estimateRecord.data : null;
       const coupon = couponCampaignData(entry);
       const couponMinimum = couponAmount(coupon.min_purchase_amount);
@@ -1332,6 +1346,12 @@
       const metrics = promotionManagerMetrics(estimate);
       const calculation = promotionManagerCalculation(entry, estimate);
       const margin = promotionContributionMargin(estimate);
+      const feedback =
+        state.promotionFeedback &&
+        state.promotionFeedback.key === key &&
+        ['form', 'card'].includes(state.promotionFeedback.scope)
+          ? Object.assign({}, state.promotionFeedback)
+          : null;
       return {
         key,
         group: available ? 'available' : 'applied',
@@ -1339,7 +1359,11 @@
         name: entry.label || (type === 'coupon' ? 'Cupom' : 'Promoção'),
         typeLabel: promotionTypeLabel(entry, type),
         period: formatPromotionManagerPeriod(entry),
-        status: { id: status, label: promotionListStatusLabel(status) },
+        status: {
+          id: status,
+          label: locallySyncing ? 'Sincronizando' : locallyApplied ? 'Aplicada' : promotionListStatusLabel(status),
+          tone: locallySyncing ? 'primary' : undefined
+        },
         hasFeeReduction: hasPromotionFeeReduction(entry),
         condition:
           type === 'coupon'
@@ -1366,8 +1390,10 @@
         metrics,
         calculation,
         margin,
+        feedback,
         canUpdate,
         canDelete,
+        locallyApplied: locallyPending,
         createAction: canCreate,
         formOpen: state.promotionFormKey === key,
         formAction,
@@ -1390,8 +1416,7 @@
             : 'Aplicar em todas as variações'
           : formAction === 'update'
             ? 'Confirmar alteração'
-            : 'Confirmar aplicação',
-        removed: Boolean(state.promotionRemoved[key])
+            : 'Confirmar aplicação'
       };
     }
 
@@ -1621,6 +1646,7 @@
       state.promotionFormAction = action;
       state.promotionBulkEnabled = false;
       state.actionError = '';
+      state.promotionFeedback = null;
       if (action === 'details') {
         schedulePromotionEstimate(key, row.entry, {}, true);
       } else {
@@ -1640,6 +1666,7 @@
       if (!row || state.busy) return;
       state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, { [field]: value });
       state.actionError = '';
+      clearPromotionFeedback(key);
       schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key]);
       rerenderModal();
     }
@@ -1648,7 +1675,25 @@
       if (state.busy) return;
       state.promotionBulkEnabled = Boolean(checked);
       state.actionError = '';
+      clearPromotionFeedback(state.promotionFormKey);
       rerenderModal();
+    }
+
+    function clearPromotionFeedback(key = '') {
+      if (!state.promotionFeedback) return;
+      if (key && state.promotionFeedback.key && state.promotionFeedback.key !== key) return;
+      state.promotionFeedback = null;
+    }
+
+    function setPromotionFeedback({ scope, key = '', tone = 'danger', title = '', message = '' }) {
+      state.promotionFeedback = {
+        scope,
+        key,
+        tone,
+        title,
+        message: shortMessage(message)
+      };
+      return state.promotionFeedback;
     }
 
     function handlePromotionManagerViewError(error) {
@@ -1664,7 +1709,7 @@
     }
 
     function buildPromotionRows() {
-      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const groups = CommerceModel.collectPromotionGroups(effectivePromotionSummary());
       const directDiscount = buildDiscountEntry();
       const sources = [
         {
@@ -1717,6 +1762,112 @@
       if (status === 'programmed') return 'Programada';
       if (status === 'available') return 'Elegível';
       return 'Ativa';
+    }
+
+    function effectivePromotionSummary() {
+      const summary = state.promotionSummary;
+      const optimistic = Object.values(state.promotionOptimistic || {});
+      if (!summary || !optimistic.length) return summary;
+      const sourceOffers = summary.offers || {};
+      const offers = Object.assign({}, sourceOffers, {
+        active: Array.isArray(sourceOffers.active) ? sourceOffers.active.slice() : [],
+        scheduled: Array.isArray(sourceOffers.scheduled) ? sourceOffers.scheduled.slice() : [],
+        eligible: Array.isArray(sourceOffers.eligible) ? sourceOffers.eligible.slice() : [],
+        finished: Array.isArray(sourceOffers.finished) ? sourceOffers.finished.slice() : []
+      });
+
+      optimistic.forEach((change) => {
+        ['active', 'scheduled', 'eligible', 'finished'].forEach((bucket) => {
+          offers[bucket] = offers[bucket].filter((entry) => !promotionMutationMatches(entry, change.identity));
+        });
+        if (change.action !== 'delete') offers.active.unshift(change.entry);
+      });
+      return Object.assign({}, summary, { offers });
+    }
+
+    function reconcileOptimisticPromotionsFromSummary() {
+      const optimistic = Object.values(state.promotionOptimistic || {});
+      if (!optimistic.length || !state.promotionSummary) return;
+      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const applied = groups.activeOffers.concat(groups.scheduledOffers);
+      optimistic.forEach((change) => {
+        const remoteEntry = applied.find((entry) => promotionMutationMatches(entry, change.identity));
+        const confirmed =
+          change.action === 'delete'
+            ? !remoteEntry
+            : Boolean(remoteEntry) &&
+              (change.action !== 'update' || promotionMutationValuesMatch(remoteEntry, change.values));
+        if (confirmed) {
+          delete state.promotionOptimistic[change.identity];
+        }
+      });
+    }
+
+    function promotionMutationValuesMatch(entry, values) {
+      const expected = values || {};
+      if (Object.prototype.hasOwnProperty.call(expected, 'deal_price')) {
+        const expectedPrice = CommerceModel.parseMoneyInput(expected.deal_price);
+        const remotePrice = moneyOrNull(promotionDisplayPrice(entry));
+        if (expectedPrice !== null && remotePrice !== expectedPrice) return false;
+      }
+      if (Object.prototype.hasOwnProperty.call(expected, 'stock') && String(expected.stock || '').trim()) {
+        if (Number(entry && entry.stock) !== Number(expected.stock)) return false;
+      }
+      if (expected.start_date && isoDateOnly(entry && entry.start_date) !== isoDateOnly(expected.start_date))
+        return false;
+      if (expected.finish_date && isoDateOnly(entry && entry.finish_date) !== isoDateOnly(expected.finish_date)) {
+        return false;
+      }
+      return true;
+    }
+
+    function promotionMutationIdentity(entry) {
+      if (!entry) return '';
+      const type = String(entry.type || '').toUpperCase();
+      const promotionId = String(entry.id || entry.promotion_id || '');
+      if (promotionId) return `${type}:${promotionId}`;
+      const offerId = String(entry.offer_id || entry.ref_id || '');
+      if (offerId) return `${type}:${offerId}`;
+      if (type === 'PRICE_DISCOUNT' || entry.direct_discount_draft) return 'PRICE_DISCOUNT:direct';
+      return promotionIdentity(entry);
+    }
+
+    function promotionMutationMatches(entry, identity) {
+      return Boolean(identity && promotionMutationIdentity(entry) === identity);
+    }
+
+    function optimisticPromotionEntry(entry, values, estimate) {
+      const dealPrice = CommerceModel.parseMoneyInput(values && values.deal_price);
+      const stackable = isStackablePromotion(entry);
+      return Object.assign({}, entry, {
+        price: dealPrice || entry.price,
+        deal_price: dealPrice || entry.deal_price,
+        stock: (values && values.stock) || entry.stock,
+        start_date: (values && values.start_date) || entry.start_date,
+        finish_date: (values && values.finish_date) || entry.finish_date,
+        status: stackable ? 'started' : 'pending',
+        api_status: stackable ? 'started' : 'pending',
+        status_bucket: stackable ? 'applied' : 'pending',
+        bucket: stackable ? 'active' : 'scheduled',
+        display_status: stackable ? 'active' : 'programmed',
+        candidate: false,
+        is_current_price: false,
+        _onframeLocalState: 'applied',
+        _onframeEstimate: estimate || null
+      });
+    }
+
+    function applyOptimisticPromotionMutation(entry, action, values, response, estimate) {
+      const identity = promotionMutationIdentity(entry);
+      if (!identity) return '';
+      state.promotionOptimistic[identity] = {
+        identity,
+        action,
+        values: Object.assign({}, values || {}),
+        entry: optimisticPromotionEntry(entry, values, estimate),
+        reconciliationId: String((response && response.reconciliationId) || '')
+      };
+      return identity;
     }
 
     function promotionListType(entry) {
@@ -3027,6 +3178,8 @@
       state.promotionFormKey = '';
       state.promotionFormAction = '';
       state.promotionFormEstimate = null;
+      state.promotionFeedback = null;
+      state.promotionRemovalKey = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
       resetPromotionListFilters();
@@ -3044,6 +3197,7 @@
       state.promotionFormKey = key;
       state.promotionFormAction = 'create';
       state.promotionFormEstimate = null;
+      state.promotionFeedback = null;
       ensureDirectDiscountDraft(key, entry);
       state.actionError = '';
       state.promotionModalOpen = false;
@@ -3059,6 +3213,8 @@
       state.promotionFormKey = '';
       state.promotionFormAction = '';
       state.promotionFormEstimate = null;
+      state.promotionFeedback = null;
+      state.promotionRemovalKey = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
       clearPromotionEstimateTimers();
@@ -3068,13 +3224,14 @@
       removeDirectDiscountModal();
     }
 
-    async function commitPromotionManagerAction(key, action, queuedEntry = null) {
+    async function commitPromotionManagerAction(key, action, explicitEntry = null) {
       if (!state.itemId || state.busy || !['create', 'update', 'delete'].includes(action)) return;
       const row = promotionManagerRow(key);
-      const entry = queuedEntry || (row && row.entry);
+      const entry = explicitEntry || (row && row.entry);
       if (!entry) return;
       const createdDirectDiscount = Boolean(entry.direct_discount_draft);
       const values = Object.assign({}, state.promotionDraftValues[key] || {});
+      const estimateRecord = state.promotionEstimates[key] || null;
       const fields =
         action === 'delete'
           ? []
@@ -3088,12 +3245,26 @@
 
       const draftWarning = action === 'delete' ? '' : promotionDraftWarning(entry, values);
       const priceWarning = fields.includes('deal_price') ? promotionManagerPriceError(entry, values.deal_price) : '';
-      if (draftWarning || priceWarning) {
-        state.actionError = draftWarning || priceWarning;
+      if (priceWarning) {
+        rerenderModal();
+        return;
+      }
+      if (draftWarning) {
+        if (createdDirectDiscount) {
+          state.actionError = draftWarning;
+        } else {
+          setPromotionFeedback({
+            scope: 'form',
+            key,
+            title: 'Revise os dados',
+            message: draftWarning
+          });
+        }
         rerenderModal();
         return;
       }
 
+      let keepFormOpen = false;
       try {
         const method = action === 'delete' ? 'DELETE' : action === 'update' ? 'PUT' : 'POST';
         const payload =
@@ -3109,20 +3280,34 @@
         state.operationPendingKey = key;
         state.operationPendingAction = action;
         state.actionError = '';
+        clearPromotionFeedback(key);
         rerenderModal();
 
         if (state.promotionBulkEnabled && canUseBulkActions()) {
           const result = await commitBulkInBatches(`promotion.offer.${action}`, payload);
-          notifyBulkResult(result, promotionActionSuccessLabel(action));
-          void reconcileBulkResult(result, promotionActionSuccessLabel(action));
+          const currentTarget = currentBulkPromotionTarget(result);
+          if (currentTarget) {
+            const identity = applyOptimisticPromotionMutation(entry, action, values, currentTarget, estimateRecord);
+            if (identity) void reconcilePromotionManagerMutation(identity, currentTarget.reconciliationId);
+          }
+          keepFormOpen = !publishPromotionBulkFeedback(result, action).changed;
+          void reconcilePromotionBulkResult(result, action);
         } else {
-          await api(itemApiPath('/promotions/offers'), {
-            method,
-            body: JSON.stringify(payload)
-          });
-          showToast('success', promotionActionSuccessLabel(action));
+          let response;
+          try {
+            response = await api(itemApiPath('/promotions/offers'), {
+              method,
+              body: JSON.stringify(payload)
+            });
+          } catch (error) {
+            if (!isAcceptedPromotionRequestError(error)) throw error;
+            response = { status: 'pending_confirmation' };
+          }
+          const identity = applyOptimisticPromotionMutation(entry, action, values, response, estimateRecord);
+          if (identity) void reconcilePromotionManagerMutation(identity, response && response.reconciliationId);
         }
 
+        if (keepFormOpen) return;
         state.promotionFormKey = '';
         state.promotionFormAction = '';
         state.promotionFormEstimate = null;
@@ -3130,17 +3315,23 @@
         clearPromotionEstimateTimer(key);
         delete state.promotionEstimates[key];
         state.promotionBulkEnabled = false;
-        delete state.promotionRemoved[key];
         if (createdDirectDiscount) {
           state.directDiscountModalOpen = false;
           state.promotionModalOpen = true;
           removeDirectDiscountModal();
         }
-        await loadSummaries(state.requestId);
-        schedulePromotionManagerEstimates();
       } catch (err) {
-        delete state.promotionRemoved[key];
-        state.actionError = CommerceModel.friendlyError(err);
+        const message = CommerceModel.friendlyError(err);
+        if (createdDirectDiscount) {
+          state.actionError = message;
+        } else {
+          setPromotionFeedback({
+            scope: action === 'delete' ? 'card' : 'form',
+            key,
+            title: promotionActionErrorTitle(action),
+            message
+          });
+        }
       } finally {
         state.busy = false;
         state.operationPending = '';
@@ -3150,38 +3341,133 @@
       }
     }
 
-    function queuePromotionManagerRemoval(key) {
-      if (state.busy || state.promotionRemoved[key]) return;
+    function currentBulkPromotionTarget(result) {
+      return (
+        (Array.isArray(result && result.targets) ? result.targets : []).find(
+          (target) =>
+            target &&
+            target.itemId === state.itemId &&
+            ['applied', 'pending_confirmation'].includes(String(target.status || ''))
+        ) || null
+      );
+    }
+
+    function isAcceptedPromotionRequestError(error) {
+      const technical = String((error && (error.technicalError || error.code)) || '').toLowerCase();
+      const message = String((error && error.message) || '').toLowerCase();
+      return (
+        technical.includes('promotion_change_not_confirmed') ||
+        message.includes('mercado livre ainda está confirmando o novo estado')
+      );
+    }
+
+    async function reconcilePromotionManagerMutation(identity, reconciliationId) {
+      const attempts = reconciliationId ? 150 : 30;
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        await waitForPromotionReconciliation(2000);
+        if (!state.promotionOptimistic[identity] || !state.itemId) return;
+        if (attempt === 2) markPromotionMutationSyncing(identity);
+        let remotelyConfirmed = false;
+
+        if (reconciliationId) {
+          try {
+            const response = await api(`/api/bulk/reconciliations?ids=${encodeURIComponent(reconciliationId)}`);
+            const operation = Array.isArray(response && response.operations) ? response.operations[0] : null;
+            if (operation && operation.status === 'unconfirmed') {
+              rejectOptimisticPromotionMutation(identity, operation.message);
+              await refreshPromotionSummarySilently();
+              return;
+            }
+            if (!operation || operation.status === 'pending') continue;
+            remotelyConfirmed = operation.status === 'confirmed';
+          } catch (error) {
+            continue;
+          }
+        }
+
+        await refreshPromotionSummarySilently();
+        if (remotelyConfirmed && state.promotionOptimistic[identity]) {
+          delete state.promotionOptimistic[identity];
+          mountCommerce();
+        }
+        if (!state.promotionOptimistic[identity]) {
+          schedulePromotionManagerEstimates();
+          return;
+        }
+      }
+    }
+
+    function markPromotionMutationSyncing(identity) {
+      const change = state.promotionOptimistic[identity];
+      if (!change) return;
+      if (change.action === 'delete') {
+        if (state.promotionModalOpen && !state.promotionFeedback) {
+          setPromotionFeedback({
+            scope: 'section',
+            tone: 'info',
+            title: 'Sincronizando remoção',
+            message: 'O Mercado Livre ainda está confirmando a remoção desta promoção.'
+          });
+        }
+      } else {
+        change.entry._onframeLocalState = 'syncing';
+      }
+      mountCommerce();
+    }
+
+    function rejectOptimisticPromotionMutation(identity, remoteMessage = '') {
+      const change = state.promotionOptimistic[identity];
+      if (!change) return;
+      const name = String((change.entry && change.entry.label) || 'esta promoção');
+      delete state.promotionOptimistic[identity];
+      const title = 'Alteração não confirmada';
+      const message = remoteMessage
+        ? shortMessage(remoteMessage)
+        : `O Mercado Livre não confirmou a alteração em ${name}. O estado atual foi restaurado.`;
+      if (state.promotionModalOpen) {
+        setPromotionFeedback({ scope: 'section', tone: 'warning', title, message });
+      } else {
+        showToast('warning', title, message);
+      }
+    }
+
+    async function refreshPromotionSummarySilently() {
+      const itemId = state.itemId;
+      const requestId = state.requestId;
+      if (!itemId) return;
+      try {
+        const summary = await api(itemApiPath('/promotions/summary'));
+        if (itemId !== state.itemId || requestId !== state.requestId) return;
+        state.promotionSummary = summary;
+        state.promotionError = '';
+        reconcileOptimisticPromotionsFromSummary();
+        syncActiveListingSummaries();
+        mountCommerce();
+      } catch (error) {
+        // A escrita aceita continua visível enquanto a leitura remota é tentada novamente.
+      }
+    }
+
+    function openPromotionManagerRemoval(key) {
+      if (state.busy) return;
       const row = promotionManagerRow(key);
       if (!row || !CommerceModel.canDeleteOffer(row.entry)) return;
-      state.promotionRemoved[key] = { entry: row.entry };
+      state.promotionRemovalKey = key;
       state.actionError = '';
-      clearTimeout(state.promotionRemovalTimers[key]);
-      state.promotionRemovalTimers[key] = setTimeout(() => commitQueuedPromotionManagerRemoval(key, row.entry), 5000);
+      state.promotionFeedback = null;
       rerenderModal();
     }
 
-    function commitQueuedPromotionManagerRemoval(key, entry) {
-      if (state.busy) {
-        state.promotionRemovalTimers[key] = setTimeout(() => commitQueuedPromotionManagerRemoval(key, entry), 500);
-        return;
-      }
-      delete state.promotionRemovalTimers[key];
-      void commitPromotionManagerAction(key, 'delete', entry);
-    }
-
-    function undoPromotionManagerRemoval(key) {
-      clearTimeout(state.promotionRemovalTimers[key]);
-      delete state.promotionRemovalTimers[key];
-      delete state.promotionRemoved[key];
+    function closePromotionManagerRemoval() {
+      if (!state.promotionRemovalKey) return;
+      state.promotionRemovalKey = '';
       rerenderModal();
     }
 
-    function clearPromotionRemovalTimers() {
-      Object.keys(state.promotionRemovalTimers || {}).forEach((key) => {
-        clearTimeout(state.promotionRemovalTimers[key]);
-      });
-      state.promotionRemovalTimers = {};
+    function confirmPromotionManagerRemoval(key) {
+      if (state.busy || !key || state.promotionRemovalKey !== key) return;
+      state.promotionRemovalKey = '';
+      void commitPromotionManagerAction(key, 'delete');
     }
 
     function cancelPromotionForm() {
@@ -3191,6 +3477,7 @@
       const formAction = state.promotionFormAction;
       const previousEstimate = state.promotionFormEstimate;
       const returningFromDirectDiscount = state.directDiscountModalOpen && key === directDiscountKey();
+      clearPromotionFeedback(key);
       clearPromotionEstimateTimer(key);
       delete state.promotionDraftValues[key];
       if (formAction !== 'details') {
@@ -3215,6 +3502,8 @@
 
     async function reloadCommerce() {
       state.actionError = '';
+      state.promotionFeedback = null;
+      state.promotionOptimistic = {};
       state.promotionDraftValues = {};
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
@@ -3232,10 +3521,11 @@
     }
 
     function buildDiscountEntry() {
-      if (!state.promotionSummary || !Array.isArray(state.promotionSummary.adapters)) return null;
+      const summary = effectivePromotionSummary();
+      if (!summary || !Array.isArray(summary.adapters)) return null;
       const adapter = directDiscountAdapter();
       if (!adapter || !Array.isArray(adapter.offerCreate)) return null;
-      const groups = CommerceModel.collectPromotionGroups(state.promotionSummary);
+      const groups = CommerceModel.collectPromotionGroups(summary);
       const existing = [groups.activeOffers, groups.scheduledOffers].flat().find(isPriceDiscountPromotion);
       if (existing) {
         return Object.assign({}, existing, {
@@ -3457,7 +3747,7 @@
       });
     }
 
-    async function reconcileBulkResult(initialResult, title) {
+    async function reconcilePromotionBulkResult(initialResult, action) {
       let result = initialResult;
       const reconciliationIds = Array.from(
         new Set(
@@ -3503,7 +3793,7 @@
         result = mergeBulkResponses([Object.assign({}, result, { targets })]);
         if (Number((result.counts && result.counts.pending) || 0) > 0) continue;
 
-        notifyBulkResult(result, title);
+        publishPromotionBulkFeedback(result, action, { background: true });
         try {
           await loadSummaries(state.requestId);
           schedulePromotionManagerEstimates();
@@ -3513,6 +3803,40 @@
         }
         return;
       }
+    }
+
+    function publishPromotionBulkFeedback(result, action, options = {}) {
+      const counts = result && result.counts ? result.counts : {};
+      const applied = Number(counts.applied || 0);
+      const pending = Number(counts.pending || 0);
+      const failed = Number(counts.failed || 0);
+      const blocked = Number(counts.blocked || 0);
+      const skipped = Number(counts.skipped || 0);
+      const unconfirmed = Number(counts.unconfirmed || 0);
+      const unchanged = failed + blocked + skipped;
+      const changed = applied + pending > 0;
+      const hasAttention = unchanged + unconfirmed > 0;
+      const tone = !changed ? 'danger' : hasAttention ? 'warning' : pending ? 'info' : 'success';
+      const title = !changed
+        ? 'Nenhuma variação foi alterada'
+        : pending && !applied
+          ? 'Sincronizando variações'
+          : promotionActionSuccessLabel(action);
+      const parts = [
+        applied ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.` : '',
+        pending ? `${pending} aguarda${pending === 1 ? '' : 'm'} confirmação do Mercado Livre.` : '',
+        unconfirmed ? `${unconfirmed} não teve${unconfirmed === 1 ? '' : 'ram'} o estado final confirmado.` : '',
+        unchanged ? `${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterada${unchanged === 1 ? '' : 's'}.` : ''
+      ].filter(Boolean);
+      const message = parts.join(' ') || 'Revise a elegibilidade das variações e tente novamente.';
+      const feedback = { scope: 'section', tone, title, message };
+
+      if (options.background && !state.promotionModalOpen) {
+        if (tone !== 'success') showToast(tone, title, message);
+      } else {
+        setPromotionFeedback(feedback);
+      }
+      return { changed, feedback };
     }
 
     function waitForPromotionReconciliation(milliseconds) {
@@ -3559,6 +3883,12 @@
       if (action === 'delete') return 'Promoção removida';
       if (action === 'update') return 'Promoção atualizada';
       return 'Promoção aplicada';
+    }
+
+    function promotionActionErrorTitle(action) {
+      if (action === 'delete') return 'Não foi possível remover a promoção';
+      if (action === 'update') return 'Não foi possível alterar a promoção';
+      return 'Não foi possível aplicar a promoção';
     }
 
     function showToast(tone, title, body) {

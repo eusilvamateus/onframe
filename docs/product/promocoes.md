@@ -101,6 +101,26 @@ o estado retornado para o item. Um estado de oferta que nao tenha semantica de
 reconciliacao conhecida ainda pode comprovar a identidade, mas nao altera o
 estado visual da participacao.
 
+Quando o Mercado Livre aceita uma criacao ou alteracao antes de sua leitura
+refletir o novo estado, o OnFrame fecha a edicao e mostra localmente a
+participacao como **Aplicada** na secao de promocoes aplicadas. Esse estado e
+otimista e impede o reenvio acidental da mesma operacao, mas nunca transforma
+uma promocao de preco em **Ativa** nem altera o chip de promocao ativa. A oferta
+vencedora continua dependendo exclusivamente da resolucao por `sale_price`.
+
+O Worker registra a operacao aceita em `promotion_reconciliations` e inicia o
+Workflow duravel. A extensao sincroniza o resumo silenciosamente enquanto a
+confirmacao ocorre. Quando o estado remoto alcanca o esperado, ele substitui o
+estado local; se a reconciliacao terminar sem confirmacao, a interface volta a
+refletir o resumo remoto sem apresentar a espera como erro de formulario.
+
+Se a confirmacao demorar, a participacao passa a indicar **Sincronizando**. Uma
+reconciliacao encerrada sem confirmacao restaura o estado remoto e apresenta o
+problema na superficie de promocoes ainda aberta. Acoes em massa usam um resumo
+contextual porque o resultado das outras variacoes nao e visivel no anuncio
+atual. As regras gerais estao em
+[Feedback de operacoes](feedback-de-operacoes.md).
+
 ## Relacoes
 
 - [Promocoes e acoes em massa](../user/promocoes-acoes-em-massa.md)
