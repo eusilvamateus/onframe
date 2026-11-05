@@ -243,7 +243,7 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
         payload
       });
       setCurrent(result);
-      onSaved(result, current ? 'Produto atualizado.' : 'Produto criado.');
+      onSaved(result);
       closeAfterSave = !current;
     } catch (failure) {
       setError(userError(failure));
@@ -555,22 +555,21 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
     void load(1);
   }, [load]);
 
-  function reflectProduct(product, message) {
+  function reflectProduct(product) {
     setProducts((items) => items.map((item) => (item.id === product.id ? product : item)));
-    toast({ tone: 'success', title: message });
     void load(pagination.page);
   }
 
   async function archive(product) {
     setLoading(true);
-    setError('');
+    setDialog((current) => (current?.type === 'archive' ? { ...current, error: '' } : current));
     try {
       await sendRemoteMessage('product-archive', { productId: product.id });
       setDialog(null);
-      toast({ tone: 'success', title: 'Produto arquivado.' });
+      setProducts((items) => items.filter((item) => item.id !== product.id));
       await load(Math.min(pagination.page, Math.max(1, pagination.totalPages)));
     } catch (failure) {
-      setError(userError(failure));
+      setDialog((current) => (current?.type === 'archive' ? { ...current, error: userError(failure) } : current));
     } finally {
       setLoading(false);
     }
@@ -590,11 +589,6 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
         page += 1;
       } while (page <= totalPages);
       downloadProductExport(catalog);
-      toast({
-        tone: 'success',
-        title: 'Planilha gerada.',
-        body: `${catalog.length} ${catalog.length === 1 ? 'produto incluído' : 'produtos incluídos'}.`
-      });
     } catch (failure) {
       setError(userError(failure, 'Não foi possível gerar a planilha de produtos.'));
     } finally {
@@ -634,12 +628,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
     return undefined;
   }, [admin, exportBusy, exportCatalog, onHeaderActionsChange]);
 
-  function imported({ summary }) {
-    toast({
-      tone: summary.rejected > 0 ? 'warning' : 'success',
-      title: 'Importação processada.',
-      body: `${summary.created} criados, ${summary.updated} atualizados e ${summary.rejected} rejeitados.`
-    });
+  function imported() {
     void load(1);
   }
 
@@ -805,8 +794,17 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
           </>
         }
       >
-        O produto <strong>{dialog?.product?.name}</strong> deixará de aparecer no catálogo. Seu histórico de custos será
-        preservado.
+        <div className="onframe-stack">
+          {dialog?.error && (
+            <Alert appearance="soft" tone="danger">
+              {dialog.error}
+            </Alert>
+          )}
+          <p>
+            O produto <strong>{dialog?.product?.name}</strong> deixará de aparecer no catálogo. Seu histórico de custos
+            será preservado.
+          </p>
+        </div>
       </Modal>
     </div>
   );

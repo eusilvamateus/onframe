@@ -180,3 +180,14 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(taxSettings, /tax-configuration-update/u);
   assert.match(taxSettings, /Alíquota padrão[^]*Exceções por conta/u);
 });
+
+test('retornos de produtos permanecem na superfície que originou a ação', () => {
+  assert.doesNotMatch(products, /title: 'Produto atualizado\.'/u);
+  assert.doesNotMatch(products, /title: 'Produto criado\.'/u);
+  assert.doesNotMatch(products, /title: 'Produto arquivado\.'/u);
+  assert.doesNotMatch(products, /title: 'Planilha gerada\.'/u);
+  assert.doesNotMatch(products, /title: 'Importação processada\.'/u);
+  assert.match(products, /setProducts\(\(items\) => items\.filter\(\(item\) => item\.id !== product\.id\)\)/u);
+  assert.match(products, /dialog\?\.error[^]*<Alert appearance="soft" tone="danger">/u);
+  assert.match(spreadsheetModal, /step === 'result'[^]*Resultado da importação/u);
+});
