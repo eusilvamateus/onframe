@@ -276,7 +276,7 @@ export function createProductWorkbook(products = [], includeInstructions = false
       ['Como preencher'],
       ['SKU', 'Identificador único do produto no workspace.'],
       ['Nome', 'Nome interno do produto.'],
-      ['Custo (R$)', 'Custo unitário do produto. Use valor numérico.'],
+      ['Custo (R$)', 'Custo unitário do produto. Use valor numérico; a precisão decimal será preservada.'],
       [
         'Imposto (%)',
         'Alíquota específica do produto. Deixe vazio para herdar a configuração da conta ou do workspace.'

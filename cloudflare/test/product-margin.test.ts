@@ -65,6 +65,21 @@ test('margem de contribuicao preserva resultado negativo', () => {
   assert.equal(margin.complete, true);
 });
 
+test('margem preserva o custo preciso e arredonda somente o resultado monetario', () => {
+  const margin = buildContributionMargin(
+    { dealPrice: 100, youReceive: 70, currency_id: 'BRL' },
+    {
+      status: 'matched',
+      tax: { configured: true, rate: 10, base: 'sale_price', source: 'product', sourceId: 'product-1' },
+      product: { cost: 16.67288, customCosts: [] }
+    }
+  );
+
+  assert.equal(margin.productCost, 16.67288);
+  assert.equal(margin.amount, 43.33);
+  assert.equal(margin.percentage, 43.33);
+});
+
 test('margem de contribuicao informa dados ausentes sem estimar valores', () => {
   const withoutProduct = buildContributionMargin(
     {

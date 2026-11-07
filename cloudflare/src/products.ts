@@ -10,7 +10,7 @@ type ProductRow = {
   id: string;
   sku: string;
   name: string;
-  current_cost_cents: number;
+  current_cost_decimal: string;
   tax_rate_bps: number | null;
   custom_costs_json: string;
   status: 'active' | 'inactive';
@@ -40,7 +40,8 @@ type ProductData = {
   sku: string;
   normalizedSku: string;
   name: string;
-  costCents: number;
+  cost: number;
+  costDecimal: string;
   taxRateBps: number | null;
   customCosts: ProductCustomCost[];
   customCostsJson: string;
@@ -109,6 +110,22 @@ function decimalToInteger(value: unknown, scale: number, max: number): number {
     throw new ProductRequestError('product_invalid_payload', 400);
   }
   return scaled;
+}
+
+function decimalAmount(value: unknown, max: number): { value: number; decimal: string } {
+  if (value === '' || value === null || value === undefined) return { value: 0, decimal: '0' };
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  const normalized = typeof value === 'string' ? value.trim().replace(',', '.') : String(value);
+  if (!/^\d+(?:\.\d+)?(?:e[+-]?\d+)?$/iu.test(normalized)) {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  const number = Number(normalized);
+  if (!Number.isFinite(number) || number < 0 || number > max) {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  return { value: number, decimal: String(number) };
 }
 
 function optionalDecimalToInteger(value: unknown, scale: number, max: number): number | null {
@@ -249,7 +266,7 @@ export async function matchProductForPromotionItem(
   if (resolution.status !== 'resolved' || !resolution.sku) return resolution;
   const product = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products
     WHERE workspace_id = ? AND normalized_sku = ? AND status = 'active' AND archived_at IS NULL
   `
@@ -273,7 +290,7 @@ function productPayload(row: ProductRow, accountTaxRates: ProductAccountTaxRate[
     id: row.id,
     sku: row.sku,
     name: row.name,
-    cost: row.current_cost_cents / 100,
+    cost: Number(row.current_cost_decimal),
     taxRate: row.tax_rate_bps === null ? null : row.tax_rate_bps / 100,
     customCosts: customCostsPayload(row.custom_costs_json),
     accountTaxRates: accountTaxRates.map((rate) => ({
@@ -395,7 +412,7 @@ async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> 
 async function assertProduct(env: ProductEnv, actor: ProductActor, productId: string): Promise<ProductRow> {
   const product = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `
   )
@@ -474,7 +491,7 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const page = Math.min(requestedPage, totalPages);
   const rows = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE ${clause}
     ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `
@@ -495,11 +512,13 @@ function parseProductBody(body: Record<string, unknown>): ProductData {
   if (status !== 'active' && status !== 'inactive') throw new ProductRequestError('product_invalid_payload', 400);
   const customCosts = parseCustomCosts(body.customCosts);
   const accountTaxRateInputs = parseAccountTaxRates(body.accountTaxRates);
+  const cost = decimalAmount(body.cost, 99_999_999.99);
   return {
     sku,
     normalizedSku: normalizeSku(sku),
     name: asText(body.name, 160, true),
-    costCents: decimalToInteger(body.cost, 100, 9_999_999_999),
+    cost: cost.value,
+    costDecimal: cost.decimal,
     taxRateBps: optionalDecimalToInteger(body.taxRate, 100, 10_000),
     customCosts,
     customCostsJson: JSON.stringify(customCosts),
@@ -565,7 +584,7 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
       values: {
         sku: data.sku,
         name: data.name,
-        cost: data.costCents / 100,
+        cost: data.cost,
         taxRate: data.taxRateBps === null ? null : data.taxRateBps / 100,
         customCosts: data.customCosts.map((cost) => ({
           description: cost.description,
@@ -603,7 +622,7 @@ function productMatchesImport(
   return (
     product.sku === data.sku &&
     product.name === data.name &&
-    product.current_cost_cents === data.costCents &&
+    product.current_cost_decimal === data.costDecimal &&
     product.tax_rate_bps === data.taxRateBps &&
     JSON.stringify(storedCustomCosts(product.custom_costs_json)) === data.customCostsJson &&
     JSON.stringify(accountTaxRates) === JSON.stringify(data.accountTaxRates) &&
@@ -653,7 +672,7 @@ async function buildProductImportPlan(
   }
   const existing = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE workspace_id = ? AND archived_at IS NULL
   `
   )
@@ -722,7 +741,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
           env.ONFRAME_DB.prepare(
             `
           INSERT OR IGNORE INTO products (
-            id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps,
+            id, workspace_id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps,
             custom_costs_json, status, created_by_user_id, updated_by_user_id, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
@@ -732,7 +751,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             data.sku,
             data.normalizedSku,
             data.name,
-            data.costCents,
+            data.costDecimal,
             data.taxRateBps,
             data.customCostsJson,
             data.status,
@@ -745,10 +764,18 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
         statements.push(
           env.ONFRAME_DB.prepare(
             `
-          INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
+          INSERT INTO product_cost_history (id, product_id, cost_decimal, effective_at, created_by_user_id, created_at)
           SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
         `
-          ).bind(crypto.randomUUID(), data.costCents, timestamp, actor.userId, timestamp, productId, actor.workspaceId)
+          ).bind(
+            crypto.randomUUID(),
+            data.costDecimal,
+            timestamp,
+            actor.userId,
+            timestamp,
+            productId,
+            actor.workspaceId
+          )
         );
         statements.push(...accountTaxRateStatements(env, actor, productId, data.accountTaxRates, timestamp));
       } else {
@@ -756,7 +783,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
         statements.push(
           env.ONFRAME_DB.prepare(
             `
-          UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
+          UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_decimal = ?,
             tax_rate_bps = ?, custom_costs_json = ?, status = ?, updated_by_user_id = ?, updated_at = ?
           WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
         `
@@ -764,7 +791,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             data.sku,
             data.normalizedSku,
             data.name,
-            data.costCents,
+            data.costDecimal,
             data.taxRateBps,
             data.customCostsJson,
             data.status,
@@ -774,16 +801,16 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             actor.workspaceId
           )
         );
-        if (row.existing?.current_cost_cents !== data.costCents) {
+        if (row.existing?.current_cost_decimal !== data.costDecimal) {
           statements.push(
             env.ONFRAME_DB.prepare(
               `
-            INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
+            INSERT INTO product_cost_history (id, product_id, cost_decimal, effective_at, created_by_user_id, created_at)
             SELECT ?, id, ?, ?, ?, ? FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
           `
             ).bind(
               crypto.randomUUID(),
-              data.costCents,
+              data.costDecimal,
               timestamp,
               actor.userId,
               timestamp,
@@ -844,7 +871,7 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
       env.ONFRAME_DB.prepare(
         `
         INSERT INTO products (
-          id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps,
+          id, workspace_id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps,
           custom_costs_json, status, created_by_user_id, updated_by_user_id, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
@@ -854,7 +881,7 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
         data.sku,
         data.normalizedSku,
         data.name,
-        data.costCents,
+        data.costDecimal,
         data.taxRateBps,
         data.customCostsJson,
         data.status,
@@ -865,10 +892,10 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
       ),
       env.ONFRAME_DB.prepare(
         `
-        INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
+        INSERT INTO product_cost_history (id, product_id, cost_decimal, effective_at, created_by_user_id, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
       `
-      ).bind(crypto.randomUUID(), id, data.costCents, timestamp, actor.userId, timestamp),
+      ).bind(crypto.randomUUID(), id, data.costDecimal, timestamp, actor.userId, timestamp),
       ...accountTaxRateStatements(env, actor, id, data.accountTaxRates, timestamp)
     ]);
   } catch (error) {
@@ -896,7 +923,7 @@ export async function updateProduct(
   const statements = [
     env.ONFRAME_DB.prepare(
       `
-    UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_cents = ?,
+    UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_decimal = ?,
       tax_rate_bps = ?, custom_costs_json = ?, status = ?, updated_by_user_id = ?, updated_at = ?
     WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `
@@ -904,7 +931,7 @@ export async function updateProduct(
       data.sku,
       data.normalizedSku,
       data.name,
-      data.costCents,
+      data.costDecimal,
       data.taxRateBps,
       data.customCostsJson,
       data.status,
@@ -914,14 +941,14 @@ export async function updateProduct(
       actor.workspaceId
     )
   ];
-  if (current.current_cost_cents !== data.costCents) {
+  if (current.current_cost_decimal !== data.costDecimal) {
     statements.push(
       env.ONFRAME_DB.prepare(
         `
-      INSERT INTO product_cost_history (id, product_id, cost_cents, effective_at, created_by_user_id, created_at)
+      INSERT INTO product_cost_history (id, product_id, cost_decimal, effective_at, created_by_user_id, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `
-      ).bind(crypto.randomUUID(), productId, data.costCents, timestamp, actor.userId, timestamp)
+      ).bind(crypto.randomUUID(), productId, data.costDecimal, timestamp, actor.userId, timestamp)
     );
   }
   statements.push(...accountTaxRateStatements(env, actor, productId, data.accountTaxRates, timestamp));

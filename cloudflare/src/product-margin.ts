@@ -19,6 +19,10 @@ function moneyFromCents(value: number | null): number | null {
   return value === null ? null : value / 100;
 }
 
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
 function roundPercentage(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -62,7 +66,7 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const tax = recordOrNull(productMatch?.tax);
   const salePriceCents = centsOrNull(estimate?.dealPrice);
   const youReceiveCents = centsOrNull(estimate?.youReceive);
-  const productCostCents = centsOrNull(product?.cost);
+  const productCost = numberOrNull(product?.cost);
   const taxRate = tax?.configured === true ? numberOrNull(tax.rate) : null;
   const taxBase = tax?.configured === true && tax.base === 'sale_price' ? 'sale_price' : null;
   const taxSource = tax?.configured === true && typeof tax.source === 'string' ? tax.source : null;
@@ -73,7 +77,7 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   if (!product) missing.push('product');
   if (salePriceCents === null || salePriceCents <= 0) missing.push('sale_price');
   if (youReceiveCents === null || youReceiveCents < 0) missing.push('you_receive');
-  if (product && (productCostCents === null || productCostCents < 0)) missing.push('product_cost');
+  if (product && (productCost === null || productCost < 0)) missing.push('product_cost');
   if (product && calculatedCustomCosts === null) missing.push('custom_costs');
   if (product && (taxRate === null || taxRate < 0 || taxRate > 100 || taxBase !== 'sale_price'))
     missing.push('tax_rate');
@@ -82,8 +86,11 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const taxRateBps = complete ? Math.round(taxRate! * 100) : null;
   const taxAmountCents = complete ? Math.round((salePriceCents! * taxRateBps!) / 10_000) : null;
   const customCostCents = complete ? calculatedCustomCosts!.reduce((total, cost) => total + cost.amountCents, 0) : null;
-  const amountCents = complete ? youReceiveCents! - productCostCents! - taxAmountCents! - customCostCents! : null;
-  const percentage = complete ? roundPercentage((amountCents! / salePriceCents!) * 100) : null;
+  const preciseAmount = complete
+    ? youReceiveCents! / 100 - productCost! - taxAmountCents! / 100 - customCostCents! / 100
+    : null;
+  const amount = preciseAmount === null ? null : roundMoney(preciseAmount);
+  const percentage = complete ? roundPercentage((preciseAmount! / (salePriceCents! / 100)) * 100) : null;
 
   return {
     complete,
@@ -91,7 +98,7 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
     currency_id: typeof estimate?.currency_id === 'string' ? estimate.currency_id : null,
     salePrice: moneyFromCents(salePriceCents),
     youReceive: moneyFromCents(youReceiveCents),
-    productCost: moneyFromCents(productCostCents),
+    productCost,
     taxRate,
     taxBase,
     taxSource,
@@ -99,7 +106,7 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
     taxAmount: moneyFromCents(taxAmountCents),
     customCosts: calculatedCustomCosts?.map(({ amountCents: _amountCents, ...cost }) => cost) || [],
     customCost: moneyFromCents(customCostCents),
-    amount: moneyFromCents(amountCents),
+    amount,
     percentage,
     formula: 'you_receive - product_cost - tax_amount - custom_costs'
   };

@@ -249,14 +249,41 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       },
       { rowNumber: 5, sku: 'DUP-01', name: 'Duplicado A', cost: 10, taxRate: 1, customCosts: [], status: 'active' },
       { rowNumber: 6, sku: 'dup-01', name: 'Duplicado B', cost: 11, taxRate: 1, customCosts: [], status: 'active' },
-      { rowNumber: 7, sku: 'SEM-CUSTO', name: 'Inválido', cost: '', taxRate: 1, customCosts: [], status: 'active' }
+      { rowNumber: 7, sku: 'SEM-CUSTO', name: 'Inválido', cost: '', taxRate: 1, customCosts: [], status: 'active' },
+      {
+        rowNumber: 8,
+        sku: 'CHINES-4UN',
+        name: 'Kit 4 chapéus chineses',
+        cost: 44.328,
+        taxRate: 23,
+        customCosts: [],
+        status: 'active'
+      },
+      {
+        rowNumber: 9,
+        sku: 'CAR-1608',
+        name: 'Carrinho dobrável',
+        cost: 95.1997031,
+        taxRate: 23,
+        customCosts: [],
+        status: 'active'
+      },
+      {
+        rowNumber: 10,
+        sku: 'FTX9057PP-MR-39',
+        name: 'Pantufa',
+        cost: 16.67288,
+        taxRate: 23,
+        customCosts: [],
+        status: 'active'
+      }
     ];
     const importRequest = () => productRequest({ rows: importRows });
     await assert.rejects(previewProductImport(importRequest(), env, collaborator), {
       code: 'product_access_forbidden'
     });
     const preview = await previewProductImport(importRequest(), env, admin);
-    assert.deepEqual(preview.summary, { total: 6, create: 1, update: 1, unchanged: 1, error: 3 });
+    assert.deepEqual(preview.summary, { total: 9, create: 4, update: 1, unchanged: 1, error: 3 });
     assert.equal(preview.rows[0].action, 'update');
     assert.equal(preview.rows[1].action, 'create');
     assert.equal(preview.rows[2].action, 'unchanged');
@@ -264,13 +291,20 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(preview.rows[5].errors[0], 'Custo obrigatório.');
 
     const imported = await commitProductImport(importRequest(), env, admin, 'request-import');
-    assert.deepEqual(imported.summary, { total: 6, created: 1, updated: 1, unchanged: 1, rejected: 3 });
+    assert.deepEqual(imported.summary, { total: 9, created: 4, updated: 1, unchanged: 1, rejected: 3 });
     const importedProducts = await listProducts(
       env,
       admin,
       new URL('https://onframe.onblide.com/v1/app/products?limit=100')
     );
     assert.equal(importedProducts.products.find((entry) => entry.sku === 'MESA-180')?.cost, 170);
+    assert.equal(importedProducts.products.find((entry) => entry.sku === 'CHINES-4UN')?.cost, 44.328);
+    assert.equal(importedProducts.products.find((entry) => entry.sku === 'CAR-1608')?.cost, 95.1997031);
+    assert.equal(importedProducts.products.find((entry) => entry.sku === 'FTX9057PP-MR-39')?.cost, 16.67288);
+    const preciseCost = await db
+      .prepare("SELECT current_cost_decimal FROM products WHERE normalized_sku = 'CAR-1608'")
+      .first<{ current_cost_decimal: string }>();
+    assert.equal(preciseCost?.current_cost_decimal, '95.1997031');
     assert.equal(
       importedProducts.products.some((entry) => entry.sku === 'BANCO-01'),
       true

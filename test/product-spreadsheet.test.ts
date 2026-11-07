@@ -43,6 +43,23 @@ test('planilha de produtos preserva os campos do catalogo', () => {
   ]);
 });
 
+test('planilha preserva a precisao completa do custo unitario', () => {
+  const workbook = createProductWorkbook([
+    { sku: 'CHINES-4UN', name: 'Kit 4 chapéus chineses', cost: 44.328, taxRate: 23, customCosts: [], status: 'active' },
+    { sku: 'CAR-1608', name: 'Carrinho dobrável', cost: 95.1997031, taxRate: 23, customCosts: [], status: 'active' },
+    { sku: 'FTX9057PP-MR-39', name: 'Pantufa', cost: 16.67288, taxRate: 23, customCosts: [], status: 'active' }
+  ]);
+
+  assert.deepEqual(
+    parseProductWorkbook(buffer(workbook)).map(({ sku, cost }) => ({ sku, cost })),
+    [
+      { sku: 'CHINES-4UN', cost: 44.328 },
+      { sku: 'CAR-1608', cost: 95.1997031 },
+      { sku: 'FTX9057PP-MR-39', cost: 16.67288 }
+    ]
+  );
+});
+
 test('planilha interpreta moeda e percentual no formato brasileiro', () => {
   const workbook = utils.book_new();
   utils.book_append_sheet(

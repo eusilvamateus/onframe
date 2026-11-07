@@ -73,7 +73,7 @@ test('resolve imposto pela configuracao mais especifica e preserva aliquota zero
         "INSERT INTO seller_accounts (id, workspace_id, meli_user_id, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '1001', 1, 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO products (id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at) VALUES ('product-1', 'workspace-1', 'SKU-1', 'SKU-1', 'Produto', 1000, NULL, '[]', 'active', 1, 1)"
+        "INSERT INTO products (id, workspace_id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at) VALUES ('product-1', 'workspace-1', 'SKU-1', 'SKU-1', 'Produto', '10', NULL, '[]', 'active', 1, 1)"
       )
     ]);
     const input = { workspaceId: 'workspace-1', sellerAccountId: 'account-1', productId: 'product-1' };
@@ -140,7 +140,7 @@ test('nao resolve produto e conta que pertencem a workspaces diferentes', async 
         "INSERT INTO seller_accounts (id, workspace_id, meli_user_id, enabled, created_at, updated_at) VALUES ('account-2', 'workspace-2', '2002', 1, 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO products (id, workspace_id, sku, normalized_sku, name, current_cost_cents, tax_rate_bps, custom_costs_json, status, created_at, updated_at) VALUES ('product-1', 'workspace-1', 'SKU-1', 'SKU-1', 'Produto', 1000, 800, '[]', 'active', 1, 1)"
+        "INSERT INTO products (id, workspace_id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at) VALUES ('product-1', 'workspace-1', 'SKU-1', 'SKU-1', 'Produto', '10', 800, '[]', 'active', 1, 1)"
       )
     ]);
     assert.equal(

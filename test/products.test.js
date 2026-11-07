@@ -32,6 +32,9 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
     assert.match(products, new RegExp(`<${component}\\b`, 'u'));
   }
   assert.match(products, /startAddon="R\$"/u);
+  assert.match(products, /function displayedCostText[^]*maximumFractionDigits: 2/u);
+  assert.match(products, /function ProductCostField[^]*focused \? text : displayedCostText\(value\)/u);
+  assert.match(products, /function ProductCostField[^]*if \(parsed !== null\) onChange\(parsed\)/u);
   assert.match(products, /endAddon="%"/u);
   assert.match(spreadsheetModal, /<FileUpload\b/u);
   assert.match(spreadsheetModal, /<Stepper\b/u);

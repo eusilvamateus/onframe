@@ -68,6 +68,63 @@ function money(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
 }
 
+function preciseCostText(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(number).replace('.', ',') : '';
+}
+
+function displayedCostText(value) {
+  const number = Number(value);
+  return Number.isFinite(number)
+    ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number)
+    : '';
+}
+
+function parseCostText(value) {
+  const input = String(value || '')
+    .trim()
+    .replace(/[\s\u00a0]/gu, '');
+  if (!input) return 0;
+  const normalized = input.includes(',') ? input.replace(/\./gu, '').replace(',', '.') : input;
+  if (!/^\d+(?:\.\d+)?$/u.test(normalized)) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function ProductCostField({ value, disabled, onChange }) {
+  const [focused, setFocused] = useState(false);
+  const [text, setText] = useState(() => preciseCostText(value));
+
+  useEffect(() => {
+    if (!focused) setText(preciseCostText(value));
+  }, [focused, value]);
+
+  function finish() {
+    const parsed = parseCostText(text);
+    if (parsed !== null) onChange(parsed);
+    setFocused(false);
+  }
+
+  return (
+    <Input
+      label="Custo do produto"
+      value={focused ? text : displayedCostText(value)}
+      inputMode="decimal"
+      startAddon="R$"
+      disabled={disabled}
+      onFocus={() => {
+        setText(preciseCostText(value));
+        setFocused(true);
+      }}
+      onBlur={finish}
+      onChange={(event) => setText(event.target.value.replace(/[^\d,.-]/gu, ''))}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
+  );
+}
+
 function customCostSummary(cost) {
   const value =
     cost.type === 'percentage'
@@ -304,16 +361,10 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
         <section className="onframe-product-form-section">
           <h3>Custos</h3>
           <div className="onframe-product-cost-grid">
-            <NumberField
-              label="Custo do produto"
+            <ProductCostField
               value={values.cost}
-              min={0}
-              decimals={2}
-              step={0.01}
-              controls="none"
-              startAddon="R$"
               disabled={!admin || locked}
-              onChange={(value) => setField('cost', value ?? 0)}
+              onChange={(value) => setField('cost', value)}
             />
           </div>
           <div className="onframe-product-custom-costs">
