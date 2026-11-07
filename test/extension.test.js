@@ -786,6 +786,7 @@ test('Turnstile so executa sob demanda e exibe area apenas durante interacao', a
     removeEventListener: () => {}
   };
   const document = {
+    documentElement: { getAttribute: (name) => (name === 'data-theme' ? 'dark' : null) },
     createElement: () => ({
       contentWindow: { postMessage: (message, origin) => sent.push({ message, origin }) },
       setAttribute: () => {},
@@ -804,6 +805,7 @@ test('Turnstile so executa sob demanda e exibe area apenas durante interacao', a
   await new Promise(setImmediate);
   assert.ok(container.frame);
   assert.equal(sent.length, 0);
+  assert.equal(new URL(container.frame.src).searchParams.get('theme'), 'dark');
   const nonce = new URL(container.frame.src).searchParams.get('nonce');
   const source = container.frame.contentWindow;
   const request = challenge.execute();

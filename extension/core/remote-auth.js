@@ -71,6 +71,18 @@
     return response.ok && /^text\/html(?:;|$)/iu.test(contentType);
   }
 
+  function resolvedTheme() {
+    const documentTheme = document.documentElement?.getAttribute('data-theme');
+    if (documentTheme === 'dark' || documentTheme === 'light') return documentTheme;
+    try {
+      const preference = window.localStorage.getItem('ob-theme');
+      if (preference === 'dark' || preference === 'light') return preference;
+    } catch (_) {
+      // Storage may be blocked; the system preference remains a safe fallback.
+    }
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
   function createChallenge(container, onChange, onUnavailable = () => {}) {
     let frame = null;
     let nonce = '';
@@ -179,7 +191,7 @@
       frame = document.createElement('iframe');
       frame.className = 'ob-auth-challenge-frame';
       frame.title = 'Confirmação de segurança';
-      frame.src = `${REMOTE_SERVICE}/auth/challenge?nonce=${encodeURIComponent(nonce)}&parentOrigin=${encodeURIComponent(window.location.origin)}`;
+      frame.src = `${REMOTE_SERVICE}/auth/challenge?nonce=${encodeURIComponent(nonce)}&parentOrigin=${encodeURIComponent(window.location.origin)}&theme=${resolvedTheme()}`;
       frame.setAttribute('scrolling', 'no');
       container.replaceChildren(frame);
       container.hidden = false;
