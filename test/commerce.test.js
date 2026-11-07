@@ -48,6 +48,7 @@ test('commerce model resume estado de preco e bloqueios', () => {
   assert.strictEqual(editable.canEdit, true);
   assert.strictEqual(editable.label, 'Editável');
   assert.strictEqual(editable.amountText, 'R$ 100,00');
+  assert.strictEqual(commerceModel.formatMoney(95.1997031, 'BRL', 5), 'R$ 95,19970');
 
   const promoted = commerceModel.getPriceState({
     item: { price: 90, original_price: 100, currency_id: 'BRL' },

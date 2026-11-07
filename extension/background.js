@@ -52,6 +52,9 @@ async function handleRemoteMessage(message) {
   if (action === 'app-release') return requestPlatform('/v1/app/release');
   if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
   if (action === 'products') return requestPlatform(productsPath(message.query));
+  if (action === 'product-settings') return requestPlatform('/v1/app/products/settings');
+  if (action === 'product-settings-update')
+    return requestPlatform('/v1/app/products/settings', { method: 'PUT', body: JSON.stringify(message.payload || {}) });
   if (action === 'tax-configuration') return requestPlatform('/v1/app/tax-configuration');
   if (action === 'tax-configuration-update')
     return requestPlatform('/v1/app/tax-configuration', { method: 'PUT', body: JSON.stringify(message.payload || {}) });

@@ -19,12 +19,17 @@ function moneyFromCents(value: number | null): number | null {
   return value === null ? null : value / 100;
 }
 
-function roundMoney(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+function roundMarginAmount(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100_000_000) / 100_000_000;
 }
 
 function roundPercentage(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function displayDecimalPlaces(value: unknown): number {
+  const places = Number(value);
+  return Number.isInteger(places) && places >= 0 && places <= 8 ? places : 2;
 }
 
 function customCosts(value: unknown, salePriceCents: number | null) {
@@ -63,6 +68,7 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const estimate = recordOrNull(estimateValue);
   const productMatch = recordOrNull(productMatchValue);
   const product = productMatch?.status === 'matched' ? recordOrNull(productMatch.product) : null;
+  const costDecimalPlaces = displayDecimalPlaces(productMatch?.costDecimalPlaces);
   const tax = recordOrNull(productMatch?.tax);
   const salePriceCents = centsOrNull(estimate?.dealPrice);
   const youReceiveCents = centsOrNull(estimate?.youReceive);
@@ -89,13 +95,14 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const preciseAmount = complete
     ? youReceiveCents! / 100 - productCost! - taxAmountCents! / 100 - customCostCents! / 100
     : null;
-  const amount = preciseAmount === null ? null : roundMoney(preciseAmount);
+  const amount = preciseAmount === null ? null : roundMarginAmount(preciseAmount);
   const percentage = complete ? roundPercentage((preciseAmount! / (salePriceCents! / 100)) * 100) : null;
 
   return {
     complete,
     missing,
     currency_id: typeof estimate?.currency_id === 'string' ? estimate.currency_id : null,
+    costDecimalPlaces,
     salePrice: moneyFromCents(salePriceCents),
     youReceive: moneyFromCents(youReceiveCents),
     productCost,

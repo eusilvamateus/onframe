@@ -197,19 +197,20 @@
     });
   }
 
-  function formatMoney(value, currency = 'BRL') {
-    const amount = moneyAmount(value);
-    if (!amount) return 'R$ --';
+  function formatMoney(value, currency = 'BRL', decimalPlaces = 2) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount <= 0) return 'R$ --';
     try {
       return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
         currency: currency || 'BRL',
-        minimumFractionDigits: 2
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces
       })
         .format(amount)
         .replace(/\u00a0/g, ' ');
     } catch (e) {
-      return `R$ ${amount.toFixed(2).replace('.', ',')}`;
+      return `R$ ${amount.toFixed(decimalPlaces).replace('.', ',')}`;
     }
   }
 

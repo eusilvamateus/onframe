@@ -98,7 +98,7 @@ export function TaxSettings({ workspaceId }) {
       />
       <section className="onframe-tax-settings-section">
         <div className="onframe-tax-settings-copy">
-          <h3>Padrão do workspace</h3>
+          <h3>Alíquota padrão do workspace</h3>
           <p>Aplicado quando não existe uma configuração mais específica para a conta ou para o produto.</p>
         </div>
         <NumberField

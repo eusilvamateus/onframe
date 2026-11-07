@@ -27,6 +27,7 @@ test('margem de contribuicao usa o valor liquido oficial da promocao', () => {
     complete: true,
     missing: [],
     currency_id: 'BRL',
+    costDecimalPlaces: 2,
     salePrice: 361.99,
     youReceive: 263.58,
     productCost: 170,
@@ -65,18 +66,20 @@ test('margem de contribuicao preserva resultado negativo', () => {
   assert.equal(margin.complete, true);
 });
 
-test('margem preserva o custo preciso e arredonda somente o resultado monetario', () => {
+test('margem preserva o custo e o resultado precisos para a camada de exibicao', () => {
   const margin = buildContributionMargin(
     { dealPrice: 100, youReceive: 70, currency_id: 'BRL' },
     {
       status: 'matched',
+      costDecimalPlaces: 5,
       tax: { configured: true, rate: 10, base: 'sale_price', source: 'product', sourceId: 'product-1' },
       product: { cost: 16.67288, customCosts: [] }
     }
   );
 
   assert.equal(margin.productCost, 16.67288);
-  assert.equal(margin.amount, 43.33);
+  assert.equal(margin.costDecimalPlaces, 5);
+  assert.equal(margin.amount, 43.32712);
   assert.equal(margin.percentage, 43.33);
 });
 

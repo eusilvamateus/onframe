@@ -30,6 +30,7 @@ import {
   previewProductImport,
   updateProduct
 } from './products';
+import { ProductSettingsError, getProductSettings, updateProductSettings } from './product-settings';
 import { TaxConfigurationError, getTaxConfiguration, updateTaxConfiguration } from './tax-configuration';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -2275,6 +2276,12 @@ export default {
         if (request.method === 'POST') return json(await createProduct(request, env, actor, requestId), 201);
       }
 
+      if (url.pathname === '/v1/app/products/settings') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'GET') return json(await getProductSettings(env, actor));
+        if (request.method === 'PUT') return json(await updateProductSettings(request, env, actor, requestId));
+      }
+
       if (url.pathname === '/v1/app/tax-configuration') {
         const actor = await authenticateExtensionSession(request, env);
         if (request.method === 'GET') return json(await getTaxConfiguration(env, actor));
@@ -2451,6 +2458,7 @@ export default {
       if (
         error instanceof RequestError ||
         error instanceof ProductRequestError ||
+        error instanceof ProductSettingsError ||
         error instanceof TaxConfigurationError ||
         error instanceof SupabaseAuthError ||
         error instanceof IdentitySecurityError

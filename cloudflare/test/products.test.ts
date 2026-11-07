@@ -73,6 +73,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       )
     ]);
     const env = { ONFRAME_DB: db };
+    await db.prepare("UPDATE workspaces SET cost_display_decimal_places = 5 WHERE id = 'workspace-1'").run();
     const payload = {
       sku: ' Mesa-180 ',
       name: 'Mesa dobrável 1,80 m',
@@ -155,6 +156,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       admin,
       new URL('https://onframe.onblide.com/v1/app/products?q=mesa&status=active')
     );
+    assert.equal(adminList.settings.costDecimalPlaces, 5);
     assert.equal(adminList.pagination.total, 1);
     assert.equal('links' in adminList.products[0], false);
     const collaboratorList = await listProducts(
@@ -333,6 +335,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(itemMatch.source, 'item');
     assert.equal(itemMatch.product?.id, created.id);
     assert.equal(itemMatch.product?.cost, 170);
+    assert.equal(itemMatch.costDecimalPlaces, 5);
 
     const variationMatch = await matchProductForPromotionItem(
       env,

@@ -12,6 +12,7 @@ const options = readFileSync(join(root, 'extension/ui/options/app.jsx'), 'utf8')
 const background = readFileSync(join(root, 'extension/background.js'), 'utf8');
 const commerce = readFileSync(join(root, 'extension/modules/commerce/module.js'), 'utf8');
 const taxSettings = readFileSync(join(root, 'extension/ui/options/TaxSettings.jsx'), 'utf8');
+const productSettings = readFileSync(join(root, 'extension/ui/options/ProductSettings.jsx'), 'utf8');
 
 test('catalogo de produtos usa apenas componentes do design system', () => {
   for (const component of [
@@ -32,8 +33,8 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
     assert.match(products, new RegExp(`<${component}\\b`, 'u'));
   }
   assert.match(products, /startAddon="R\$"/u);
-  assert.match(products, /function displayedCostText[^]*maximumFractionDigits: 2/u);
-  assert.match(products, /function ProductCostField[^]*focused \? text : displayedCostText\(value\)/u);
+  assert.match(products, /function displayedCostText[^]*maximumFractionDigits: decimalPlaces/u);
+  assert.match(products, /function ProductCostField[^]*focused \? text : displayedCostText\(value, decimalPlaces\)/u);
   assert.match(products, /function ProductCostField[^]*if \(parsed !== null\) onChange\(parsed\)/u);
   assert.match(products, /endAddon="%"/u);
   assert.match(spreadsheetModal, /<FileUpload\b/u);
@@ -116,6 +117,8 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
     'product-archive',
     'product-import-preview',
     'product-import-commit',
+    'product-settings',
+    'product-settings-update',
     'tax-configuration',
     'tax-configuration-update'
   ]) {
@@ -180,8 +183,15 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
     /Margem de contribuição[^]*promotionTaxSourceLabel[^]*configure uma alíquota no produto, na conta ou no workspace/u
   );
   assert.match(options, /page: 'margin'[^]*label: 'Margem de contribuição'/u);
+  assert.match(options, /page: 'products'[^]*label: 'Produtos'[^]*Preferências do cadastro de produtos/u);
   assert.match(taxSettings, /tax-configuration-update/u);
-  assert.match(taxSettings, /Alíquota padrão[^]*Exceções por conta/u);
+  assert.doesNotMatch(taxSettings, /costDecimalPlaces|Precisão dos custos|Casas decimais/u);
+  assert.match(productSettings, /product-settings-update/u);
+  assert.match(productSettings, /label="Casas decimais do custo"/u);
+  assert.match(productSettings, /label: String\(value\)/u);
+  assert.doesNotMatch(productSettings, /label:.*casa decimal/u);
+  assert.match(products, /result\.settings\?\.costDecimalPlaces \?\? 2/u);
+  assert.match(commerce, /formatContributionCost\(margin\.productCost, currency, margin\.costDecimalPlaces\)/u);
 });
 
 test('retornos de produtos permanecem na superfície que originou a ação', () => {

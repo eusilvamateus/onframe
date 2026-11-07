@@ -1491,7 +1491,7 @@
       if (margin && margin.complete && Number.isFinite(Number(margin.amount))) {
         metrics.push({
           label: 'Margem de contribuição',
-          value: `${CommerceModel.formatMoney(margin.amount, currency)} · ${formatContributionPercent(margin.percentage)}`,
+          value: `${CommerceModel.formatMoney(margin.amount, currency, margin.costDecimalPlaces)} · ${formatContributionPercent(margin.percentage)}`,
           tone: margin.amount >= 0 ? 'success' : 'danger'
         });
       }
@@ -1511,20 +1511,20 @@
       if (!margin || !margin.complete) return rows;
       rows.push({
         label: 'Custo do produto',
-        value: formatContributionCost(margin.productCost, currency),
+        value: formatContributionCost(margin.productCost, currency, margin.costDecimalPlaces),
         description: '',
         tone: ''
       });
       rows.push({
         label: 'Impostos',
-        value: formatContributionCost(margin.taxAmount, currency),
+        value: formatContributionCost(margin.taxAmount, currency, margin.costDecimalPlaces),
         description: `${formatContributionPercent(margin.taxRate)} sobre o preço promocional · ${promotionTaxSourceLabel(margin.taxSource)}`,
         tone: ''
       });
       (margin.customCosts || []).forEach((cost) =>
         rows.push({
           label: cost.description,
-          value: formatContributionCost(cost.amount, currency),
+          value: formatContributionCost(cost.amount, currency, margin.costDecimalPlaces),
           description:
             cost.type === 'percentage'
               ? `${formatContributionPercent(cost.value)} sobre o preço promocional`
@@ -1534,7 +1534,7 @@
       );
       rows.push({
         label: 'Margem de contribuição',
-        value: CommerceModel.formatMoney(margin.amount, currency),
+        value: CommerceModel.formatMoney(margin.amount, currency, margin.costDecimalPlaces),
         description: formatContributionPercent(margin.percentage),
         tone: margin.amount >= 0 ? 'success' : 'danger'
       });
@@ -1567,9 +1567,11 @@
       );
     }
 
-    function formatContributionCost(amount, currency) {
+    function formatContributionCost(amount, currency, decimalPlaces) {
       const value = Number(amount);
-      return Number.isFinite(value) && value >= 0 ? `-${CommerceModel.formatMoney(value, currency)}` : '—';
+      return Number.isFinite(value) && value >= 0
+        ? `-${CommerceModel.formatMoney(value, currency, decimalPlaces)}`
+        : '—';
     }
 
     function formatContributionPercent(value) {

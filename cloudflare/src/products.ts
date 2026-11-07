@@ -16,6 +16,7 @@ type ProductRow = {
   status: 'active' | 'inactive';
   created_at: number;
   updated_at: number;
+  cost_display_decimal_places?: number;
 };
 
 type ProductCustomCost = {
@@ -126,6 +127,11 @@ function decimalAmount(value: unknown, max: number): { value: number; decimal: s
     throw new ProductRequestError('product_invalid_payload', 400);
   }
   return { value: number, decimal: String(number) };
+}
+
+function normalizedCostDecimalPlaces(value: unknown): number {
+  const places = Number(value);
+  return Number.isInteger(places) && places >= 0 && places <= 8 ? places : 2;
 }
 
 function optionalDecimalToInteger(value: unknown, scale: number, max: number): number | null {
@@ -266,9 +272,14 @@ export async function matchProductForPromotionItem(
   if (resolution.status !== 'resolved' || !resolution.sku) return resolution;
   const product = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
-    FROM products
-    WHERE workspace_id = ? AND normalized_sku = ? AND status = 'active' AND archived_at IS NULL
+    SELECT
+      product.id, product.sku, product.name, product.current_cost_decimal, product.tax_rate_bps,
+      product.custom_costs_json, product.status, product.created_at, product.updated_at,
+      workspace.cost_display_decimal_places
+    FROM products product
+    JOIN workspaces workspace ON workspace.id = product.workspace_id
+    WHERE product.workspace_id = ? AND product.normalized_sku = ?
+      AND product.status = 'active' AND product.archived_at IS NULL
   `
   )
     .bind(actor.workspaceId, normalizeSku(resolution.sku))
@@ -281,6 +292,7 @@ export async function matchProductForPromotionItem(
     source: resolution.source,
     variationId: resolution.variationId,
     reason: null,
+    costDecimalPlaces: normalizedCostDecimalPlaces(product.cost_display_decimal_places),
     product: productPayload(product)
   };
 }
@@ -483,9 +495,14 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
     bindings.push(pattern, pattern);
   }
   const clause = where.join(' AND ');
-  const count = await env.ONFRAME_DB.prepare(`SELECT COUNT(*) AS total FROM products WHERE ${clause}`)
-    .bind(...bindings)
-    .first<{ total: number }>();
+  const [count, workspace] = await Promise.all([
+    env.ONFRAME_DB.prepare(`SELECT COUNT(*) AS total FROM products WHERE ${clause}`)
+      .bind(...bindings)
+      .first<{ total: number }>(),
+    env.ONFRAME_DB.prepare('SELECT cost_display_decimal_places FROM workspaces WHERE id = ?')
+      .bind(actor.workspaceId)
+      .first<{ cost_display_decimal_places: number }>()
+  ]);
   const total = Number(count?.total || 0);
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const page = Math.min(requestedPage, totalPages);
@@ -501,7 +518,8 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const accountRates = await productAccountTaxRates(env, actor);
   return {
     products: rows.results.map((row) => productPayload(row, accountRates.get(row.id))),
-    pagination: { page, limit, total, totalPages }
+    pagination: { page, limit, total, totalPages },
+    settings: { costDecimalPlaces: normalizedCostDecimalPlaces(workspace?.cost_display_decimal_places) }
   };
 }
 

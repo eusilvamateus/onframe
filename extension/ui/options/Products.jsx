@@ -64,8 +64,13 @@ function productAccountOptionLabel(account) {
   return `${productAccountName(account)} (${account.userId})`;
 }
 
-function money(value) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
+function money(value, decimalPlaces = 2) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces
+  }).format(Number(value || 0));
 }
 
 function preciseCostText(value) {
@@ -73,10 +78,13 @@ function preciseCostText(value) {
   return Number.isFinite(number) ? String(number).replace('.', ',') : '';
 }
 
-function displayedCostText(value) {
+function displayedCostText(value, decimalPlaces) {
   const number = Number(value);
   return Number.isFinite(number)
-    ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number)
+    ? new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: decimalPlaces,
+        maximumFractionDigits: decimalPlaces
+      }).format(number)
     : '';
 }
 
@@ -91,7 +99,7 @@ function parseCostText(value) {
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
 
-function ProductCostField({ value, disabled, onChange }) {
+function ProductCostField({ value, decimalPlaces, disabled, onChange }) {
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState(() => preciseCostText(value));
 
@@ -108,7 +116,7 @@ function ProductCostField({ value, disabled, onChange }) {
   return (
     <Input
       label="Custo do produto"
-      value={focused ? text : displayedCostText(value)}
+      value={focused ? text : displayedCostText(value, decimalPlaces)}
       inputMode="decimal"
       startAddon="R$"
       disabled={disabled}
@@ -125,11 +133,11 @@ function ProductCostField({ value, disabled, onChange }) {
   );
 }
 
-function customCostSummary(cost) {
+function customCostSummary(cost, decimalPlaces) {
   const value =
     cost.type === 'percentage'
       ? `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(Number(cost.value || 0))}%`
-      : money(cost.value);
+      : money(cost.value, decimalPlaces);
   return { description: cost.description.trim() || 'Novo custo', value };
 }
 
@@ -201,7 +209,7 @@ function ProductSku({ sku }) {
   );
 }
 
-function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
+function ProductForm({ product, accounts, admin, busy, costDecimalPlaces, onClose, onSaved }) {
   const [values, setValues] = useState(() =>
     product
       ? {
@@ -363,6 +371,7 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
           <div className="onframe-product-cost-grid">
             <ProductCostField
               value={values.cost}
+              decimalPlaces={costDecimalPlaces}
               disabled={!admin || locked}
               onChange={(value) => setField('cost', value)}
             />
@@ -389,7 +398,7 @@ function ProductForm({ product, accounts, admin, busy, onClose, onSaved }) {
             {values.customCosts.length > 0 && (
               <div className="onframe-product-custom-cost-chips" aria-label="Custos personalizados">
                 {values.customCosts.map((cost) => {
-                  const summary = customCostSummary(cost);
+                  const summary = customCostSummary(cost, costDecimalPlaces);
                   return (
                     <Chip
                       key={cost.key}
@@ -573,6 +582,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
   const [exportBusy, setExportBusy] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [error, setError] = useState('');
+  const [costDecimalPlaces, setCostDecimalPlaces] = useState(2);
   const requestSequence = useRef(0);
 
   useEffect(() => {
@@ -592,6 +602,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
         if (sequence !== requestSequence.current) return;
         setProducts(result.products || []);
         setPagination(result.pagination || { page, total: 0, totalPages: 1 });
+        setCostDecimalPlaces(result.settings?.costDecimalPlaces ?? 2);
       } catch (failure) {
         if (sequence !== requestSequence.current) return;
         setError(userError(failure, 'Não foi possível carregar os produtos.'));
@@ -686,7 +697,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
   const columns = [
     { key: 'name', label: 'Produto', bold: true, render: (value) => <p className="onframe-list-title">{value}</p> },
     { key: 'sku', label: 'SKU', width: 220, render: (value) => <ProductSku sku={String(value || '')} /> },
-    { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value) },
+    { key: 'cost', label: 'Custo', width: 135, render: (value) => money(value, costDecimalPlaces) },
     {
       key: 'taxRate',
       label: 'Imposto',
@@ -823,6 +834,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
           accounts={accounts}
           admin={admin}
           busy={loading}
+          costDecimalPlaces={costDecimalPlaces}
           onClose={() => setDialog(null)}
           onSaved={reflectProduct}
         />

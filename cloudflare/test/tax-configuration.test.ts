@@ -196,7 +196,10 @@ test('administrador mantem padroes do workspace e das contas', async () => {
     const request = new Request('https://onframe.onblide.com/v1/app/tax-configuration', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ workspaceTaxRate: 6.5, accounts: [{ sellerAccountId: 'account-1', taxRate: 8.25 }] })
+      body: JSON.stringify({
+        workspaceTaxRate: 6.5,
+        accounts: [{ sellerAccountId: 'account-1', taxRate: 8.25 }]
+      })
     });
     await assert.rejects(getTaxConfiguration(env, collaborator), { code: 'tax_configuration_forbidden' });
     const configuration = await updateTaxConfiguration(request, env, admin, 'request-tax');

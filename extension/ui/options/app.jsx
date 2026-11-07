@@ -41,6 +41,7 @@ import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName, trustedLogo } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
 import { Products } from './Products';
+import { ProductSettings } from './ProductSettings';
 import { TaxSettings } from './TaxSettings';
 import { formatDate, initials, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
@@ -91,6 +92,15 @@ const SETTINGS_OPTIONS = [
   },
   {
     tab: 'workspace',
+    page: 'products',
+    category: 'Workspace',
+    label: 'Produtos',
+    description: 'Preferências do cadastro de produtos.',
+    icon: 'package',
+    keywords: 'produto cadastro custo casas decimais precisao'
+  },
+  {
+    tab: 'workspace',
     page: 'margin',
     category: 'Workspace',
     label: 'Margem de contribuição',
@@ -137,6 +147,7 @@ const SETTINGS_PAGE_META = {
   workspace: {
     general: { title: 'Geral', icon: 'buildings' },
     people: { title: 'Pessoas', icon: 'users-three' },
+    products: { title: 'Configurações de produtos', icon: 'package' },
     margin: { title: 'Margem de contribuição', icon: 'percent' }
   },
   application: {
@@ -173,6 +184,7 @@ function activityLabel(operation) {
       product_archived: 'Produto arquivado',
       product_import_committed: 'Produtos importados por planilha',
       tax_configuration_updated: 'Configurações de imposto atualizadas',
+      product_settings_updated: 'Configurações de produtos atualizadas',
       profile_updated: 'Perfil atualizado'
     }[operation] || 'Atividade no workspace'
   );
@@ -888,6 +900,9 @@ function Settings({
           onRevoke={onRevoke}
           onLeave={onLeave}
         />
+      )}
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'products' && (
+        <ProductSettings workspaceId={workspace.id} />
       )}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && (
         <TaxSettings workspaceId={workspace.id} />
