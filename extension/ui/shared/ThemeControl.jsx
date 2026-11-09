@@ -54,6 +54,22 @@ export function themeMenuItems(preference, setTheme) {
   }));
 }
 
+export function useThemeSubmenuItem() {
+  const { preference, setTheme } = useSharedTheme();
+  return {
+    type: 'submenu',
+    label: 'Aparência',
+    icon: 'desktop',
+    items: THEME_OPTIONS.map((option) => ({
+      type: 'radio',
+      group: 'profile-theme',
+      label: option.label,
+      checked: preference === option.value,
+      onSelect: () => setTheme(option.value)
+    }))
+  };
+}
+
 export function ThemeSelector() {
   const { preference, setTheme } = useSharedTheme();
   return (

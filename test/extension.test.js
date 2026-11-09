@@ -315,7 +315,14 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(control, /type: 'radio'/);
   assert.match(options, /page: 'appearance'/);
   assert.match(options, /actions=\{<ThemeSelector \/>\}/);
-  assert.match(options, /type: 'custom'[\s\S]*content: <ThemeTabs \/>/);
+  assert.match(control, /export function useThemeSubmenuItem\(\)/);
+  assert.match(
+    control,
+    /type: 'submenu',[\s\S]*label: 'Aparência',[\s\S]*icon: 'desktop',[\s\S]*group: 'profile-theme'/
+  );
+  assert.match(options, /const appearanceMenuItem = useThemeSubmenuItem\(\);/);
+  assert.match(options, /appearanceMenuItem,[\s\S]*\{ type: 'separator' \}/);
+  assert.doesNotMatch(options, /type: 'custom'[\s\S]*content: <ThemeTabs \/>/);
   assert.match(popup, /<ThemeCycleButton \/>/);
   assert.doesNotMatch(control, /showLabel|onframe-theme-cycle-label/);
   assert.doesNotMatch(popup, /ThemeMenuButton/);

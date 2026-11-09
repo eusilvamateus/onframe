@@ -36,7 +36,7 @@ import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
-import { ThemeMenuButton, ThemeSelector, ThemeTabs } from '../shared/ThemeControl';
+import { ThemeMenuButton, ThemeSelector, useThemeSubmenuItem } from '../shared/ThemeControl';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
@@ -907,6 +907,7 @@ function OptionsApp() {
   const [dialog, setDialog] = useState(null);
   const [productHeaderActions, setProductHeaderActions] = useState(null);
   const acceptingInvitation = useRef(false);
+  const appearanceMenuItem = useThemeSubmenuItem();
 
   function showFeedback({ tone, message, visible = false, needsAttention = false, action, onAction }) {
     const surface = feedbackSurface({ tone, visible, needsAttention });
@@ -1422,8 +1423,7 @@ function OptionsApp() {
           }
         ]
       : []),
-    { type: 'label', label: 'Aparência' },
-    { type: 'custom', ariaLabel: 'Tema da interface', content: <ThemeTabs /> },
+    appearanceMenuItem,
     { type: 'separator' },
     { label: 'Sair', icon: 'sign-out', tone: 'danger', onSelect: () => void disconnect() }
   ];
