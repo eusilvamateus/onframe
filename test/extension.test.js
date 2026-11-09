@@ -1034,17 +1034,29 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
   const loginLogo = fs.readFileSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png'));
   assert.equal(loginLogo.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
-  assert.match(options, /SideNav/);
-  assert.match(options, /\bflush\b/);
-  assert.match(options, /accountName=\{personName\}/);
-  assert.match(options, /accountDetail=\{connection\.user\.email\}/);
-  assert.match(options, /accountImage=\{connection\.user\.avatarUrl\}/);
-  assert.match(options, /onToggle=\{\(\) => setNavigationCollapsed/);
-  assert.match(options, /<Drawer\s+open=\{mobileNavigationOpen\}/);
+  assert.match(options, /Sidebar/);
+  assert.doesNotMatch(options, /SideNav/);
+  assert.match(options, /groups=\{\[\{ items: navigation \}\]\}/);
+  assert.match(options, /variant="flush"/);
+  assert.match(options, /collapsible/);
+  assert.match(options, /toggleShortcut="b"/);
+  assert.match(options, /onCollapsedChange=\{setNavigationCollapsed\}/);
+  assert.match(options, /mobileOpen=\{mobileNavigationOpen\}/);
+  assert.match(options, /onMobileOpenChange=\{setMobileNavigationOpen\}/);
+  assert.doesNotMatch(options, /<Drawer\s+open=\{mobileNavigationOpen\}/);
+  assert.match(options, /<Menu[\s\S]*placement=\{collapsed \? 'right-end' : 'top'\}/);
+  assert.match(options, /type: 'account',[\s\S]*src: connection\.user\.avatarUrl/);
+  assert.doesNotMatch(options, /type: 'account',[\s\S]*current: true/);
+  assert.match(options, /<Avatar[\s\S]*name=\{personName\}/);
+  assert.doesNotMatch(options, /accountName=|accountDetail=|accountImage=|hideBrand|menuLabel=/);
   assert.match(options, /Navbar/);
-  assert.match(options, /id: 'home', label: 'Início'/);
-  assert.match(options, /id: 'integrations', label: 'Integrações'/);
-  assert.match(options, /id: 'settings', label: 'Configurações'/);
+  assert.match(options, /menuOpen=\{mobileNavigationOpen\}/);
+  assert.match(options, /id: 'home', label: 'Início', icon: 'house', href: VIEW_HASHES\.home/);
+  assert.match(
+    options,
+    /id: 'integrations', label: 'Integrações', icon: 'storefront', href: VIEW_HASHES\.integrations/
+  );
+  assert.match(options, /id: 'settings', label: 'Configurações', icon: 'gear-six', href: VIEW_HASHES\.settings/);
   assert.match(options, /function Home/);
   assert.match(options, /function Integrations/);
   assert.match(integrations, /eyebrow="Mercado Livre"/);

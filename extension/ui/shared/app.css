@@ -595,9 +595,10 @@ input {
 .onframe-options-content--root {
   gap: var(--ob-space-12);
 }
-.onframe-options-drawer-content {
-  height: calc(100% + 40px);
-  margin: calc(var(--ob-space-20) * -1) calc(var(--ob-space-24) * -1);
+.onframe-sidebar-brand {
+  display: block;
+  width: 28px;
+  height: 28px;
 }
 .onframe-page-header {
   display: flex;

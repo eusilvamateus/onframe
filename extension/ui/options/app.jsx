@@ -3,25 +3,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
 import {
   Alert,
+  Avatar,
   Badge,
   Breadcrumbs,
   Button,
   ButtonGroup,
   Card,
   Divider,
-  Drawer,
   FileUpload,
   Input,
   Link,
   List,
   ListItem,
   ListSubheader,
+  Menu,
   Modal,
   Navbar,
   Ph,
   SearchInput,
   Select,
-  SideNav,
+  Sidebar,
   Skeleton,
   ToastStack,
   ToggleButton,
@@ -51,6 +52,16 @@ const VIEW_META = {
   history: { title: 'Histórico', icon: 'clock-counter-clockwise' },
   settings: { title: 'Configurações', icon: 'gear-six' }
 };
+
+const VIEW_HASHES = {
+  home: '#inicio',
+  integrations: '#integracoes',
+  products: '#products',
+  history: '#history',
+  settings: '#configuracoes'
+};
+
+const HASH_VIEWS = Object.fromEntries(Object.entries(VIEW_HASHES).map(([view, hash]) => [hash, view]));
 
 const SETTINGS_OPTIONS = [
   {
@@ -885,9 +896,7 @@ function OptionsApp() {
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
-  const [view, setView] = useState(
-    () => ({ '#history': 'history', '#products': 'products' })[window.location.hash] || 'home'
-  );
+  const [view, setView] = useState(() => HASH_VIEWS[window.location.hash] || 'home');
   const [settingsTab, setSettingsTab] = useState('account');
   const [settingsPage, setSettingsPage] = useState('index');
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
@@ -1015,8 +1024,8 @@ function OptionsApp() {
     void reload();
   }, [reload]);
   useEffect(() => {
-    const hash = view === 'history' ? '#history' : view === 'products' ? '#products' : '';
-    const target = hash || `${window.location.pathname}${window.location.search}`;
+    const hash = VIEW_HASHES[view] || VIEW_HASHES.home;
+    const target = `${window.location.pathname}${window.location.search}${hash}`;
     if (window.location.hash !== hash) {
       window.history.replaceState(null, document.title, target);
     }
@@ -1376,16 +1385,23 @@ function OptionsApp() {
   };
   const admin = workspace.role === 'admin';
   const navigation = [
-    { id: 'home', label: 'Início', icon: 'house' },
-    { id: 'integrations', label: 'Integrações', icon: 'storefront' },
-    { id: 'products', label: 'Produtos', icon: 'package' },
-    { id: 'history', label: 'Histórico', icon: 'clock-counter-clockwise' },
-    { id: 'settings', label: 'Configurações', icon: 'gear-six' }
+    { id: 'home', label: 'Início', icon: 'house', href: VIEW_HASHES.home },
+    { id: 'integrations', label: 'Integrações', icon: 'storefront', href: VIEW_HASHES.integrations },
+    { id: 'products', label: 'Produtos', icon: 'package', href: VIEW_HASHES.products },
+    { id: 'history', label: 'Histórico', icon: 'clock-counter-clockwise', href: VIEW_HASHES.history },
+    { id: 'settings', label: 'Configurações', icon: 'gear-six', href: VIEW_HASHES.settings }
   ];
   const personName = connection.user.name || connection.user.email;
   const accountMenu = [
     {
-      label: 'Conta',
+      type: 'account',
+      name: personName,
+      email: connection.user.email,
+      src: connection.user.avatarUrl
+    },
+    { type: 'separator' },
+    {
+      label: 'Perfil',
       icon: 'user-circle',
       onSelect: () => {
         setSettingsTab('account');
@@ -1464,19 +1480,46 @@ function OptionsApp() {
     <FeedbackRoot>
       <main className={`onframe-options${navigationCollapsed ? ' onframe-options--collapsed' : ''}`}>
         <aside className="onframe-options-sidebar" aria-label="Navegação do workspace">
-          <SideNav
-            items={navigation}
+          <Sidebar
+            groups={[{ items: navigation }]}
             active={view}
             onNav={navigate}
+            ariaLabel="Navegação do workspace"
+            header={<img className="onframe-sidebar-brand" src="../../assets/icons/icon-32.png" alt="OnFrame" />}
+            footer={({ collapsed }) => (
+              <Menu
+                block
+                placement={collapsed ? 'right-end' : 'top'}
+                ariaLabel="Conta"
+                items={accountMenu}
+                trigger={
+                  <Button
+                    kind="quiet"
+                    iconOnly={collapsed}
+                    aria-label={`Conta de ${personName}`}
+                    icon={<Avatar name={personName} src={connection.user.avatarUrl} alt="" size={28} />}
+                    style={
+                      collapsed
+                        ? undefined
+                        : {
+                            width: '100%',
+                            justifyContent: 'flex-start',
+                            paddingLeft: 'var(--ob-space-8)'
+                          }
+                    }
+                  >
+                    {!collapsed && personName}
+                  </Button>
+                }
+              />
+            )}
+            collapsible
+            toggleShortcut="b"
             collapsed={navigationCollapsed}
-            onToggle={() => setNavigationCollapsed((collapsed) => !collapsed)}
-            flush
-            accountName={personName}
-            accountDetail={connection.user.email}
-            accountImage={connection.user.avatarUrl}
-            accountImageAlt=""
-            accountMenu={accountMenu}
-            menuLabel="Conta"
+            onCollapsedChange={setNavigationCollapsed}
+            variant="flush"
+            mobileOpen={mobileNavigationOpen}
+            onMobileOpenChange={setMobileNavigationOpen}
           />
         </aside>
         <div className="onframe-options-column">
@@ -1486,7 +1529,8 @@ function OptionsApp() {
               layout="context"
               size="sm"
               sticky
-              onMenuToggle={() => setMobileNavigationOpen(true)}
+              menuOpen={mobileNavigationOpen}
+              onMenuToggle={() => setMobileNavigationOpen((open) => !open)}
               crumbs={pageContext}
             />
           </div>
@@ -1581,30 +1625,6 @@ function OptionsApp() {
             </div>
           </section>
         </div>
-        <Drawer
-          open={mobileNavigationOpen}
-          onClose={() => setMobileNavigationOpen(false)}
-          side="left"
-          width={300}
-          title="Navegação do OnFrame"
-        >
-          <div className="onframe-options-drawer-content">
-            <SideNav
-              items={navigation}
-              active={view}
-              onNav={navigate}
-              flush
-              hideBrand
-              accountName={personName}
-              accountDetail={connection.user.email}
-              accountImage={connection.user.avatarUrl}
-              accountImageAlt=""
-              accountMenu={accountMenu}
-              menuLabel="Conta"
-            />
-          </div>
-        </Drawer>
-
         <WorkspaceAccessModal
           dialog={dialog}
           accounts={accounts}
