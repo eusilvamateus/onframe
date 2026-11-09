@@ -127,3 +127,30 @@ export function enrichPromotionEstimateWithProduct(estimateValue: unknown, produ
     contributionMargin: buildContributionMargin(estimate, productMatch)
   };
 }
+
+export function enrichPriceSummaryWithProduct(summaryValue: unknown, productMatch: unknown) {
+  const summary = recordOrNull(summaryValue) || {};
+  const salePrice = recordOrNull(summary.salePrice);
+  const standardPrice = recordOrNull(summary.standardPrice);
+  const item = recordOrNull(summary.item);
+  const costBreakdown = recordOrNull(summary.costBreakdown);
+  const saleAmount = numberOrNull(salePrice?.amount);
+  const standardAmount = numberOrNull(standardPrice?.amount);
+  const activePrice = saleAmount !== null && saleAmount > 0 ? saleAmount : standardAmount;
+  const currency =
+    (typeof salePrice?.currency_id === 'string' && salePrice.currency_id) ||
+    (typeof standardPrice?.currency_id === 'string' && standardPrice.currency_id) ||
+    (typeof item?.currency_id === 'string' && item.currency_id) ||
+    null;
+  const estimate = {
+    dealPrice: activePrice,
+    youReceive: costBreakdown?.you_receive,
+    currency_id: currency
+  };
+
+  return {
+    ...summary,
+    productMatch,
+    contributionMargin: buildContributionMargin(estimate, productMatch)
+  };
+}

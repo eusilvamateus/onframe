@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildContributionMargin, enrichPromotionEstimateWithProduct } from '../src/product-margin.ts';
+import {
+  buildContributionMargin,
+  enrichPriceSummaryWithProduct,
+  enrichPromotionEstimateWithProduct
+} from '../src/product-margin.ts';
 
 test('margem de contribuicao usa o valor liquido oficial da promocao', () => {
   const margin = buildContributionMargin(
@@ -132,6 +136,30 @@ test('estimativa enriquecida preserva o contrato financeiro e associa o produto'
   assert.equal(enriched.productMatch, productMatch);
   assert.equal(enriched.contributionMargin.amount, 23);
   assert.equal(enriched.contributionMargin.percentage, 23);
+});
+
+test('resumo de preco calcula a margem com o preco promocional ativo', () => {
+  const summary = {
+    item: { currency_id: 'BRL' },
+    standardPrice: { amount: 700, currency_id: 'BRL' },
+    salePrice: { amount: 370.99, currency_id: 'BRL' },
+    costBreakdown: { you_receive: 278.79 }
+  };
+  const productMatch = {
+    status: 'matched',
+    costDecimalPlaces: 2,
+    tax: { configured: true, rate: 23, base: 'sale_price', source: 'product', sourceId: 'product-1' },
+    product: { cost: 152.09, customCosts: [] }
+  };
+  const enriched = enrichPriceSummaryWithProduct(summary, productMatch);
+
+  assert.equal(enriched.standardPrice, summary.standardPrice);
+  assert.equal(enriched.productMatch, productMatch);
+  assert.equal(enriched.contributionMargin.salePrice, 370.99);
+  assert.equal(enriched.contributionMargin.productCost, 152.09);
+  assert.equal(enriched.contributionMargin.taxAmount, 85.33);
+  assert.equal(enriched.contributionMargin.amount, 41.37);
+  assert.equal(enriched.contributionMargin.percentage, 11.15);
 });
 
 test('margem fica indisponivel quando nenhuma aliquota foi configurada', () => {

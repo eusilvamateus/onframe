@@ -979,6 +979,93 @@ export async function updateProduct(
   return productPayload(await assertProduct(env, actor, productId), data.accountTaxRates);
 }
 
+export async function updateProductFinancials(
+  env: ProductEnv,
+  actor: ProductActor,
+  productId: string,
+  requestId: string,
+  input: {
+    cost?: unknown;
+    taxRate?: unknown;
+    taxSource?: 'product_account' | 'product' | 'account' | 'workspace';
+    sellerAccountId?: string;
+  }
+) {
+  await assertAdmin(env, actor);
+  const current = await assertProduct(env, actor, productId);
+  const hasCost = Object.prototype.hasOwnProperty.call(input, 'cost');
+  const hasTaxRate = Object.prototype.hasOwnProperty.call(input, 'taxRate');
+  if (!hasCost && !hasTaxRate) throw new ProductRequestError('product_invalid_payload', 400);
+
+  const cost = hasCost ? decimalAmount(input.cost, 99_999_999.99) : null;
+  const taxRateBps = hasTaxRate ? optionalDecimalToInteger(input.taxRate, 100, 10_000) : current.tax_rate_bps;
+  const updateAccountOverride =
+    hasTaxRate && input.taxSource === 'product_account' && Boolean(String(input.sellerAccountId || '').trim());
+  if (updateAccountOverride && taxRateBps === null) throw new ProductRequestError('product_invalid_payload', 400);
+  const timestamp = Date.now();
+  const statements = [
+    env.ONFRAME_DB.prepare(
+      `
+      UPDATE products SET current_cost_decimal = ?, tax_rate_bps = ?, updated_by_user_id = ?, updated_at = ?
+      WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
+    `
+    ).bind(
+      cost ? cost.decimal : current.current_cost_decimal,
+      updateAccountOverride ? current.tax_rate_bps : taxRateBps,
+      actor.userId,
+      timestamp,
+      productId,
+      actor.workspaceId
+    )
+  ];
+
+  if (cost && current.current_cost_decimal !== cost.decimal) {
+    statements.push(
+      env.ONFRAME_DB.prepare(
+        `
+        INSERT INTO product_cost_history (id, product_id, cost_decimal, effective_at, created_by_user_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `
+      ).bind(crypto.randomUUID(), productId, cost.decimal, timestamp, actor.userId, timestamp)
+    );
+  }
+
+  if (updateAccountOverride) {
+    statements.push(
+      env.ONFRAME_DB.prepare(
+        `
+        INSERT INTO product_account_tax_rates (
+          workspace_id, product_id, seller_account_id, tax_rate_bps, updated_by_user_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(product_id, seller_account_id) DO UPDATE SET
+          tax_rate_bps = excluded.tax_rate_bps,
+          updated_by_user_id = excluded.updated_by_user_id,
+          updated_at = excluded.updated_at
+      `
+      ).bind(
+        actor.workspaceId,
+        productId,
+        String(input.sellerAccountId),
+        taxRateBps,
+        actor.userId,
+        timestamp,
+        timestamp
+      )
+    );
+  }
+
+  try {
+    await env.ONFRAME_DB.batch(statements);
+  } catch (error) {
+    mapWriteError(error);
+  }
+  await audit(env, actor, requestId, 'product_financials_updated', 'product', productId, 200, {
+    fields: [hasCost ? 'cost' : '', hasTaxRate ? 'tax_rate' : ''].filter(Boolean)
+  });
+  const accountRates = await productAccountTaxRates(env, actor);
+  return productPayload(await assertProduct(env, actor, productId), accountRates.get(productId));
+}
+
 export async function archiveProduct(env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {
   await assertAdmin(env, actor);
   await assertProduct(env, actor, productId);

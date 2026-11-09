@@ -447,6 +447,12 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(source, /Você recebe/);
   assert.match(source, /Tarifa de venda/);
   assert.match(source, /Frete/);
+  assert.match(source, /label: 'Custo do produto'/);
+  assert.match(source, /label: 'Impostos'/);
+  assert.match(source, /label: 'Margem de contribuição'/);
+  assert.match(source, /value: formatContributionPercent\(margin\.percentage\)/);
+  assert.match(source, /secondaryValue: CommerceModel\.formatMoney\(margin\.amount/);
+  assert.match(view, /field\.secondaryValue && <small>\{field\.secondaryValue\}<\/small>/);
   assert.match(source, /Com redução de tarifas/);
   assert.match(source, /Bônus do Mercado Livre/);
   assert.match(source, /function priceStackableScenarios/);
@@ -480,6 +486,7 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
     /body:has\(\s*:is\([\s\S]*\.onframe-commerce-popover-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\)\s*\[aria-describedby\]\s*\)\s*>\s*\[role='tooltip'\][\s\S]*font-family: var\(--ob-font\) !important;/s
   );
   assert.match(styles, /\.onframe-commerce-price-breakdown-row\s*{\s*display: grid/s);
+  assert.match(styles, /\.onframe-commerce-price-breakdown-value\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-price-promotion-link\s*{\s*display: flex/s);
   assert.match(styles, /\.onframe-commerce-price-base\s*{\s*display: grid/s);
   assert.match(styles, /\.onframe-commerce-popover-edit-footer\s*{\s*display: flex/s);
@@ -582,8 +589,12 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.doesNotMatch(view, /<Tabs[^>]*appearance=/);
   assert.match(
     view,
-    /onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover[\s\S]*<Tabs/s
+    /onframe-promotion-manager-toolbar-line[\s\S]*<Tabs[\s\S]*onframe-promotion-manager-toolbar-actions[\s\S]*onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover/s
   );
+  assert.match(view, /icon=\{icon\('funnel', 18\)\}/);
+  assert.doesNotMatch(view, /icon=\{icon\('sliders-horizontal', 18\)\}/);
+  assert.match(view, /kind="neutral"\s+size="sm"\s+iconOnly\s+aria-label="Atualizar promoções"/s);
+  assert.match(view, /kind="primary"\s+size="sm"\s+icon=\{icon\('tag', 18\)\}/s);
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);
@@ -608,11 +619,23 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /const isCoupon = row\.type === 'coupon'/);
   assert.match(view, /tone=\{isCoupon \? 'warning' : 'primary'\}/);
   assert.match(view, /icon=\{icon\(isCoupon \? 'clipboard-text' : 'tag'\)\}/);
-  assert.match(view, /tone=\{row\.canUpdate \? 'primary' : 'neutral'\}/);
+  assert.match(view, /Menu,[\s\S]*from '@onblide\/ui'/s);
+  assert.match(view, /label: 'Editar'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'update'\)/s);
+  assert.match(view, /label: 'Ver detalhes'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'details'\)/s);
+  assert.match(view, /label: 'Remover'[\s\S]*tone: 'danger'[\s\S]*onSelect: \(\) => actions\.onRemove\(row\.key\)/s);
+  assert.match(view, /aria-label=\{`Abrir ações de \$\{row\.name\}`\}/);
+  assert.match(view, /icon=\{icon\('dots-three-vertical', 18\)\}/);
+  assert.doesNotMatch(view, /aria-label="Remover promoção"/);
   assert.match(view, /aria-hidden="true"/);
   assert.match(view, /label="Preço promocional"/);
   assert.match(view, /startAddon="R\$"/);
   assert.match(view, /Como o valor é calculado/);
+  assert.doesNotMatch(view, /Estimativa calculada com o preço promocional/);
+  assert.match(view, /item\.benefit && <small className="fee-reduction">\{item\.benefit\}<\/small>/);
+  assert.match(view, /Tarifa reduzida \{row\.result\.feeReduction\}/);
+  assert.match(view, /<span title="Margem de contribuição">M\. de contribuição<\/span>/);
+  assert.match(view, /row\.marginSummary\.percentage \|\| '—'/);
+  assert.match(view, /row\.marginSummary\.amount && <small>\{row\.marginSummary\.amount\}<\/small>/);
   assert.match(view, /onframe-promotion-manager-editor\$\{row\.readOnly \? ' is-readonly' : ''\}/);
   assert.match(view, /Kbd,[\s\S]*from '@onblide\/ui'/s);
   assert.match(view, /<Kbd size="sm">Esc<\/Kbd> cancela/);
@@ -624,6 +647,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /tone="danger"/);
   assert.doesNotMatch(view, /Desfazer/);
   assert.match(source, /function buildPromotionManagerViewModel/);
+  assert.match(
+    source,
+    /label: 'Tarifa de venda',[\s\S]*description: saleFeeListingType\(estimate\.commission\),[\s\S]*benefit: saleFeeReductionLabel\(estimate\.commission, currency\)/s
+  );
+  assert.match(source, /`Redução aplicada: \$\{CommerceModel\.formatMoney\(/);
   assert.doesNotMatch(source, /buildPromotionRows\(\)\.filter\(\(row\) => row\.type !== 'payment'\)/);
   assert.match(source, /state\.promotionStatusFilters\.includes\(row\.status\.id\)/);
   assert.match(source, /state\.promotionTypeFilters\.includes\(row\.type\)/);
@@ -642,7 +670,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /function closePromotionManagerRemoval/);
   assert.match(source, /function confirmPromotionManagerRemoval/);
   assert.doesNotMatch(source, /promotionRemoved|promotionRemovalTimers|commitQueuedPromotionManagerRemoval/);
-  assert.match(styles, /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\)/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\) minmax\(0, 0\.7fr\) minmax\(0, 1fr\) minmax\(0, 0\.85fr\) auto;/s
+  );
   assert.match(
     styles,
     /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s
@@ -660,6 +691,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(
     styles,
     /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-margin-summary > span,[\s\S]*\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
   );
   assert.match(
     styles,
@@ -685,7 +720,19 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(styles, /\.onframe-promotion-manager-meta > small\s*\{[\s\S]*margin-top: 0;/s);
   assert.match(
     styles,
+    /\.onframe-promotion-manager-calculation span small\.fee-reduction\s*\{[\s\S]*color: var\(--ob-green\);[\s\S]*font-weight: var\(--ob-w-semibold\) !important;/s
+  );
+  assert.match(
+    styles,
     /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-condition strong,[\s\S]*\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-size: var\(--ob-fs-14\);/s
+  );
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-condition,[\s\S]*\.onframe-promotion-manager-margin-summary\s*\{[\s\S]*align-self: start;/s
   );
   assert.match(styles, /\.onframe-promotion-manager-title > small\s*\{[\s\S]*font-weight: var\(--ob-w-regular\)/s);
   assert.match(
@@ -704,6 +751,12 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   );
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-toolbar\s*\{[^}]*border-bottom:/s);
   assert.match(styles, /\.onframe-promotion-manager-search-line\s*\{[\s\S]*justify-content: flex-start;/s);
+  assert.match(styles, /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*gap: var\(--ob-space-16\);/s);
+  assert.match(
+    styles,
+    /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*padding: var\(--ob-space-16\) var\(--ob-space-24\) var\(--ob-space-12\);/s
+  );
+  assert.match(styles, /\.onframe-promotion-manager-toolbar-line\s*\{[\s\S]*justify-content: space-between;/s);
   assert.match(styles, /\.onframe-promotion-manager-filter-controls\s*\{[\s\S]*flex: none;/s);
   assert.match(
     styles,
@@ -857,11 +910,17 @@ test('modal de promoções mantém filtros e revisão financeira na view React',
   assert.match(view, /label="Elegíveis"/);
   assert.match(view, /Como o valor é calculado/);
   assert.match(view, /row\.calculation\.map/);
+  assert.match(view, /aria-label="Editar dados do cálculo"/);
+  assert.match(view, /Margem de contribuição/);
+  assert.match(view, /Salvar no produto/);
+  assert.match(view, /actions\.onSaveProductFinancials\(row\.key, changes\)/);
   assert.match(source, /function buildPromotionManagerViewModel/);
   assert.match(source, /state\.promotionStatusFilters\.includes\(row\.status\.id\)/);
   assert.match(source, /state\.promotionTypeFilters\.includes\(row\.type\)/);
   assert.match(source, /state\.promotionFinancialFilters\.includes\('fee_reduction'\)/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
+  assert.match(source, /onSaveProductFinancials: savePromotionProductFinancials/);
+  assert.match(source, /itemApiPath\('\/product-financials'\)/);
   assert.match(source, /function commitPromotionManagerAction/);
   assert.doesNotMatch(source, /onframe-commerce-promotion-filter-wrap|bindModalEvents|reviewPromotionFieldDraft/);
 });

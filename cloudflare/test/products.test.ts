@@ -10,7 +10,8 @@ import {
   listProducts,
   matchProductForPromotionItem,
   previewProductImport,
-  updateProduct
+  updateProduct,
+  updateProductFinancials
 } from '../src/products.ts';
 
 const admin = { userId: 'user-1', workspaceId: 'workspace-1', workspaceRole: 'admin' } as const;
@@ -149,6 +150,32 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
           .first<{ total: number }>()
       )?.total,
       2
+    );
+
+    await assert.rejects(
+      updateProductFinancials(env, collaborator, created.id, 'request-financials-forbidden', { cost: 170 }),
+      { code: 'product_access_forbidden' }
+    );
+    const financialsUpdated = await updateProductFinancials(env, admin, created.id, 'request-financials-update', {
+      cost: 160.12345,
+      taxRate: 11.25,
+      taxSource: 'product_account',
+      sellerAccountId: 'account-1'
+    });
+    assert.equal(financialsUpdated.cost, 160.12345);
+    assert.equal(financialsUpdated.taxRate, 7.25);
+    assert.deepEqual(financialsUpdated.accountTaxRates, [
+      { sellerAccountId: 'account-1', accountUserId: '310458346', taxRate: 11.25 }
+    ]);
+    assert.deepEqual(financialsUpdated.customCosts, [{ description: 'Embalagem', type: 'fixed', value: 4.5 }]);
+    assert.equal(
+      (
+        await db
+          .prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?')
+          .bind(created.id)
+          .first<{ total: number }>()
+      )?.total,
+      3
     );
 
     const adminList = await listProducts(
@@ -325,7 +352,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
           .bind(created.id)
           .first<{ total: number }>()
       )?.total,
-      3
+      4
     );
 
     const itemMatch = await matchProductForPromotionItem(env, admin, {

@@ -1174,6 +1174,7 @@
         onOpen: openPromotionManagerCard,
         onCancelEdit: cancelPromotionForm,
         onDraftChange: updatePromotionManagerDraft,
+        onSaveProductFinancials: savePromotionProductFinancials,
         onToggleBulk: togglePromotionManagerBulk,
         onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
         onRemove: openPromotionManagerRemoval,
@@ -1350,6 +1351,12 @@
       const metrics = promotionManagerMetrics(estimate);
       const calculation = promotionManagerCalculation(entry, estimate);
       const margin = promotionContributionMargin(estimate);
+      const productFinancials = promotionManagerProductFinancials(estimate);
+      const contributionMargin = estimate && estimate.contributionMargin;
+      const completeMargin = contributionMargin && contributionMargin.complete;
+      const feeReduction = moneyOrNull(
+        estimate && estimate.commission && estimate.commission.promotion_reduction_amount
+      );
       const feedback =
         state.promotionFeedback &&
         state.promotionFeedback.key === key &&
@@ -1389,11 +1396,32 @@
                     ? CommerceModel.formatMoney(estimate.youReceive, estimate.currency_id || itemCurrency())
                     : '',
                 secondary: estimateRecord && estimateRecord.status === 'error' ? 'Valores indisponíveis.' : '',
+                feeReduction:
+                  feeReduction !== null && feeReduction > 0
+                    ? CommerceModel.formatMoney(
+                        feeReduction,
+                        (estimate && estimate.commission && estimate.commission.currency_id) || itemCurrency()
+                      )
+                    : '',
                 loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
               },
+        marginSummary: {
+          amount:
+            completeMargin && Number.isFinite(Number(contributionMargin.amount))
+              ? CommerceModel.formatMoney(
+                  contributionMargin.amount,
+                  (estimate && estimate.currency_id) || itemCurrency(),
+                  contributionMargin.costDecimalPlaces
+                )
+              : '',
+          percentage: completeMargin ? formatContributionPercent(contributionMargin.percentage) : '',
+          tone: completeMargin && Number(contributionMargin.amount) < 0 ? 'danger' : completeMargin ? 'success' : '',
+          loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
+        },
         metrics,
         calculation,
         margin,
+        productFinancials,
         feedback,
         canUpdate,
         canDelete,
@@ -1505,6 +1533,7 @@
         label: item.label,
         value: item.value,
         description: item.description,
+        benefit: item.benefit,
         tone: item.tone === 'total' ? 'success' : ''
       }));
       const margin = estimate.contributionMargin;
@@ -1554,6 +1583,33 @@
             ? 'Margem indisponível: o Mercado Livre não retornou o valor líquido desta promoção.'
             : 'Margem indisponível: revise os dados financeiros deste produto.';
       return { available: false, message };
+    }
+
+    function promotionManagerProductFinancials(estimate) {
+      const margin = estimate && estimate.contributionMargin;
+      const productMatch = estimate && estimate.productMatch;
+      const product = productMatch && productMatch.status === 'matched' ? productMatch.product : null;
+      if (!margin || !margin.complete || !product || !product.id) return null;
+      const values = {
+        productCost: Number(margin.productCost),
+        taxRate: Number(margin.taxRate),
+        salePrice: Number(margin.salePrice),
+        youReceive: Number(margin.youReceive),
+        customCost: Number(margin.customCost || 0)
+      };
+      if (Object.values(values).some((value) => !Number.isFinite(value))) return null;
+      return {
+        productId: product.id,
+        canEdit: productMatch.canEdit === true,
+        productCost: values.productCost,
+        taxRate: values.taxRate,
+        taxSource: margin.taxSource || '',
+        salePrice: values.salePrice,
+        youReceive: values.youReceive,
+        customCost: values.customCost,
+        currency: margin.currency_id || estimate.currency_id || itemCurrency(),
+        costDecimalPlaces: margin.costDecimalPlaces
+      };
     }
 
     function promotionTaxSourceLabel(source) {
@@ -1675,6 +1731,31 @@
       clearPromotionFeedback(key);
       schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key]);
       rerenderModal();
+    }
+
+    async function savePromotionProductFinancials(key, changes) {
+      const row = promotionManagerRow(key);
+      const estimateRecord = state.promotionEstimates[key] || (row && row.entry && row.entry._onframeEstimate) || null;
+      const estimate = estimateRecord && estimateRecord.status === 'ready' ? estimateRecord.data : null;
+      const financials = promotionManagerProductFinancials(estimate);
+      if (!row || !financials) {
+        return { ok: false, error: 'Os dados financeiros deste produto estão indisponíveis.' };
+      }
+      const payload = {};
+      if (changes && Object.prototype.hasOwnProperty.call(changes, 'cost')) payload.cost = changes.cost;
+      if (changes && Object.prototype.hasOwnProperty.call(changes, 'taxRate')) payload.taxRate = changes.taxRate;
+      if (!Object.keys(payload).length) return { ok: true };
+      try {
+        await api(itemApiPath('/product-financials'), {
+          method: 'PATCH',
+          body: JSON.stringify(payload)
+        });
+        clearPromotionEstimate(key);
+        schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key] || {}, true);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: toUserError(error) };
+      }
     }
 
     function togglePromotionManagerBulk(checked) {
@@ -1916,7 +1997,8 @@
       if (commission !== null) {
         rows.push({
           label: 'Tarifa de venda',
-          description: saleFeeDescription(estimate.commission, currency),
+          description: saleFeeListingType(estimate.commission),
+          benefit: saleFeeReductionLabel(estimate.commission, currency),
           value: formatPromotionCost(commission, currency)
         });
       }
@@ -2374,6 +2456,29 @@
         });
       }
       promotionCreditMetrics(commission, currency).forEach((metric) => fields.push(metric));
+      const margin = summary && summary.contributionMargin;
+      if (margin && margin.complete) {
+        fields.push({
+          label: 'Custo do produto',
+          value: CommerceModel.formatMoney(margin.productCost, currency, margin.costDecimalPlaces)
+        });
+        fields.push({
+          label: 'Impostos',
+          value: CommerceModel.formatMoney(margin.taxAmount, currency, margin.costDecimalPlaces)
+        });
+        if (Number(margin.customCost) > 0) {
+          fields.push({
+            label: 'Custos adicionais',
+            value: CommerceModel.formatMoney(margin.customCost, currency, margin.costDecimalPlaces)
+          });
+        }
+        fields.push({
+          label: 'Margem de contribuição',
+          value: formatContributionPercent(margin.percentage),
+          secondaryValue: CommerceModel.formatMoney(margin.amount, currency, margin.costDecimalPlaces),
+          tone: Number(margin.amount) < 0 ? 'danger' : 'success'
+        });
+      }
       return { fields };
     }
 
@@ -2443,7 +2548,7 @@
     function saleFeeDescription(commission, currency) {
       if (!commission) return '';
       const details = [];
-      const listingType = String(commission.listing_type_name || '').trim();
+      const listingType = saleFeeListingType(commission);
       if (listingType) details.push(listingType);
       const reduction = moneyOrNull(commission.promotion_reduction_amount);
       if (reduction !== null && reduction > 0) {
@@ -2452,6 +2557,20 @@
         );
       }
       return details.join(' · ');
+    }
+
+    function saleFeeListingType(commission) {
+      return String((commission && commission.listing_type_name) || '').trim();
+    }
+
+    function saleFeeReductionLabel(commission, currency) {
+      const reduction = moneyOrNull(commission && commission.promotion_reduction_amount);
+      return reduction === null
+        ? ''
+        : `Redução aplicada: ${CommerceModel.formatMoney(
+            reduction,
+            (commission && commission.currency_id) || currency
+          )}`;
     }
 
     function promotionCreditMetrics(commission, currency) {

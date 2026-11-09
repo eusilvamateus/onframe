@@ -1,7 +1,7 @@
 import { decryptValue, encryptValue, importAesGcmKeyBase64 } from './token-cipher';
 import { recordConfirmedItemEdits } from './item-edit-history';
-import { matchProductForPromotionItem } from './products';
-import { enrichPromotionEstimateWithProduct } from './product-margin';
+import { matchProductForPromotionItem, updateProductFinancials } from './products';
+import { enrichPriceSummaryWithProduct, enrichPromotionEstimateWithProduct } from './product-margin';
 import { resolveProductTaxRate } from './tax-configuration';
 import {
   handleResolve,
@@ -61,6 +61,7 @@ export type RemoteApiActor = {
   sessionId: string;
   userId: string;
   workspaceId: string;
+  workspaceRole: 'admin' | 'collaborator';
   displayName?: string;
   email?: string;
 };
@@ -196,13 +197,15 @@ export async function handleRemoteApiRequest(input: {
         client.historySnapshots(itemId).latest,
         input.url.searchParams.get('variation_id')
       );
-      if (productMatch.status !== 'matched' || !productMatch.product?.id) return productMatch;
+      if (productMatch.status !== 'matched' || !productMatch.product?.id) {
+        return { ...productMatch, canEdit: input.actor.workspaceRole === 'admin' };
+      }
       const tax = await resolveProductTaxRate(input.env, {
         workspaceId: input.actor.workspaceId,
         sellerAccountId: client.historyAccount().id,
         productId: productMatch.product.id
       });
-      return { ...productMatch, tax };
+      return { ...productMatch, tax, canEdit: input.actor.workspaceRole === 'admin' };
     } catch (error) {
       console.error(
         JSON.stringify({
@@ -218,7 +221,8 @@ export async function handleRemoteApiRequest(input: {
         source: null,
         variationId: null,
         reason: 'catalog_unavailable',
-        product: null
+        product: null,
+        canEdit: false
       };
     }
   };
@@ -315,7 +319,10 @@ export async function handleRemoteApiRequest(input: {
 
     const priceSummary = apiPath.match(/^\/items\/(MLB\d+)\/pricing\/summary$/u);
     if (input.request.method === 'GET' && priceSummary) {
-      return handlePriceSummary({ client: await resolveItemClient(priceSummary[1]), itemId: priceSummary[1] });
+      const client = await resolveItemClient(priceSummary[1]);
+      const summary = await handlePriceSummary({ client, itemId: priceSummary[1] });
+      const productMatch = await matchPromotionProduct(client, priceSummary[1]);
+      return enrichPriceSummaryWithProduct(summary, productMatch);
     }
 
     const standardPrice = apiPath.match(/^\/items\/(MLB\d+)\/pricing\/standard$/u);
@@ -460,6 +467,37 @@ export async function handleRemoteApiRequest(input: {
         readJson
       });
       return enrichPromotionEstimateWithProduct(estimate, await matchPromotionProduct(client, promotionEstimate[1]));
+    }
+
+    const productFinancials = apiPath.match(/^\/items\/(MLB\d+)\/product-financials$/u);
+    if (input.request.method === 'PATCH' && productFinancials) {
+      const client = await resolveItemClient(productFinancials[1]);
+      const productMatch = await matchPromotionProduct(client, productFinancials[1]);
+      if (productMatch.status !== 'matched' || !productMatch.product?.id) {
+        throw new RemoteApiError(
+          'product_not_found',
+          404,
+          'Nenhum produto do OnFrame foi encontrado para este anúncio.'
+        );
+      }
+      const body = await readJson(input.request);
+      const hasCost = Object.prototype.hasOwnProperty.call(body, 'cost');
+      const hasTaxRate = Object.prototype.hasOwnProperty.call(body, 'taxRate');
+      if (!hasCost && !hasTaxRate) {
+        throw new RemoteApiError('product_invalid_payload', 400, 'Informe o custo ou o imposto que deseja alterar.');
+      }
+      const product = await updateProductFinancials(input.env, input.actor, productMatch.product.id, input.requestId, {
+        ...(hasCost ? { cost: body.cost } : {}),
+        ...(hasTaxRate ? { taxRate: body.taxRate } : {}),
+        taxSource: 'tax' in productMatch ? (productMatch.tax?.source ?? undefined) : undefined,
+        sellerAccountId: client.historyAccount().id
+      });
+      const tax = await resolveProductTaxRate(input.env, {
+        workspaceId: input.actor.workspaceId,
+        sellerAccountId: client.historyAccount().id,
+        productId: product.id
+      });
+      return { product, tax };
     }
 
     const offer = apiPath.match(/^\/items\/(MLB\d+)\/promotions\/offers$/u);
@@ -1604,8 +1642,14 @@ function parseMeliToken(value: unknown): MeliToken {
 
 function normalizeRemoteApiError(error: unknown): RemoteApiError {
   if (error instanceof RemoteApiError) return error;
-  const source = error as { statusCode?: unknown; code?: unknown; message?: unknown; body?: unknown } | null;
-  const statusCode = Number(source?.statusCode || 0);
+  const source = error as {
+    status?: unknown;
+    statusCode?: unknown;
+    code?: unknown;
+    message?: unknown;
+    body?: unknown;
+  } | null;
+  const statusCode = Number(source?.statusCode || source?.status || 0);
   return new RemoteApiError(
     typeof source?.code === 'string' && source.code ? source.code : errorCodeForStatus(statusCode || 500),
     statusCode >= 400 && statusCode <= 599 ? statusCode : 500,

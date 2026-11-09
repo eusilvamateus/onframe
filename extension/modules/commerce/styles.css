@@ -447,23 +447,35 @@
   line-height: var(--ob-lh-normal);
 }
 
-.onframe-commerce-price-breakdown-row > strong {
+.onframe-commerce-price-breakdown-value {
+  display: grid;
+  justify-items: end;
+  gap: var(--ob-space-2);
+  min-width: 0;
+  text-align: right;
+}
+
+.onframe-commerce-price-breakdown-value > strong {
   color: var(--ob-ink-strong);
   font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-bold);
   white-space: nowrap;
 }
 
-.onframe-commerce-price-breakdown-row.success > strong {
+.onframe-commerce-price-breakdown-row.success .onframe-commerce-price-breakdown-value > strong {
   color: var(--ob-green-700);
 }
 
-.onframe-commerce-price-breakdown-row.primary > strong {
+.onframe-commerce-price-breakdown-row.primary .onframe-commerce-price-breakdown-value > strong {
   color: var(--ob-blue-700);
 }
 
-.onframe-commerce-price-breakdown-row.warning > strong {
+.onframe-commerce-price-breakdown-row.warning .onframe-commerce-price-breakdown-value > strong {
   color: var(--ob-orange-700);
+}
+
+.onframe-commerce-price-breakdown-row.danger .onframe-commerce-price-breakdown-value > strong {
+  color: var(--ob-danger);
 }
 
 .onframe-commerce-price-scenarios {
@@ -1026,6 +1038,7 @@ body:has(
 .onframe-promotion-manager-kicker,
 .onframe-promotion-manager-condition > span,
 .onframe-promotion-manager-result > span,
+.onframe-promotion-manager-margin-summary > span,
 .onframe-promotion-manager-metric > span {
   font-family: var(--ob-font-mono) !important;
   font-size: var(--ob-fs-11);
@@ -1063,8 +1076,8 @@ body:has(
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: var(--ob-space-10);
-  padding: var(--ob-space-4) var(--ob-space-24) var(--ob-space-12);
+  gap: var(--ob-space-16);
+  padding: var(--ob-space-16) var(--ob-space-24) var(--ob-space-12);
   background: var(--ob-surface);
 }
 
@@ -1080,7 +1093,7 @@ body:has(
 .onframe-promotion-manager-toolbar-line {
   align-items: stretch;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--ob-space-12);
 }
 
@@ -1220,9 +1233,16 @@ body:has(
   padding: var(--ob-space-12) var(--ob-space-16) var(--ob-space-12) var(--ob-space-16);
 }
 
-.onframe-promotion-manager-card > :nth-child(2),
-.onframe-promotion-manager-card > :nth-child(3) {
+.onframe-promotion-manager-condition,
+.onframe-promotion-manager-result,
+.onframe-promotion-manager-margin-summary {
   grid-column: 1 / -1;
+  align-self: start;
+}
+
+.onframe-promotion-manager-actions {
+  grid-column: 2;
+  grid-row: 1;
 }
 
 .onframe-promotion-manager-name {
@@ -1280,6 +1300,7 @@ body:has(
 .onframe-promotion-manager-name small,
 .onframe-promotion-manager-condition small,
 .onframe-promotion-manager-result small,
+.onframe-promotion-manager-margin-summary small,
 .onframe-promotion-manager-note {
   display: block;
   margin-top: var(--ob-space-2);
@@ -1292,9 +1313,10 @@ body:has(
 
 .onframe-promotion-manager-condition strong,
 .onframe-promotion-manager-result strong,
+.onframe-promotion-manager-margin-summary strong,
 .onframe-promotion-manager-metric strong {
   display: block;
-  font-size: var(--ob-fs-16);
+  font-size: var(--ob-fs-14);
   font-family: var(--ob-font) !important;
   font-weight: var(--ob-w-bold) !important;
   color: var(--ob-fg-strong);
@@ -1311,9 +1333,14 @@ body:has(
   color: var(--ob-fg-strong);
 }
 
-.onframe-promotion-manager-result strong.success,
+.onframe-promotion-manager-result small.fee-reduction,
+.onframe-promotion-manager-margin-summary strong.success,
 .onframe-promotion-manager-calculation .success {
   color: var(--ob-green);
+}
+
+.onframe-promotion-manager-margin-summary strong.danger {
+  color: var(--ob-danger);
 }
 
 .onframe-promotion-manager-actions {
@@ -1338,6 +1365,109 @@ body:has(
 .onframe-promotion-manager-editor .onframe-promotion-manager-editor-metrics {
   border-inline: 0;
   border-radius: 0;
+}
+
+.onframe-promotion-manager-financial-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-16);
+}
+
+.onframe-promotion-manager-financial {
+  flex: 1;
+}
+
+.onframe-promotion-manager-financial-summary,
+.onframe-promotion-manager-financial-edit {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.onframe-promotion-manager-financial-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ob-space-16);
+}
+
+.onframe-promotion-manager-financial-heading > div,
+.onframe-promotion-manager-financial-edit > div:first-child {
+  display: grid;
+  gap: var(--ob-space-4);
+}
+
+.onframe-promotion-manager-financial-heading strong,
+.onframe-promotion-manager-financial-edit > div:first-child strong {
+  font-size: var(--ob-fs-14);
+  color: var(--ob-fg-strong);
+}
+
+.onframe-promotion-manager-financial-values {
+  display: grid;
+  gap: var(--ob-space-16);
+  margin-top: var(--ob-space-20);
+}
+
+.onframe-promotion-manager-financial-values .onframe-promotion-manager-metric {
+  display: grid;
+  gap: var(--ob-space-4);
+}
+
+.onframe-promotion-manager-financial-margin {
+  display: grid;
+  gap: 0;
+  margin-top: auto;
+  padding-top: var(--ob-space-20);
+  border-top: 1px solid var(--ob-line-soft);
+  color: var(--ob-green);
+}
+
+.onframe-promotion-manager-financial-margin > span {
+  margin-bottom: var(--ob-space-6);
+  font-family: var(--ob-font-mono) !important;
+  font-size: var(--ob-fs-11);
+  font-weight: var(--ob-w-medium) !important;
+  text-transform: uppercase;
+}
+
+.onframe-promotion-manager-financial-margin strong {
+  font-size: var(--ob-fs-22);
+  line-height: var(--ob-lh-tight);
+}
+
+.onframe-promotion-manager-financial-margin small {
+  font-size: var(--ob-fs-13);
+  font-weight: var(--ob-w-semibold);
+  line-height: var(--ob-lh-tight);
+}
+
+.onframe-promotion-manager-financial-margin.danger {
+  color: var(--ob-danger);
+}
+
+.onframe-promotion-manager-financial-edit {
+  gap: var(--ob-space-16);
+}
+
+.onframe-promotion-manager-financial-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ob-space-12);
+  margin-top: auto;
+  padding-top: var(--ob-space-16);
+  border-top: 1px solid var(--ob-line-soft);
+}
+
+.onframe-promotion-manager-financial-actions > span {
+  color: var(--ob-fg-mute);
+  font-size: var(--ob-fs-11);
+}
+
+.onframe-promotion-manager-financial-actions > div {
+  display: flex;
+  gap: var(--ob-space-8);
 }
 
 .onframe-promotion-manager-editor-metrics {
@@ -1379,6 +1509,11 @@ body:has(
   font-weight: var(--ob-w-regular) !important;
   line-height: var(--ob-lh-normal);
   color: var(--ob-fg-mute);
+}
+
+.onframe-promotion-manager-calculation span small.fee-reduction {
+  color: var(--ob-green);
+  font-weight: var(--ob-w-semibold) !important;
 }
 
 .onframe-promotion-manager-editor .onframe-promotion-manager-note {
@@ -1441,6 +1576,10 @@ body:has(
     flex-direction: row;
   }
 
+  .onframe-promotion-manager-toolbar-actions {
+    margin-left: auto;
+  }
+
   .onframe-promotion-manager-filter-controls {
     align-items: center;
     flex-direction: row;
@@ -1475,12 +1614,15 @@ body:has(
 
 @media (min-width: 1024px) {
   .onframe-promotion-manager-card {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 0.85fr) auto;
   }
 
-  .onframe-promotion-manager-card > :nth-child(2),
-  .onframe-promotion-manager-card > :nth-child(3) {
+  .onframe-promotion-manager-condition,
+  .onframe-promotion-manager-result,
+  .onframe-promotion-manager-margin-summary,
+  .onframe-promotion-manager-actions {
     grid-column: auto;
+    grid-row: auto;
   }
 
   .onframe-promotion-manager-editor {

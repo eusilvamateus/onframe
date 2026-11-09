@@ -67,7 +67,10 @@ function PriceBreakdownRow({ field }) {
         {field.description && <small>{field.description}</small>}
         {field.originalPrice && <small>Preço base {field.originalPrice}</small>}
       </span>
-      <strong>{field.value}</strong>
+      <span className="onframe-commerce-price-breakdown-value">
+        <strong>{field.value}</strong>
+        {field.secondaryValue && <small>{field.secondaryValue}</small>}
+      </span>
     </div>
   );
 }
