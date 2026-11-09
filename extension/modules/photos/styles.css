@@ -237,9 +237,14 @@
   white-space: nowrap;
 }
 
-.onblide-ml-dock-main .onblide-ml-strip {
+.onblide-ml-dock-strip-scroll {
   flex: 0 1 auto;
   min-width: 0;
+  height: 92px;
+}
+
+.onblide-ml-dock-strip-scroll > .ob-sa {
+  width: 100%;
 }
 
 .onblide-ml-dock-actions {
@@ -298,6 +303,11 @@
   padding: var(--ob-space-2) var(--ob-space-2) var(--ob-space-6);
   scrollbar-color: var(--ob-ink-mute) transparent;
   scrollbar-width: thin;
+}
+
+.onblide-ml-dock-strip {
+  max-width: none;
+  overflow: visible;
 }
 
 .onblide-ml-strip.is-sorting {
@@ -394,9 +404,13 @@
 }
 
 .onblide-ml-upload button {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--ob-space-4);
   width: 100%;
   height: 100%;
   padding: var(--ob-space-8);
+  line-height: var(--ob-lh-snug);
   white-space: normal;
 }
 
@@ -795,7 +809,7 @@
   flex-basis: auto;
 }
 
-.onblide-ml-dock-main .onblide-ml-strip {
+.onblide-ml-dock-strip-scroll {
   grid-column: 1 / -1;
   width: 100%;
   max-width: none;
@@ -845,7 +859,7 @@
     flex-basis: 150px;
   }
 
-  .onblide-ml-dock-main .onblide-ml-strip {
+  .onblide-ml-dock-strip-scroll {
     grid-column: auto;
     width: max-content;
     max-width: calc(100vw - 64px);

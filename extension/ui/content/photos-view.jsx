@@ -1,7 +1,19 @@
 import { Component, useCallback, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { Alert, Badge, Button, Checkbox, FileUpload, Modal, Ph, ProgressBar, Spinner, Tooltip } from '@onblide/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Checkbox,
+  FileUpload,
+  Modal,
+  Ph,
+  ProgressBar,
+  ScrollArea,
+  Spinner,
+  Tooltip
+} from '@onblide/ui';
 
 const roots = new WeakMap();
 
@@ -481,11 +493,15 @@ function EditorDockContent({ model, actions }) {
     <>
       <div className="onblide-ml-dock-main">
         <DockIdentity counter={model.counter} />
-        <div className="onblide-ml-strip" aria-label="Editor de fotos do anuncio">
-          {model.pictures.map((picture) => (
-            <PictureTile key={picture.localId} picture={picture} actions={actions} />
-          ))}
-          <UploadTile actions={actions} />
+        <div className="onblide-ml-dock-strip-scroll">
+          <ScrollArea orientation="horizontal" visibility="hover" height={92} ariaLabel="Editor de fotos do anúncio">
+            <div className="onblide-ml-strip onblide-ml-dock-strip">
+              {model.pictures.map((picture) => (
+                <PictureTile key={picture.localId} picture={picture} actions={actions} />
+              ))}
+              <UploadTile actions={actions} />
+            </div>
+          </ScrollArea>
         </div>
         <div className={`onblide-ml-dock-actions${model.dirty ? ' is-dirty' : ''}`}>
           <Button

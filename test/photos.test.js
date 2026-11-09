@@ -388,6 +388,11 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(uploadTile, /queue\.current\.then\(\(\) => actions\.onUploadFiles\(\[file\]\)\)/);
   assert.doesNotMatch(uploadTile, /<button\b|onDrop=|onDragOver=/);
   assert.match(view, /import \{[^}]*FileUpload/);
+  assert.match(view, /import \{[^}]*ScrollArea/);
+  assert.match(
+    editorDock,
+    /<ScrollArea orientation="horizontal" visibility="hover" height=\{92\} ariaLabel="Editor de fotos do anúncio">/
+  );
   assert.match(source, /function beginEditorOpenTransition\(\)/);
   assert.match(source, /function beginEditorCloseTransition\(\)/);
   assert.match(source, /function editorMotionTokens\(\)/);
@@ -466,7 +471,11 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-dock-action \{[\s\S]*?width: 100%;[\s\S]*?height: 32px;/);
   assert.match(styles, /\.onblide-ml-dock-secondary-actions \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) 32px;/);
   assert.doesNotMatch(editorDock, /onblide-ml-tray-actions|onblide-ml-dock-open-editor|paddingInline: 6/);
-  assert.match(styles, /\.onblide-ml-upload button \{[\s\S]*width: 100%;[\s\S]*height: 100%;/);
+  assert.match(
+    styles,
+    /\.onblide-ml-upload button \{[\s\S]*flex-direction: column;[\s\S]*width: 100%;[\s\S]*height: 100%;/
+  );
+  assert.match(styles, /\.onblide-ml-dock-strip \{[\s\S]*overflow: visible;/);
   assert.doesNotMatch(styles, /\.onblide-ml-file|\.onblide-ml-upload\.is-dragover/);
   assert.match(styles, /\.onblide-ml-tile \{[\s\S]*background: #fff;/);
   assert.match(styles, /\.onblide-ml-tile img \{[\s\S]*background: #fff;/);
