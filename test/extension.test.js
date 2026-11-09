@@ -157,6 +157,7 @@ test('interfaces usam as fundacoes do design system sem valores soltos', () => {
   const foundationsFile = 'styles/foundations.css';
   const foundations = fs.readFileSync(path.join(extensionRoot, foundationsFile), 'utf8');
   const spacingScale = [2, 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 96, 128];
+  const fontSizeScale = [10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 28, 36, 48, 64, 88];
   const fixedRules = [
     [/(?<![\w.$-])\d*\.?\d+(?:ms|s)(?![\w-])/gu, 'duração'],
     [/cubic-bezier\(/gu, 'curva'],
@@ -174,6 +175,13 @@ test('interfaces usam as fundacoes do design system sem valores soltos', () => {
   const fixedNumber = /(?<![\w.$*/+-]|[*/+-])(-?\d+(?:\.\d+)?)(?![\w.%(]|\s*[*/+-])/gu;
 
   for (const value of spacingScale) assert.match(foundations, new RegExp(`--ob-space-${value}:\\s*${value}px`, 'u'));
+  for (const value of fontSizeScale) assert.match(foundations, new RegExp(`--ob-fs-${value}:\\s*${value}px`, 'u'));
+  for (const weight of ['thin', 'extralight', 'light', 'regular', 'medium', 'semibold', 'bold', 'extrabold', 'black']) {
+    assert.match(foundations, new RegExp(`--ob-w-${weight}:\\s*\\d{3}`, 'u'));
+  }
+  assert.match(foundations, /--ob-tracking-normal:\s*0/u);
+  assert.doesNotMatch(foundations, /--ob-fs-(?:xs|sm|base|md|lg|xl|2xl|3xl|4xl|5xl)\b/u);
+  assert.doesNotMatch(foundations, /--ob-tracking-wide\b/u);
   assert.match(foundations, /--ob-focus-ring-width:\s*3px/u);
   assert.match(foundations, /--ob-r-circle:\s*50%/u);
   assert.match(foundations, /--ob-z-drag:\s*600/u);
@@ -218,6 +226,37 @@ test('interfaces usam as fundacoes do design system sem valores soltos', () => {
         }
       }
     });
+  }
+});
+
+test('interfaces referenciam apenas tokens existentes do design system ou da extensão', () => {
+  const ignored = new Set(['ui/options/app.css', 'ui/options/app.js', 'ui/popup/app.css', 'ui/popup/app.js']);
+  const sourceFiles = fs
+    .readdirSync(extensionRoot, { recursive: true })
+    .map((file) => String(file).replaceAll('\\', '/'))
+    .filter((file) => /\.(?:css|js|jsx|ts|tsx)$/u.test(file))
+    .filter((file) => !file.startsWith('core/') && !file.startsWith('vendor/') && !ignored.has(file));
+  const designSystemStyles = require.resolve('@onblide/ui/styles.css');
+  const designSystemTokens = fs.readFileSync(path.join(path.dirname(designSystemStyles), 'tokens.css'), 'utf8');
+  const sources = sourceFiles.map((relativeFile) => ({
+    relativeFile,
+    source: fs.readFileSync(path.join(extensionRoot, relativeFile), 'utf8')
+  }));
+  const definitions = new Set(
+    [designSystemTokens, ...sources.map(({ source }) => source)].flatMap((source) =>
+      Array.from(source.matchAll(/(--ob-[\w-]+)\s*:/gu), (match) => match[1])
+    )
+  );
+
+  for (const { relativeFile, source } of sources) {
+    assert.doesNotMatch(
+      source,
+      /--ob-fs-(?:xs|sm|base|md|lg|xl|2xl|3xl|4xl|5xl)\b|--ob-tracking-wide\b/u,
+      `${relativeFile} usa um token tipográfico removido.`
+    );
+    for (const reference of source.matchAll(/var\((--ob-[\w-]+)/gu)) {
+      assert.ok(definitions.has(reference[1]), `${relativeFile} referencia o token inexistente ${reference[1]}.`);
+    }
   }
 });
 
@@ -694,7 +733,7 @@ test('fontes do content script usam URLs da extensão', () => {
   });
 
   assert.equal(appended.length, 1);
-  assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.ttf/);
+  assert.match(appended[0].textContent, /chrome-extension:\/\/onframe\/fonts\/Poppins-SemiBold\.woff2/);
   assert.match(
     appended[0].textContent,
     /font-family: 'Phosphor';[\s\S]*chrome-extension:\/\/onframe\/vendor\/phosphor\/Phosphor\.woff2[\s\S]*format\('woff2'\)/s
@@ -709,11 +748,11 @@ test('fontes do content script usam URLs da extensão', () => {
   );
   assert.match(
     appended[0].textContent,
-    /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.ttf[\s\S]*font-weight: 400;/s
+    /font-family: 'OnFrame Poppins';[\s\S]*Poppins-Regular\.woff2[\s\S]*format\('woff2'\)[\s\S]*font-weight: 400;/s
   );
   assert.match(
     appended[0].textContent,
-    /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.ttf[\s\S]*font-weight: 800;/s
+    /font-family: 'OnFrame Poppins';[\s\S]*Poppins-ExtraBold\.woff2[\s\S]*format\('woff2'\)[\s\S]*font-weight: 800;/s
   );
   assert.doesNotMatch(
     appended[0].textContent,
@@ -964,7 +1003,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-space-4\)/);
   assert.match(
     optionsCss,
-    /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-lg\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/
+    /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-22\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/
   );
   assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-space-24\);[^}]*min-width:\s*0/);
   assert.match(
@@ -988,7 +1027,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /id: 'settings', label: 'Configurações'/);
   assert.match(options, /function Home/);
   assert.match(options, /function Integrations/);
-  assert.match(integrations, /eyebrow="MERCADO LIVRE"/);
+  assert.match(integrations, /eyebrow="Mercado Livre"/);
   assert.match(integrations, /title=\{admin \? 'Contas conectadas' : 'Contas atribuídas'\}/);
   assert.doesNotMatch(integrations, /title="Mercado Livre"/);
   assert.match(people, /function WorkspacePeople/);
@@ -1040,7 +1079,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
     optionsCss,
     /\.onframe-options-main\s*\{[^}]*padding: var\(--ob-space-48\) var\(--ob-space-32\) var\(--ob-space-32\);/
   );
-  assert.match(optionsCss, /\.onframe-page-title\s*\{[^}]*font-size: var\(--ob-fs-lg\);/);
+  assert.match(optionsCss, /\.onframe-page-title\s*\{[^}]*font-size: var\(--ob-fs-22\);/);
   assert.match(options, /const isIndex = settingsPage === 'index';/);
   assert.match(options, /\{isIndex && \(\s*<>/);
   assert.match(options, /SETTINGS_OPTIONS/);

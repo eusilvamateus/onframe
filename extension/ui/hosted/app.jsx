@@ -164,7 +164,7 @@ function ConnectionPage({ config }) {
     }
   }
 
-  const eyebrow = recovery ? 'RECUPERAÇÃO DE ACESSO' : config.eyebrow;
+  const eyebrow = recovery ? 'Recuperação de acesso' : config.eyebrow;
   const title = recovery ? 'Defina uma nova senha' : config.heading;
   const description = recovery ? 'Escolha uma nova senha para sua conta.' : config.description;
 
@@ -236,7 +236,7 @@ function ResultPage({ config }) {
 function InvitationPage({ config }) {
   return (
     <HostedSurface
-      eyebrow="CONVITE PARA WORKSPACE"
+      eyebrow="Convite para workspace"
       title="Continue na extensão"
       description="Abra o OnFrame para entrar ou criar sua conta. Depois, o convite será aceito automaticamente."
     >
@@ -251,7 +251,7 @@ function HostedApp({ config }) {
   if (!config) {
     return (
       <HostedLayout>
-        <HostedSurface eyebrow="ONFRAME" title="Página indisponível">
+        <HostedSurface eyebrow="OnFrame" title="Página indisponível">
           <Alert appearance="soft" tone="danger">
             Não foi possível carregar esta página.
           </Alert>

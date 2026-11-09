@@ -668,11 +668,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.doesNotMatch(styles, /--onframe-promotion-font-/);
   assert.match(
     styles,
-    /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-black\)/s
+    /\.onframe-promotion-manager-title > strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-extrabold\)/s
   );
   assert.match(
     styles,
-    /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: 13px;[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s
+    /\.onframe-promotion-manager-section > h2\s*\{[\s\S]*font-size: var\(--ob-fs-13\);[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s
   );
   assert.match(
     styles,
@@ -697,7 +697,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s
   );
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-calculation strong\s*\{[^}]*font-size:/s);
-  assert.match(styles, /\.onframe-promotion-manager-calculation span small\s*\{[\s\S]*font-size: 11px;/s);
+  assert.match(styles, /\.onframe-promotion-manager-calculation span small\s*\{[\s\S]*font-size: var\(--ob-fs-11\);/s);
   assert.match(
     styles,
     /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*position: sticky;[\s\S]*background: var\(--ob-surface\)/s

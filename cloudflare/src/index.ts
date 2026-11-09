@@ -2031,7 +2031,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
       return html(
         resultPage({
           title: 'Conta não conectada - OnFrame',
-          eyebrow: 'MERCADO LIVRE',
+          eyebrow: 'Mercado Livre',
           heading: 'Não foi possível conectar a conta',
           message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
           tone: 'danger'
@@ -2057,7 +2057,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
     return html(
       resultPage({
         title: 'Conta conectada - OnFrame',
-        eyebrow: 'MERCADO LIVRE',
+        eyebrow: 'Mercado Livre',
         heading: 'Conta conectada',
         message: `${account.nickname || 'A conta'} foi vinculada ao workspace. Volte para as opções da extensão.`,
         tone: 'success'
@@ -2072,7 +2072,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
     return html(
       resultPage({
         title: 'Conta não conectada - OnFrame',
-        eyebrow: 'MERCADO LIVRE',
+        eyebrow: 'Mercado Livre',
         heading: 'Não foi possível conectar a conta',
         message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
         tone: 'danger'

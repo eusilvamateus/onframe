@@ -35,7 +35,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["assets/*.svg", "fonts/*.ttf", "vendor/phosphor/*", "ui/options/index.html"],
+      "resources": ["assets/*.svg", "fonts/*.woff2", "vendor/phosphor/*", "ui/options/index.html"],
       "matches": ["https://*.mercadolivre.com.br/*", "https://onframe.onblide.com/*"]
     }
   ],

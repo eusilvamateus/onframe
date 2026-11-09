@@ -8,14 +8,14 @@ const containerStyle = {
   boxSizing: 'border-box',
   color: 'var(--ob-fg)',
   fontFamily: 'var(--ob-font)',
-  fontSize: 12,
+  fontSize: 'var(--ob-fs-12)',
   fontWeight: 'var(--ob-w-regular)',
-  lineHeight: 1.45
+  lineHeight: 'var(--ob-lh-normal)'
 };
 
 const iconStyle = {
   marginTop: 'var(--ob-space-2)',
-  color: 'var(--ob-blue-600)'
+  color: 'var(--ob-blue)'
 };
 
 const copyStyle = {

@@ -425,7 +425,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
   return (
     <div className="onframe-stack">
       <SectionHeader
-        eyebrow="ANÚNCIOS"
+        eyebrow="Anúncios"
         title="Alterações confirmadas"
         copy="Consulte o que foi alterado pela extensão, quando e por quem."
       />

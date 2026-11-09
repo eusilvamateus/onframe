@@ -317,19 +317,19 @@ function compactPhosphorFontFaces(assetPrefix) {
 
 function compactFontFaces() {
   const faces = [
-    ['Poppins', 'Poppins-Regular.ttf', 400, 'normal'],
-    ['Poppins', 'Poppins-Medium.ttf', 500, 'normal'],
-    ['Poppins', 'Poppins-SemiBold.ttf', 600, 'normal'],
-    ['Poppins', 'Poppins-Bold.ttf', 700, 'normal'],
-    ['Poppins', 'Poppins-ExtraBold.ttf', 800, 'normal'],
-    ['JetBrains Mono', 'JetBrainsMono-Medium.ttf', 500, 'normal'],
-    ['Playfair Display', 'PlayfairDisplay-MediumItalic.ttf', 500, 'italic']
+    ['Poppins', 'Poppins-Regular.woff2', 400, 'normal'],
+    ['Poppins', 'Poppins-Medium.woff2', 500, 'normal'],
+    ['Poppins', 'Poppins-SemiBold.woff2', 600, 'normal'],
+    ['Poppins', 'Poppins-Bold.woff2', 700, 'normal'],
+    ['Poppins', 'Poppins-ExtraBold.woff2', 800, 'normal'],
+    ['JetBrains Mono', 'JetBrainsMono-Medium.woff2', 500, 'normal'],
+    ['Playfair Display', 'PlayfairDisplay-MediumItalic.woff2', 500, 'italic']
   ];
   return faces
     .map(
       ([family, file, weight, fontStyle]) => `@font-face {
   font-family: '${family}';
-  src: url('/fonts/${file}') format('truetype');
+  src: url('/fonts/${file}') format('woff2');
   font-weight: ${weight};
   font-style: ${fontStyle};
   font-display: swap;

@@ -65,7 +65,7 @@ test('recuperacao apresenta titulo e legenda proprios sem alterar o fluxo de sen
   });
   assert.match(hostedApp, /Defina uma nova senha/);
   assert.match(hostedApp, /Escolha uma nova senha para sua conta/);
-  assert.match(hostedApp, /RECUPERAÇÃO DE ACESSO/);
+  assert.match(hostedApp, /Recuperação de acesso/);
   assert.match(hostedApp, /<Input[\s\S]*label="Nova senha"[\s\S]*autoFocus/);
   assert.match(hostedApp, /<Input[\s\S]*label="Confirme a nova senha"/);
   assert.match(
@@ -114,7 +114,7 @@ test('CSP da confirmação e do desafio permite somente as origens necessárias'
 test('resultado OAuth mantém um resultado sem controles interativos aninhados', () => {
   const page = resultPage({
     title: 'Conta conectada - OnFrame',
-    eyebrow: 'MERCADO LIVRE',
+    eyebrow: 'Mercado Livre',
     heading: 'Conta conectada',
     message: 'Tudo certo.',
     tone: 'success'
@@ -125,7 +125,7 @@ test('resultado OAuth mantém um resultado sem controles interativos aninhados',
 
 test('convite hospedado encaminha para as opções sem expor um bearer', () => {
   const page = invitationPage('chrome-extension://example/ui/options/index.html?invite=abc');
-  assert.match(hostedApp, /CONVITE PARA WORKSPACE/);
+  assert.match(hostedApp, /Convite para workspace/);
   assert.match(hostedApp, /Abrir extensão/);
   assert.match(page, /chrome-extension:\/\/example\/ui\/options\/index\.html\?invite=abc/);
   assert.doesNotMatch(page, /access_token|refresh_token|supabase\.co/);

@@ -199,7 +199,7 @@ function ProductSku({ sku }) {
           gap: 'var(--ob-space-4)',
           padding: 0,
           fontFamily: 'var(--ob-font-mono)',
-          fontSize: 'var(--ob-fs-xs)'
+          fontSize: 'var(--ob-fs-12)'
         }}
       >
         <span className="onframe-product-sku-value">{sku}</span>

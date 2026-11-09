@@ -92,7 +92,7 @@ export function TaxSettings({ workspaceId }) {
         </Alert>
       )}
       <SectionHeader
-        eyebrow="MARGEM DE CONTRIBUIÇÃO"
+        eyebrow="Margem de contribuição"
         title="Impostos sobre venda"
         copy="Defina as alíquotas usadas no cálculo das promoções. A base de cálculo é sempre o preço efetivo da venda."
       />

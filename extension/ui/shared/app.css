@@ -32,8 +32,8 @@ input {
 }
 .onframe-field-label {
   color: var(--ob-fg-strong);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--ob-fs-12);
+  font-weight: var(--ob-w-semibold);
 }
 .onframe-auth-panel,
 .onframe-auth-fields {
@@ -62,7 +62,7 @@ input {
 .onframe-help {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-auth-brand,
 .onframe-auth-methods {
@@ -103,7 +103,7 @@ input {
 .onframe-auth-title {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-lg);
+  font-size: var(--ob-fs-22);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
   letter-spacing: 0;
@@ -113,7 +113,7 @@ input {
 .onframe-auth-subtitle {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-relaxed);
 }
 .onframe-auth-footer {
@@ -169,7 +169,7 @@ input {
 .onframe-brand-name {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-lg);
+  font-size: var(--ob-fs-22);
   font-weight: var(--ob-w-bold);
   line-height: var(--ob-lh-tight);
 }
@@ -181,15 +181,14 @@ input {
   margin: 0;
   color: var(--ob-fg-accent);
   font-family: var(--ob-font-mono);
-  font-size: 10px;
+  font-size: var(--ob-fs-10);
   font-weight: var(--ob-w-medium);
-  letter-spacing: var(--ob-tracking-wide);
-  text-transform: uppercase;
+  letter-spacing: var(--ob-tracking-normal);
 }
 .onframe-muted {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-relaxed);
 }
 .onframe-stack {
@@ -281,7 +280,7 @@ input {
 .onframe-product-custom-costs-header > div > p {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
 }
 .onframe-product-account-tax-row {
@@ -335,13 +334,13 @@ input {
 .onframe-tax-settings-copy h3 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-tax-settings-copy p {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-normal);
 }
 .onframe-tax-account-list {
@@ -369,7 +368,7 @@ input {
 .onframe-tax-account-row strong {
   overflow: hidden;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -377,7 +376,7 @@ input {
 .onframe-tax-account-row span {
   color: var(--ob-fg-mute);
   font-family: var(--ob-font-mono);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-tax-settings-actions {
   display: flex;
@@ -450,7 +449,7 @@ input {
 .onframe-settings-action-status {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-settings-action-buttons {
   margin-left: auto;
@@ -458,14 +457,14 @@ input {
 .onframe-card-title {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-md);
+  font-size: var(--ob-fs-18);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
 }
 .onframe-card-copy {
   margin: var(--ob-space-4) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-normal);
 }
 .onframe-integration-header > .onframe-row {
@@ -613,7 +612,7 @@ input {
 .onframe-page-title {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-lg);
+  font-size: var(--ob-fs-22);
   font-weight: var(--ob-w-bold);
   line-height: var(--ob-lh-snug);
 }
@@ -633,13 +632,13 @@ input {
 .onframe-list-title {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-list-meta {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-check-list {
   display: grid;
@@ -648,7 +647,7 @@ input {
 .onframe-empty {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   text-align: center;
   padding: var(--ob-space-32) var(--ob-space-16);
 }
@@ -663,7 +662,7 @@ input {
   position: fixed;
   top: var(--ob-space-16);
   right: var(--ob-space-16);
-  z-index: var(--ob-z-popover);
+  z-index: var(--ob-z-dropdown);
 }
 .onframe-auth-surface {
   width: min(100%, 560px);
@@ -699,7 +698,7 @@ input {
   position: absolute;
   top: var(--ob-space-12);
   right: var(--ob-space-12);
-  z-index: var(--ob-z-popover);
+  z-index: var(--ob-z-dropdown);
 }
 .onframe-popup-home {
   height: 600px;
@@ -737,14 +736,14 @@ input {
 .onframe-popup-user-name {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
 }
 .onframe-popup-user-email {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
 }
 .onframe-popup-actions {
@@ -853,7 +852,7 @@ input {
 .onframe-popup-session-heading h1 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-bold);
   line-height: var(--ob-lh-snug);
 }
@@ -861,7 +860,7 @@ input {
   margin: var(--ob-space-2) 0 0;
   overflow: hidden;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -895,14 +894,14 @@ input {
 .onframe-popup-section-header h2 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
 }
 .onframe-popup-section-header p {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
 }
 .onframe-popup-card-list {
@@ -1011,14 +1010,14 @@ input {
 .onframe-popup-empty-state h3 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
 }
 .onframe-popup-empty-state p {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
 }
 
@@ -1171,7 +1170,7 @@ input {
   margin: 0;
   overflow: hidden;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
   text-overflow: ellipsis;
@@ -1182,7 +1181,7 @@ input {
 .onframe-history-detail-copy {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
 }
 .onframe-history-event-context {
@@ -1198,7 +1197,7 @@ input {
   margin-top: var(--ob-space-4);
   color: var(--ob-fg-soft);
   font-family: var(--ob-font-mono);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-change-context {
   display: flex;
@@ -1226,12 +1225,12 @@ input {
 }
 .onframe-history-change-context span {
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-change-context strong {
   overflow: hidden;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1259,7 +1258,7 @@ input {
 .onframe-history-comparison dt {
   overflow: hidden;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1271,7 +1270,7 @@ input {
   min-width: 0;
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-comparison dd span,
 .onframe-history-comparison dd strong {
@@ -1301,12 +1300,12 @@ input {
 .onframe-history-detail-heading span,
 .onframe-history-picture-group > span {
   color: var(--ob-fg-mute);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-detail-heading strong {
   overflow: hidden;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1324,7 +1323,7 @@ input {
   gap: var(--ob-space-8);
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-picture-group {
   display: flex;
@@ -1347,7 +1346,7 @@ input {
   border: 1px solid var(--ob-border);
   border-radius: var(--ob-r-control);
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-picture-item img {
   width: 28px;
@@ -1388,7 +1387,7 @@ input {
 }
 .onframe-history-metadata-item span {
   color: var(--ob-fg-mute);
-  font-size: 10px;
+  font-size: var(--ob-fs-10);
   line-height: var(--ob-lh-snug);
 }
 .onframe-history-metadata-item strong,
@@ -1397,7 +1396,7 @@ input {
   min-width: 0;
   overflow: hidden;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-medium);
   line-height: var(--ob-lh-normal);
   text-overflow: ellipsis;
@@ -1438,7 +1437,7 @@ input {
   align-items: center;
   gap: var(--ob-space-4);
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-compact-summary > span:last-child {
   min-width: 0;
@@ -1458,7 +1457,7 @@ input {
 .onframe-history-compact-change time {
   flex: none;
   color: var(--ob-fg-mute);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   white-space: nowrap;
 }
 .onframe-history-compact-context {
@@ -1467,7 +1466,7 @@ input {
   align-items: center;
   gap: var(--ob-space-12);
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-history-compact-actor-context,
 .onframe-history-compact-account-context {
@@ -1514,13 +1513,13 @@ input {
 .onframe-history-empty h3 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-history-empty p {
   margin: var(--ob-space-4) 0 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-history-pagination {
   display: flex;
@@ -1530,7 +1529,7 @@ input {
 }
 .onframe-history-pagination > span {
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-products-header-actions {
   display: flex;
@@ -1577,7 +1576,7 @@ input {
   min-width: 860px;
 }
 .onframe-products-table .onframe-list-title {
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
 }
 .onframe-products-pagination {
   display: flex;
@@ -1587,7 +1586,7 @@ input {
 }
 .onframe-products-pagination > span {
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-product-drawer {
   display: flex;
@@ -1613,10 +1612,9 @@ input {
   margin: 0;
   color: var(--ob-fg-mute);
   font-family: var(--ob-font-mono);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-medium);
   letter-spacing: 0;
-  text-transform: uppercase;
 }
 .onframe-product-form-fields {
   display: flex;
@@ -1642,14 +1640,14 @@ input {
 }
 .onframe-product-custom-costs-header > strong {
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-product-custom-costs-empty {
   margin: 0;
   padding: var(--ob-space-16) 0;
   color: var(--ob-fg-mute);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   text-align: center;
 }
 .onframe-product-custom-cost-chips {
@@ -1677,7 +1675,7 @@ input {
 .onframe-product-custom-cost-chip-value {
   color: currentColor;
   font-family: var(--ob-font-mono);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-semibold);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -1706,7 +1704,7 @@ input {
 }
 .onframe-product-status-row > strong {
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-product-import {
@@ -1721,7 +1719,7 @@ input {
 .onframe-product-import-intro p {
   margin: 0;
   color: var(--ob-fg);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-product-import-intro > button {
   flex: none;
@@ -1740,7 +1738,7 @@ input {
   align-items: center;
   gap: var(--ob-space-8);
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-product-import-guidance svg {
   flex: none;
@@ -1755,7 +1753,7 @@ input {
 }
 .onframe-product-import-upload button[aria-label^='Remover ']:hover,
 .onframe-product-import-upload button[aria-label^='Remover ']:focus-visible {
-  background: var(--ob-danger-050) !important;
+  background: var(--ob-red-050) !important;
 }
 .onframe-product-import-review-heading {
   display: flex;
@@ -1765,13 +1763,13 @@ input {
 .onframe-product-import-review-heading h3 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-md);
+  font-size: var(--ob-fs-18);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-product-import-review-heading p {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 .onframe-product-import-summary {
   display: flex;
@@ -1788,7 +1786,7 @@ input {
   align-items: baseline;
   gap: var(--ob-space-4);
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   white-space: nowrap;
 }
 .onframe-product-import-summary > span + span {
@@ -1797,7 +1795,7 @@ input {
 }
 .onframe-product-import-summary strong {
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 .onframe-product-import-summary-total {

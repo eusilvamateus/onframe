@@ -47,7 +47,7 @@ body {
 }
 
 .onframe-hosted-brand > strong {
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
 }
 
@@ -83,16 +83,15 @@ body {
   margin: 0;
   color: var(--ob-fg-accent);
   font-family: var(--ob-font-mono);
-  font-size: var(--ob-fs-xs);
-  font-weight: var(--ob-w-semibold);
-  letter-spacing: var(--ob-tracking-wide);
-  text-transform: uppercase;
+  font-size: var(--ob-fs-12);
+  font-weight: var(--ob-w-medium);
+  letter-spacing: var(--ob-tracking-normal);
 }
 
 .onframe-hosted-intro h1 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-lg);
+  font-size: var(--ob-fs-22);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
 }
@@ -100,7 +99,7 @@ body {
 .onframe-hosted-intro > p:last-child:not(.onframe-hosted-eyebrow) {
   margin: 0;
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-relaxed);
 }
 
@@ -109,7 +108,7 @@ body {
   align-items: center;
   gap: var(--ob-space-8);
   color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-sm);
+  font-size: var(--ob-fs-14);
 }
 
 .onframe-hosted-form > button,
@@ -121,9 +120,9 @@ body {
   padding: var(--ob-space-16) var(--ob-space-24) var(--ob-space-24);
   color: var(--ob-fg-mute);
   font-family: var(--ob-font-mono);
-  font-size: var(--ob-fs-xs);
+  font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-medium);
-  letter-spacing: var(--ob-tracking-wide);
+  letter-spacing: var(--ob-tracking-normal);
   text-align: center;
 }
 

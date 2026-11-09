@@ -177,12 +177,12 @@
 
 .onblide-ml-dock-state-copy strong {
   color: var(--ob-ink-strong);
-  font: var(--ob-w-semibold) 13px/1.2 var(--ob-font);
+  font: var(--ob-w-semibold) var(--ob-fs-13) / var(--ob-lh-snug) var(--ob-font);
 }
 
 .onblide-ml-dock-state-copy small {
   color: var(--ob-ink-soft);
-  font: var(--ob-w-regular) 12px/1.35 var(--ob-font);
+  font: var(--ob-w-regular) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onblide-ml-dock-state-actions {
@@ -227,13 +227,13 @@
 
 .onblide-ml-dock-identity-copy strong {
   color: var(--ob-ink-strong);
-  font: var(--ob-w-semibold) 13px/1.2 var(--ob-font);
+  font: var(--ob-w-semibold) var(--ob-fs-13) / var(--ob-lh-snug) var(--ob-font);
   white-space: nowrap;
 }
 
 .onblide-ml-dock-identity-copy small {
   color: var(--ob-ink-soft);
-  font: var(--ob-w-regular) 11px/1.2 var(--ob-font);
+  font: var(--ob-w-regular) var(--ob-fs-11) / var(--ob-lh-snug) var(--ob-font);
   white-space: nowrap;
 }
 
@@ -277,7 +277,7 @@
   background: var(--ob-green-100);
   color: var(--ob-green-700);
   padding: var(--ob-space-8) var(--ob-space-10);
-  font: 700 12px/1.3 var(--ob-font);
+  font: var(--ob-w-bold) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onblide-ml-tray-feedback.error {
@@ -418,7 +418,7 @@
   border-radius: var(--ob-r-pill);
   background: var(--ob-blue);
   color: var(--ob-surface);
-  font: 700 11px/1 var(--ob-font-mono);
+  font: var(--ob-w-bold) var(--ob-fs-11) / var(--ob-lh-none) var(--ob-font-mono);
   text-align: center;
 }
 
@@ -460,8 +460,7 @@
 .onblide-ml-modal-brand {
   margin-bottom: var(--ob-space-4);
   color: var(--ob-blue);
-  font: 700 10px/1.2 var(--ob-font-mono);
-  text-transform: uppercase;
+  font: var(--ob-w-bold) var(--ob-fs-10) / var(--ob-lh-snug) var(--ob-font-mono);
 }
 
 .onblide-ml-modal-title {
@@ -476,7 +475,7 @@
 .onblide-ml-modal-copy {
   margin: 0 0 var(--ob-space-16);
   color: var(--ob-ink);
-  font: 400 12px/1.55 var(--ob-font);
+  font: var(--ob-w-regular) var(--ob-fs-12) / var(--ob-lh-relaxed) var(--ob-font);
 }
 
 .onblide-ml-editor-modal-content {
@@ -526,7 +525,7 @@
 
 .onblide-ml-editor-diagnostics-head strong {
   color: var(--ob-ink-strong);
-  font: 700 13px/1.2 var(--ob-font);
+  font: var(--ob-w-bold) var(--ob-fs-13) / var(--ob-lh-snug) var(--ob-font);
 }
 
 .onblide-ml-editor-diagnostics {
@@ -576,13 +575,13 @@
 
 .onblide-ml-diagnostic-main strong {
   color: var(--ob-ink-strong);
-  font: 700 12px/1.2 var(--ob-font);
+  font: var(--ob-w-bold) var(--ob-fs-12) / var(--ob-lh-snug) var(--ob-font);
 }
 
 .onblide-ml-diagnostic-main span {
   overflow: hidden;
   color: var(--ob-ink-soft);
-  font: 500 10px/1.2 var(--ob-font-mono);
+  font: var(--ob-w-medium) var(--ob-fs-10) / var(--ob-lh-snug) var(--ob-font-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -591,7 +590,7 @@
   grid-column: 2 / 4;
   justify-self: start;
   color: var(--ob-ink-soft);
-  font: 700 10px/1.2 var(--ob-font);
+  font: var(--ob-w-bold) var(--ob-fs-10) / var(--ob-lh-snug) var(--ob-font);
 }
 
 .onblide-ml-diagnostic-card.warn .onblide-ml-diagnostic-state {
@@ -613,7 +612,7 @@
   background: var(--ob-surface-2);
   color: var(--ob-ink-soft);
   padding: var(--ob-space-16);
-  font: 600 12px/1.4 var(--ob-font);
+  font: var(--ob-w-semibold) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onblide-ml-editor-empty-loading {
@@ -632,7 +631,7 @@
   background: var(--ob-red-100);
   color: var(--ob-red);
   padding: var(--ob-space-10) var(--ob-space-12);
-  font: 600 12px/1.4 var(--ob-font);
+  font: var(--ob-w-semibold) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onblide-ml-selection-bar {
@@ -644,12 +643,12 @@
   background: var(--ob-blue-050);
   color: var(--ob-ink);
   padding: var(--ob-space-10) var(--ob-space-12);
-  font: 500 12px/1 var(--ob-font);
+  font: var(--ob-w-medium) var(--ob-fs-12) / var(--ob-lh-none) var(--ob-font);
 }
 
 .onblide-ml-selection-bar strong {
   color: var(--ob-blue);
-  font-weight: 700;
+  font-weight: var(--ob-w-bold);
 }
 
 .onblide-ml-selection-bar > span {
@@ -685,13 +684,13 @@
 .onblide-ml-review-info strong,
 .onblide-ml-result-item > strong {
   color: var(--ob-ink-strong);
-  font: 700 12px/1.2 var(--ob-font);
+  font: var(--ob-w-bold) var(--ob-fs-12) / var(--ob-lh-snug) var(--ob-font);
 }
 
 .onblide-ml-review-info span,
 .onblide-ml-result-item figcaption {
   color: var(--ob-ink-soft);
-  font: 500 10px/1.2 var(--ob-font-mono);
+  font: var(--ob-w-medium) var(--ob-fs-10) / var(--ob-lh-snug) var(--ob-font-mono);
 }
 
 .onblide-ml-review-preview {
@@ -725,7 +724,7 @@
 .onblide-ml-processing p {
   margin: var(--ob-space-4) 0 0;
   color: var(--ob-ink-soft);
-  font: 500 12px/1.4 var(--ob-font);
+  font: var(--ob-w-medium) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onblide-ml-result-item {

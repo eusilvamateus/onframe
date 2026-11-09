@@ -158,12 +158,12 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
     products,
     /function ProductSku[^]*navigator\.clipboard\.writeText\(sku\)[^]*label="Copiar SKU"[^]*onframe-product-sku-value[^]*<Ph n="copy"/u
   );
-  assert.match(products, /fontFamily: 'var\(--ob-font-mono\)',\s*fontSize: 'var\(--ob-fs-xs\)'/u);
+  assert.match(products, /fontFamily: 'var\(--ob-font-mono\)',\s*fontSize: 'var\(--ob-fs-12\)'/u);
   assert.match(products, /key: 'sku', label: 'SKU', width: 220/u);
   assert.match(products, /const columns = \[[^]*key: 'name', label: 'Produto'[^]*key: 'sku', label: 'SKU'/u);
   assert.match(sharedStyles, /\.onframe-product-sku-value\s*\{[^}]*overflow-wrap: anywhere;/u);
   assert.doesNotMatch(sharedStyles, /\.onframe-product-sku-value\s*\{[^}]*white-space: nowrap;/u);
-  assert.match(sharedStyles, /\.onframe-products-table \.onframe-list-title\s*\{[^}]*font-size: var\(--ob-fs-xs\);/u);
+  assert.match(sharedStyles, /\.onframe-products-table \.onframe-list-title\s*\{[^}]*font-size: var\(--ob-fs-12\);/u);
   assert.match(options, /actions=\{pageHeaderActions\}/u);
   assert.match(
     options,

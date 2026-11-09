@@ -68,7 +68,7 @@
 }
 
 .onframe-characteristics-row-editable .andes-table__header__container {
-  color: var(--ob-blue-600);
+  color: var(--ob-blue);
 }
 
 .onframe-characteristics-row-editable > .andes-table__header,
@@ -99,7 +99,7 @@
 .onframe-characteristics-row-editable .andes-table__header__container,
 .onframe-characteristics-extra-row .andes-table__header__container,
 .onframe-characteristics-inline-cell {
-  line-height: 1.25 !important;
+  line-height: var(--ob-lh-snug) !important;
 }
 
 .onframe-characteristics-inline-cell {
@@ -156,8 +156,8 @@
   outline: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  font-size: 12px !important;
-  line-height: 1.2 !important;
+  font-size: var(--ob-fs-12) !important;
+  line-height: var(--ob-lh-snug) !important;
 }
 
 .onframe-characteristics-extra-row .andes-table__header__container {
@@ -213,7 +213,7 @@
   right: 12px;
   background: var(--ob-surface);
   border-radius: var(--ob-r-pill);
-  line-height: 1;
+  line-height: var(--ob-lh-none);
   transform: translateY(-50%);
 }
 
@@ -241,14 +241,14 @@
 
 .onframe-characteristics-package-title strong {
   color: var(--ob-fg-strong);
-  font-size: 14px;
+  font-size: var(--ob-fs-14);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-tight);
 }
 
 .onframe-characteristics-package-title span {
   color: var(--ob-fg-soft);
-  font-size: 12px;
+  font-size: var(--ob-fs-12);
   line-height: var(--ob-lh-normal);
 }
 
@@ -264,7 +264,7 @@
   flex-wrap: wrap;
   gap: var(--ob-gap-xs);
   color: var(--ob-fg-strong);
-  font-size: 11px;
+  font-size: var(--ob-fs-11);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-tight);
 }
@@ -288,7 +288,7 @@
   align-items: center;
   gap: var(--ob-gap-xs);
   color: var(--ob-fg-soft);
-  font-size: 11px;
+  font-size: var(--ob-fs-11);
   line-height: var(--ob-lh-normal);
 }
 
@@ -313,14 +313,14 @@
   justify-content: space-between;
   gap: var(--ob-gap-md);
   color: var(--ob-fg-strong);
-  font-size: 13px;
+  font-size: var(--ob-fs-13);
   font-weight: var(--ob-w-semibold);
 }
 
 .onframe-characteristics-state {
   gap: var(--ob-gap-sm);
   color: var(--ob-fg-soft);
-  font-size: 12px;
+  font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-medium);
 }
 

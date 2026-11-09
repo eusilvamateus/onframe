@@ -231,7 +231,7 @@ function Home({
   return (
     <div className="onframe-stack">
       <SectionHeader
-        eyebrow="WORKSPACE"
+        eyebrow="Workspace"
         title={workspace.name}
         copy={
           admin
@@ -242,7 +242,7 @@ function Home({
       {emptyAccounts && (
         <Card padding="var(--ob-space-24)">
           <SectionHeader
-            eyebrow="PRÓXIMA AÇÃO"
+            eyebrow="Próxima ação"
             title={admin ? 'Conecte uma conta do Mercado Livre' : 'Aguarde uma conta ser atribuída'}
             copy={
               admin
@@ -262,7 +262,7 @@ function Home({
       {pendingInvitations > 0 && (
         <Card padding="var(--ob-space-24)">
           <SectionHeader
-            eyebrow="PRÓXIMA AÇÃO"
+            eyebrow="Próxima ação"
             title={`${pendingInvitations} ${pendingInvitations === 1 ? 'convite pendente' : 'convites pendentes'}`}
             copy="Há pessoas aguardando acesso a este workspace."
             actions={
@@ -277,7 +277,7 @@ function Home({
         <Card padding="var(--ob-space-24)">
           <div className="onframe-stack">
             <SectionHeader
-              eyebrow="INTEGRAÇÃO"
+              eyebrow="Integração"
               title="Mercado Livre"
               copy={
                 accounts.length === 1
@@ -309,7 +309,7 @@ function Home({
       )}
       <Card padding="var(--ob-space-24)">
         <div className="onframe-stack">
-          <SectionHeader eyebrow="ATIVIDADE" title="Atividade recente" />
+          <SectionHeader eyebrow="Atividade" title="Atividade recente" />
           {activity.length === 0 ? (
             <p className="onframe-empty">Ainda não há atividade neste workspace.</p>
           ) : (
@@ -349,7 +349,7 @@ function Integrations({
     <div className="onframe-stack">
       <div className="onframe-integration-header">
         <SectionHeader
-          eyebrow="MERCADO LIVRE"
+          eyebrow="Mercado Livre"
           title={admin ? 'Contas conectadas' : 'Contas atribuídas'}
           copy={
             admin
@@ -385,7 +385,7 @@ function Integrations({
       {accounts.length === 0 ? (
         <Card padding="var(--ob-space-24)">
           <SectionHeader
-            eyebrow="ESTADO"
+            eyebrow="Estado"
             title={admin ? 'Nenhuma conta conectada' : 'Nenhuma conta atribuída'}
             copy={
               admin
