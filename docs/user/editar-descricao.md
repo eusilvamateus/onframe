@@ -32,7 +32,7 @@ Se quiser desistir da alteracao, clique em `Cancelar`.
 Quando o anuncio possui variacoes independentes, o OnFrame pode mostrar a opcao
 `Aplicar a todas as variacoes`.
 
-Ao marcar essa opcao, a descricao sera enviada para as variacoes ativas que
+Ao marcar essa opcao, a descricao sera enviada para as variacoes ativas e pausadas que
 puderem receber a alteracao.
 
 ![Print - Aplicar descricao em todas as variacoes](assets/descricao-aplicar-todas-variacoes.png)

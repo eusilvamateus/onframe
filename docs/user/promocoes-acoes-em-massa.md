@@ -82,8 +82,8 @@ Em anuncios com variacoes independentes, uma promocao aplicada em uma variacao
 nao necessariamente muda as demais.
 
 Quando fizer sentido, o OnFrame mostra `Aplicar a todas as variacoes`. Ao marcar
-essa opcao, a extensao verifica quais variacoes podem receber a acao e mostra um
-resumo antes ou depois do envio.
+essa opcao, a extensao verifica quais variacoes ativas e pausadas podem receber a
+acao e mostra um resumo antes ou depois do envio.
 
 ![Print - Revisao de promocao para todas as variacoes](assets/promocoes-revisao-todas-variacoes.png)
 

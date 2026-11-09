@@ -1549,7 +1549,7 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
       family_name: 'Camiseta',
       family_id: 'FAMILY1',
       user_product_id: 'MLBU100000002',
-      status: 'active',
+      status: 'paused',
       price: 100,
       currency_id: 'BRL',
       tags: []
@@ -1578,8 +1578,14 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
     searchItemsByUserProduct: async (sellerId, userProductIds, options) => {
       assert.strictEqual(sellerId, 123);
       assert.strictEqual(userProductIds, 'MLBU100000001,MLBU100000002,MLBU100000003');
-      assert.deepStrictEqual(options, { status: 'active', limit: 100 });
-      return { results: Object.keys(items) };
+      assert.deepStrictEqual(Object.keys(options).sort(), ['limit', 'status']);
+      assert.strictEqual(options.limit, 100);
+      assert.ok(['active', 'paused'].includes(options.status));
+      return {
+        results: Object.values(items)
+          .filter((item) => item.status === options.status)
+          .map((item) => item.id)
+      };
     },
     getPricingAutomation: async (itemId) => (itemId === 'MLB1000000003' ? { status: 'ACTIVE' } : null),
     getItemPromotions: async (itemId) => ({ results: appliedPromotions.get(itemId) || [] }),
@@ -1650,11 +1656,12 @@ test('bulk de preco resolve familia user_product e aplica somente elegiveis', as
   });
 
   assert.strictEqual(directCommit.counts.total, 2);
-  assert.strictEqual(directCommit.counts.applied, 2);
-  assert.strictEqual(directCommit.counts.failed, 0);
+  assert.strictEqual(directCommit.counts.applied, 1);
+  assert.strictEqual(directCommit.counts.failed, 1);
   assert.strictEqual(directCommit.counts.skipped, 0);
-  assert.strictEqual(directContinuation.counts.failed, 1);
-  assert.strictEqual(directContinuation.targets[0].status, 'failed');
+  assert.strictEqual(directContinuation.counts.applied, 1);
+  assert.strictEqual(directContinuation.counts.failed, 0);
+  assert.strictEqual(directContinuation.targets[0].status, 'applied');
   assert.deepStrictEqual(promotionOffers.map((entry) => entry.itemId).sort(), ['MLB1000000001', 'MLB1000000002']);
 });
 

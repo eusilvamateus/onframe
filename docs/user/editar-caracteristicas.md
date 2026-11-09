@@ -60,7 +60,7 @@ Quando o anuncio possui variacoes independentes, o OnFrame pode mostrar a opcao
 `Aplicar a todas as variacoes`.
 
 Ao marcar essa opcao, a extensao tenta salvar as mesmas caracteristicas nas
-variacoes ativas que permitem edicao.
+variacoes ativas e pausadas que permitem edicao.
 
 ![Print - Aplicar caracteristicas em todas as variacoes](assets/caracteristicas-aplicar-todas-variacoes.png)
 

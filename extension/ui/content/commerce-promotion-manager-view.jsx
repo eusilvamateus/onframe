@@ -429,7 +429,7 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
               onChange={actions.onToggleBulk}
               disabled={row.busy}
               label="Aplicar a todas as variações"
-              description="Esta aplicação será enviada para as variações ativas desta família."
+              description="Esta aplicação será enviada para as variações ativas e pausadas desta família."
             />
           </div>
         )}

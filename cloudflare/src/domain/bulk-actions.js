@@ -4,6 +4,7 @@ const { previewStandardPriceUpdate, updateStandardPrice } = require('./pricing')
 const { createOffer, deleteOffer, previewOfferAction, updateOffer } = require('./promotions');
 
 const BULK_SCOPE = 'user_product_family';
+const BULK_ITEM_STATUSES = ['active', 'paused'];
 const CONCURRENCY = 4;
 const COMMIT_BATCH_SIZE = 3;
 const PROMOTION_COMMIT_BATCH_SIZE = 2;
@@ -112,13 +113,10 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
   }
 
   const userProductIds = unique([item.user_product_id].concat(familyUserProductIds));
-  const search = await client.searchItemsByUserProduct(item.seller_id, userProductIds.join(','), {
-    status: 'active',
-    limit: 100
-  });
-  const itemIds = unique(Array.isArray(search && search.results) ? search.results : []);
+  const search = await searchItemsByStatuses(client, item.seller_id, userProductIds.join(','), 100);
+  const itemIds = search.itemIds;
   if (!itemIds.length) {
-    const err = new Error('bulk_family_without_active_items');
+    const err = new Error('bulk_family_without_editable_items');
     err.statusCode = 404;
     throw err;
   }
@@ -127,7 +125,7 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
     itemId: targetItemId,
     userProductId: null,
     title: null,
-    status: 'active',
+    status: search.statusByItemId.get(String(targetItemId)) || null,
     current: String(targetItemId) === String(item.id)
   }));
 
@@ -153,17 +151,35 @@ async function resolveSourceItem(client, subjectId) {
   if (!/^MLBU\d+$/.test(id)) return assertOwnedItem(client, subjectId);
 
   const me = await client.getMe();
-  const search = await client.searchItemsByUserProduct(me.id, id, {
-    status: 'active',
-    limit: 1
-  });
-  const itemId = Array.isArray(search && search.results) ? search.results[0] : null;
+  const search = await searchItemsByStatuses(client, me.id, id, 1);
+  const itemId = search.itemIds[0] || null;
   if (!itemId) {
-    const err = new Error('Nenhum anuncio ativo encontrado para este user_product.');
+    const err = new Error('Nenhum anuncio ativo ou pausado encontrado para este user_product.');
     err.statusCode = 404;
     throw err;
   }
   return assertOwnedItem(client, itemId);
+}
+
+async function searchItemsByStatuses(client, sellerId, userProductIds, limit) {
+  const searches = await Promise.all(
+    BULK_ITEM_STATUSES.map(async (status) => ({
+      status,
+      response: await client.searchItemsByUserProduct(sellerId, userProductIds, { status, limit })
+    }))
+  );
+  const statusByItemId = new Map();
+  searches.forEach(({ status, response }) => {
+    const results = Array.isArray(response && response.results) ? response.results : [];
+    results.forEach((itemId) => {
+      const normalizedId = String(itemId);
+      if (!statusByItemId.has(normalizedId)) statusByItemId.set(normalizedId, status);
+    });
+  });
+  return {
+    itemIds: Array.from(statusByItemId.keys()),
+    statusByItemId
+  };
 }
 
 async function previewTarget(client, operation, target) {

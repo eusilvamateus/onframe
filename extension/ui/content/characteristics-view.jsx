@@ -133,7 +133,7 @@ function EditorFooter({ model, actions }) {
                 disabled={model.disabled}
                 onChange={actions.onBulkChange}
                 label="Aplicar a todas as variações"
-                description="Salva direto nas variações ativas deste user_product."
+                description="Salva direto nas variações ativas e pausadas deste user_product."
               />
             </div>
           )}

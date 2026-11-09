@@ -42,9 +42,9 @@ anuncio.
 Alguns anuncios tratam cada variacao como se fosse um anuncio separado. Nesses
 casos, alterar uma variacao nao muda automaticamente as outras.
 
-Quando o OnFrame identifica que existe mais de uma variacao ativa e editavel,
-ele pode mostrar a opcao `Aplicar a todas as variacoes`. Ao marcar essa opcao, a
-extensao tenta repetir a alteracao nas variacoes disponiveis.
+Quando o OnFrame identifica uma familia de variacoes, ele pode mostrar a opcao
+`Aplicar a todas as variacoes`. Ao marcar essa opcao, a extensao tenta repetir a
+alteracao nas variacoes ativas e pausadas que permitem edicao.
 
 ![Print - Opcao aplicar a todas as variacoes](assets/promocoes-revisao-todas-variacoes.png)
 

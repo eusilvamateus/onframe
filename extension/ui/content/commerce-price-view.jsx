@@ -257,7 +257,7 @@ function PriceEditor({ model, actions }) {
               disabled={model.busy}
               onChange={actions.onBulkChange}
               label="Aplicar a todas as variações"
-              description="Esta aplicação será enviada para as variações ativas desta família."
+              description="Esta aplicação será enviada para as variações ativas e pausadas desta família."
             />
           </div>
         )}
