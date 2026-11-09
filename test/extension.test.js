@@ -78,7 +78,7 @@ test('pacote da extensão mantém o orçamento de tamanho e não duplica assets 
 
 test('feedback transitorio usa toast e problemas que exigem atencao permanecem em alert', () => {
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
-  const helper = source.slice(source.indexOf('function feedbackSurface'), source.indexOf('function activityLabel'));
+  const helper = source.slice(source.indexOf('function feedbackSurface'), source.indexOf('function PageHeader'));
   const feedbackSurface = vm.runInNewContext(`${helper}\nfeedbackSurface`);
   assert.equal(feedbackSurface({ tone: 'success', visible: true }), 'none');
   assert.equal(feedbackSurface({ tone: 'success' }), 'toast');
@@ -117,6 +117,26 @@ test('interfaces React não reintroduzem controles HTML ou folhas legadas', () =
   assert.equal(softAlerts.length, alerts.length, 'Todo Alert da interface deve usar appearance="soft".');
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'components.css')), false);
   assert.equal(fs.existsSync(path.join(extensionRoot, 'styles', 'shell.css')), false);
+});
+
+test('inicio prioriza pendencias e fluxos centrais sem repetir integracoes ou atividade', () => {
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const worker = fs.readFileSync(path.join(root, 'cloudflare', 'src', 'index.ts'), 'utf8');
+  const home = options.slice(options.indexOf('function Home'), options.indexOf('function Integrations'));
+  const overview = worker.slice(
+    worker.indexOf('export async function workspaceOverview'),
+    worker.indexOf('async function profilePayload')
+  );
+
+  assert.match(home, /Precisa de atenção/u);
+  assert.match(home, /Acessos rápidos/u);
+  assert.match(home, /title="Produtos"[^]*title="Margem de contribuição"[^]*title="Histórico"/u);
+  assert.match(home, /disabledAccounts > 0[^]*onOpenIntegrations/u);
+  assert.doesNotMatch(home, /Atividade recente|recentActivity|accounts\.map/u);
+  assert.doesNotMatch(home, /title="Mercado Livre"|contas disponíveis/u);
+  assert.doesNotMatch(home, /<Card\b/u);
+  assert.doesNotMatch(options, /sendRemoteMessage\('app-overview'\)/u);
+  assert.doesNotMatch(overview, /recentActivity|LIMIT 8/u);
 });
 
 test('interfaces usam apenas a escala mobile-first do design system', () => {

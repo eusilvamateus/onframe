@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
 import {
   Alert,
-  Avatar,
   Badge,
   Breadcrumbs,
   Button,
@@ -38,12 +37,12 @@ import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
 import { ThemeMenuButton, ThemeSelector, ThemeTabs } from '../shared/ThemeControl';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
-import { IntegrationAccount, accountName, trustedLogo } from '../shared/IntegrationAccount';
+import { IntegrationAccount, accountName } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
 import { Products } from './Products';
 import { ProductSettings } from './ProductSettings';
 import { TaxSettings } from './TaxSettings';
-import { formatDate, initials, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
+import { formatDate, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const VIEW_META = {
   home: { title: 'Início', icon: 'house' },
@@ -168,28 +167,6 @@ function feedbackSurface({ tone, visible = false, needsAttention = false }) {
   return visible ? 'none' : 'toast';
 }
 
-function activityLabel(operation) {
-  return (
-    {
-      mercadolivre_oauth_connected: 'Conta do Mercado Livre conectada',
-      seller_account_updated: 'Conta do Mercado Livre atualizada',
-      seller_account_deleted: 'Conta do Mercado Livre removida',
-      workspace_member_updated: 'Acesso de uma pessoa atualizado',
-      workspace_member_removed: 'Pessoa removida do workspace',
-      workspace_member_left: 'Pessoa saiu do workspace',
-      workspace_invitation_created: 'Convite criado',
-      workspace_invitation_revoked: 'Convite revogado',
-      product_created: 'Produto criado',
-      product_updated: 'Produto atualizado',
-      product_archived: 'Produto arquivado',
-      product_import_committed: 'Produtos importados por planilha',
-      tax_configuration_updated: 'Configurações de imposto atualizadas',
-      product_settings_updated: 'Configurações de produtos atualizadas',
-      profile_updated: 'Perfil atualizado'
-    }[operation] || 'Atividade no workspace'
-  );
-}
-
 function PageHeader({ meta, actions, reserveContextSpace = false }) {
   return (
     <header className="onframe-page-header">
@@ -216,119 +193,106 @@ function FeedbackRoot({ children }) {
 
 function Home({
   workspace,
-  overview,
   accounts,
   invitations,
   admin,
   loading,
   onConnect,
   onOpenIntegrations,
-  onOpenWorkspace
+  onOpenProducts,
+  onOpenMargin,
+  onOpenHistory,
+  onOpenPeople
 }) {
-  const activity = overview?.recentActivity || [];
   const pendingInvitations = invitations.length;
+  const disabledAccounts = accounts.filter((account) => account.enabled === false).length;
   const emptyAccounts = accounts.length === 0;
+  const hasAttention = emptyAccounts || disabledAccounts > 0 || (admin && pendingInvitations > 0);
+  const navigation = (href, onClick) => ({
+    href,
+    onClick: (event) => {
+      event.preventDefault();
+      onClick();
+    }
+  });
   return (
-    <div className="onframe-stack">
+    <div className="onframe-stack onframe-home">
       <SectionHeader
-        eyebrow="Workspace"
+        eyebrow="Workspace atual"
         title={workspace.name}
-        copy={
-          admin
-            ? 'Você administra as integrações e os acessos deste workspace.'
-            : 'Você acessa as integrações atribuídas a este workspace.'
-        }
+        copy="Organize os dados que sustentam a análise de margem das suas promoções."
       />
-      {emptyAccounts && (
-        <Card padding="var(--ob-space-24)">
-          <SectionHeader
-            eyebrow="Próxima ação"
-            title={admin ? 'Conecte uma conta do Mercado Livre' : 'Aguarde uma conta ser atribuída'}
-            copy={
-              admin
-                ? 'Conecte a primeira conta para começar a usar o OnFrame neste workspace.'
-                : 'Um administrador precisa atribuir uma conta do Mercado Livre ao seu acesso.'
-            }
-            actions={
-              admin ? (
-                <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>
-                  Conectar conta
-                </Button>
-              ) : undefined
-            }
-          />
-        </Card>
+      {hasAttention && (
+        <section className="onframe-stack onframe-home-section" aria-label="Precisa de atenção">
+          <SectionHeader title="Precisa de atenção" />
+          <List dividers ariaLabel="Pendências do workspace">
+            {emptyAccounts && (
+              <ListItem
+                leading={<Ph n="storefront" size={20} />}
+                title={admin ? 'Conecte uma conta do Mercado Livre' : 'Nenhuma conta atribuída'}
+                description={
+                  admin
+                    ? 'A conexão é necessária para editar anúncios e analisar promoções.'
+                    : 'Um administrador precisa atribuir uma conta ao seu acesso.'
+                }
+                trailing={
+                  admin ? (
+                    <Button size="sm" disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={16} />}>
+                      Conectar conta
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )}
+            {disabledAccounts > 0 && (
+              <ListItem
+                leading={<Ph n="warning-circle" size={20} />}
+                title={`${disabledAccounts} ${disabledAccounts === 1 ? 'conta desativada' : 'contas desativadas'}`}
+                description="Estas contas não estão disponíveis para operação."
+                trailing={<Ph n="caret-right" size={16} />}
+                {...navigation('#integrations', onOpenIntegrations)}
+              />
+            )}
+            {admin && pendingInvitations > 0 && (
+              <ListItem
+                leading={<Ph n="user-plus" size={20} />}
+                title={`${pendingInvitations} ${pendingInvitations === 1 ? 'convite pendente' : 'convites pendentes'}`}
+                description="Há pessoas aguardando acesso a este workspace."
+                trailing={<Ph n="caret-right" size={16} />}
+                {...navigation('#settings-workspace-people', onOpenPeople)}
+              />
+            )}
+          </List>
+        </section>
       )}
-      {pendingInvitations > 0 && (
-        <Card padding="var(--ob-space-24)">
-          <SectionHeader
-            eyebrow="Próxima ação"
-            title={`${pendingInvitations} ${pendingInvitations === 1 ? 'convite pendente' : 'convites pendentes'}`}
-            copy="Há pessoas aguardando acesso a este workspace."
-            actions={
-              <Button kind="secondary" disabled={loading} onClick={onOpenWorkspace}>
-                Gerenciar pessoas
-              </Button>
-            }
+      <section className="onframe-stack onframe-home-section" aria-label="Acessos rápidos">
+        <SectionHeader title="Acessos rápidos" copy="Continue pelos fluxos centrais do OnFrame." />
+        <List as="nav" dividers ariaLabel="Acessos rápidos">
+          <ListItem
+            leading={<Ph n="package" size={20} />}
+            title="Produtos"
+            description="Cadastre custos e prepare os dados usados na análise de margem."
+            trailing={<Ph n="caret-right" size={16} />}
+            {...navigation('#products', onOpenProducts)}
           />
-        </Card>
-      )}
-      {!emptyAccounts && (
-        <Card padding="var(--ob-space-24)">
-          <div className="onframe-stack">
-            <SectionHeader
-              eyebrow="Integração"
-              title="Mercado Livre"
-              copy={
-                accounts.length === 1
-                  ? '1 conta disponível neste workspace.'
-                  : `${accounts.length} contas disponíveis neste workspace.`
-              }
-              actions={
-                <Button kind="secondary" disabled={loading} onClick={onOpenIntegrations}>
-                  Gerenciar integrações
-                </Button>
-              }
+          {admin && (
+            <ListItem
+              leading={<Ph n="percent" size={20} />}
+              title="Margem de contribuição"
+              description="Defina os impostos aplicados às promoções deste workspace."
+              trailing={<Ph n="caret-right" size={16} />}
+              {...navigation('#settings-workspace-margin', onOpenMargin)}
             />
-            <div className="onframe-list">
-              {accounts.map((account) => (
-                <div className="onframe-list-row" key={account.id || account.user_id}>
-                  <Avatar name={accountName(account)} src={trustedLogo(account.logo)} alt="" size={32} />
-                  <div className="onframe-grow">
-                    <p className="onframe-list-title">{accountName(account)}</p>
-                    <p className="onframe-list-meta">Mercado Livre</p>
-                  </div>
-                  <Badge tone={account.enabled === false ? 'neutral' : 'success'}>
-                    {account.enabled === false ? 'Desativada' : 'Habilitada'}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
-      <Card padding="var(--ob-space-24)">
-        <div className="onframe-stack">
-          <SectionHeader eyebrow="Atividade" title="Atividade recente" />
-          {activity.length === 0 ? (
-            <p className="onframe-empty">Ainda não há atividade neste workspace.</p>
-          ) : (
-            <div className="onframe-list">
-              {activity.map((event) => (
-                <div className="onframe-list-row" key={event.id || `${event.operation}-${event.occurredAt}`}>
-                  <Avatar name={initials(event.actorName)} size={32} />
-                  <div className="onframe-grow">
-                    <p className="onframe-list-title">{activityLabel(event.operation)}</p>
-                    <p className="onframe-list-meta">
-                      {event.actorName} · {formatDate(event.occurredAt)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
           )}
-        </div>
-      </Card>
+          <ListItem
+            leading={<Ph n="clock-counter-clockwise" size={20} />}
+            title="Histórico"
+            description="Consulte as alterações confirmadas nos anúncios."
+            trailing={<Ph n="caret-right" size={16} />}
+            {...navigation('#history', onOpenHistory)}
+          />
+        </List>
+      </section>
     </div>
   );
 }
@@ -918,7 +882,6 @@ function OptionsApp() {
   const [workspaces, setWorkspaces] = useState([]);
   const [profile, setProfile] = useState(null);
   const [securityOverview, setSecurityOverview] = useState(null);
-  const [overview, setOverview] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -954,7 +917,6 @@ function OptionsApp() {
         setWorkspaces([]);
         setProfile(null);
         setSecurityOverview(null);
-        setOverview(null);
         setAccounts([]);
         setMembers([]);
         setInvitations([]);
@@ -997,10 +959,9 @@ function OptionsApp() {
     setLoading(true);
     try {
       if (view === 'home') {
-        const requests = [sendRemoteMessage('app-overview'), loadAccounts()];
+        const requests = [loadAccounts()];
         if (admin) requests.push(sendRemoteMessage('invitations'));
-        const [overviewResult, , invitationResult] = await Promise.all(requests);
-        setOverview(overviewResult);
+        const [, invitationResult] = await Promise.all(requests);
         setInvitations(invitationResult?.invitations || []);
       }
       if (view === 'integrations') await loadAccounts();
@@ -1547,14 +1508,16 @@ function OptionsApp() {
               {view === 'home' && (
                 <Home
                   workspace={workspace}
-                  overview={overview}
                   accounts={accounts}
                   invitations={admin ? invitations : []}
                   admin={admin}
                   loading={loading}
                   onConnect={() => void connectAccount()}
                   onOpenIntegrations={() => setView('integrations')}
-                  onOpenWorkspace={() => openSettings('workspace', 'general')}
+                  onOpenProducts={() => setView('products')}
+                  onOpenMargin={() => openSettings('workspace', 'margin')}
+                  onOpenHistory={() => setView('history')}
+                  onOpenPeople={() => openSettings('workspace', 'people')}
                 />
               )}
               {view === 'integrations' && (

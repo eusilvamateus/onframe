@@ -1335,7 +1335,7 @@ export async function workspaceOverview(
           )
       `
         ).bind(actor.workspaceId, now() - OVERVIEW_RECENT_EDIT_WINDOW_MS, actor.userId);
-  const [accounts, members, invitations, edits, recent] = await env.ONFRAME_DB.batch([
+  const [accounts, members, invitations, edits] = await env.ONFRAME_DB.batch([
     accountSummary,
     env.ONFRAME_DB.prepare(
       `
@@ -1345,17 +1345,7 @@ export async function workspaceOverview(
     `
     ).bind(actor.workspaceId),
     pendingInvitations,
-    recentEdits,
-    env.ONFRAME_DB.prepare(
-      `
-      SELECT audit_events.id, audit_events.operation, audit_events.created_at, users.display_name, users.email
-      FROM audit_events
-      LEFT JOIN users ON users.id = audit_events.user_id
-      WHERE audit_events.workspace_id = ?
-      ORDER BY audit_events.created_at DESC
-      LIMIT 8
-    `
-    ).bind(actor.workspaceId)
+    recentEdits
   ]);
   const countAt = (result: D1Result<unknown>) =>
     Number((result.results[0] as { count?: number } | undefined)?.count || 0);
@@ -1366,21 +1356,7 @@ export async function workspaceOverview(
     disabledAccountCount: Number(accountRow?.disabled_count || 0),
     memberCount: countAt(members),
     pendingInvitationCount: countAt(invitations),
-    recentEditCount: countAt(edits),
-    recentActivity: (
-      recent.results as Array<{
-        id: string;
-        operation: string;
-        created_at: number;
-        display_name: string | null;
-        email: string | null;
-      }>
-    ).map((event) => ({
-      id: event.id,
-      operation: event.operation,
-      occurredAt: new Date(event.created_at).toISOString(),
-      actorName: event.display_name || event.email || 'OnFrame'
-    }))
+    recentEditCount: countAt(edits)
   };
 }
 

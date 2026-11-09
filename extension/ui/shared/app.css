@@ -467,6 +467,12 @@ input {
   font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-normal);
 }
+.onframe-home {
+  gap: var(--ob-space-32);
+}
+.onframe-home-section {
+  gap: var(--ob-space-12);
+}
 .onframe-integration-header > .onframe-row {
   flex-wrap: wrap;
 }
