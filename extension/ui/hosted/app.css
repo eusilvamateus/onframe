@@ -67,6 +67,11 @@ body {
   gap: var(--ob-space-16);
 }
 
+.onframe-hosted-form input::-ms-reveal,
+.onframe-hosted-form input::-ms-clear {
+  display: none;
+}
+
 .onframe-hosted-eyebrow {
   margin: 0;
   color: var(--ob-fg-accent);

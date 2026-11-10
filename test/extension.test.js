@@ -1037,6 +1037,10 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
     optionsCss,
     /\.onframe-field-heading\s*\{[^}]*justify-content:\s*space-between;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*var\(--ob-space-8\)/
   );
+  assert.match(
+    optionsCss,
+    /\.onframe-field input::-ms-reveal,\s*\.onframe-field input::-ms-clear\s*\{[^}]*display:\s*none/
+  );
   assert.match(optionsCss, /\.onframe-auth-code-scroll\s*\{[^}]*display:\s*flex/);
   assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
   const loginLogo = fs.readFileSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png'));

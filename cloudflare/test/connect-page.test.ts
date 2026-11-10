@@ -13,6 +13,7 @@ import { readConnectionContext, secondFactorUrl } from '../../extension/ui/hoste
 import worker from '../src/index.ts';
 
 const hostedApp = fs.readFileSync(new URL('../../extension/ui/hosted/app.jsx', import.meta.url), 'utf8');
+const hostedStyles = fs.readFileSync(new URL('../../extension/ui/hosted/app.css', import.meta.url), 'utf8');
 
 test('configuracao publica informa o contrato de seguranca sem expor segredo', async () => {
   const response = await worker.fetch(new Request('https://onframe.onblide.com/v1/auth/config'), {
@@ -70,6 +71,10 @@ test('recuperacao apresenta titulo e legenda proprios sem alterar o fluxo de sen
   assert.match(hostedApp, /<HostedPasswordField[\s\S]*label="Senha nova"[\s\S]*autoFocus/);
   assert.match(hostedApp, /<HostedPasswordField[\s\S]*label="Confirme a senha nova"/);
   assert.match(hostedApp, /<ProgressBar value=\{strength\.value\}/);
+  assert.match(
+    hostedStyles,
+    /\.onframe-hosted-form input::-ms-reveal,\s*\.onframe-hosted-form input::-ms-clear\s*\{[^}]*display:\s*none/
+  );
   assert.match(
     secondFactorUrl('https://onframe.onblide.com', context),
     /\/auth\/passkeys\?action=verify&flow=test#access_token=test-recovery-token&refresh_token=test-refresh/

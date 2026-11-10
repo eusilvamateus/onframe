@@ -23,6 +23,10 @@ input {
   flex-direction: column;
   gap: var(--ob-space-6);
 }
+.onframe-field input::-ms-reveal,
+.onframe-field input::-ms-clear {
+  display: none;
+}
 .onframe-field-heading {
   display: flex;
   align-items: baseline;
