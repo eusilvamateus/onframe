@@ -35,20 +35,8 @@ body {
 .onframe-hosted-brand {
   display: inline-flex;
   align-items: center;
-  gap: var(--ob-space-12);
   color: var(--ob-fg-strong);
   text-decoration: none;
-}
-
-.onframe-hosted-brand > span {
-  width: 1px;
-  height: 20px;
-  background: var(--ob-border);
-}
-
-.onframe-hosted-brand > strong {
-  font-size: var(--ob-fs-14);
-  font-weight: var(--ob-w-semibold);
 }
 
 .onframe-hosted-main {

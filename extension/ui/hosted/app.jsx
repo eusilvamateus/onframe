@@ -18,10 +18,8 @@ function HostedLayout({ children }) {
   return (
     <div className="onframe-hosted-page">
       <header className="onframe-hosted-header">
-        <a className="onframe-hosted-brand" href="/connect" aria-label="OnFrame">
+        <a className="onframe-hosted-brand" href="/connect" aria-label="Onblide">
           <Logo size={24} />
-          <span aria-hidden="true" />
-          <strong>OnFrame</strong>
         </a>
         <ThemeMenuButton />
       </header>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, CodeInput, Input, Link, Tabs } from '@onblide/ui';
+import { Button, CodeInput, Input, Link, Logo, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
 import { EmailVerification, PasskeySettings, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
@@ -573,15 +573,16 @@ test('login apresenta um fluxo progressivo com senha, codigo e chave de acesso',
       const rendered = JSON.stringify(h.renderer.toJSON());
       assert.equal(rendered.includes('Entrar com chave de acesso'), true);
       assert.equal(h.renderer.root.findAllByType(Tabs).length, 0);
-      assert.equal(h.renderer.root.findByType('h1').props.children, 'Entrar no OnFrame');
+      assert.equal(h.renderer.root.findByType('h1').props.children, 'Entrar na Onblide');
       assert.equal(
         h.renderer.root.findByProps({ className: 'onframe-auth-subtitle' }).props.children,
         'Use o e-mail com que você criou a conta.'
       );
       assert.equal(rendered.includes('Receber um código por e-mail'), false);
       const brand = h.renderer.root.findByType('header');
-      assert.equal(brand.findByType('img').props.alt, 'OnFrame');
-      assert.equal(brand.findByType('img').props.src, '../../assets/onframe-stacked-primary.png');
+      assert.equal(brand.props['aria-label'], 'Onblide');
+      assert.equal(brand.findByType(Logo).props.size, 28);
+      assert.equal(brand.findAllByType('img').length, 0);
       assert.equal(brand.findAllByType('p').length, 0);
       assert.equal(
         h.renderer.root.findAllByType('input').some((node) => node.props.type === 'password'),
@@ -671,7 +672,7 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
       assert.equal(subtitles.length, description ? 1 : 0);
       if (description) assert.equal(subtitles[0].props.children, description);
     }
-    expectTitle('Entrar no OnFrame', 'Use o e-mail com que você criou a conta.');
+    expectTitle('Entrar na Onblide', 'Use o e-mail com que você criou a conta.');
     await act(async () =>
       h.renderer.root
         .findAllByType(Link)

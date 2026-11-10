@@ -74,7 +74,6 @@ input {
   color: var(--ob-fg-soft);
   font-size: var(--ob-fs-14);
 }
-.onframe-auth-brand,
 .onframe-auth-methods {
   display: flex;
   justify-content: center;
@@ -89,21 +88,10 @@ input {
   justify-content: center;
 }
 .onframe-auth-brand {
-  width: min(100%, 144px);
-  align-self: center;
-}
-.onframe-auth-logo {
-  display: block;
-  width: 144px;
-  min-width: 0;
-  max-width: 100%;
-  height: auto;
-  aspect-ratio: 2 / 1;
-  object-fit: cover;
-  object-position: center 52%;
-}
-[data-theme='dark'] .onframe-auth-logo {
-  filter: brightness(0) invert(1);
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
 }
 .onframe-auth-intro {
   display: flex;
@@ -760,6 +748,41 @@ input {
 
 .onframe-passkey-management {
   width: min(100%, 560px);
+}
+.onframe-passkey-page {
+  display: flex;
+  flex-direction: column;
+  place-items: initial;
+}
+.onframe-passkey-header {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+}
+.onframe-passkey-main {
+  display: flex;
+  width: 100%;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ob-space-40) 0;
+}
+.onframe-passkey-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-12);
+  color: var(--ob-fg);
+  font-size: var(--ob-fs-14);
+}
+.onframe-passkey-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-8);
+}
+.onframe-passkey-actions > button {
+  width: 100%;
 }
 .onframe-popup-window,
 .onframe-popup-document {

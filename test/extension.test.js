@@ -802,15 +802,17 @@ test('fontes do content script usam URLs da extensão', () => {
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
-  const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'security-ui.js'), 'utf8');
   assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
   assert.doesNotMatch(passkeys, /brandSrc=/);
-  assert.match(passkeys, /!managing\) \{[\s\S]*<AuthBrand src="\/security\/onframe-stacked-primary\.png"/);
+  assert.match(passkeys, /<header className="onframe-passkey-header">[\s\S]*<Logo size=\{28\} \/>/);
+  assert.doesNotMatch(passkeys, /onframe-stacked-primary/);
   assert.match(passkeys, /<AuthStep[\s\S]*icon=\{complete \? 'check-circle'/);
+  assert.match(passkeys, /<Card padding="var\(--ob-space-16\)">[\s\S]*Aguardando a confirmação no navegador/);
+  assert.match(passkeys, /attemptStarted\.current = true;\s*void authenticateWithPasskey\(\)/);
+  assert.match(passkeys, /A verificação foi cancelada ou demorou demais\. Nada foi alterado na sua conta/);
   assert.match(passkeys, /<VerificationEmailField email=\{email\}/);
   assert.match(passkeys, /<VerificationCodeField[\s\S]*label="Código do aplicativo autenticador"[\s\S]*length=\{6\}/);
   assert.doesNotMatch(passkeys, /<Input label="Código do aplicativo autenticador"/);
-  assert.match(build, /onframe-stacked-primary\.png/);
 });
 
 test('erros de autenticação sem mensagem útil preservam o status HTTP e traduzem limites de envio', () => {
@@ -1018,8 +1020,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   );
   assert.doesNotMatch(optionsCss, /\.onframe-(?:popup-)?integration-list\s*\{[^}]*border-top/);
   assert.match(options, /<AuthBrand \/>/);
-  assert.match(authPanel, /alt="OnFrame"/);
-  assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*min\(100%, 144px\);[^}]*align-self:\s*center/);
+  assert.match(authPanel, /<Logo size=\{28\} \/>/);
+  assert.doesNotMatch(authPanel, /onframe-stacked-primary|alt="OnFrame"/);
+  assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*40px/);
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
   assert.match(optionsCss, /\.onframe-auth-panel\s*\{[^}]*width:\s*min\(100%, 400px\);[^}]*margin-inline:\s*auto/);

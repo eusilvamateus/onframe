@@ -1,15 +1,9 @@
 import { createRoot } from 'react-dom/client';
 import { useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Button, Input, List, ListItem, Ph, Tabs } from '@onblide/ui';
+import { Alert, Button, Card, Input, Link, List, ListItem, Logo, Ph, Spinner, Tabs } from '@onblide/ui';
 import '../shared/app.css';
-import {
-  AuthBrand,
-  AuthStep,
-  VerificationCodeField,
-  VerificationEmailField,
-  VerificationFrame
-} from '../shared/AuthPanel';
+import { AuthStep, VerificationCodeField, VerificationEmailField, VerificationFrame } from '../shared/AuthPanel';
 import { ThemeMenuButton } from '../shared/ThemeControl';
 import { providerClient, verifySecondFactor } from '../shared/provider-auth';
 import { formatDate } from '../shared/runtime';
@@ -27,6 +21,18 @@ const managing = params.get('action') === 'manage';
 const verifying = params.get('action') === 'verify';
 const flow = params.get('flow') || '';
 
+function PasskeyLayout({ children }) {
+  return (
+    <main className="onframe-auth-page onframe-passkey-page">
+      <header className="onframe-passkey-header">
+        <Logo size={28} />
+        <ThemeMenuButton />
+      </header>
+      <div className="onframe-passkey-main">{children}</div>
+    </main>
+  );
+}
+
 function PasskeyPage() {
   const [client, setClient] = useState(null);
   const [ready, setReady] = useState(false);
@@ -40,14 +46,16 @@ function PasskeyPage() {
   const [removal, setRemoval] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [complete, setComplete] = useState(false);
+  const [challengeReady, setChallengeReady] = useState(false);
   const challengeRef = useRef(null);
   const challenge = useRef(null);
+  const attemptStarted = useRef(false);
 
   useEffect(() => {
     if (!ready || managing || verifying || factor || complete || !challengeRef.current) return undefined;
     challenge.current = window.OnFrameRemoteAuth.createChallenge(
       challengeRef.current,
-      () => {},
+      () => setChallengeReady(true),
       () => setNotice({ tone: 'danger', message: 'A confirmação de segurança está indisponível.' })
     );
     return () => {
@@ -148,13 +156,42 @@ function PasskeyPage() {
     setNotice({ tone: 'success', message: 'Acesso confirmado. Volte à extensão para continuar.' });
   }
 
+  async function authenticateWithPasskey() {
+    await run(async () => {
+      const captchaToken = await challenge.current?.execute();
+      if (!captchaToken)
+        throw Object.assign(new Error('A confirmação de segurança está indisponível.'), {
+          code: 'captcha_unavailable'
+        });
+      let result;
+      try {
+        result = await client.auth.signInWithPasskey({ options: { captchaToken } });
+      } finally {
+        challenge.current?.reset();
+      }
+      const { data, error } = result;
+      if (error || !data.session) throw error || new Error('session');
+      const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
+      if (factorError) throw factorError;
+      if (factors.totp.length) {
+        const identityEmail = data.session.user?.email || (await client.auth.getUser()).data.user?.email;
+        if (!identityEmail) throw new Error('identity');
+        setEmail(identityEmail);
+        setFactor({ id: factors.totp[0].id, factors: factors.totp });
+      } else await finishLogin(data.session);
+    });
+  }
+
+  useEffect(() => {
+    if (!ready || managing || verifying || factor || complete || !challengeReady || attemptStarted.current) return;
+    attemptStarted.current = true;
+    void authenticateWithPasskey();
+  }, [challengeReady, complete, factor, ready]);
+
   if (ready && factor && !complete)
     return (
-      <main className="onframe-auth-page">
-        <div className="onframe-auth-page-theme">
-          <ThemeMenuButton />
-        </div>
-        <VerificationFrame title="Confirme no aplicativo" headingLevel={1} framed={false} brand>
+      <PasskeyLayout>
+        <VerificationFrame title="Confirme no aplicativo" headingLevel={1} framed={false}>
           <form
             className="onframe-auth-fields"
             onSubmit={(event) => {
@@ -200,7 +237,7 @@ function PasskeyPage() {
             </Button>
           </form>
         </VerificationFrame>
-      </main>
+      </PasskeyLayout>
     );
 
   if (!managing) {
@@ -215,74 +252,72 @@ function PasskeyPage() {
     const description = complete
       ? 'Volte à extensão para continuar.'
       : failed
-        ? 'A verificação foi cancelada, expirou ou não está disponível neste dispositivo.'
+        ? 'A verificação foi cancelada ou demorou demais. Nada foi alterado na sua conta.'
         : 'Siga as instruções do navegador. Você pode usar a digital, o rosto, o PIN do dispositivo ou uma chave de segurança.';
+    const returnToPassword = (event) => {
+      event?.preventDefault();
+      window.close();
+    };
     return (
-      <main className="onframe-auth-page">
-        <div className="onframe-auth-page-theme">
-          <ThemeMenuButton />
-        </div>
+      <PasskeyLayout>
         <section className="onframe-auth-panel" aria-label="Chave de acesso">
-          <AuthBrand src="/security/onframe-stacked-primary.png" />
           <AuthStep
+            onBack={returnToPassword}
             icon={complete ? 'check-circle' : failed ? 'warning-circle' : 'fingerprint'}
             iconTone={complete ? 'var(--ob-green)' : failed ? 'var(--ob-danger)' : 'var(--ob-blue)'}
             title={title}
             description={description}
+            footer={
+              !complete ? (
+                <p className="onframe-muted">
+                  Prefere a senha?{' '}
+                  <Link href="#entrar-com-senha" onClick={returnToPassword}>
+                    Entrar com senha
+                  </Link>
+                </p>
+              ) : undefined
+            }
           >
-            {notice && !complete && (
-              <Alert appearance="soft" tone={notice.tone}>
-                {notice.message}
-              </Alert>
-            )}
             {ready && !verifying && !complete && !factor && <div className="onframe-captcha" ref={challengeRef} />}
-            {ready && !complete && (
-              <Button
-                type="button"
-                size="lg"
-                disabled={busy}
-                icon={<Ph n={failed ? 'arrow-clockwise' : 'fingerprint'} size={20} />}
-                style={{ width: '100%' }}
-                onClick={() =>
-                  void run(async () => {
-                    const captchaToken = await challenge.current?.execute();
-                    if (!captchaToken)
-                      throw Object.assign(new Error('A confirmação de segurança está indisponível.'), {
-                        code: 'captcha_unavailable'
-                      });
-                    let result;
-                    try {
-                      result = await client.auth.signInWithPasskey({ options: { captchaToken } });
-                    } finally {
-                      challenge.current?.reset();
-                    }
-                    const { data, error } = result;
-                    if (error || !data.session) throw error || new Error('session');
-                    const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
-                    if (factorError) throw factorError;
-                    if (factors.totp.length) {
-                      const identityEmail = data.session.user?.email || (await client.auth.getUser()).data.user?.email;
-                      if (!identityEmail) throw new Error('identity');
-                      setEmail(identityEmail);
-                      setFactor({ id: factors.totp[0].id, factors: factors.totp });
-                    } else await finishLogin(data.session);
-                  })
-                }
-              >
-                {busy ? 'Aguardando o navegador…' : failed ? 'Tentar de novo' : 'Usar chave de acesso'}
+            {complete ? (
+              <Button type="button" size="lg" style={{ width: '100%' }} onClick={returnToPassword}>
+                Voltar à extensão
               </Button>
+            ) : failed ? (
+              <div className="onframe-passkey-actions">
+                <Button
+                  type="button"
+                  size="lg"
+                  icon={<Ph n="arrow-clockwise" size={18} />}
+                  onClick={() => {
+                    attemptStarted.current = true;
+                    void authenticateWithPasskey();
+                  }}
+                >
+                  Tentar de novo
+                </Button>
+              </div>
+            ) : (
+              <div className="onframe-passkey-actions">
+                <Card padding="var(--ob-space-16)">
+                  <div className="onframe-passkey-status" role="status">
+                    <Spinner size="sm" />
+                    {busy ? 'Aguardando a confirmação no navegador…' : 'Preparando a verificação…'}
+                  </div>
+                </Card>
+                <Button type="button" kind="secondary" size="lg" onClick={returnToPassword}>
+                  Cancelar
+                </Button>
+              </div>
             )}
           </AuthStep>
         </section>
-      </main>
+      </PasskeyLayout>
     );
   }
 
   return (
-    <main className="onframe-auth-page">
-      <div className="onframe-auth-page-theme">
-        <ThemeMenuButton />
-      </div>
+    <PasskeyLayout>
       <section className="onframe-auth-surface onframe-passkey-management onframe-stack" aria-label="Chaves de acesso">
         <h1 className="onframe-page-title">Chaves de acesso</h1>
         {notice && (
@@ -420,7 +455,7 @@ function PasskeyPage() {
           </>
         )}
       </section>
-    </main>
+    </PasskeyLayout>
   );
 }
 

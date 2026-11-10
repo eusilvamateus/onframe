@@ -7,6 +7,7 @@ import {
   Divider,
   Input,
   Link,
+  Logo,
   Ph,
   ProgressBar,
   Spinner,
@@ -18,7 +19,7 @@ import { openExternal, sendRemoteMessage } from './runtime';
 import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 
 const AUTH_MODES = {
-  signin: { title: 'Entrar no OnFrame', description: 'Use o e-mail com que você criou a conta.' },
+  signin: { title: 'Entrar na Onblide', description: 'Use o e-mail com que você criou a conta.' },
   signup: { title: 'Criar sua conta', description: 'Informe seus dados para começar.' },
   magic: { title: 'Entrar com código', description: 'Enviaremos um código de acesso para o seu e-mail.' },
   recovery: {
@@ -143,10 +144,10 @@ export function AuthStep({ onBack, icon, iconTone, title, description, children,
   );
 }
 
-export function AuthBrand({ src = '../../assets/onframe-stacked-primary.png' }) {
+export function AuthBrand() {
   return (
-    <header className="onframe-auth-brand">
-      <img className="onframe-auth-logo" src={src} alt="OnFrame" width={192} height={96} />
+    <header className="onframe-auth-brand" aria-label="Onblide">
+      <Logo size={28} />
     </header>
   );
 }
@@ -211,7 +212,7 @@ export function VerificationFrame({ title, children, headingLevel = 2, framed = 
   );
   return (
     <div className="onframe-auth-panel onframe-security-verification">
-      {brand && <AuthBrand src="/security/onframe-stacked-primary.png" />}
+      {brand && <AuthBrand />}
       {framed ? <Card padding="var(--ob-space-24)">{content}</Card> : content}
     </div>
   );
