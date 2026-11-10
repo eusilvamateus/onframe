@@ -41,7 +41,8 @@ test('página pública conclui o fluxo iniciado pela extensão sem exibir códig
   assert.match(page, /\/security\/hosted\.js/);
   assert.match(page, /data-page-config=/);
   assert.doesNotMatch(page, /<input\b|<button\b|<style>/);
-  assert.match(hostedApp, /import \{ Alert, Button, Card, Input, Logo, Ph, Spinner \} from '@onblide\/ui'/);
+  assert.match(hostedApp, /import \{ Alert, Button, Input, Logo, Ph, ProgressBar, Spinner \} from '@onblide\/ui'/);
+  assert.doesNotMatch(hostedApp, /<Card/);
   assert.match(hostedApp, /extension-auth-flows/);
   assert.match(hostedApp, /auth\/v1\/user/);
   assert.match(hostedApp, /Acesso confirmado\. Volte à extensão para continuar/);
@@ -63,11 +64,12 @@ test('recuperacao apresenta titulo e legenda proprios sem alterar o fluxo de sen
     refreshToken: 'test-refresh',
     type: 'recovery'
   });
-  assert.match(hostedApp, /Defina uma nova senha/);
-  assert.match(hostedApp, /Escolha uma nova senha para sua conta/);
+  assert.match(hostedApp, /Crie uma senha nova/);
+  assert.match(hostedApp, /Escolha uma senha nova para continuar usando sua conta/);
   assert.match(hostedApp, /Recuperação de acesso/);
-  assert.match(hostedApp, /<Input[\s\S]*label="Nova senha"[\s\S]*autoFocus/);
-  assert.match(hostedApp, /<Input[\s\S]*label="Confirme a nova senha"/);
+  assert.match(hostedApp, /<HostedPasswordField[\s\S]*label="Senha nova"[\s\S]*autoFocus/);
+  assert.match(hostedApp, /<HostedPasswordField[\s\S]*label="Confirme a senha nova"/);
+  assert.match(hostedApp, /<ProgressBar value=\{strength\.value\}/);
   assert.match(
     secondFactorUrl('https://onframe.onblide.com', context),
     /\/auth\/passkeys\?action=verify&flow=test#access_token=test-recovery-token&refresh_token=test-refresh/

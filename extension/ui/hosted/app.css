@@ -10,7 +10,7 @@ body,
 
 body {
   margin: 0;
-  background: var(--ob-bg-alt);
+  background: var(--ob-surface);
   color: var(--ob-fg);
   font-family: var(--ob-font);
 }
@@ -53,13 +53,13 @@ body {
 
 .onframe-hosted-main {
   display: grid;
-  align-items: start;
+  align-items: center;
   justify-items: center;
   padding: var(--ob-space-24) var(--ob-space-16);
 }
 
 .onframe-hosted-surface {
-  width: min(100%, 472px);
+  width: min(100%, 400px);
 }
 
 .onframe-hosted-stack,
@@ -91,9 +91,13 @@ body {
 .onframe-hosted-intro h1 {
   margin: 0;
   color: var(--ob-fg-strong);
-  font-size: var(--ob-fs-22);
+  font-size: var(--ob-fs-28);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-snug);
+}
+
+.onframe-hosted-icon {
+  margin-bottom: var(--ob-space-8);
 }
 
 .onframe-hosted-intro > p:last-child:not(.onframe-hosted-eyebrow) {
@@ -113,7 +117,22 @@ body {
 
 .onframe-hosted-form > button,
 .onframe-hosted-stack > button {
-  align-self: flex-start;
+  width: 100%;
+}
+
+.onframe-hosted-password-strength {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ob-space-12);
+}
+
+.onframe-hosted-password-strength > span {
+  min-width: 80px;
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-12);
+  font-weight: var(--ob-w-medium);
+  text-align: right;
 }
 
 .onframe-hosted-footer {

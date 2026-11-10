@@ -218,7 +218,8 @@ async function startExtensionAuthFlow() {
   await storageSet({ [REMOTE_AUTH_FLOW_KEY]: flow });
   return {
     expiresAt: flow.expiresAt,
-    redirectTo: `${REMOTE_SERVICE}/connect?flow=${encodeURIComponent(flow.token)}`
+    redirectTo: `${REMOTE_SERVICE}/connect?flow=${encodeURIComponent(flow.token)}`,
+    passkeyUrl: `${REMOTE_SERVICE}/auth/passkeys?flow=${encodeURIComponent(flow.token)}`
   };
 }
 

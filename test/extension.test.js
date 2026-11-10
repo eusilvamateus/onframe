@@ -805,7 +805,8 @@ test('verificacao hospedada de chaves reutiliza a interface de codigo do login',
   const build = fs.readFileSync(path.join(root, 'scripts', 'build', 'security-ui.js'), 'utf8');
   assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
   assert.doesNotMatch(passkeys, /brandSrc=/);
-  assert.match(passkeys, /!managing && \(\s*<div className="onframe-brand"/);
+  assert.match(passkeys, /!managing\) \{[\s\S]*<AuthBrand src="\/security\/onframe-stacked-primary\.png"/);
+  assert.match(passkeys, /<AuthStep[\s\S]*icon=\{complete \? 'check-circle'/);
   assert.match(passkeys, /<VerificationEmailField email=\{email\}/);
   assert.match(passkeys, /<VerificationCodeField[\s\S]*label="Código do aplicativo autenticador"[\s\S]*length=\{6\}/);
   assert.doesNotMatch(passkeys, /<Input label="Código do aplicativo autenticador"/);
@@ -1018,19 +1019,15 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(optionsCss, /\.onframe-(?:popup-)?integration-list\s*\{[^}]*border-top/);
   assert.match(options, /<AuthBrand \/>/);
   assert.match(authPanel, /alt="OnFrame"/);
-  assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*min\(100%, 192px\);[^}]*align-self:\s*center/);
+  assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*min\(100%, 144px\);[^}]*align-self:\s*center/);
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
-  assert.match(optionsCss, /\.onframe-auth-panel\s*\{[^}]*width:\s*min\(100%, 448px\);[^}]*margin-inline:\s*auto/);
+  assert.match(optionsCss, /\.onframe-auth-panel\s*\{[^}]*width:\s*min\(100%, 400px\);[^}]*margin-inline:\s*auto/);
+  assert.match(optionsCss, /\.onframe-auth-step\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-space-24\)/);
+  assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-space-8\)/);
   assert.match(
     optionsCss,
-    /\.onframe-auth-methods,\s*\.onframe-auth-methods > div,\s*\.onframe-auth-methods > div > div\s*\{[^}]*width:\s*100%/
-  );
-  assert.match(optionsCss, /\.onframe-auth-methods button\s*\{[^}]*flex:\s*1;[^}]*justify-content:\s*center/);
-  assert.match(optionsCss, /\.onframe-auth-intro\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*var\(--ob-space-4\)/);
-  assert.match(
-    optionsCss,
-    /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-22\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/
+    /\.onframe-auth-title\s*\{[^}]*font-size:\s*var\(--ob-fs-28\);[^}]*letter-spacing:\s*0;[^}]*text-align:\s*left;[^}]*overflow-wrap:\s*anywhere/
   );
   assert.match(optionsCss, /\.onframe-auth-content\s*\{[^}]*gap:\s*var\(--ob-space-24\);[^}]*min-width:\s*0/);
   assert.match(
@@ -1204,9 +1201,8 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   );
   assert.doesNotMatch(authPanel, /FieldShell|<input\b|onframe-field-input/);
   assert.match(authPanel, /<Input[\s\S]*endAddon=/);
-  assert.match(authPanel, /eye-closed/);
+  assert.match(authPanel, /eye-slash/);
   assert.doesNotMatch(optionsCss, /onframe-field-input/);
-  assert.doesNotMatch(authPanel, /eye-slash/);
   assert.match(optionsHtml, /app\.css/);
   assert.match(optionsHtml, /app\.js/);
   assert.match(popupHtml, /app\.css/);
@@ -1349,6 +1345,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const flow = await send({ type: 'onframe:remote', action: 'auth-flow-start' });
   assert.equal(flow.ok, true);
   assert.match(flow.body.redirectTo, /\/connect\?flow=/);
+  assert.match(flow.body.passkeyUrl, /\/auth\/passkeys\?flow=/);
   assert.equal(storage.onframeRemoteAuthFlow.token, 'b'.repeat(43));
 
   const authenticated = await send({ type: 'onframe:remote', action: 'authenticate', accessToken: 'a'.repeat(20) });

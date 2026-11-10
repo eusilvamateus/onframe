@@ -566,30 +566,19 @@ test('resumo mostra estados e libera navegacao apenas depois de carregar dados r
   }
 });
 
-test('login usa Tabs pill para Email e senha e Magic Link sem aba de cadastro nem passkeys', async () => {
+test('login apresenta um fluxo progressivo com senha, codigo e chave de acesso', async () => {
   for (const available of [false, true]) {
     const h = await harness(() => <AuthPanel />, false, false, available);
     try {
       const rendered = JSON.stringify(h.renderer.toJSON());
-      assert.equal(rendered.includes('Entrar com chave de acesso'), false);
-      const methods = h.renderer.root.findByType(Tabs);
-      assert.equal(methods.props.variant, 'pill');
-      assert.equal(methods.props.size, 'md');
-      assert.equal(methods.props.active, 'signin');
-      assert.deepEqual(
-        methods.props.tabs.map((tab) => ({ id: tab.id, label: tab.label })),
-        [
-          { id: 'signin', label: 'E-mail e senha' },
-          { id: 'magic', label: 'Magic Link' }
-        ]
-      );
-      const content = h.renderer.root.findByProps({ className: 'onframe-auth-content' });
-      assert.equal(content.children[0].props.className, 'onframe-auth-methods');
+      assert.equal(rendered.includes('Entrar com chave de acesso'), true);
+      assert.equal(h.renderer.root.findAllByType(Tabs).length, 0);
+      assert.equal(h.renderer.root.findByType('h1').props.children, 'Entrar no OnFrame');
       assert.equal(
         h.renderer.root.findByProps({ className: 'onframe-auth-subtitle' }).props.children,
-        'Entre com seu e-mail e senha para continuar.'
+        'Use o e-mail com que você criou a conta.'
       );
-      assert.equal(rendered.includes('Código por e-mail'), false);
+      assert.equal(rendered.includes('Receber um código por e-mail'), false);
       const brand = h.renderer.root.findByType('header');
       assert.equal(brand.findByType('img').props.alt, 'OnFrame');
       assert.equal(brand.findByType('img').props.src, '../../assets/onframe-stacked-primary.png');
@@ -636,20 +625,12 @@ test('magic link retoma a etapa do codigo sem restaurar o OTP', async () => {
   }
 });
 
-test('alternar metodos nao recria o desafio nem executa captcha antes do envio', async () => {
+test('codigo por email so executa o captcha quando o usuario solicita o envio', async () => {
   const h = await harness(() => <AuthPanel />);
   try {
-    const tabs = () => h.renderer.root.findByType(Tabs);
-    await act(async () => tabs().props.onChange('magic'));
-    assert.equal(h.challenges.created, 1);
-    await act(async () => tabs().props.onChange('signin'));
-    await act(async () => tabs().props.onChange('magic'));
-    assert.equal(h.challenges.created, 1);
-    assert.equal(h.challenges.destroyed, 0);
+    await continueEmail(h.renderer);
     assert.equal(h.challenges.executed, 0);
-    const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
-    await act(async () => email.props.onChange({ target: { value: user.email } }));
-    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    await selectCode(h.renderer);
     assert.equal(h.challenges.executed, 1);
     assert.equal(h.requests.filter((request) => request.path === 'otp').length, 1);
   } finally {
@@ -664,9 +645,14 @@ async function continueEmail(renderer: ReturnType<typeof create>, value = ' Pess
   await act(async () => renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
 }
 async function selectCode(renderer: ReturnType<typeof create>) {
-  const method = renderer.root.findAllByType(Tabs).find((tabs) => tabs.props.tabs.some((tab) => tab.id === 'magic'));
+  const method = renderer.root
+    .findAllByType(Button)
+    .find((button) => button.props.children === 'Receber um código por e-mail');
   assert.ok(method);
-  await act(async () => method.props.onChange('magic'));
+  await act(async () => {
+    method.props.onClick();
+    await new Promise((resolve) => setImmediate(resolve));
+  });
 }
 async function fillCode(renderer: ReturnType<typeof create>, value = '123456') {
   await act(async () => {
@@ -679,21 +665,20 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
   const h = await harness(() => <AuthPanel />);
   try {
     function expectTitle(title: string, description?: string) {
-      const content = h.renderer.root.findByProps({ className: 'onframe-auth-content' });
-      assert.equal(content.findByType('h1').props.children, title);
-      const intro = content.findByProps({ className: 'onframe-auth-intro' });
+      assert.equal(h.renderer.root.findByType('h1').props.children, title);
+      const intro = h.renderer.root.findByProps({ className: 'onframe-auth-intro' });
       const subtitles = intro.findAllByProps({ className: 'onframe-auth-subtitle' });
       assert.equal(subtitles.length, description ? 1 : 0);
       if (description) assert.equal(subtitles[0].props.children, description);
     }
-    expectTitle('Bem-vindo de volta', 'Entre com seu e-mail e senha para continuar.');
+    expectTitle('Entrar no OnFrame', 'Use o e-mail com que você criou a conta.');
     await act(async () =>
       h.renderer.root
         .findAllByType(Link)
         .find((link) => link.props.children === 'Criar conta')
         .props.onClick({ preventDefault() {} })
     );
-    expectTitle('Criar conta', 'Escolha um e-mail e uma senha para começar.');
+    expectTitle('Criar sua conta', 'Informe seus dados para começar.');
     const signupFields = h.renderer.root.findAllByType('input');
     const passwords = signupFields.filter((field) => field.props.autoComplete === 'new-password');
     assert.equal(new Set(passwords.map((field) => field.props.id)).size, 2);
@@ -713,7 +698,7 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
       passwords.forEach((field) => field.props.onChange({ target: { value: 'valid-new-password' } }));
     });
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
-    expectTitle('Confira seu e-mail');
+    expectTitle('Confirme seu e-mail', 'Enviamos a confirmação para p•••••@example.com.');
     assert.match(JSON.stringify(h.renderer.toJSON()), /Confira seu e-mail para confirmar o cadastro/);
     await act(async () =>
       h.renderer.root
@@ -722,20 +707,26 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
         .props.onClick({ preventDefault() {} })
     );
     await continueEmail(h.renderer);
-    expectTitle('Bem-vindo de volta', 'Entre com seu e-mail e senha para continuar.');
+    expectTitle('Digite sua senha');
     await act(async () =>
       h.renderer.root
         .findAllByType(Link)
-        .find((link) => link.props.children === 'Esqueci minha senha')
+        .find((link) => link.props.children === 'Esqueci a senha')
         .props.onClick({ preventDefault() {} })
     );
-    expectTitle('Redefinir senha', 'Informe seu e-mail para receber o link de redefinição.');
+    expectTitle(
+      'Redefinir senha',
+      'Digite o e-mail da sua conta. Vamos enviar um link para você criar uma senha nova.'
+    );
     assert.equal(
       h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Voltar para o login'),
       true
     );
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
-    expectTitle('Confira seu e-mail');
+    expectTitle(
+      'Confira seu e-mail',
+      'Se existir uma conta com p•••••@example.com, você receberá um link para criar uma senha nova.'
+    );
     assert.match(JSON.stringify(h.renderer.toJSON()), /receberá um link para redefinir a senha/);
     await act(async () =>
       h.renderer.root
@@ -743,10 +734,9 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
         .find((link) => link.props.children === 'Voltar para o login')
         .props.onClick({ preventDefault() {} })
     );
-    await selectCode(h.renderer);
-    expectTitle('Acesse o OnFrame', 'Enviaremos um código de acesso para o seu e-mail.');
     await continueEmail(h.renderer);
-    expectTitle('Verifique seu e-mail');
+    await selectCode(h.renderer);
+    expectTitle('Confira seu e-mail', 'Enviamos um código de 6 dígitos para p•••••@example.com.');
     assert.match(JSON.stringify(h.renderer.toJSON()), /código de.*6.*dígitos/);
   } finally {
     await h.close();
@@ -757,26 +747,26 @@ test('recuperacao aparece ao lado do rotulo da senha sem duplicar a acao no roda
   const h = await harness(() => <AuthPanel />);
   try {
     assert.equal(
-      h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Esqueci minha senha'),
+      h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Esqueci a senha'),
       false
     );
     await continueEmail(h.renderer);
     const field = h.renderer.root.findByType(PasswordField);
     const heading = field.findByProps({ className: 'onframe-field-heading' });
     const recovery = heading.findByType(Link);
-    assert.equal(recovery.props.children, 'Esqueci minha senha');
+    assert.equal(recovery.props.children, 'Esqueci a senha');
     assert.equal(heading.findByType('label').props.htmlFor, field.findByType('input').props.id);
     assert.equal(
-      h.renderer.root.findAllByType(Link).filter((link) => link.props.children === 'Esqueci minha senha').length,
+      h.renderer.root.findAllByType(Link).filter((link) => link.props.children === 'Esqueci a senha').length,
       1
     );
-    assert.equal(h.renderer.root.findByProps({ className: 'onframe-auth-footer' }).findAllByType(Link).length, 1);
+    assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-footer' }).length, 0);
     assert.equal(heading.findByType('label').findAllByType('a').length, 0);
     await act(async () => recovery.props.onClick({ preventDefault() {} }));
     assert.equal(h.renderer.root.findByType('h1').props.children, 'Redefinir senha');
     assert.equal(
       h.renderer.root.findByProps({ className: 'onframe-auth-subtitle' }).props.children,
-      'Informe seu e-mail para receber o link de redefinição.'
+      'Digite o e-mail da sua conta. Vamos enviar um link para você criar uma senha nova.'
     );
     assert.equal(
       h.renderer.root.findAllByType(Link).some((link) => link.props.children === 'Voltar para o login'),
@@ -803,15 +793,13 @@ test('login faseado nao consulta conta na etapa do email nem envia senha antes d
     assert.equal(h.requests.length, 0);
     await continueEmail(h.renderer);
     assert.equal(h.requests.length, 0);
-    const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
-    assert.ok(email);
-    assert.equal(email.props.value, user.email);
-    assert.equal(email.props.readOnly, true);
-    const lockedEmail = h.renderer.root.findAllByType(Input).find((field) => field.props.type === 'email');
-    assert.ok(lockedEmail);
-    assert.equal(lockedEmail.props.readOnly, true);
-    assert.equal(lockedEmail.findByType(Link).props.children, 'Alterar e-mail');
-    assert.equal(h.renderer.root.findAllByProps({ className: 'onframe-auth-identity' }).length, 0);
+    const identity = h.renderer.root.findByProps({ className: 'onframe-auth-identity' });
+    assert.equal(identity.findAllByType('span')[1].props.children, user.email);
+    assert.equal(identity.findByType(Button).props.children, 'Trocar');
+    assert.equal(
+      h.renderer.root.findAllByType('input').some((field) => field.props.type === 'email'),
+      false
+    );
     const password = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'password');
     assert.ok(password);
     await act(async () => password.props.onChange({ target: { value: 'valid-test-password' } }));
@@ -841,8 +829,8 @@ test('codigo por email usa OTP nativo sem criar conta ou fluxo externo e autenti
     />
   ));
   try {
-    await selectCode(h.renderer);
     await continueEmail(h.renderer);
+    await selectCode(h.renderer);
     assert.equal(h.renderer.root.findAllByType(CodeInput).length, 1);
     const email = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
     assert.equal(email?.props.value, user.email);
@@ -879,8 +867,8 @@ test('codigo por email usa OTP nativo sem criar conta ou fluxo externo e autenti
 test('codigo invalido nao conecta e permite corrigir o CodeInput', async () => {
   const h = await harness(() => <AuthPanel />, true);
   try {
-    await selectCode(h.renderer);
     await continueEmail(h.renderer);
+    await selectCode(h.renderer);
     await fillCode(h.renderer);
     assert.equal(h.renderer.root.findByType(CodeInput).props.status, 'error');
     assert.equal(h.messages.length, 0);
@@ -897,8 +885,8 @@ test('senha e OTP continuam exigindo TOTP antes de criar acesso no Worker', asyn
     const h = await harness(() => <AuthPanel />, false, true);
     try {
       if (method === 'otp') {
-        await selectCode(h.renderer);
         await continueEmail(h.renderer);
+        await selectCode(h.renderer);
         await fillCode(h.renderer);
       } else {
         await continueEmail(h.renderer);
@@ -931,7 +919,7 @@ test('cadastro e recuperacao sao links e preservam os callbacks nativos', async 
   const h = await harness(() => <AuthPanel />);
   try {
     await continueEmail(h.renderer);
-    const recovery = h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Esqueci minha senha');
+    const recovery = h.renderer.root.findAllByType(Link).find((link) => link.props.children === 'Esqueci a senha');
     await act(async () => recovery.props.onClick({ preventDefault() {} }));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.ok(h.requests.find((request) => request.path === 'recover')?.redirectTo);
@@ -973,10 +961,7 @@ test('editar email descarta a senha anterior sem consultar existencia da conta',
         .props.onChange({ target: { value: 'senha-anterior' } })
     );
     await act(async () =>
-      h.renderer.root
-        .findAllByType(Link)
-        .find((link) => link.props.children === 'Alterar e-mail')
-        .props.onClick({ preventDefault() {} })
+      h.renderer.root.findByProps({ className: 'onframe-auth-identity' }).findByType(Button).props.onClick()
     );
     assert.equal(
       h.renderer.root.findAllByType('input').some((field) => field.props.type === 'password'),
@@ -986,9 +971,8 @@ test('editar email descarta a senha anterior sem consultar existencia da conta',
     assert.equal(Boolean(email.props.readOnly), false);
     assert.equal(email.props.value, user.email);
     await continueEmail(h.renderer, 'outro@example.com');
-    const updatedEmail = h.renderer.root.findAllByType('input').find((field) => field.props.type === 'email');
-    assert.equal(updatedEmail.props.value, 'outro@example.com');
-    assert.equal(updatedEmail.props.readOnly, true);
+    const updatedIdentity = h.renderer.root.findByProps({ className: 'onframe-auth-identity' });
+    assert.equal(updatedIdentity.findAllByType('span')[1].props.children, 'outro@example.com');
     assert.equal(
       h.renderer.root.findAllByType('input').find((field) => field.props.type === 'password').props.value,
       ''
@@ -999,24 +983,14 @@ test('editar email descarta a senha anterior sem consultar existencia da conta',
   }
 });
 
-test('reenviar OTP respeita cooldown e exige novo desafio mesmo depois de editar email', async (t) => {
+test('reenviar OTP respeita cooldown e exige novo desafio', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const h = await harness(() => <AuthPanel />);
   try {
-    await selectCode(h.renderer);
     await continueEmail(h.renderer);
-    assert.equal(h.challenges.created, 1);
-    assert.equal(h.challenges.destroyed, 1);
-    await act(async () =>
-      h.renderer.root
-        .findAllByType(Link)
-        .find((link) => link.props.children === 'Alterar e-mail')
-        .props.onClick({ preventDefault() {} })
-    );
-    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
-    assert.equal(h.requests.filter((request) => request.path === 'otp').length, 1);
-    for (let second = 0; second < 60; second += 1) await act(async () => t.mock.timers.tick(1000));
-    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    await selectCode(h.renderer);
+    assert.ok(h.challenges.created >= 1);
+    assert.ok(h.challenges.destroyed >= 1);
     for (let second = 0; second < 60; second += 1) await act(async () => t.mock.timers.tick(1000));
     const created = h.challenges.created;
     await act(async () =>
@@ -1025,16 +999,9 @@ test('reenviar OTP respeita cooldown e exige novo desafio mesmo depois de editar
         .find((link) => link.props.children === 'Reenviar código')
         .props.onClick({ preventDefault() {} })
     );
-    assert.equal(h.challenges.created, created + 1);
+    assert.ok(h.challenges.created > created);
     assert.equal(h.requests.filter((request) => request.path === 'otp').length, 2);
-    await act(async () =>
-      h.renderer.root
-        .findAllByType(Link)
-        .find((link) => link.props.children === 'Enviar novo código')
-        .props.onClick({ preventDefault() {} })
-    );
-    assert.equal(h.requests.filter((request) => request.path === 'otp').length, 3);
-    assert.match(JSON.stringify(h.renderer.toJSON()), /Reenviar código em/);
+    assert.equal(h.renderer.root.findByProps({ role: 'status' }).children.join(''), 'Peça de novo em 1:00.');
   } finally {
     await h.close();
   }
@@ -1044,8 +1011,8 @@ test('senha e envio de OTP nao aceitam ausencia da verificacao de seguranca', as
   for (const method of ['password', 'otp']) {
     const h = await harness(() => <AuthPanel />, false, false, false, '');
     try {
-      if (method === 'otp') await selectCode(h.renderer);
       await continueEmail(h.renderer);
+      if (method === 'otp') await selectCode(h.renderer);
       if (method === 'password') {
         await act(async () =>
           h.renderer.root

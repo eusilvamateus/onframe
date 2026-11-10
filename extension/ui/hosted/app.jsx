@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { useEffect, useMemo, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Button, Card, Input, Logo, Ph, Spinner } from '@onblide/ui';
+import { Alert, Button, Input, Logo, Ph, ProgressBar, Spinner } from '@onblide/ui';
 import { ThemeMenuButton } from '../shared/ThemeControl';
 import { clearConnectionFragment, readConnectionContext, secondFactorUrl } from './connection-flow';
 import './app.css';
@@ -31,19 +31,65 @@ function HostedLayout({ children }) {
   );
 }
 
-function HostedSurface({ eyebrow, title, description, children }) {
+function passwordStrength(password) {
+  const value = String(password || '');
+  const score = [
+    value.length >= 8,
+    /[a-z]/u.test(value) && /[A-Z]/u.test(value),
+    /\d/u.test(value),
+    /[^A-Za-z0-9]/u.test(value)
+  ].filter(Boolean).length;
+  if (!value) return { label: 'Força da senha', tone: 'primary', value: 0 };
+  return [
+    { label: 'Muito fraca', tone: 'danger', value: 12 },
+    { label: 'Fraca', tone: 'danger', value: 25 },
+    { label: 'Razoável', tone: 'warning', value: 50 },
+    { label: 'Boa', tone: 'warning', value: 75 },
+    { label: 'Forte', tone: 'success', value: 100 }
+  ][score];
+}
+
+function HostedPasswordField({ label, value, onChange, error, disabled, autoFocus }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <Input
+      size="lg"
+      label={label}
+      type={visible ? 'text' : 'password'}
+      autoComplete="new-password"
+      value={value}
+      error={error}
+      disabled={disabled}
+      autoFocus={autoFocus}
+      onChange={(event) => onChange(event.target.value)}
+      endAddon={
+        <Button
+          type="button"
+          kind="quiet"
+          tone="neutral"
+          size="sm"
+          iconOnly
+          aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+          onClick={() => setVisible((current) => !current)}
+          icon={<Ph n={visible ? 'eye-slash' : 'eye'} size={18} />}
+        />
+      }
+    />
+  );
+}
+
+function HostedSurface({ eyebrow, title, description, icon, iconTone = 'var(--ob-blue)', children }) {
   return (
     <section className="onframe-hosted-surface" aria-live="polite">
-      <Card padding="var(--ob-space-24)" elevation="shadow">
-        <div className="onframe-hosted-stack">
-          <div className="onframe-hosted-intro">
-            <p className="onframe-hosted-eyebrow">{eyebrow}</p>
-            <h1>{title}</h1>
-            {description && <p>{description}</p>}
-          </div>
-          {children}
+      <div className="onframe-hosted-stack">
+        <div className="onframe-hosted-intro">
+          {icon && <Ph className="onframe-hosted-icon" n={icon} size={40} weight="light" c={iconTone} />}
+          {eyebrow && <p className="onframe-hosted-eyebrow">{eyebrow}</p>}
+          <h1>{title}</h1>
+          {description && <p>{description}</p>}
         </div>
-      </Card>
+        {children}
+      </div>
     </section>
   );
 }
@@ -165,8 +211,9 @@ function ConnectionPage({ config }) {
   }
 
   const eyebrow = recovery ? 'Recuperação de acesso' : config.eyebrow;
-  const title = recovery ? 'Defina uma nova senha' : config.heading;
-  const description = recovery ? 'Escolha uma nova senha para sua conta.' : config.description;
+  const title = recovery ? 'Crie uma senha nova' : config.heading;
+  const description = recovery ? 'Escolha uma senha nova para continuar usando sua conta.' : config.description;
+  const strength = passwordStrength(password);
 
   return (
     <HostedSurface eyebrow={eyebrow} title={title} description={description}>
@@ -178,39 +225,38 @@ function ConnectionPage({ config }) {
       )}
       {phase === 'recovery' && (
         <form className="onframe-hosted-form" onSubmit={resetPassword} aria-busy={busy}>
-          <Input
-            label="Nova senha"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Crie uma nova senha"
+          <HostedPasswordField
+            label="Senha nova"
             value={password}
             error={passwordError}
             disabled={busy}
             autoFocus
-            onChange={(event) => {
-              setPassword(event.target.value);
+            onChange={(value) => {
+              setPassword(value);
               setPasswordError('');
             }}
           />
-          <Input
-            label="Confirme a nova senha"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Repita a nova senha"
+          <div className="onframe-hosted-password-strength" aria-live="polite">
+            <ProgressBar value={strength.value} tone={strength.tone} size="sm" />
+            <span>{strength.label}</span>
+          </div>
+          <HostedPasswordField
+            label="Confirme a senha nova"
             value={confirmation}
             error={confirmationError}
             disabled={busy}
-            onChange={(event) => {
-              setConfirmation(event.target.value);
+            onChange={(value) => {
+              setConfirmation(value);
               setConfirmationError('');
             }}
           />
           <Button
             type="submit"
             disabled={busy}
-            icon={busy ? <Spinner size="xs" label="Atualizando senha" /> : <Ph n="check-circle" size={16} />}
+            size="lg"
+            icon={busy ? <Spinner size="xs" label="Atualizando senha" /> : undefined}
           >
-            Atualizar senha
+            Salvar senha nova
           </Button>
         </form>
       )}
@@ -224,8 +270,16 @@ function ConnectionPage({ config }) {
 }
 
 function ResultPage({ config }) {
+  const icon =
+    config.tone === 'success' ? 'check-circle' : config.tone === 'warning' ? 'clock-countdown' : 'warning-circle';
+  const iconTone =
+    config.tone === 'success'
+      ? 'var(--ob-green)'
+      : config.tone === 'warning'
+        ? 'var(--ob-warning-fg)'
+        : 'var(--ob-danger)';
   return (
-    <HostedSurface eyebrow={config.eyebrow} title={config.heading}>
+    <HostedSurface eyebrow={config.eyebrow} title={config.heading} icon={icon} iconTone={iconTone}>
       <Alert appearance="soft" tone={config.tone}>
         {config.message}
       </Alert>
@@ -239,8 +293,13 @@ function InvitationPage({ config }) {
       eyebrow="Convite para workspace"
       title="Continue na extensão"
       description="Abra o OnFrame para entrar ou criar sua conta. Depois, o convite será aceito automaticamente."
+      icon="envelope-simple"
     >
-      <Button icon={<Ph n="arrow-square-out" size={16} />} onClick={() => location.assign(config.extensionUrl)}>
+      <Button
+        size="lg"
+        icon={<Ph n="arrow-square-out" size={18} />}
+        onClick={() => location.assign(config.extensionUrl)}
+      >
         Abrir extensão
       </Button>
     </HostedSurface>
