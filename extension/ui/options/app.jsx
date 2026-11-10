@@ -36,7 +36,7 @@ import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
-import { ThemeMenuButton, ThemeSelector, useThemeSubmenuItem } from '../shared/ThemeControl';
+import { ThemeCycleButton, ThemeSelector, useThemeSubmenuItem } from '../shared/ThemeControl';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
@@ -1290,7 +1290,7 @@ function OptionsApp() {
       <FeedbackRoot>
         <main className="onframe-auth-page" aria-busy="true">
           <div className="onframe-auth-page-theme">
-            <ThemeMenuButton />
+            <ThemeCycleButton />
           </div>
           <div className="onframe-auth-surface onframe-stack" role="status" aria-label="Verificando acesso">
             <AuthBrand />
@@ -1314,7 +1314,7 @@ function OptionsApp() {
       <FeedbackRoot>
         <main className="onframe-auth-page">
           <div className="onframe-auth-page-theme">
-            <ThemeMenuButton />
+            <ThemeCycleButton />
           </div>
           <div className="onframe-auth-surface onframe-stack">
             {notice && (

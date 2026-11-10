@@ -3,6 +3,10 @@
 # SMTP, provedores externos e limites nao sao substituidos por esta configuracao.
 project_id = "onframe"
 
+[auth]
+minimum_password_length = 8
+password_requirements = "lower_upper_letters_digits_symbols"
+
 [auth.mfa.totp]
 enroll_enabled = true
 verify_enabled = true

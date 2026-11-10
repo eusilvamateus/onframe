@@ -2,7 +2,8 @@ import { createRoot } from 'react-dom/client';
 import { useEffect, useMemo, useState } from 'react';
 import '@onblide/ui/styles.css';
 import { Alert, Button, Input, Logo, Ph, ProgressBar, Spinner } from '@onblide/ui';
-import { ThemeMenuButton } from '../shared/ThemeControl';
+import { ThemeCycleButton } from '../shared/ThemeControl';
+import { passwordMeetsRequirements, passwordRequirementState } from '../shared/password-policy';
 import { clearConnectionFragment, readConnectionContext, secondFactorUrl } from './connection-flow';
 import './app.css';
 
@@ -21,7 +22,7 @@ function HostedLayout({ children }) {
         <a className="onframe-hosted-brand" href="/connect" aria-label="Onblide">
           <Logo size={24} />
         </a>
-        <ThemeMenuButton />
+        <ThemeCycleButton />
       </header>
       <main className="onframe-hosted-main">{children}</main>
       <footer className="onframe-hosted-footer">ONBLIDE · ONFRAME</footer>
@@ -31,12 +32,7 @@ function HostedLayout({ children }) {
 
 function passwordStrength(password) {
   const value = String(password || '');
-  const score = [
-    value.length >= 8,
-    /[a-z]/u.test(value) && /[A-Z]/u.test(value),
-    /\d/u.test(value),
-    /[^A-Za-z0-9]/u.test(value)
-  ].filter(Boolean).length;
+  const score = passwordRequirementState(value).filter((requirement) => requirement.complete).length;
   if (!value) return { label: 'Força da senha', tone: 'primary', value: 0 };
   return [
     { label: 'Muito fraca', tone: 'danger', value: 12 },
@@ -175,6 +171,10 @@ function ConnectionPage({ config }) {
       setPasswordError('Crie uma nova senha.');
       return;
     }
+    if (!passwordMeetsRequirements(password)) {
+      setPasswordError('Sua senha ainda não atende a todos os requisitos.');
+      return;
+    }
     if (password !== confirmation) {
       setConfirmationError('As senhas não coincidem.');
       return;
@@ -212,6 +212,7 @@ function ConnectionPage({ config }) {
   const title = recovery ? 'Crie uma senha nova' : config.heading;
   const description = recovery ? 'Escolha uma senha nova para continuar usando sua conta.' : config.description;
   const strength = passwordStrength(password);
+  const passwordRequirements = passwordRequirementState(password);
 
   return (
     <HostedSurface eyebrow={eyebrow} title={title} description={description}>
@@ -238,6 +239,19 @@ function ConnectionPage({ config }) {
             <ProgressBar value={strength.value} tone={strength.tone} size="sm" />
             <span>{strength.label}</span>
           </div>
+          <ul className="onframe-hosted-password-rules">
+            {passwordRequirements.map(({ label, complete }) => (
+              <li key={label} className={complete ? 'onframe-hosted-password-rule--complete' : undefined}>
+                <Ph
+                  n={complete ? 'check-circle' : 'circle'}
+                  weight={complete ? 'fill' : 'regular'}
+                  size={16}
+                  c={complete ? 'var(--ob-green)' : 'var(--ob-fg-mute)'}
+                />
+                {label}
+              </li>
+            ))}
+          </ul>
           <HostedPasswordField
             label="Confirme a senha nova"
             value={confirmation}

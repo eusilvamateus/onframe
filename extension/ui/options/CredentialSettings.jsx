@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
-import { Alert, Button, Input, Ph, Stepper } from '@onblide/ui';
-import { PasswordField } from '../shared/AuthPanel';
+import { Alert, Button, Input, Ph } from '@onblide/ui';
+import { AuthStep, PasswordField, PasswordStrength } from '../shared/AuthPanel';
+import { passwordMeetsRequirements } from '../shared/password-policy';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { EmailVerification } from './TwoFactorSettings';
 
@@ -18,7 +19,11 @@ export function CredentialSettings({ kind, profile, onChanged }) {
     event.preventDefault();
     if (busy || !client.current) return;
     const email = password ? '' : window.OnFrameRemoteAuth.normalizeEmail(value);
-    if (password && (!value || value !== confirmation)) {
+    if (password && !passwordMeetsRequirements(value)) {
+      setNotice({ tone: 'warning', message: 'Sua senha ainda não atende a todos os requisitos.' });
+      return;
+    }
+    if (password && value !== confirmation) {
       setNotice({ tone: 'warning', message: 'As novas senhas não coincidem.' });
       return;
     }
@@ -77,23 +82,6 @@ export function CredentialSettings({ kind, profile, onChanged }) {
       className="onframe-stack onframe-security-form onframe-credential-form"
       aria-label={password ? 'Alterar senha' : 'Alterar e-mail'}
     >
-      {verified && (
-        <Stepper
-          variant="compact"
-          size="sm"
-          current={complete ? 2 : 1}
-          steps={[
-            { label: 'Verificar e-mail atual' },
-            { label: password ? 'Definir nova senha' : 'Definir novo e-mail' },
-            { label: 'Concluir alteração' }
-          ]}
-        />
-      )}
-      {notice && (
-        <Alert appearance="soft" tone={notice.tone}>
-          {notice.message}
-        </Alert>
-      )}
       {!verified ? (
         <EmailVerification
           email={profile.user.email}
@@ -103,20 +91,54 @@ export function CredentialSettings({ kind, profile, onChanged }) {
             setVerified(true);
           }}
         />
+      ) : complete ? (
+        <AuthStep
+          headingLevel={2}
+          icon={password ? 'check-circle' : 'envelope-simple'}
+          iconTone={password ? 'var(--ob-green)' : 'var(--ob-blue)'}
+          title={password ? 'Senha alterada' : 'Confira seus e-mails'}
+          description={
+            password
+              ? 'Sua nova senha já está valendo. Entre novamente para continuar.'
+              : 'Enviamos as confirmações necessárias. O endereço só muda depois que elas forem concluídas.'
+          }
+        >
+          {notice && (
+            <Alert appearance="soft" tone={notice.tone}>
+              {notice.message}
+            </Alert>
+          )}
+        </AuthStep>
       ) : (
-        !complete && (
+        <AuthStep
+          headingLevel={2}
+          icon={password ? 'password' : 'envelope-simple'}
+          iconTone="var(--ob-blue)"
+          title={password ? 'Crie uma senha nova' : 'Altere seu e-mail'}
+          description={
+            password
+              ? `Defina uma nova senha para ${profile.user.email}.`
+              : `Seu e-mail atual é ${profile.user.email}. O novo endereço também precisará ser confirmado.`
+          }
+        >
           <form className="onframe-stack" onSubmit={submit}>
+            {notice && (
+              <Alert appearance="soft" tone={notice.tone}>
+                {notice.message}
+              </Alert>
+            )}
             {password ? (
               <>
                 <PasswordField
-                  label="Nova senha"
+                  label="Senha nova"
                   value={value}
                   onChange={setValue}
                   autoComplete="new-password"
                   disabled={busy}
                 />
+                <PasswordStrength password={value} />
                 <PasswordField
-                  label="Confirme a nova senha"
+                  label="Confirme a senha nova"
                   value={confirmation}
                   onChange={setConfirmation}
                   autoComplete="new-password"
@@ -125,23 +147,21 @@ export function CredentialSettings({ kind, profile, onChanged }) {
                 <p className="onframe-help">A alteração encerra suas sessões. Você precisará entrar novamente.</p>
               </>
             ) : (
-              <>
-                <Input label="E-mail atual" value={profile.user.email} disabled />
-                <Input
-                  label="Novo e-mail"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={value}
-                  disabled={busy}
-                  onChange={(event) => setValue(event.target.value)}
-                />
-                <p className="onframe-help">O novo endereço também precisa ser confirmado.</p>
-              </>
+              <Input
+                size="lg"
+                label="Novo e-mail"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={value}
+                disabled={busy}
+                onChange={(event) => setValue(event.target.value)}
+              />
             )}
-            <div className="onframe-actions">
+            <div className="onframe-auth-actions">
               <Button
                 type="submit"
+                size="lg"
                 disabled={busy || !value}
                 icon={<Ph n={password ? 'password' : 'envelope-simple'} size={18} />}
               >
@@ -149,7 +169,7 @@ export function CredentialSettings({ kind, profile, onChanged }) {
               </Button>
             </div>
           </form>
-        )
+        </AuthStep>
       )}
     </section>
   );

@@ -51,7 +51,7 @@ input {
   gap: var(--ob-space-24);
 }
 .onframe-security-verification {
-  width: min(100%, 448px);
+  width: min(100%, 400px);
   margin-inline: auto;
 }
 .onframe-auth-theme-control {
@@ -163,17 +163,39 @@ input {
   gap: var(--ob-space-12);
 }
 .onframe-password-strength {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-10);
+}
+.onframe-password-strength-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ob-space-12);
 }
-.onframe-password-strength > span {
+.onframe-password-strength-summary > span {
   min-width: 80px;
   color: var(--ob-fg-soft);
   font-size: var(--ob-fs-12);
   font-weight: var(--ob-w-medium);
   text-align: right;
+}
+.onframe-password-rules {
+  display: grid;
+  gap: var(--ob-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onframe-password-rules li {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-8);
+  color: var(--ob-fg-mute);
+  font-size: var(--ob-fs-13);
+}
+.onframe-password-rules .onframe-password-rule--complete {
+  color: var(--ob-fg);
 }
 .onframe-auth-code-status {
   display: flex;
@@ -197,6 +219,21 @@ input {
   gap: var(--ob-space-4);
   color: var(--ob-fg-soft);
   font-size: var(--ob-fs-14);
+}
+.onframe-auth-inline-feedback {
+  min-height: 20px;
+  margin: 0;
+  color: var(--ob-danger);
+  font-size: var(--ob-fs-13);
+  line-height: var(--ob-lh-normal);
+}
+.onframe-auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-8);
+}
+.onframe-auth-actions > button {
+  width: 100%;
 }
 .onframe-auth-code-field {
   border: 0;
@@ -273,16 +310,20 @@ input {
 }
 .onframe-security-form {
   width: 100%;
-  max-width: var(--ob-container-sm);
+  max-width: 400px;
   margin-inline: auto;
 }
+.onframe-security-form--passkeys {
+  max-width: 640px;
+}
 .onframe-credential-form {
-  max-width: 448px;
+  max-width: 400px;
   margin-inline: auto;
 }
 .onframe-authenticator-qr {
   width: 192px;
   height: 192px;
+  align-self: center;
   object-fit: contain;
 }
 .onframe-row {
@@ -751,7 +792,7 @@ input {
 }
 
 .onframe-passkey-management {
-  width: min(100%, 560px);
+  width: min(100%, 640px);
 }
 .onframe-passkey-page {
   display: flex;
@@ -772,6 +813,108 @@ input {
   align-items: center;
   justify-content: center;
   padding: var(--ob-space-40) 0;
+}
+.onframe-passkey-main--management {
+  align-items: flex-start;
+  padding-top: var(--ob-space-48);
+  padding-bottom: var(--ob-space-64);
+}
+.onframe-passkey-overview {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ob-space-32);
+}
+.onframe-passkey-intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-4);
+}
+.onframe-passkey-intro h1 {
+  margin: 0;
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-28);
+  font-weight: var(--ob-w-semibold);
+  line-height: var(--ob-lh-snug);
+}
+.onframe-passkey-intro p,
+.onframe-passkey-intro-copy {
+  margin: 0;
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-14);
+  line-height: var(--ob-lh-relaxed);
+}
+.onframe-passkey-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ob-space-12);
+}
+.onframe-passkey-section-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ob-space-8);
+}
+.onframe-passkey-section-heading h2 {
+  margin: 0;
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-16);
+  font-weight: var(--ob-w-semibold);
+  line-height: var(--ob-lh-snug);
+}
+.onframe-passkey-section-heading > span {
+  color: var(--ob-fg-mute);
+  font-size: var(--ob-fs-12);
+}
+.onframe-passkey-list-frame,
+.onframe-passkey-external {
+  overflow: hidden;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-surface);
+  background: var(--ob-surface);
+}
+.onframe-passkey-list-frame > ul > li {
+  padding: var(--ob-space-12) var(--ob-space-16) !important;
+}
+.onframe-passkey-key-meta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--ob-space-2);
+}
+.onframe-passkey-empty,
+.onframe-passkey-loading,
+.onframe-passkey-external {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ob-space-12);
+  padding: var(--ob-space-16);
+  color: var(--ob-fg-soft);
+}
+.onframe-passkey-empty > svg,
+.onframe-passkey-external > svg {
+  flex: none;
+  margin-top: var(--ob-space-2);
+}
+.onframe-passkey-external > div {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.onframe-passkey-external > button {
+  flex: none;
+}
+.onframe-passkey-empty strong,
+.onframe-passkey-external strong {
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-14);
+  font-weight: var(--ob-w-semibold);
+}
+.onframe-passkey-empty p,
+.onframe-passkey-external p {
+  margin: var(--ob-space-2) 0 0;
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-12);
+  line-height: var(--ob-lh-normal);
 }
 .onframe-passkey-status {
   display: flex;

@@ -17,10 +17,11 @@ import {
 import { normalizeAuthResumeState } from './popup-session-state';
 import { openExternal, sendRemoteMessage } from './runtime';
 import { restoreProviderSession, verifySecondFactor } from './provider-auth';
+import { passwordMeetsRequirements, passwordRequirementState } from './password-policy';
 
 const AUTH_MODES = {
   signin: { title: 'Entrar na Onblide', description: 'Use o e-mail com que você criou a conta.' },
-  signup: { title: 'Criar sua conta', description: 'Informe seus dados para começar.' },
+  signup: { title: 'Criar sua conta', description: 'Comece de graça. Não pedimos cartão de crédito.' },
   magic: { title: 'Entrar com código', description: 'Enviaremos um código de acesso para o seu e-mail.' },
   recovery: {
     title: 'Redefinir senha',
@@ -28,7 +29,7 @@ const AUTH_MODES = {
   }
 };
 
-function maskEmail(value) {
+export function maskEmail(value) {
   const [name, domain] = String(value || '').split('@');
   if (!name || !domain) return value;
   return `${name[0]}${'•'.repeat(Math.max(3, name.length - 1))}@${domain}`;
@@ -40,12 +41,7 @@ function formatCooldown(seconds) {
 
 function passwordStrength(password) {
   const value = String(password || '');
-  const score = [
-    value.length >= 8,
-    /[a-z]/u.test(value) && /[A-Z]/u.test(value),
-    /\d/u.test(value),
-    /[^A-Za-z0-9]/u.test(value)
-  ].filter(Boolean).length;
+  const score = passwordRequirementState(value).filter((requirement) => requirement.complete).length;
   if (!value) return { label: 'Força da senha', tone: 'primary', value: 0 };
   return [
     { label: 'Muito fraca', tone: 'danger', value: 12 },
@@ -115,15 +111,34 @@ export function PasswordField({
 
 export function PasswordStrength({ password }) {
   const strength = passwordStrength(password);
+  const requirements = passwordRequirementState(password);
   return (
-    <div className="onframe-password-strength" aria-live="polite">
-      <ProgressBar value={strength.value} tone={strength.tone} size="sm" />
-      <span>{strength.label}</span>
+    <div className="onframe-password-strength">
+      <div className="onframe-password-strength-summary" aria-live="polite">
+        <ProgressBar value={strength.value} tone={strength.tone} size="sm" />
+        <span>{strength.label}</span>
+      </div>
+      <ul className="onframe-password-rules">
+        {requirements.map(({ label, complete }) => {
+          return (
+            <li key={label} className={complete ? 'onframe-password-rule--complete' : undefined}>
+              <Ph
+                n={complete ? 'check-circle' : 'circle'}
+                weight={complete ? 'fill' : 'regular'}
+                size={16}
+                c={complete ? 'var(--ob-green)' : 'var(--ob-fg-mute)'}
+              />
+              {label}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
 
-export function AuthStep({ onBack, icon, iconTone, title, description, children, footer }) {
+export function AuthStep({ onBack, icon, iconTone, title, description, children, footer, headingLevel = 1 }) {
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
   return (
     <div className="onframe-auth-step">
       {onBack && (
@@ -135,7 +150,7 @@ export function AuthStep({ onBack, icon, iconTone, title, description, children,
       )}
       <div className="onframe-auth-intro">
         {icon && <Ph className="onframe-auth-step-icon" n={icon} size={40} weight="light" c={iconTone} />}
-        <h1 className="onframe-auth-title">{title}</h1>
+        <Heading className="onframe-auth-title">{title}</Heading>
         {description && <p className="onframe-auth-subtitle">{description}</p>}
       </div>
       {children}
@@ -166,31 +181,6 @@ function AuthIdentity({ email, onEdit }) {
   );
 }
 
-export function VerificationEmailField({ email, onEdit }) {
-  return (
-    <Input
-      size="lg"
-      label="E-mail"
-      type="email"
-      value={email}
-      readOnly
-      endAddon={
-        onEdit ? (
-          <Link
-            href="#alterar-email"
-            onClick={(event) => {
-              event.preventDefault();
-              onEdit();
-            }}
-          >
-            Alterar e-mail
-          </Link>
-        ) : undefined
-      }
-    />
-  );
-}
-
 export function VerificationCodeField({ label, length, value, onChange, error, status, disabled }) {
   return (
     <fieldset className="onframe-auth-code-field" disabled={disabled} aria-label={label}>
@@ -202,13 +192,30 @@ export function VerificationCodeField({ label, length, value, onChange, error, s
   );
 }
 
-export function VerificationFrame({ title, children, headingLevel = 2, framed = true, brand = false }) {
-  const Heading = headingLevel === 1 ? 'h1' : 'h2';
+export function VerificationFrame({
+  title,
+  description,
+  icon,
+  iconTone,
+  children,
+  footer,
+  onBack,
+  headingLevel = 2,
+  framed = false,
+  brand = false
+}) {
   const content = (
-    <div className="onframe-auth-content">
-      <Heading className="onframe-auth-title">{title}</Heading>
+    <AuthStep
+      onBack={onBack}
+      icon={icon}
+      iconTone={iconTone}
+      title={title}
+      description={description}
+      footer={footer}
+      headingLevel={headingLevel}
+    >
       {children}
-    </div>
+    </AuthStep>
   );
   return (
     <div className="onframe-auth-panel onframe-security-verification">
@@ -473,6 +480,10 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
       setFeedback({ tone: 'warning', message: 'Informe sua senha.' });
       return;
     }
+    if (mode === 'signup' && !passwordMeetsRequirements(fields.password)) {
+      setFeedback({ tone: 'warning', message: 'Sua senha ainda não atende a todos os requisitos.' });
+      return;
+    }
     if (mode === 'signup' && fields.password !== fields.confirmation) {
       setFeedback({ tone: 'warning', message: 'As senhas não coincidem.' });
       return;
@@ -584,7 +595,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
           ? 'Digite sua senha'
           : AUTH_MODES[mode].title;
   const description = secondFactor
-    ? 'Abra o seu aplicativo autenticador e digite o código de 6 dígitos do OnFrame.'
+    ? 'Abra o seu aplicativo autenticador e digite o código de 6 dígitos da Onblide.'
     : phase === 'code'
       ? `Enviamos um código de ${codeLength} dígitos para ${maskEmail(fields.email)}.`
       : phase === 'sent' && mode === 'signup'
@@ -595,9 +606,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
             ? null
             : AUTH_MODES[mode].description;
   const icon = secondFactor ? 'device-mobile' : phase === 'code' || phase === 'sent' ? 'envelope-simple' : null;
-  const buttonLabel = verifying
-    ? 'Verificar e entrar'
-    : mode === 'signup'
+  const buttonLabel =
+    mode === 'signup'
       ? 'Criar conta'
       : mode === 'magic'
         ? 'Enviar código'
@@ -670,14 +680,6 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
                   }}
                 />
               )}
-              {verifying && (
-                <VerificationEmailField
-                  email={fields.email}
-                  onEdit={() => {
-                    if (!pending.current) editEmail();
-                  }}
-                />
-              )}
               {!verifying && mode === 'signup' && phase === 'email' && (
                 <Input
                   size="lg"
@@ -691,7 +693,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
               {!verifying && phase === 'email' && (
                 <Input
                   size="lg"
-                  label="E-mail"
+                  label={mode === 'signup' ? 'E-mail de trabalho' : 'E-mail'}
+                  placeholder={mode === 'signup' ? 'nome@empresa.com' : undefined}
                   type="email"
                   inputMode="email"
                   autoComplete="username webauthn"
@@ -780,15 +783,10 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
                   Enviar outro código em {cooldown} s
                 </p>
               )}
-              {phase !== 'sent' && (
+              {!verifying && phase !== 'sent' && (
                 <Button
                   type="submit"
-                  disabled={
-                    busy ||
-                    !config ||
-                    (verifying && code.length !== codeLength) ||
-                    (mode === 'magic' && phase === 'email' && cooldown > 0)
-                  }
+                  disabled={busy || !config || (mode === 'magic' && phase === 'email' && cooldown > 0)}
                   style={{ width: '100%' }}
                   size="lg"
                 >

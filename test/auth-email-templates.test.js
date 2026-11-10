@@ -49,6 +49,13 @@ test('protege os fluxos de Auth com Turnstile sem versionar seu segredo', () => 
   assert.doesNotMatch(config, /secret = "0x[^"]+"/i);
 });
 
+test('declara a mesma política de senha apresentada pela interface', () => {
+  assert.match(
+    config,
+    /\[auth\]\s+minimum_password_length = 8\s+password_requirements = "lower_upper_letters_digits_symbols"/
+  );
+});
+
 test('templates do Supabase são contingências textuais mínimas', () => {
   for (const [name, [file, variable]] of Object.entries(templates)) {
     const content = fs.readFileSync(path.join(root, 'supabase', 'templates', file), 'utf8');

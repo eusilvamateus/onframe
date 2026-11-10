@@ -128,6 +128,30 @@ body {
   text-align: right;
 }
 
+.onframe-hosted-password-rules {
+  display: grid;
+  gap: var(--ob-space-6);
+  margin: 0;
+  padding: 0;
+  color: var(--ob-fg-mute);
+  font-size: var(--ob-fs-12);
+  list-style: none;
+}
+
+.onframe-hosted-password-rules li {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-8);
+}
+
+.onframe-hosted-password-rules svg {
+  flex: 0 0 auto;
+}
+
+.onframe-hosted-password-rules .onframe-hosted-password-rule--complete {
+  color: var(--ob-fg);
+}
+
 .onframe-hosted-footer {
   padding: var(--ob-space-16) var(--ob-space-24) var(--ob-space-24);
   color: var(--ob-fg-mute);

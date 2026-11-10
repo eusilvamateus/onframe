@@ -1,8 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-export function providerClient(config) {
+export function providerClient(config, authOptions = {}) {
   return createClient(config.supabaseUrl, config.supabasePublishableKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, experimental: { passkey: true } }
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      ...authOptions,
+      experimental: { passkey: true, ...authOptions.experimental }
+    }
   });
 }
 

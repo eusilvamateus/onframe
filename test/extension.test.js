@@ -285,6 +285,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
+  const hosted = fs.readFileSync(path.join(extensionRoot, 'ui', 'hosted', 'app.jsx'), 'utf8');
   const commercePromotionsBundle = fs.readFileSync(
     path.join(extensionRoot, 'core', 'commerce-promotions-view.js'),
     'utf8'
@@ -326,7 +327,12 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(popup, /<ThemeCycleButton \/>/);
   assert.doesNotMatch(control, /showLabel|onframe-theme-cycle-label/);
   assert.doesNotMatch(popup, /ThemeMenuButton/);
-  assert.match(passkeys, /<ThemeMenuButton \/>/);
+  assert.match(options, /<ThemeCycleButton \/>/);
+  assert.doesNotMatch(options, /ThemeMenuButton/);
+  assert.match(passkeys, /<ThemeCycleButton \/>/);
+  assert.doesNotMatch(passkeys, /ThemeMenuButton/);
+  assert.match(hosted, /<ThemeCycleButton \/>/);
+  assert.doesNotMatch(hosted, /ThemeMenuButton/);
   assert.match(extensionBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /hosted: path\.join\(root, 'extension', 'ui', 'hosted', 'app\.jsx'\)/);
@@ -802,17 +808,31 @@ test('fontes do content script usam URLs da extensão', () => {
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
-  assert.match(passkeys, /<VerificationFrame title="Confirme no aplicativo"/);
+  assert.match(passkeys, /<VerificationFrame[\s\S]*?title="Confirme no aplicativo"/);
   assert.doesNotMatch(passkeys, /brandSrc=/);
-  assert.match(passkeys, /<header className="onframe-passkey-header">[\s\S]*<Logo size=\{28\} \/>/);
+  assert.match(passkeys, /<header className="onframe-passkey-header">[\s\S]*icon=\{<Ph n="arrow-left"[\s\S]*Segurança/);
+  assert.doesNotMatch(passkeys, /<Logo/);
   assert.doesNotMatch(passkeys, /onframe-stacked-primary/);
   assert.match(passkeys, /<AuthStep[\s\S]*icon=\{complete \? 'check-circle'/);
   assert.match(passkeys, /<Card padding="var\(--ob-space-16\)">[\s\S]*Aguardando a confirmação no navegador/);
   assert.match(passkeys, /attemptStarted\.current = true;\s*void authenticateWithPasskey\(\)/);
   assert.match(passkeys, /A verificação foi cancelada ou demorou demais\. Nada foi alterado na sua conta/);
-  assert.match(passkeys, /<VerificationEmailField email=\{email\}/);
+  assert.doesNotMatch(passkeys, /VerificationEmailField|label="E-mail"/);
   assert.match(passkeys, /<VerificationCodeField[\s\S]*label="Código do aplicativo autenticador"[\s\S]*length=\{6\}/);
   assert.doesNotMatch(passkeys, /<Input label="Código do aplicativo autenticador"/);
+  assert.match(passkeys, /<Menu[\s\S]*label: 'Renomear'[\s\S]*label: 'Remover'/);
+  assert.match(passkeys, /<Modal[\s\S]*title=\{created \? 'Chave criada' : 'Renomear chave'\}/);
+  assert.match(passkeys, /<AlertDialog[\s\S]*confirmLabel="Remover chave"[\s\S]*tone="danger"/);
+  assert.match(passkeys, /title="Criar chave neste dispositivo"/);
+  assert.match(passkeys, /persistSession: true,[\s\S]*storage: window\.sessionStorage/);
+  assert.match(passkeys, /provider\.auth\.getSession\(\)/);
+  assert.match(
+    passkeys,
+    /title=\{failed \? 'Não foi possível confirmar sua chave' : 'Confirme com sua chave de acesso'\}/
+  );
+  assert.match(passkeys, /title="A chave funcionou"/);
+  assert.match(passkeys, /Continuar para gerenciamento/);
+  assert.match(passkeys, /finishManagementAuthentication\(true\)/);
 });
 
 test('erros de autenticação sem mensagem útil preservam o status HTTP e traduzem limites de envio', () => {
@@ -1168,7 +1188,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(optionsCss, /\.onframe-profile-fields\s*\{[^}]*flex-direction: column;[^}]*gap: var\(--ob-space-24\);/);
   assert.match(
     fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8'),
-    /\.onframe-credential-form\s*\{[^}]*max-width: 448px;[^}]*margin-inline: auto;/
+    /\.onframe-credential-form\s*\{[^}]*max-width: 400px;[^}]*margin-inline: auto;/
   );
   assert.doesNotMatch(optionsCss, /\.onframe-profile-access\s*\{/);
   assert.match(popup, /className="onframe-popup-userbar"/);
