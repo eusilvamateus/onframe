@@ -617,7 +617,11 @@ test('chaves cadastradas so aparecem apos confirmar por email ou chave de acesso
     });
     assert.match(JSON.stringify(valid.renderer.toJSON()), /Casa|Ainda não utilizada/);
     assert.match(JSON.stringify(valid.renderer.toJSON()), /1 chave entra na sua conta sem senha/);
-    assert.match(JSON.stringify(valid.renderer.toJSON()), /Gerencie em uma aba segura/);
+    assert.match(JSON.stringify(valid.renderer.toJSON()), /Crie, renomeie ou remova chaves/);
+    assert.doesNotMatch(
+      JSON.stringify(valid.renderer.toJSON()),
+      /sem precisar repetir a verificação enquanto ela estiver válida/
+    );
     assert.equal(valid.renderer.root.findAllByProps({ ariaLabel: 'Chaves cadastradas' }).length, 1);
     const reopen = valid.renderer.root
       .findAllByType(Button)
@@ -664,7 +668,7 @@ test('resumo mostra estados e libera navegacao apenas depois de carregar dados r
     assert.match(text, /2 sessões ativas/);
     assert.match(text, /Ativada/);
     assert.doesNotMatch(text, /Indisponível|Não ativada/);
-    const item = h.renderer.root.findByProps({ title: 'Navegadores autorizados' });
+    const item = h.renderer.root.findByProps({ title: 'Gerenciar sessões' });
     await act(async () => item.props.onClick({ preventDefault() {} }));
     assert.equal(opened, true);
   } finally {

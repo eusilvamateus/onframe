@@ -50,21 +50,28 @@ export async function accountSecurity(env: IdentityRuntimeEnv, subject: string, 
     .bind(subject, Date.now())
     .all<{ auth_session_id: string; last_seen_at: number | null }>();
   const lastSeen = new Map(activity.results.map((session) => [session.auth_session_id, session.last_seen_at || 0]));
+  const sessions = value.sessions.map((session) => {
+    if (!validIdentityId(session.id)) throw new IdentitySecurityError('identity_security_unavailable', 503);
+    const providerTime = Date.parse(String(session.lastSeenAt || session.createdAt));
+    const timestamp = Math.max(Number.isFinite(providerTime) ? providerTime : 0, lastSeen.get(session.id) || 0);
+    return {
+      id: session.id,
+      current: session.id === currentSessionId,
+      createdAt: session.createdAt,
+      lastSeenAt: timestamp ? new Date(timestamp).toISOString() : null,
+      ...deviceDescription(session.userAgent)
+    };
+  });
+  sessions.sort((a, b) => {
+    const aActivity = Date.parse(a.lastSeenAt || '') || 0;
+    const bActivity = Date.parse(b.lastSeenAt || '') || 0;
+    return Number(b.current) - Number(a.current) || bActivity - aActivity;
+  });
+
   return {
     factors: value.factors,
     passkeys: value.passkeys,
-    sessions: value.sessions.map((session) => {
-      if (!validIdentityId(session.id)) throw new IdentitySecurityError('identity_security_unavailable', 503);
-      const providerTime = Date.parse(String(session.lastSeenAt || session.createdAt));
-      const timestamp = Math.max(Number.isFinite(providerTime) ? providerTime : 0, lastSeen.get(session.id) || 0);
-      return {
-        id: session.id,
-        current: session.id === currentSessionId,
-        createdAt: session.createdAt,
-        lastSeenAt: timestamp ? new Date(timestamp).toISOString() : null,
-        ...deviceDescription(session.userAgent)
-      };
-    })
+    sessions
   };
 }
 

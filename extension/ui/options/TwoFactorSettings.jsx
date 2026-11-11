@@ -674,7 +674,7 @@ export function PasskeySettings({ profile, securityOverview }) {
               <Ph n="arrow-square-out" size={20} />
               <div>
                 <strong>Gerencie em uma aba segura</strong>
-                <p>Crie, renomeie ou remova chaves sem precisar repetir a verificação enquanto ela estiver válida.</p>
+                <p>Crie, renomeie ou remova chaves.</p>
               </div>
               <Button
                 type="button"

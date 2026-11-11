@@ -574,12 +574,12 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
   const sessions = securityOverview.sessions;
   return (
     <div className="onframe-stack">
-      <section className="onframe-stack" aria-label="Navegadores autorizados">
+      <section className="onframe-stack" aria-label="Sessões ativas">
         <SectionHeader
-          title="Dispositivos conectados"
-          copy="Confira onde sua conta está conectada e encerre acessos que não reconhece."
+          title="Sessões ativas"
+          copy="Confira os detalhes de cada sessão e encerre as que não reconhece."
         />
-        <List ariaLabel="Dispositivos conectados" dividers>
+        <List ariaLabel="Sessões ativas" dividers>
           {sessions.map((session) => (
             <ListItem
               key={session.id}
@@ -602,9 +602,9 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
                 <>
                   {session.operatingSystem}
                   <br />
-                  Última atividade: {formatDate(session.lastSeenAt || session.createdAt)}
+                  Atividade recente: {formatDate(session.lastSeenAt || session.createdAt)}
                   <br />
-                  Conectado desde: {formatDate(session.createdAt)}
+                  Iniciada: {formatDate(session.createdAt)}
                 </>
               }
               meta={session.current ? <Badge tone="primary">Sessão atual</Badge> : undefined}
@@ -616,7 +616,7 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
                   icon={<Ph n="sign-out" size={16} />}
                   onClick={() => setConfirmation(session)}
                 >
-                  Sair
+                  Encerrar
                 </Button>
               }
             />
@@ -644,7 +644,7 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
           <Alert appearance="soft" tone="warning">
             {confirmation === 'all'
               ? 'Você precisará entrar novamente em todos os dispositivos.'
-              : `Encerrar a sessão de ${confirmation.browser}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}
+              : `Encerrar a sessão de ${confirmation.browser} em ${confirmation.operatingSystem}, iniciada em ${formatDate(confirmation.createdAt)}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}
           </Alert>
           <div className="onframe-actions">
             <Button kind="secondary" disabled={loading} onClick={() => setConfirmation(null)}>

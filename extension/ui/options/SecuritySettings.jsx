@@ -69,11 +69,11 @@ export function SecuritySettings({
         </List>
       </section>
       <section className="onframe-stack" aria-label="Sessões">
-        <SectionHeader title="Sessões ativas" copy="Revogue navegadores que não precisam mais acessar sua conta." />
+        <SectionHeader title="Sessões ativas" copy="Revogue sessões que você não reconhece." />
         <List as="nav" ariaLabel="Sessões ativas">
           <ListItem
             leading={<Ph n="browser" size={18} />}
-            title="Navegadores autorizados"
+            title="Gerenciar sessões"
             description={
               sessions
                 ? sessions.length === 1

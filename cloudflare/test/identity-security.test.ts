@@ -443,6 +443,12 @@ test('rotas de seguranca preservam titularidade, identificam atividade e encerra
         factors: [],
         passkeys: [],
         sessions: [
+          {
+            id: otherSessionId,
+            createdAt: '2026-06-01T00:00:00Z',
+            lastSeenAt: '2026-06-01T00:00:00Z',
+            userAgent: 'Mozilla/5.0 Chrome/130.0 Windows NT 10.0'
+          },
           { id: sessionId, createdAt: '2026-01-01T00:00:00Z', lastSeenAt: '2026-01-01T00:00:00Z', userAgent: null }
         ]
       });
@@ -472,6 +478,7 @@ test('rotas de seguranca preservam titularidade, identificam atividade e encerra
       sessions: Array<{ current: boolean; lastSeenAt: string; browser: string }>;
     };
     assert.equal(overview.status, 200);
+    assert.equal(data.sessions.length, 2);
     assert.equal(data.sessions[0].current, true);
     assert.ok(Date.parse(data.sessions[0].lastSeenAt) > Date.parse('2026-01-01T00:00:00Z'));
     assert.equal(data.sessions[0].browser, 'Navegador não identificado');
