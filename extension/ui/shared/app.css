@@ -866,7 +866,12 @@ input {
   color: var(--ob-fg-mute);
   font-size: var(--ob-fs-12);
 }
-.onframe-passkey-list-frame,
+.onframe-passkey-list-frame {
+  overflow: visible;
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-surface);
+  background: var(--ob-surface);
+}
 .onframe-passkey-external {
   overflow: hidden;
   border: 1px solid var(--ob-border);

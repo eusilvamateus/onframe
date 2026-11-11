@@ -808,6 +808,7 @@ test('fontes do content script usam URLs da extensão', () => {
 
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
+  const sharedCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
   assert.match(passkeys, /<VerificationFrame[\s\S]*?title="Confirme no aplicativo"/);
   assert.doesNotMatch(passkeys, /brandSrc=/);
   assert.match(passkeys, /<header className="onframe-passkey-header">[\s\S]*icon=\{<Ph n="arrow-left"[\s\S]*Segurança/);
@@ -839,6 +840,7 @@ test('verificacao hospedada de chaves reutiliza a interface de codigo do login',
   );
   assert.match(passkeys, /Esta chave de acesso pertence a outra conta/);
   assert.match(passkeys, /verifying && !securityVerification/);
+  assert.match(sharedCss, /\.onframe-passkey-list-frame\s*\{\s*overflow:\s*visible;/);
 });
 
 test('erros de autenticação sem mensagem útil preservam o status HTTP e traduzem limites de envio', () => {
