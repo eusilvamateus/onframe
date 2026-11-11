@@ -37,7 +37,7 @@ export function SecuritySettings({
           <ListItem
             leading={<Ph n="password" size={18} />}
             title="Senha"
-            description="Verifique seu e-mail antes de definir uma nova senha."
+            description="Confirme sua identidade antes de definir uma nova senha."
             {...navigation('#settings-account-password', () => onOpenSecurity('password'))}
           />
           <ListItem

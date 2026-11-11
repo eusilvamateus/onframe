@@ -833,6 +833,12 @@ test('verificacao hospedada de chaves reutiliza a interface de codigo do login',
   assert.match(passkeys, /title="A chave funcionou"/);
   assert.match(passkeys, /Continuar para gerenciamento/);
   assert.match(passkeys, /finishManagementAuthentication\(true\)/);
+  assert.match(
+    passkeys,
+    /securityVerification[\s\S]*\/v1\/security\/verification-flows\/[\s\S]*status === 'identity_mismatch'/
+  );
+  assert.match(passkeys, /Esta chave de acesso pertence a outra conta/);
+  assert.match(passkeys, /verifying && !securityVerification/);
 });
 
 test('erros de autenticação sem mensagem útil preservam o status HTTP e traduzem limites de envio', () => {
@@ -1277,6 +1283,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const requests = [];
   let identityUnavailable = false;
   let securityMode = 'legacy';
+  const authFlowStatus = 'pending';
   let listener = null;
   const chrome = {
     runtime: {
@@ -1328,6 +1335,22 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
         return Response.json({ error: 'identity_security_unavailable' }, { status: 503 });
       if (url.endsWith('/v1/extension-auth-flows') && options.method === 'POST')
         return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
+      if (url.endsWith('/v1/security/verification-flows') && options.method === 'POST')
+        return Response.json({ flow: 'b'.repeat(43), expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
+      if (url.includes('/v1/security/verification-flows/')) return Response.json({ status: 'verified' });
+      if (url.includes('/v1/extension-auth-flows/'))
+        return Response.json(
+          authFlowStatus === 'authenticated'
+            ? {
+                status: 'authenticated',
+                token,
+                sessionId: 'verification-session',
+                expiresAt: '2099-01-01T00:00:00.000Z'
+              }
+            : { status: 'pending' }
+        );
+      if (url.endsWith('/v1/extension-session'))
+        return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'OnFrame' } });
       if (url.endsWith('/v1/extension-sessions/from-auth'))
         return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts'))
@@ -1478,7 +1501,26 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   assert.equal(noSession.code, 'extension_session_unauthorized');
 
   await send({ type: 'onframe:remote', action: 'authenticate', accessToken: 'a'.repeat(20) });
-  await send({ type: 'onframe:remote', action: 'auth-flow-start' });
+  const securityFlow = await send({ type: 'onframe:remote', action: 'security-flow-start' });
+  assert.equal(securityFlow.ok, true);
+  assert.match(securityFlow.body.passkeyUrl, /purpose=security/);
+  const beforePasskeyVerification = storage.onframeRemoteSession.token;
+  const requestCountBeforePasskeyVerification = requests.length;
+  const passkeyVerified = await send({
+    type: 'onframe:remote',
+    action: 'security-flow-consume',
+    flow: 'b'.repeat(43)
+  });
+  assert.equal(passkeyVerified.ok, true);
+  assert.equal(passkeyVerified.body.status, 'verified');
+  assert.equal(storage.onframeRemoteSession.token, beforePasskeyVerification);
+  assert.equal(
+    requests
+      .slice(requestCountBeforePasskeyVerification)
+      .some((request) => request.url.endsWith('/v1/extension-session') && request.method === 'DELETE'),
+    false
+  );
+
   identityUnavailable = true;
   const changedPassword = await send({
     type: 'onframe:remote',

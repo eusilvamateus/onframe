@@ -25,15 +25,18 @@ import { formatDate } from '../shared/runtime';
 
 const params = new URL(location.href).searchParams;
 const fragment = new URLSearchParams(location.hash.slice(1));
+const expectedEmail = params.get('expected_email') || fragment.get('expected_email') || '';
 const transientSession = {
   access_token: fragment.get('access_token') || '',
   refresh_token: fragment.get('refresh_token') || ''
 };
 fragment.delete('access_token');
 fragment.delete('refresh_token');
+fragment.delete('expected_email');
 history.replaceState(null, document.title, location.pathname + location.search);
 const managing = params.get('action') === 'manage';
 const verifying = params.get('action') === 'verify';
+const securityVerification = verifying && params.get('purpose') === 'security';
 const flow = params.get('flow') || '';
 
 const PASSKEY_HELP = [
@@ -111,7 +114,14 @@ function PasskeyPage() {
   const attemptStarted = useRef(false);
 
   useEffect(() => {
-    if (!ready || verifying || (managing && !managementAuthRequired) || factor || complete || !challengeRef.current)
+    if (
+      !ready ||
+      (verifying && !securityVerification) ||
+      (managing && !managementAuthRequired) ||
+      factor ||
+      complete ||
+      !challengeRef.current
+    )
       return undefined;
     challenge.current = window.OnFrameRemoteAuth.createChallenge(
       challengeRef.current,
@@ -122,7 +132,7 @@ function PasskeyPage() {
       challenge.current?.destroy();
       challenge.current = null;
     };
-  }, [ready, managing, managementAuthRequired, verifying, Boolean(factor), complete]);
+  }, [ready, managing, managementAuthRequired, verifying, securityVerification, Boolean(factor), complete]);
 
   useEffect(() => {
     let active = true;
@@ -161,7 +171,7 @@ function PasskeyPage() {
               if (active) setManagementAuthRequired(true);
             }
           } else if (active) setManagementAuthRequired(true);
-        } else if (verifying) {
+        } else if (verifying && !securityVerification) {
           if (!transientSession.access_token || !transientSession.refresh_token) throw new Error('session');
           const { error } = await provider.auth.setSession(transientSession);
           transientSession.access_token = '';
@@ -170,10 +180,10 @@ function PasskeyPage() {
           if (!/^[A-Za-z0-9_-]{43}$/u.test(flow)) throw new Error('flow');
           const { data: identity, error: identityError } = await provider.auth.getUser();
           if (identityError || !identity.user?.email) throw identityError || new Error('identity');
-          const { data, error: factorError } = await provider.auth.mfa.listFactors();
-          if (factorError || !data.totp.length) throw factorError || new Error('factor');
-          if (active) {
-            setFactor({ id: data.totp[0].id, factors: data.totp });
+          if (!securityVerification) {
+            const { data, error: factorError } = await provider.auth.mfa.listFactors();
+            if (factorError || !data.totp.length) throw factorError || new Error('factor');
+            if (active) setFactor({ id: data.totp[0].id, factors: data.totp });
           }
         } else if (!/^[A-Za-z0-9_-]{43}$/u.test(flow)) throw new Error('flow');
         if (active) {
@@ -206,11 +216,13 @@ function PasskeyPage() {
       setNotice({
         tone: 'danger',
         message:
-          error?.code === 'captcha_unavailable'
-            ? 'A confirmação de segurança está indisponível. Tente novamente.'
-            : error?.name === 'NotAllowedError'
-              ? 'A solicitação foi cancelada ou expirou. Tente novamente.'
-              : 'Não foi possível concluir a operação. Verifique a disponibilidade do recurso e tente novamente.'
+          error?.code === 'auth_identity_mismatch'
+            ? 'Esta chave de acesso pertence a outra conta. Volte à extensão e confirme com a conta conectada.'
+            : error?.code === 'captcha_unavailable'
+              ? 'A confirmação de segurança está indisponível. Tente novamente.'
+              : error?.name === 'NotAllowedError'
+                ? 'A solicitação foi cancelada ou expirou. Tente novamente.'
+                : 'Não foi possível concluir a operação. Verifique a disponibilidade do recurso e tente novamente.'
       });
     } finally {
       setBusy(false);
@@ -261,12 +273,26 @@ function PasskeyPage() {
   }
 
   async function finishLogin(session) {
-    const response = await fetch(`/v1/extension-auth-flows/${encodeURIComponent(flow)}`, {
+    const sessionEmail = String(session.user?.email || '')
+      .trim()
+      .toLowerCase();
+    if (!securityVerification && expectedEmail && sessionEmail !== expectedEmail.trim().toLowerCase())
+      throw Object.assign(new Error('A chave de acesso pertence a outra conta.'), { code: 'auth_identity_mismatch' });
+    const path = securityVerification
+      ? `/v1/security/verification-flows/${encodeURIComponent(flow)}`
+      : `/v1/extension-auth-flows/${encodeURIComponent(flow)}`;
+    const response = await fetch(path, {
       method: 'POST',
       headers: { authorization: `Bearer ${session.access_token}` },
       cache: 'no-store'
     });
     if (!response.ok) throw new Error('flow');
+    if (securityVerification) {
+      const result = await response.json();
+      if (result.status === 'identity_mismatch')
+        throw Object.assign(new Error('A chave de acesso pertence a outra conta.'), { code: 'auth_identity_mismatch' });
+      if (result.status !== 'verified') throw new Error('flow');
+    }
     setComplete(true);
     setFactor(null);
     setCode('');
@@ -288,6 +314,10 @@ function PasskeyPage() {
       }
       const { data, error } = result;
       if (error || !data.session) throw error || new Error('session');
+      if (securityVerification) {
+        await finishLogin(data.session);
+        return;
+      }
       const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
       if (factorError) throw factorError;
       if (factors.totp.length) {
@@ -303,7 +333,7 @@ function PasskeyPage() {
   useEffect(() => {
     if (
       !ready ||
-      verifying ||
+      (verifying && !securityVerification) ||
       (managing && !managementAuthRequired) ||
       factor ||
       complete ||
@@ -386,7 +416,7 @@ function PasskeyPage() {
       ? 'Acesso confirmado'
       : failed
         ? 'Não foi possível usar a chave'
-        : verifying
+        : verifying && !securityVerification
           ? 'Verificação em duas etapas'
           : 'Use sua chave de acesso';
     const description = complete
@@ -418,7 +448,9 @@ function PasskeyPage() {
               ) : undefined
             }
           >
-            {ready && !verifying && !complete && !factor && <div className="onframe-captcha" ref={challengeRef} />}
+            {ready && (!verifying || securityVerification) && !complete && !factor && (
+              <div className="onframe-captcha" ref={challengeRef} />
+            )}
             {complete ? (
               <Button type="button" size="lg" style={{ width: '100%' }} onClick={returnToPassword}>
                 Voltar à extensão

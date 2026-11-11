@@ -843,6 +843,7 @@ function Settings({
             key={settingsPage}
             kind={settingsPage}
             profile={profile}
+            securityOverview={securityOverview}
             onChanged={onCredentialChanged}
           />
         )}

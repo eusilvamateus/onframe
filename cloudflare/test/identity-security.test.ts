@@ -686,6 +686,102 @@ test('fluxo confirmado nao recria acesso apos mudanca de seguranca e so pode ser
   }
 });
 
+test('passkey libera a tela de seguranca sem criar sessao e aceita AAL1 apenas neste fluxo', async () => {
+  const { simulator, db } = await d1();
+  const originalFetch = globalThis.fetch;
+  const env = {
+    ONFRAME_DB: db,
+    SUPABASE_URL: 'https://project.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'server-only-test-key',
+    SUPABASE_PUBLISHABLE_KEY: 'public-test-key'
+  };
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === rpc) {
+      const args = JSON.parse(String(init?.body)) as { p_user_id: string };
+      return Response.json({
+        subject: args.p_user_id,
+        email: args.p_user_id === otherSubject ? 'outra@example.com' : 'pessoa@example.com',
+        version: 1,
+        reason: null,
+        sessionActive: true
+      });
+    }
+    const authorization = new Headers(init?.headers).get('authorization') || '';
+    const token = authorization.replace(/^Bearer /u, '');
+    const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()) as { sub?: string };
+    const userId = claims.sub === otherSubject ? otherSubject : subject;
+    return Response.json({
+      id: userId,
+      email: userId === otherSubject ? 'outra@example.com' : 'pessoa@example.com',
+      factors: [{ id: otherSessionId, status: 'verified', factor_type: 'totp' }]
+    });
+  };
+  const request = (path: string, token: string, method = 'GET') =>
+    new Request(`https://onframe.onblide.com${path}`, {
+      method,
+      headers: { authorization: `Bearer ${token}` }
+    });
+  try {
+    const login = await worker.fetch(
+      request('/v1/extension-sessions/from-auth', bearer(subject, sessionId, 'aal2'), 'POST'),
+      env as Env
+    );
+    assert.equal(login.status, 201);
+    const extensionSession = (await login.json()) as { token: string };
+
+    const start = await worker.fetch(
+      request('/v1/security/verification-flows', extensionSession.token, 'POST'),
+      env as Env
+    );
+    assert.equal(start.status, 201);
+    const flow = (await start.json()) as { flow: string };
+
+    const complete = await worker.fetch(
+      request(`/v1/security/verification-flows/${flow.flow}`, bearer(subject, sessionId, 'aal1'), 'POST'),
+      env as Env
+    );
+    assert.equal(complete.status, 200);
+    assert.deepEqual(await complete.json(), { status: 'verified' });
+
+    const consume = await worker.fetch(
+      request(`/v1/security/verification-flows/${flow.flow}`, extensionSession.token),
+      env as Env
+    );
+    assert.deepEqual(await consume.json(), { status: 'verified' });
+    assert.equal(
+      (await db.prepare('select count(*) as total from extension_sessions').first<{ total: number }>())?.total,
+      1
+    );
+
+    const otherStart = await worker.fetch(
+      request('/v1/security/verification-flows', extensionSession.token, 'POST'),
+      env as Env
+    );
+    const otherFlow = (await otherStart.json()) as { flow: string };
+    const mismatch = await worker.fetch(
+      request(
+        `/v1/security/verification-flows/${otherFlow.flow}`,
+        bearer(otherSubject, otherSessionId, 'aal1'),
+        'POST'
+      ),
+      env as Env
+    );
+    assert.deepEqual(await mismatch.json(), { status: 'identity_mismatch' });
+    const mismatchConsume = await worker.fetch(
+      request(`/v1/security/verification-flows/${otherFlow.flow}`, extensionSession.token),
+      env as Env
+    );
+    assert.deepEqual(await mismatchConsume.json(), { status: 'identity_mismatch' });
+    assert.equal(
+      (await db.prepare('select count(*) as total from extension_sessions').first<{ total: number }>())?.total,
+      1
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    await simulator.dispose();
+  }
+});
+
 test('RPC indisponivel ou malformada falha fechada sem receber senha', async () => {
   const originalFetch = globalThis.fetch;
   const env = {

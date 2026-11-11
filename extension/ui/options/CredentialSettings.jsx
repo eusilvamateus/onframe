@@ -5,7 +5,7 @@ import { passwordMeetsRequirements } from '../shared/password-policy';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { EmailVerification } from './TwoFactorSettings';
 
-export function CredentialSettings({ kind, profile, onChanged }) {
+export function CredentialSettings({ kind, profile, securityOverview, onChanged }) {
   const client = useRef(null);
   const [verified, setVerified] = useState(false);
   const [value, setValue] = useState('');
@@ -13,11 +13,12 @@ export function CredentialSettings({ kind, profile, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
   const [complete, setComplete] = useState(false);
+  const [confirmingChange, setConfirmingChange] = useState(false);
   const password = kind === 'password';
 
   async function submit(event) {
     event.preventDefault();
-    if (busy || !client.current) return;
+    if (busy) return;
     const email = password ? '' : window.OnFrameRemoteAuth.normalizeEmail(value);
     if (password && !passwordMeetsRequirements(value)) {
       setNotice({ tone: 'warning', message: 'Sua senha ainda não atende a todos os requisitos.' });
@@ -29,6 +30,10 @@ export function CredentialSettings({ kind, profile, onChanged }) {
     }
     if (!password && (!email || email === profile.user.email.toLowerCase())) {
       setNotice({ tone: 'warning', message: 'Informe um novo e-mail válido.' });
+      return;
+    }
+    if (!client.current) {
+      setConfirmingChange(true);
       return;
     }
     setBusy(true);
@@ -86,9 +91,20 @@ export function CredentialSettings({ kind, profile, onChanged }) {
         <EmailVerification
           email={profile.user.email}
           purpose={password ? 'alterar sua senha' : 'alterar seu e-mail'}
+          allowPasskey={Boolean(securityOverview?.passkeys?.length)}
           onVerified={(provider) => {
             client.current = provider;
             setVerified(true);
+          }}
+        />
+      ) : confirmingChange && !client.current ? (
+        <EmailVerification
+          email={profile.user.email}
+          purpose={password ? 'confirmar a alteração da senha' : 'confirmar a alteração do e-mail'}
+          allowPasskey={false}
+          onVerified={(provider) => {
+            client.current = provider;
+            setConfirmingChange(false);
           }}
         />
       ) : complete ? (

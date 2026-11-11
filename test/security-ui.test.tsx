@@ -41,6 +41,8 @@ async function harness(
     redirectTo?: string;
   }> = [];
   const messages: object[] = [];
+  const openedTabs: string[] = [];
+  let passkeyConsumeStatus = 'pending';
   const challenges = { created: 0, destroyed: 0, executed: 0 };
   globalThis.window = {
     OnFrameRemoteAuth: {
@@ -89,9 +91,22 @@ async function harness(
       lastError: null,
       sendMessage: (message: object, callback: (value: object) => void) => {
         messages.push(message);
-        callback({ ok: true, body: { redirectTo: 'https://onframe.onblide.com/connect?flow=test-flow' } });
+        const action = (message as { action?: string }).action;
+        callback({
+          ok: true,
+          body:
+            action === 'security-flow-start'
+              ? {
+                  flow: 'test-flow',
+                  passkeyUrl: 'https://onframe.onblide.com/auth/passkeys?action=verify&purpose=security&flow=test-flow'
+                }
+              : action === 'security-flow-consume'
+                ? { status: passkeyConsumeStatus }
+                : {}
+        });
       }
-    }
+    },
+    tabs: { create: async ({ url }: { url: string }) => openedTabs.push(url) }
   } as typeof chrome;
   globalThis.fetch = async (input, init) => {
     const path = new URL(String(input)).pathname;
@@ -140,6 +155,8 @@ async function harness(
     requests,
     messages,
     challenges,
+    openedTabs,
+    setPasskeyConsumeStatus: (value: string) => (passkeyConsumeStatus = value),
     close: async () => {
       await act(async () => renderer!.unmount());
       globalThis.fetch = originalFetch;
@@ -227,6 +244,77 @@ test('senha e email nao exibem formulario de alteracao antes de verificar email'
     } finally {
       await h.close();
     }
+  }
+});
+
+test('a chave de acesso abre a tela protegida e exige nova confirmacao antes de salvar', async () => {
+  const h = await harness(() => (
+    <CredentialSettings
+      kind="password"
+      profile={profile}
+      securityOverview={{ passkeys: [{ id: 'passkey-1' }] }}
+      onChanged={() => {}}
+    />
+  ));
+  h.setPasskeyConsumeStatus('verified');
+  try {
+    const passkeyButton = h.renderer.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Usar chave de acesso');
+    assert.ok(passkeyButton);
+    await act(async () => passkeyButton.props.onClick());
+    assert.equal(h.openedTabs.length, 1);
+    const target = new URL(h.openedTabs[0]);
+    assert.equal(target.searchParams.get('action'), 'verify');
+    assert.equal(new URLSearchParams(target.hash.slice(1)).get('expected_email'), user.email);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    assert.ok(h.renderer.root.findAllByProps({ autoComplete: 'new-password' }).length);
+    const inputs = h.renderer.root.findAllByType('input');
+    await act(async () => {
+      inputs
+        .find((input) => input.props.autoComplete === 'new-password')
+        .props.onChange({
+          target: { value: 'NovaSenhaForte1!' }
+        });
+      inputs
+        .filter((input) => input.props.autoComplete === 'new-password')[1]
+        .props.onChange({
+          target: { value: 'NovaSenhaForte1!' }
+        });
+    });
+    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.equal(h.renderer.root.findByType('h2').props.children, 'Verifique seu e-mail');
+    assert.equal(
+      h.requests.some((request) => request.method === 'PUT'),
+      false
+    );
+  } finally {
+    await h.close();
+  }
+});
+
+test('verificacao por e-mail oferece chave de acesso sem expor a conta na URL', async () => {
+  const h = await harness(() => <EmailVerification email={user.email} onVerified={() => {}} allowPasskey />);
+  h.setPasskeyConsumeStatus('authenticated');
+  let verified = false;
+  try {
+    const passkeyButton = h.renderer.root
+      .findAllByType(Button)
+      .find((button) => button.props.children === 'Usar chave de acesso');
+    assert.ok(passkeyButton);
+    await act(async () => passkeyButton.props.onClick());
+    assert.equal(new URL(h.openedTabs[0]).searchParams.has('expected_email'), false);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    verified = h.messages.some((message) => (message as { action?: string }).action === 'security-flow-consume');
+    assert.equal(verified, true);
+  } finally {
+    await h.close();
   }
 });
 
@@ -495,7 +583,7 @@ test('alteracao de email usa verificacao previa e preserva confirmacoes nativas'
   }
 });
 
-test('chaves cadastradas so aparecem apos confirmar o codigo do email', async () => {
+test('chaves cadastradas so aparecem apos confirmar por email ou chave de acesso', async () => {
   const securityOverview = {
     passkeys: [{ id: 'key-1', name: 'Casa', createdAt: '2026-10-12T17:38:00Z', lastUsedAt: null }]
   };
@@ -510,6 +598,7 @@ test('chaves cadastradas so aparecem apos confirmar o codigo do email', async ()
   }
 
   const valid = await harness(() => <PasskeySettings profile={profile} securityOverview={securityOverview} />);
+  valid.setPasskeyConsumeStatus('authenticated');
   try {
     const tabs: string[] = [];
     (globalThis.chrome as any).tabs = { create: ({ url }: { url: string }) => tabs.push(url) };
@@ -520,22 +609,24 @@ test('chaves cadastradas so aparecem apos confirmar o codigo do email', async ()
     assert.ok(usePasskey);
     await act(async () => usePasskey.props.onClick());
     assert.equal(tabs.length, 1);
+    assert.match(tabs[0], /action=verify/);
     assert.doesNotMatch(tabs[0], /#access_token=/);
-    assert.doesNotMatch(JSON.stringify(valid.renderer.toJSON()), /Casa|Ainda não utilizada/);
-    await emailVerified(valid.renderer);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     assert.match(JSON.stringify(valid.renderer.toJSON()), /Casa|Ainda não utilizada/);
     assert.match(JSON.stringify(valid.renderer.toJSON()), /1 chave entra na sua conta sem senha/);
     assert.match(JSON.stringify(valid.renderer.toJSON()), /Gerencie em uma aba segura/);
     assert.equal(valid.renderer.root.findAllByProps({ ariaLabel: 'Chaves cadastradas' }).length, 1);
-    assert.equal(tabs.length, 2);
-    assert.ok(tabs[1].startsWith('https://onframe.onblide.com/auth/passkeys?action=manage'));
     const reopen = valid.renderer.root
       .findAllByType(Button)
       .find((button) => button.props.children === 'Abrir gerenciamento');
     assert.ok(reopen);
     await act(async () => reopen.props.onClick());
-    assert.equal(tabs.length, 3);
-    assert.match(tabs[2], /#access_token=/);
+    assert.equal(tabs.length, 2);
+    assert.ok(tabs[1].startsWith('https://onframe.onblide.com/auth/passkeys?action=manage'));
+    assert.doesNotMatch(tabs[1], /#access_token=/);
   } finally {
     await valid.close();
   }

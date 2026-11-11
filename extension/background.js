@@ -43,6 +43,9 @@ async function handleRemoteMessage(message) {
   if (action === 'authenticate') return authenticateRemoteConnection(message.accessToken);
   if (action === 'identity-sync') return synchronizeRemoteIdentity(message.accessToken, message.disconnect === true);
   if (action === 'auth-flow-start') return startExtensionAuthFlow();
+  if (action === 'security-flow-start') return startSecurityVerificationFlow();
+  if (action === 'security-flow-consume') return consumeSecurityVerificationFlow(message.flow);
+  if (action === 'security-flow-cancel') return cancelSecurityVerificationFlow(message.flow);
   if (action === 'disconnect') return disconnectRemoteConnection();
   if (action === 'accounts') return listRemoteAccounts();
   if (action === 'oauth-start') return startRemoteAuth();
@@ -217,10 +220,33 @@ async function startExtensionAuthFlow() {
   const flow = normalizePendingAuthFlow(result);
   await storageSet({ [REMOTE_AUTH_FLOW_KEY]: flow });
   return {
+    flow: flow.token,
     expiresAt: flow.expiresAt,
     redirectTo: `${REMOTE_SERVICE}/connect?flow=${encodeURIComponent(flow.token)}`,
     passkeyUrl: `${REMOTE_SERVICE}/auth/passkeys?flow=${encodeURIComponent(flow.token)}`
   };
+}
+
+async function startSecurityVerificationFlow() {
+  const result = await requestPlatform('/v1/security/verification-flows', { method: 'POST', body: '{}' });
+  const flow = normalizePendingAuthFlow(result);
+  return {
+    flow: flow.token,
+    expiresAt: flow.expiresAt,
+    passkeyUrl: `${REMOTE_SERVICE}/auth/passkeys?action=verify&purpose=security&flow=${encodeURIComponent(flow.token)}`
+  };
+}
+
+async function consumeSecurityVerificationFlow(value) {
+  const token = String(value || '');
+  if (!REMOTE_SESSION_TOKEN_PATTERN.test(token)) throw new Error('O fluxo de verificação é inválido.');
+  return requestPlatform(`/v1/security/verification-flows/${encodeURIComponent(token)}`);
+}
+
+async function cancelSecurityVerificationFlow(value) {
+  const token = String(value || '');
+  if (!REMOTE_SESSION_TOKEN_PATTERN.test(token)) throw new Error('O fluxo de verificação é inválido.');
+  return requestPlatform(`/v1/security/verification-flows/${encodeURIComponent(token)}`, { method: 'DELETE' });
 }
 
 async function getRemoteConnection() {

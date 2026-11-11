@@ -2,9 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Accordion, Alert, Button, Input, Link, List, ListItem, Ph, Spinner, Tabs } from '@onblide/ui';
 import { AuthStep, VerificationCodeField, VerificationFrame, maskEmail } from '../shared/AuthPanel';
 import { restoreProviderSession, verifySecondFactor } from '../shared/provider-auth';
-import { formatDate, openExternal } from '../shared/runtime';
+import { formatDate, openExternal, sendRemoteMessage } from '../shared/runtime';
 
-export function EmailVerification({ email, onVerified, purpose = 'confirmar sua identidade', alternative = null }) {
+export function EmailVerification({
+  email,
+  onVerified,
+  purpose = 'confirmar sua identidade',
+  alternative = null,
+  allowPasskey = false
+}) {
   const auth = window.OnFrameRemoteAuth;
   const challengeRef = useRef(null);
   const challenge = useRef(null);
@@ -15,6 +21,10 @@ export function EmailVerification({ email, onVerified, purpose = 'confirmar sua 
   const [feedback, setFeedback] = useState(null);
   const [factor, setFactor] = useState(null);
   const [cooldown, setCooldown] = useState(0);
+  const [passkeyFlow, setPasskeyFlow] = useState(null);
+  const passkeyPoll = useRef(false);
+  const onVerifiedRef = useRef(onVerified);
+  onVerifiedRef.current = onVerified;
   const codeLength = factor ? 6 : config?.emailOtpLength || 6;
   const cooldownLabel = `${Math.floor(cooldown / 60)}:${String(cooldown % 60).padStart(2, '0')}`;
 
@@ -33,7 +43,7 @@ export function EmailVerification({ email, onVerified, purpose = 'confirmar sua 
     };
   }, [auth]);
   useEffect(() => {
-    if (!config || sent || !challengeRef.current) return undefined;
+    if (!config || sent || passkeyFlow || !challengeRef.current) return undefined;
     challenge.current = auth.createChallenge(
       challengeRef.current,
       () => {},
@@ -43,12 +53,77 @@ export function EmailVerification({ email, onVerified, purpose = 'confirmar sua 
       challenge.current?.destroy();
       challenge.current = null;
     };
-  }, [auth, config, sent]);
+  }, [auth, config, passkeyFlow, sent]);
   useEffect(() => {
     if (!cooldown) return undefined;
     const timer = setTimeout(() => setCooldown((value) => Math.max(0, value - 1)), 1000);
     return () => clearTimeout(timer);
   }, [cooldown]);
+
+  useEffect(() => {
+    if (!passkeyFlow) return undefined;
+    let active = true;
+    const poll = async () => {
+      if (passkeyPoll.current) return;
+      passkeyPoll.current = true;
+      try {
+        const result = await sendRemoteMessage('security-flow-consume', { flow: passkeyFlow.flow });
+        if (active && result.status === 'authenticated') {
+          setPasskeyFlow(null);
+          await onVerifiedRef.current(null);
+        } else if (active && result.status === 'verified') {
+          setPasskeyFlow(null);
+          await onVerifiedRef.current(null);
+        } else if (active && result.status === 'identity_mismatch') {
+          setFeedback('A chave de acesso pertence a outra conta.');
+          setPasskeyFlow(null);
+        }
+      } catch (error) {
+        if (active) {
+          setFeedback(
+            error?.code === 'auth_identity_mismatch'
+              ? 'A chave de acesso pertence a outra conta.'
+              : error?.code === 'auth_flow_unavailable'
+                ? 'A verificação expirou. Inicie novamente.'
+                : 'Não foi possível confirmar a chave de acesso. Tente novamente.'
+          );
+          setPasskeyFlow(null);
+        }
+      } finally {
+        passkeyPoll.current = false;
+      }
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), 1500);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [email, passkeyFlow]);
+
+  async function startPasskeyVerification() {
+    if (busy || passkeyFlow) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const flow = await sendRemoteMessage('security-flow-start');
+      const url = new URL(flow.passkeyUrl);
+      url.searchParams.set('action', 'verify');
+      url.hash = new URLSearchParams({ expected_email: email }).toString();
+      setPasskeyFlow(flow);
+      openExternal(url.toString());
+    } catch {
+      setFeedback('Não foi possível abrir a verificação por chave de acesso.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelPasskeyVerification() {
+    const flow = passkeyFlow?.flow;
+    setPasskeyFlow(null);
+    if (flow) await sendRemoteMessage('security-flow-cancel', { flow }).catch(() => undefined);
+  }
 
   async function submit(event, submittedCode = code) {
     event?.preventDefault();
@@ -190,13 +265,47 @@ export function EmailVerification({ email, onVerified, purpose = 'confirmar sua 
             {feedback}
           </p>
         )}
-        {!sent && <div className="onframe-captcha" ref={challengeRef} />}
-        {!sent && (
-          <Button type="submit" size="lg" disabled={busy || !config || cooldown > 0} style={{ width: '100%' }}>
-            {busy ? 'Aguarde...' : cooldown > 0 ? `Enviar código em ${cooldown} s` : 'Enviar código'}
-          </Button>
+        {!sent && !passkeyFlow && <div className="onframe-captcha" ref={challengeRef} />}
+        {!sent && passkeyFlow && (
+          <div className="onframe-stack" role="status">
+            <p className="onframe-auth-inline-feedback">Aguardando a confirmação da chave de acesso…</p>
+            <Button
+              type="button"
+              kind="quiet"
+              size="sm"
+              disabled={busy}
+              onClick={() => void cancelPasskeyVerification()}
+            >
+              Cancelar verificação
+            </Button>
+          </div>
         )}
-        {!sent && alternative}
+        {!sent && (
+          <>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={busy || !config || cooldown > 0 || Boolean(passkeyFlow)}
+              style={{ width: '100%' }}
+            >
+              {busy ? 'Aguarde...' : cooldown > 0 ? `Enviar código em ${cooldown} s` : 'Enviar código'}
+            </Button>
+            {allowPasskey && !factor && !passkeyFlow && (
+              <Button
+                type="button"
+                kind="secondary"
+                size="lg"
+                disabled={busy || !config}
+                icon={<Ph n="fingerprint" size={18} />}
+                style={{ width: '100%' }}
+                onClick={() => void startPasskeyVerification()}
+              >
+                Usar chave de acesso
+              </Button>
+            )}
+          </>
+        )}
+        {!sent && !passkeyFlow && alternative}
       </form>
     </VerificationFrame>
   );
@@ -212,6 +321,7 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
   const [removal, setRemoval] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
   const factors = (securityOverview?.factors || []).filter((factor) => factor.type === 'totp');
 
   useEffect(
@@ -255,6 +365,11 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
     });
   }
 
+  function requestEnrollment() {
+    if (clientRef.current) void enroll();
+    else setConfirmAction('enroll');
+  }
+
   async function confirmEnrollment(event) {
     event.preventDefault();
     await action(async () => {
@@ -272,9 +387,21 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
         <EmailVerification
           email={profile.user.email}
           purpose="configurar a verificação em duas etapas"
+          allowPasskey={Boolean(securityOverview?.passkeys?.length)}
           onVerified={(client) => {
             clientRef.current = client;
             setVerified(true);
+          }}
+        />
+      ) : confirmAction ? (
+        <EmailVerification
+          email={profile.user.email}
+          purpose="alterar a verificação em duas etapas"
+          allowPasskey={false}
+          onVerified={(client) => {
+            clientRef.current = client;
+            setConfirmAction(null);
+            if (confirmAction === 'enroll') void enroll();
           }}
         />
       ) : enrollment ? (
@@ -424,6 +551,7 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
                         setRemoval(factor);
                         setCode('');
                         setNotice(null);
+                        if (!clientRef.current) setConfirmAction('remove');
                       }}
                     >
                       Remover
@@ -446,7 +574,7 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
               size="lg"
               disabled={busy || !name.trim()}
               icon={<Ph n="plus" size={18} />}
-              onClick={() => void enroll()}
+              onClick={requestEnrollment}
             >
               Adicionar autenticador
             </Button>
@@ -593,25 +721,15 @@ export function PasskeySettings({ profile, securityOverview }) {
         <EmailVerification
           email={profile.user.email}
           purpose="gerenciar suas chaves de acesso"
+          allowPasskey={Boolean(passkeyCount)}
           onVerified={async (client) => {
+            if (!client) {
+              setOpened(true);
+              return;
+            }
             clientRef.current = client;
             await openManagement(client);
           }}
-          alternative={
-            passkeyCount > 0 ? (
-              <Button
-                type="button"
-                kind="secondary"
-                size="lg"
-                disabled={opening}
-                icon={<Ph n="fingerprint" size={18} />}
-                style={{ width: '100%' }}
-                onClick={() => void openManagement(null)}
-              >
-                Usar chave de acesso
-              </Button>
-            ) : null
-          }
         />
       )}
     </section>

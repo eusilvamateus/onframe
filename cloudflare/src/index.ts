@@ -625,6 +625,114 @@ async function consumeExtensionAuthFlow(env: RuntimeEnv, flowToken: string, requ
   return json({ status: 'authenticated', ...createdExtensionSessionPayload(session) });
 }
 
+async function createSecurityVerificationFlow(request: Request, env: RuntimeEnv): Promise<Response> {
+  const actor = await authenticateExtensionSession(request, env);
+  const token = randomSecret(32);
+  const timestamp = now();
+  const expiresAt = timestamp + AUTH_FLOW_TTL_MS;
+  await env.ONFRAME_DB.prepare(
+    `
+    INSERT INTO extension_auth_flows
+      (id, token_hash, user_id, workspace_id, expires_at, created_at, identity_version, auth_session_id)
+    VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
+  `
+  )
+    .bind(
+      crypto.randomUUID(),
+      await sha256(token),
+      actor.userId,
+      expiresAt,
+      timestamp,
+      actor.identityVersion,
+      actor.authSessionId
+    )
+    .run();
+  return json({ flow: token, expiresAt: new Date(expiresAt).toISOString() }, 201);
+}
+
+async function completeSecurityVerificationFlow(
+  request: Request,
+  env: RuntimeEnv,
+  flowToken: string
+): Promise<Response> {
+  const identity = await authenticateSupabaseRequest(request, env, { synchronizeOnly: true });
+  const timestamp = now();
+  const flow = await env.ONFRAME_DB.prepare(
+    `
+    SELECT extension_auth_flows.id, users.identity_subject, users.email
+    FROM extension_auth_flows
+    INNER JOIN users ON users.id = extension_auth_flows.user_id
+    WHERE extension_auth_flows.token_hash = ? AND extension_auth_flows.workspace_id IS NULL
+      AND extension_auth_flows.verification_result IS NULL
+      AND extension_auth_flows.claimed_at IS NULL AND extension_auth_flows.expires_at > ?
+  `
+  )
+    .bind(await sha256(flowToken), timestamp)
+    .first<{ id: string; identity_subject: string; email: string }>();
+  if (!flow) throw new RequestError('auth_flow_unavailable', 404);
+
+  const result =
+    flow.identity_subject === identity.subject && flow.email === identity.email ? 'verified' : 'identity_mismatch';
+  const update = await env.ONFRAME_DB.prepare(
+    `
+    UPDATE extension_auth_flows SET verification_result = ?, completed_at = ?
+    WHERE id = ? AND verification_result IS NULL AND claimed_at IS NULL AND expires_at > ?
+  `
+  )
+    .bind(result, timestamp, flow.id, timestamp)
+    .run();
+  if (update.meta.changes !== 1) throw new RequestError('auth_flow_unavailable', 409);
+  return json({ status: result });
+}
+
+async function consumeSecurityVerificationFlow(
+  request: Request,
+  env: RuntimeEnv,
+  flowToken: string
+): Promise<Response> {
+  const actor = await authenticateExtensionSession(request, env);
+  const timestamp = now();
+  const flow = await env.ONFRAME_DB.prepare(
+    `
+    SELECT id, user_id, expires_at, claimed_at, verification_result
+    FROM extension_auth_flows
+    WHERE token_hash = ? AND workspace_id IS NULL
+  `
+  )
+    .bind(await sha256(flowToken))
+    .first<{
+      id: string;
+      user_id: string;
+      expires_at: number;
+      claimed_at: number | null;
+      verification_result: string | null;
+    }>();
+  if (!flow || flow.user_id !== actor.userId || flow.claimed_at || flow.expires_at <= timestamp)
+    throw new RequestError('auth_flow_unavailable', 404);
+  if (!flow.verification_result) return json({ status: 'pending', expiresAt: new Date(flow.expires_at).toISOString() });
+
+  const claimed = await env.ONFRAME_DB.prepare(
+    'UPDATE extension_auth_flows SET claimed_at = ? WHERE id = ? AND claimed_at IS NULL AND expires_at > ?'
+  )
+    .bind(timestamp, flow.id, timestamp)
+    .run();
+  if (claimed.meta.changes !== 1) throw new RequestError('auth_flow_unavailable', 409);
+  return json({ status: flow.verification_result });
+}
+
+async function cancelSecurityVerificationFlow(request: Request, env: RuntimeEnv, flowToken: string): Promise<Response> {
+  const actor = await authenticateExtensionSession(request, env);
+  await env.ONFRAME_DB.prepare(
+    `
+    UPDATE extension_auth_flows SET claimed_at = ?
+    WHERE token_hash = ? AND user_id = ? AND workspace_id IS NULL AND claimed_at IS NULL
+  `
+  )
+    .bind(now(), await sha256(flowToken), actor.userId)
+    .run();
+  return json({ cancelled: true });
+}
+
 function sessionToken(request: Request): string {
   const authorization = request.headers.get('authorization') ?? '';
   const match = /^Bearer ([A-Za-z0-9_-]+)$/u.exec(authorization);
@@ -2162,6 +2270,33 @@ export default {
             expiresAt: new Date(flow.expiresAt).toISOString()
           },
           201
+        );
+      }
+
+      if (request.method === 'POST' && url.pathname === '/v1/security/verification-flows') {
+        return await createSecurityVerificationFlow(request, env);
+      }
+
+      const securityVerificationPath = /^\/v1\/security\/verification-flows\/([A-Za-z0-9_-]{43})$/u.exec(url.pathname);
+      if (securityVerificationPath && request.method === 'POST') {
+        return await completeSecurityVerificationFlow(
+          request,
+          env,
+          parseExtensionAuthFlowToken(securityVerificationPath[1])
+        );
+      }
+      if (securityVerificationPath && request.method === 'GET') {
+        return await consumeSecurityVerificationFlow(
+          request,
+          env,
+          parseExtensionAuthFlowToken(securityVerificationPath[1])
+        );
+      }
+      if (securityVerificationPath && request.method === 'DELETE') {
+        return await cancelSecurityVerificationFlow(
+          request,
+          env,
+          parseExtensionAuthFlowToken(securityVerificationPath[1])
         );
       }
 
