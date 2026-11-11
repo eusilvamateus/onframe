@@ -440,7 +440,8 @@ input {
   border-top: 1px solid var(--ob-border);
 }
 .onframe-tax-settings-section--accounts {
-  grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
+  grid-template-columns: 1fr;
+  gap: var(--ob-space-12);
 }
 .onframe-tax-settings-copy {
   display: flex;
@@ -459,6 +460,15 @@ input {
   font-size: var(--ob-fs-14);
   line-height: var(--ob-lh-normal);
 }
+.onframe-tax-account-heading {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ob-space-16);
+}
+.onframe-tax-account-heading p {
+  text-align: right;
+}
 .onframe-tax-account-list {
   display: flex;
   flex-direction: column;
@@ -467,7 +477,7 @@ input {
 }
 .onframe-tax-account-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ob-space-16);
   padding: var(--ob-space-12) var(--ob-space-16);
@@ -475,13 +485,19 @@ input {
 .onframe-tax-account-row + .onframe-tax-account-row {
   border-top: 1px solid var(--ob-border);
 }
-.onframe-tax-account-row > div:first-child {
+.onframe-tax-account-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--ob-space-8);
+}
+.onframe-tax-account-description {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: var(--ob-space-2);
 }
-.onframe-tax-account-row strong {
+.onframe-tax-account-description strong {
   overflow: hidden;
   color: var(--ob-fg-strong);
   font-size: var(--ob-fs-14);
@@ -489,10 +505,18 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.onframe-tax-account-row span {
+.onframe-tax-account-description span {
   color: var(--ob-fg-mute);
-  font-family: var(--ob-font-mono);
   font-size: var(--ob-fs-12);
+}
+.onframe-tax-account-description .onframe-tax-account-id {
+  font-family: var(--ob-font-mono);
+}
+.onframe-tax-account-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ob-space-4);
 }
 .onframe-tax-settings-actions {
   display: flex;
@@ -504,6 +528,10 @@ input {
 .onframe-tax-account-row {
   grid-template-columns: 1fr;
   align-items: stretch;
+}
+
+.onframe-tax-account-controls {
+  justify-content: flex-start;
 }
 
 .onframe-tax-settings-section,
@@ -527,8 +555,12 @@ input {
   }
 
   .onframe-tax-account-row {
-    grid-template-columns: minmax(0, 1fr) 180px;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+  }
+
+  .onframe-tax-account-controls {
+    justify-content: flex-end;
   }
 
   .onframe-tax-settings-section {
@@ -537,7 +569,8 @@ input {
   }
 
   .onframe-tax-settings-section--accounts {
-    grid-template-columns: minmax(220px, 0.7fr) minmax(320px, 1.3fr);
+    grid-template-columns: 1fr;
+    gap: var(--ob-space-12);
   }
 
   .onframe-product-account-tax-row > button {

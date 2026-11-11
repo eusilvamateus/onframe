@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, NumberField, Ph, Spinner } from '@onblide/ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Avatar, Button, NumberField, Ph, Spinner, Tooltip } from '@onblide/ui';
 import { SectionHeader } from '../shared/SectionHeader';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 
@@ -9,6 +9,10 @@ function accountName(account) {
 
 function configurationSignature(values) {
   return JSON.stringify(values);
+}
+
+function formattedRate(value) {
+  return `${new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}%`;
 }
 
 export function TaxSettings() {
@@ -24,6 +28,12 @@ export function TaxSettings() {
   const [minimumSaving, setMinimumSaving] = useState(false);
   const [minimumSaved, setMinimumSaved] = useState(false);
   const [minimumError, setMinimumError] = useState('');
+  const [editingAccountId, setEditingAccountId] = useState(null);
+  const editingAccountControl = useRef(null);
+
+  useEffect(() => {
+    if (editingAccountId !== null) editingAccountControl.current?.querySelector('input')?.focus();
+  }, [editingAccountId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +79,10 @@ export function TaxSettings() {
   const minimumDirty = minimumMargin !== minimumBaseline;
 
   async function save() {
+    if (!dirty) {
+      setEditingAccountId(null);
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -81,6 +95,7 @@ export function TaxSettings() {
       setValues(nextValues);
       setBaseline(configurationSignature(nextValues));
       setSaved(true);
+      setEditingAccountId(null);
     } catch (failure) {
       setError(userError(failure, 'Não foi possível salvar as configurações de imposto.'));
     } finally {
@@ -99,11 +114,13 @@ export function TaxSettings() {
       setMinimumBaseline(result.workspaceMinimumContributionMargin);
       setMinimumSaved(true);
     } catch (failure) {
-      setMinimumError(userError(failure, 'Não foi possível salvar a MC mínima.'));
+      setMinimumError(userError(failure, 'Não foi possível salvar a margem mínima.'));
     } finally {
       setMinimumSaving(false);
     }
   }
+
+  const configuredAccountCount = values.accounts.filter((account) => account.taxRate != null).length;
 
   if (loading)
     return (
@@ -120,17 +137,17 @@ export function TaxSettings() {
         </Alert>
       )}
       <SectionHeader
-        title="Parâmetros de margem"
-        copy="Configure limites e alíquotas usados na leitura de margem das promoções."
+        title="Margem mínima"
+        copy="Referência para identificar promoções abaixo da margem de contribuição desejada. Cada produto pode ter seu próprio limite."
       />
       <section className="onframe-tax-settings-section">
         <div className="onframe-tax-settings-copy">
-          <h3>MC mínima padrão do workspace</h3>
-          <p>Produtos podem ter um limite próprio. Sem exceção, usam este valor.</p>
+          <h3>Padrão do workspace</h3>
+          <p>Vale para os produtos sem uma margem mínima própria.</p>
         </div>
         <NumberField
-          label="MC mínima padrão"
-          hint="Deixe vazio para desativar a comparação automática."
+          label="Margem de contribuição mínima"
+          hint="Sem valor, não há comparação para os produtos que herdam o padrão."
           value={minimumMargin}
           min={0}
           max={100}
@@ -146,33 +163,37 @@ export function TaxSettings() {
             setMinimumError('');
           }}
         />
-        <div className="onframe-tax-settings-actions">
-          <Button
-            disabled={minimumSaving || !minimumDirty}
-            icon={
-              minimumSaving ? (
-                <Spinner size="xs" label="Salvando" />
-              ) : minimumSaved ? (
-                <Ph n="check-circle" size={17} />
-              ) : (
-                <Ph n="floppy-disk" size={17} />
-              )
-            }
-            onClick={() => void saveMinimumMargin()}
-          >
-            {minimumSaving ? 'Salvando...' : minimumSaved ? 'Salvo' : 'Salvar MC mínima'}
-          </Button>
-        </div>
-        {minimumError && (
-          <Alert appearance="soft" tone="danger">
-            {minimumError}
-          </Alert>
-        )}
       </section>
+      <div className="onframe-tax-settings-actions">
+        <Button
+          disabled={minimumSaving || !minimumDirty}
+          icon={
+            minimumSaving ? (
+              <Spinner size="xs" label="Salvando" />
+            ) : minimumSaved ? (
+              <Ph n="check-circle" size={17} />
+            ) : (
+              <Ph n="floppy-disk" size={17} />
+            )
+          }
+          onClick={() => void saveMinimumMargin()}
+        >
+          {minimumSaving ? 'Salvando...' : minimumSaved ? 'Salvo' : 'Salvar margem mínima'}
+        </Button>
+      </div>
+      {minimumError && (
+        <Alert appearance="soft" tone="danger">
+          {minimumError}
+        </Alert>
+      )}
+      <SectionHeader
+        title="Alíquota de imposto"
+        copy="Entra no cálculo da margem de contribuição. Cada produto usa a alíquota mais específica que tiver."
+      />
       <section className="onframe-tax-settings-section">
         <div className="onframe-tax-settings-copy">
-          <h3>Alíquota padrão do workspace</h3>
-          <p>Aplicado quando não existe uma configuração mais específica para a conta ou para o produto.</p>
+          <h3>Padrão do workspace</h3>
+          <p>Vale quando nem a conta nem o produto têm alíquota própria.</p>
         </div>
         <NumberField
           label="Alíquota padrão"
@@ -194,9 +215,13 @@ export function TaxSettings() {
         />
       </section>
       <section className="onframe-tax-settings-section onframe-tax-settings-section--accounts">
-        <div className="onframe-tax-settings-copy">
-          <h3>Exceções por conta</h3>
-          <p>Uma alíquota definida aqui substitui o padrão do workspace para essa conta.</p>
+        <div className="onframe-tax-account-heading onframe-tax-settings-copy">
+          <h3>Por conta</h3>
+          <p>
+            {configuredAccountCount === 0
+              ? 'Nenhuma com alíquota própria'
+              : `${configuredAccountCount} ${configuredAccountCount === 1 ? 'com alíquota própria' : 'com alíquotas próprias'}`}
+          </p>
         </div>
         {configuration?.accounts?.length === 0 && (
           <p className="onframe-empty">Conecte uma conta do Mercado Livre para configurar uma exceção.</p>
@@ -205,26 +230,75 @@ export function TaxSettings() {
           <div className="onframe-tax-account-list">
             {configuration.accounts.map((account) => {
               const value = values.accounts.find((entry) => entry.sellerAccountId === account.id)?.taxRate ?? null;
+              const hasOwnRate = value !== null;
+              const isEditing = editingAccountId === account.id;
               return (
                 <div className="onframe-tax-account-row" key={account.id}>
-                  <div>
-                    <strong>{accountName(account)}</strong>
-                    <span>ID {account.userId}</span>
+                  <div className="onframe-tax-account-identity">
+                    <Avatar name={accountName(account)} size={28} alt="" />
+                    <div className="onframe-tax-account-description">
+                      <strong>{accountName(account)}</strong>
+                      <span>
+                        <span className="onframe-tax-account-id">ID {account.userId}</span> ·{' '}
+                        {hasOwnRate
+                          ? 'alíquota própria'
+                          : values.workspaceTaxRate === null
+                            ? 'sem padrão do workspace'
+                            : `usa o padrão, ${formattedRate(values.workspaceTaxRate)}`}
+                      </span>
+                    </div>
                   </div>
-                  <NumberField
-                    ariaLabel={`Alíquota de ${accountName(account)}`}
-                    value={value}
-                    placeholder={values.workspaceTaxRate === null ? 'Sem padrão' : `${values.workspaceTaxRate}%`}
-                    min={0}
-                    max={100}
-                    decimals={2}
-                    step={0.01}
-                    controls="none"
-                    endAddon="%"
-                    width={180}
-                    disabled={saving}
-                    onChange={(taxRate) => setAccountRate(account.id, taxRate)}
-                  />
+                  <div
+                    className="onframe-tax-account-controls"
+                    ref={isEditing && !hasOwnRate ? editingAccountControl : null}
+                  >
+                    {hasOwnRate || isEditing ? (
+                      <>
+                        <NumberField
+                          ariaLabel={`Alíquota de ${accountName(account)}`}
+                          value={value}
+                          placeholder="0,00"
+                          min={0}
+                          max={100}
+                          decimals={2}
+                          step={0.01}
+                          controls="none"
+                          endAddon="%"
+                          width={112}
+                          size="sm"
+                          disabled={saving}
+                          onChange={(taxRate) => {
+                            if (taxRate === null) setEditingAccountId(account.id);
+                            setAccountRate(account.id, taxRate);
+                          }}
+                        />
+                        <Tooltip label={hasOwnRate ? 'Usar alíquota padrão' : 'Cancelar'}>
+                          <Button
+                            kind="quiet"
+                            size="sm"
+                            iconOnly
+                            aria-label={hasOwnRate ? `Usar alíquota padrão em ${accountName(account)}` : 'Cancelar'}
+                            disabled={saving}
+                            icon={<Ph n={hasOwnRate ? 'arrow-counter-clockwise' : 'x'} size={16} />}
+                            onClick={() => {
+                              setAccountRate(account.id, null);
+                              setEditingAccountId(null);
+                            }}
+                          />
+                        </Tooltip>
+                      </>
+                    ) : (
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        disabled={saving}
+                        icon={<Ph n="plus" size={15} />}
+                        onClick={() => setEditingAccountId(account.id)}
+                      >
+                        Definir própria
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -233,7 +307,7 @@ export function TaxSettings() {
       </section>
       <div className="onframe-tax-settings-actions">
         <Button
-          disabled={saving || !dirty}
+          disabled={saving || (!dirty && editingAccountId === null)}
           icon={
             saving ? (
               <Spinner size="xs" label="Salvando" />
@@ -245,7 +319,7 @@ export function TaxSettings() {
           }
           onClick={() => void save()}
         >
-          {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar configurações'}
+          {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alíquotas'}
         </Button>
       </div>
     </div>
