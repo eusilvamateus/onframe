@@ -346,10 +346,157 @@ input {
 .onframe-settings-form {
   padding-bottom: var(--ob-space-96);
 }
-.onframe-appearance-settings > .onframe-row {
+.onframe-options-content.onframe-options-content--appearance {
+  width: min(100%, 720px);
+}
+.onframe-appearance-settings,
+.onframe-appearance-section {
+  display: flex;
+  flex-direction: column;
+}
+.onframe-appearance-settings {
+  gap: var(--ob-space-40);
+}
+.onframe-appearance-section {
+  gap: var(--ob-space-16);
+}
+.onframe-appearance-intro,
+.onframe-appearance-explanation,
+.onframe-appearance-scope {
+  margin: 0;
+  color: var(--ob-fg-soft);
+  line-height: var(--ob-lh-relaxed);
+}
+.onframe-appearance-intro {
+  font-size: var(--ob-fs-15);
+}
+.onframe-appearance-heading {
+  margin: 0;
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-15);
+  font-weight: var(--ob-w-semibold);
+}
+.onframe-appearance-explanation,
+.onframe-appearance-scope {
+  font-size: var(--ob-fs-13);
+}
+.onframe-appearance-scope {
+  color: var(--ob-fg-mute);
+}
+.onframe-appearance-options {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--ob-space-32);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--ob-space-12);
+}
+.onframe-appearance-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--ob-space-12);
+}
+.onframe-appearance-preview-control {
+  flex: 0 0 min(40%, 140px);
+}
+.onframe-theme-preview {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--ob-r-md);
+  box-shadow: 0 0 0 1px var(--ob-border);
+}
+.onframe-theme-preview-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  background: var(--ob-bg-alt);
+}
+.onframe-theme-preview-layer--split {
+  clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);
+}
+.onframe-theme-preview-sidebar {
+  display: flex;
+  width: 27%;
+  flex: none;
+  flex-direction: column;
+  gap: var(--ob-space-6);
+  padding: var(--ob-space-8) var(--ob-space-6);
+  border-right: 1px solid var(--ob-border);
+  background: var(--ob-surface);
+}
+.onframe-theme-preview-mark {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-bottom: var(--ob-space-2);
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-blue);
+}
+.onframe-theme-preview-line,
+.onframe-theme-preview-heading {
+  display: block;
+  width: 72%;
+  height: 4px;
+  flex: none;
+  border-radius: var(--ob-r-pill);
+  background: var(--ob-fg-soft);
+}
+.onframe-theme-preview-line--wide {
+  width: 80%;
+}
+.onframe-theme-preview-line--muted {
+  width: 64%;
+  background: var(--ob-border);
+}
+.onframe-theme-preview-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ob-space-6);
+  padding: var(--ob-space-10);
+}
+.onframe-theme-preview-heading {
+  width: 46%;
+  height: 6px;
+  background: var(--ob-fg-strong);
+}
+.onframe-theme-preview-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ob-space-4);
+  margin-top: var(--ob-space-2);
+  padding: var(--ob-space-6);
+  border: 1px solid var(--ob-border);
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-surface);
+}
+.onframe-theme-preview-action {
+  width: 34%;
+  height: 8px;
+  align-self: flex-end;
+  flex: none;
+  margin-top: auto;
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-blue);
+}
+@media (min-width: 768px) {
+  .onframe-appearance-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--ob-space-16);
+  }
+
+  .onframe-appearance-option {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .onframe-appearance-preview-control {
+    flex: none;
+    width: 100%;
+  }
 }
 .onframe-theme-chips {
   display: flex;
@@ -2167,8 +2314,7 @@ input {
   padding: var(--ob-space-12);
 }
 
-.onframe-profile-layout,
-.onframe-appearance-settings > .onframe-row {
+.onframe-profile-layout {
   grid-template-columns: 1fr;
 }
 
@@ -2305,10 +2451,6 @@ input {
   .onframe-profile-layout {
     grid-template-columns: minmax(220px, 260px) minmax(0, 480px);
     gap: var(--ob-space-48);
-  }
-
-  .onframe-appearance-settings > .onframe-row {
-    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .onframe-theme-chips {

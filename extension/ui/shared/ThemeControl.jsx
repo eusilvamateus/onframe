@@ -23,7 +23,7 @@ function readSavedThemePreference(fallback) {
   }
 }
 
-function useSharedTheme() {
+export function useSharedTheme() {
   const theme = useTheme();
   React.useEffect(() => {
     persistContentThemePreference(readSavedThemePreference(theme.preference));

@@ -283,6 +283,7 @@ test('interfaces referenciam apenas tokens existentes do design system ou da ext
 test('tema usa o contrato do design system nas interfaces da extensao', () => {
   const control = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'ThemeControl.jsx'), 'utf8');
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const appearance = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'AppearanceSettings.jsx'), 'utf8');
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
   const hosted = fs.readFileSync(path.join(extensionRoot, 'ui', 'hosted', 'app.jsx'), 'utf8');
@@ -316,7 +317,12 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(control, /type: 'radio'/);
   assert.match(control, /type: 'option',[\s\S]*icon: option\.icon,[\s\S]*checked: preference === option\.value/);
   assert.match(options, /page: 'appearance'/);
-  assert.match(options, /actions=\{<ThemeSelector \/>\}/);
+  assert.match(options, /<AppearanceSettings \/>/);
+  assert.match(appearance, /\['light', 'dark', 'system'\]\.map/);
+  assert.match(appearance, /useSharedTheme\(\)/);
+  assert.match(appearance, /<Radio[\s\S]*checked=\{selected\}/);
+  assert.match(appearance, /<ThemePreview option=\{option\.value\} \/>/);
+  assert.doesNotMatch(appearance, /Switch|emTodos|todos os dispositivos/);
   assert.match(control, /export function useThemeSubmenuItem\(\)/);
   assert.match(control, /type: 'submenu',[\s\S]*label: 'Aparência',[\s\S]*icon: selected\.icon/);
   assert.match(options, /const appearanceMenuItem = useThemeSubmenuItem\(\);/);

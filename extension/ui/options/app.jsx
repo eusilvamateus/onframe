@@ -36,7 +36,8 @@ import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
 import { SectionHeader } from '../shared/SectionHeader';
-import { ThemeCycleButton, ThemeSelector, useThemeSubmenuItem } from '../shared/ThemeControl';
+import { ThemeCycleButton, useThemeSubmenuItem } from '../shared/ThemeControl';
+import { AppearanceSettings } from './AppearanceSettings';
 import { WorkspaceAccessModal } from '../shared/WorkspaceAccessModal';
 import { IntegrationAccount, accountName } from '../shared/IntegrationAccount';
 import { ItemEditHistory } from './ItemEditHistory';
@@ -722,18 +723,6 @@ function ApplicationUpdatesSettings() {
             Abrir atualizador
           </Button>
         }
-      />
-    </section>
-  );
-}
-
-function AppearanceSettings() {
-  return (
-    <section className="onframe-stack onframe-settings-form onframe-appearance-settings" aria-label="Aparência">
-      <SectionHeader
-        title="Tema da interface"
-        copy="Escolha um tema fixo ou acompanhe automaticamente a aparência do seu dispositivo."
-        actions={<ThemeSelector />}
       />
     </section>
   );
@@ -1542,7 +1531,9 @@ function OptionsApp() {
             />
           </div>
           <section className="onframe-options-main">
-            <div className={`onframe-options-content${settingsDetail ? '' : ' onframe-options-content--root'}`}>
+            <div
+              className={`onframe-options-content${settingsDetail ? '' : ' onframe-options-content--root'}${settingsDetail && settingsPage === 'appearance' ? ' onframe-options-content--appearance' : ''}`}
+            >
               <PageHeader meta={meta} actions={pageHeaderActions} reserveContextSpace />
               {notice && (
                 <Alert
