@@ -423,11 +423,6 @@ input {
 .onframe-product-settings {
   max-width: 880px;
 }
-.onframe-product-settings-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: var(--ob-space-8);
-}
 .onframe-tax-settings {
   width: 100%;
 }
@@ -472,18 +467,13 @@ input {
 .onframe-tax-account-list {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--ob-border);
-  border-radius: var(--ob-r-surface);
+  gap: var(--ob-space-12);
 }
 .onframe-tax-account-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ob-space-16);
-  padding: var(--ob-space-12) var(--ob-space-16);
-}
-.onframe-tax-account-row + .onframe-tax-account-row {
-  border-top: 1px solid var(--ob-border);
 }
 .onframe-tax-account-identity {
   display: flex;
@@ -514,16 +504,15 @@ input {
 }
 .onframe-tax-account-controls {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--ob-space-4);
+  gap: var(--ob-space-8);
 }
-.onframe-tax-settings-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: var(--ob-space-8);
+.onframe-tax-account-field {
+  flex: 0 1 240px;
+  min-width: 0;
 }
-
 .onframe-product-account-tax-row,
 .onframe-tax-account-row {
   grid-template-columns: 1fr;
@@ -531,7 +520,7 @@ input {
 }
 
 .onframe-tax-account-controls {
-  justify-content: flex-start;
+  width: 100%;
 }
 
 .onframe-tax-settings-section,
@@ -542,10 +531,6 @@ input {
 
 .onframe-product-account-tax-row > button {
   justify-self: end;
-}
-
-.onframe-tax-settings-actions > button {
-  width: 100%;
 }
 
 @media (min-width: 768px) {
@@ -560,6 +545,7 @@ input {
   }
 
   .onframe-tax-account-controls {
+    width: auto;
     justify-content: flex-end;
   }
 
@@ -575,10 +561,6 @@ input {
 
   .onframe-product-account-tax-row > button {
     justify-self: auto;
-  }
-
-  .onframe-tax-settings-actions > button {
-    width: auto;
   }
 }
 .onframe-options--collapsed .onframe-settings-action-bar {

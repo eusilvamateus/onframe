@@ -745,6 +745,7 @@ function Settings({
   settingsPage,
   onSettingsPageChange,
   workspace,
+  accounts,
   profile,
   securityOverview,
   members,
@@ -881,7 +882,7 @@ function Settings({
         <ProductSettings workspaceId={workspace.id} />
       )}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && (
-        <TaxSettings key={workspace.id} />
+        <TaxSettings key={workspace.id} accounts={accounts} />
       )}
       {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
@@ -1602,6 +1603,7 @@ function OptionsApp() {
                   settingsPage={settingsPage}
                   onSettingsPageChange={setSettingsPage}
                   workspace={workspace}
+                  accounts={accounts}
                   profile={profile}
                   securityOverview={securityOverview}
                   members={members}

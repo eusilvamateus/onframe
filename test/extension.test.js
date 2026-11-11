@@ -608,8 +608,11 @@ test('perfil, segurança e workspace usam o estado visível como confirmação',
   assert.doesNotMatch(workspacePopup, /Acesso atualizado\.|Convite enviado\.|Pessoa removida\.|Convite revogado\./);
   assert.match(workspacePopup, /dialog\?\.error[^]*<Alert appearance="soft" tone="danger">/u);
   assert.doesNotMatch(taxes, /toast\(/);
-  assert.match(taxes, /const dirty = configurationSignature\(values\) !== baseline/);
-  assert.match(taxes, /saved \? 'Salvo' : 'Salvar configurações'/);
+  assert.match(taxes, /const dirty = taxDirty \|\| minimumDirty/);
+  assert.match(taxes, /Promise\.allSettled\(requests\.map/);
+  assert.match(taxes, /src=\{trustedLogo\(accounts\.find\(\(entry\) => entry\.id === account\.id\)\?\.logo\)\}/);
+  assert.match(taxes, /<footer className="onframe-settings-action-bar"/);
+  assert.match(taxes, /saved \? 'Salvo' : 'Salvar alterações'/);
   assert.doesNotMatch(twoFactor, /Verificação em duas etapas ativada\./);
   assert.doesNotMatch(passkeys, /Chave de acesso adicionada\./);
 });

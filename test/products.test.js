@@ -186,9 +186,13 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(options, /page: 'products'[^]*label: 'Produtos'[^]*Preferências do cadastro de produtos/u);
   assert.match(taxSettings, /tax-configuration-update/u);
   assert.match(taxSettings, /margin-configuration-update/u);
+  assert.match(taxSettings, /<Card key=\{account\.id\}>/u);
+  assert.match(sharedStyles, /\.onframe-tax-account-list\s*\{[^}]*gap: var\(--ob-space-12\)/u);
+  assert.match(sharedStyles, /\.onframe-tax-account-field\s*\{[^}]*flex: 0 1 240px/u);
   assert.match(products, /label="MC mínima do produto"/u);
   assert.doesNotMatch(taxSettings, /costDecimalPlaces|Precisão dos custos|Casas decimais/u);
   assert.match(productSettings, /product-settings-update/u);
+  assert.match(productSettings, /<footer className="onframe-settings-action-bar"/u);
   assert.match(productSettings, /label="Casas decimais do custo"/u);
   assert.match(productSettings, /label: String\(value\)/u);
   assert.doesNotMatch(productSettings, /label:.*casa decimal/u);

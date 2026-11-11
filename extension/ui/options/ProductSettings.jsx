@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Button, Ph, Select, Spinner } from '@onblide/ui';
+import { Alert, Button, ButtonGroup, Divider, Select, Spinner } from '@onblide/ui';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 
 const DECIMAL_PLACE_OPTIONS = Array.from({ length: 9 }, (_, value) => ({
@@ -60,7 +60,7 @@ export function ProductSettings({ workspaceId }) {
     );
 
   return (
-    <div className="onframe-product-settings onframe-stack">
+    <div className="onframe-product-settings onframe-settings-form onframe-stack">
       {error && (
         <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
           {error}
@@ -80,23 +80,38 @@ export function ProductSettings({ workspaceId }) {
           setValue(option.value);
         }}
       />
-      <div className="onframe-product-settings-actions">
-        <Button
-          disabled={saving || value === savedValue}
-          icon={
-            saving ? (
-              <Spinner size="xs" label="Salvando" />
-            ) : saved ? (
-              <Ph n="check-circle" size={17} />
-            ) : (
-              <Ph n="floppy-disk" size={17} />
-            )
-          }
-          onClick={() => void save()}
-        >
-          {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
-        </Button>
-      </div>
+      <footer className="onframe-settings-action-bar" aria-label="Ações das preferências de produtos">
+        <div className="onframe-settings-action-bar-content">
+          <Divider decorative />
+          <div className="onframe-settings-action-bar-controls">
+            {value !== savedValue && (
+              <p className="onframe-settings-action-status" role="status">
+                Alterações não salvas
+              </p>
+            )}
+            <div className="onframe-settings-action-buttons">
+              <ButtonGroup attached={false} justify="end" ariaLabel="Ações das preferências de produtos">
+                {value !== savedValue && (
+                  <Button
+                    kind="ghost"
+                    disabled={saving}
+                    onClick={() => {
+                      setValue(savedValue);
+                      setSaved(false);
+                      setError('');
+                    }}
+                  >
+                    Descartar
+                  </Button>
+                )}
+                <Button disabled={saving || value === savedValue} onClick={() => void save()}>
+                  {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
+                </Button>
+              </ButtonGroup>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
