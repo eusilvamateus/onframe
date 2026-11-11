@@ -56,13 +56,14 @@ export function themeMenuItems(preference, setTheme) {
 
 export function useThemeSubmenuItem() {
   const { preference, setTheme } = useSharedTheme();
+  const selected = THEME_OPTIONS.find((option) => option.value === preference) || THEME_OPTIONS[0];
   return {
     type: 'submenu',
     label: 'Aparência',
-    icon: 'desktop',
+    icon: selected.icon,
     items: THEME_OPTIONS.map((option) => ({
-      type: 'radio',
-      group: 'profile-theme',
+      type: 'option',
+      icon: option.icon,
       label: option.label,
       checked: preference === option.value,
       onSelect: () => setTheme(option.value)

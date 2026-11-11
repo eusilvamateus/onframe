@@ -314,12 +314,13 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(control, /const accessibleLabel = selected\.label;/);
   assert.doesNotMatch(control, /Tema:|Tema atual|Alterar para/);
   assert.match(control, /type: 'radio'/);
+  assert.match(control, /type: 'option',[\s\S]*icon: option\.icon,[\s\S]*checked: preference === option\.value/);
   assert.match(options, /page: 'appearance'/);
   assert.match(options, /actions=\{<ThemeSelector \/>\}/);
   assert.match(control, /export function useThemeSubmenuItem\(\)/);
   assert.match(
     control,
-    /type: 'submenu',[\s\S]*label: 'Aparência',[\s\S]*icon: 'desktop',[\s\S]*group: 'profile-theme'/
+    /type: 'submenu',[\s\S]*label: 'Aparência',[\s\S]*icon: selected\.icon/
   );
   assert.match(options, /const appearanceMenuItem = useThemeSubmenuItem\(\);/);
   assert.match(options, /appearanceMenuItem,[\s\S]*\{ type: 'separator' \}/);
