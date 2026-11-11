@@ -42,9 +42,6 @@
       editorTransitionTimer: null,
       editorTransitionResolve: null,
       editorTransitionAnimations: [],
-      editorSharedLayer: null,
-      editorSharedSources: [],
-      editorSharedFrame: null,
       renderTimer: null,
       renderAfterDrag: false,
       message: '',
@@ -977,7 +974,7 @@
       }
 
       const transition = state.editorTransition;
-      const morph = getEditorMorphGeometry(modal, dockRect);
+      const transform = getEditorMorphTransform(modal, dockRect);
       const modalStyle = getComputedStyle(modal);
       const backdropStyle = getComputedStyle(backdrop);
       const targetRadius = modalStyle.borderRadius;
@@ -992,7 +989,7 @@
         animateEditorElement(
           modal,
           [
-            { transform: morph.transform, borderRadius: morph.borderRadius, boxShadow: 'none' },
+            { transform, borderRadius: motion.radiusSm, boxShadow: 'none' },
             { transform: 'none', borderRadius: targetRadius, boxShadow: targetShadow }
           ],
           {
@@ -1055,9 +1052,8 @@
       state.editorTransition = transition;
       const modalStyle = getComputedStyle(modal);
       const backdropStyle = getComputedStyle(backdrop);
-      const morph = getEditorMorphGeometry(modal, dockRect);
+      const targetTransform = getEditorMorphTransform(modal, dockRect);
       const motion = editorMotionTokens();
-      const sharedElements = prepareEditorSharedElements(modal, tray);
       modal.classList.add('is-editor-morphing', 'is-editor-closing');
       backdrop.classList.add('is-editor-morphing', 'is-editor-closing');
 
@@ -1066,7 +1062,7 @@
           modal,
           [
             { transform: 'none', borderRadius: modalStyle.borderRadius, boxShadow: modalStyle.boxShadow },
-            { transform: morph.transform, borderRadius: morph.borderRadius, boxShadow: 'none' }
+            { transform: targetTransform, borderRadius: motion.radiusSm, boxShadow: 'none' }
           ],
           {
             duration: motion.spin,
@@ -1087,7 +1083,6 @@
         ...animateEditorChildren(modal, 'close', motion)
       ].filter(Boolean);
 
-      trackEditorSharedElements(modal, dockRect, sharedElements);
       await waitForEditorAnimations(animations, motion.spin + motion.fast);
       if (state.editorTransition !== transition) return;
       state.qualityDialog = null;
@@ -1099,7 +1094,6 @@
 
     function animateEditorChildren(modal, direction, motion) {
       return Array.from(modal.children)
-        .filter((child) => !child.classList.contains('onblide-ml-editor-shared-layer'))
         .map((child, index, children) => {
           const opening = direction === 'open';
           const sequenceIndex = opening ? index : children.length - index - 1;
@@ -1147,7 +1141,8 @@
         spin: duration('--ob-dur-spin'),
         standard: value('--ob-ease'),
         standardOut: value('--ob-ease-out'),
-        standardInOut: value('--ob-ease-in-out')
+        standardInOut: value('--ob-ease-in-out'),
+        radiusSm: value('--ob-r-sm')
       };
     }
 
@@ -1172,14 +1167,6 @@
     }
 
     function finishEditorAnimations() {
-      if (state.editorSharedFrame !== null) cancelAnimationFrame(state.editorSharedFrame);
-      state.editorSharedFrame = null;
-      state.editorSharedSources.forEach(({ element, visibility }) => {
-        element.style.visibility = visibility;
-      });
-      state.editorSharedSources = [];
-      if (state.editorSharedLayer) state.editorSharedLayer.remove();
-      state.editorSharedLayer = null;
       const resolveTransition = state.editorTransitionResolve;
       state.editorTransitionResolve = null;
       state.editorTransitionAnimations.forEach((animation) => animation.cancel());
@@ -1209,125 +1196,13 @@
       };
     }
 
-    function getEditorMorphGeometry(modal, dockRect) {
+    function getEditorMorphTransform(modal, dockRect) {
       const modalRect = modal.getBoundingClientRect();
       const translateX = dockRect.left + dockRect.width / 2 - (modalRect.left + modalRect.width / 2);
       const translateY = dockRect.top + dockRect.height / 2 - (modalRect.top + modalRect.height / 2);
       const scaleX = dockRect.width / modalRect.width;
       const scaleY = dockRect.height / modalRect.height;
-      const panel = state.tray && state.tray.querySelector('.onblide-ml-dock-panel');
-      const radius = panel ? Number.parseFloat(getComputedStyle(panel).borderTopLeftRadius) : 0;
-      return {
-        transform: `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px) scale(${scaleX}, ${scaleY})`,
-        borderRadius: `${radius / scaleX}px ${radius / scaleX}px 0 0 / ${radius / scaleY}px ${radius / scaleY}px 0 0`
-      };
-    }
-
-    function prepareEditorSharedElements(modal, tray) {
-      const modalRect = modal.getBoundingClientRect();
-      const matches = [
-        ['.onblide-ml-editor-strip-shell', '.onblide-ml-dock-panel'],
-        [
-          '.onblide-ml-editor-actions > .onblide-ml-editor-action:nth-child(1)',
-          '.onblide-ml-dock-actions > .onblide-ml-dock-action'
-        ],
-        [
-          '.onblide-ml-editor-actions > .onblide-ml-editor-action:nth-child(2)',
-          '.onblide-ml-dock-secondary-actions > .onblide-ml-dock-action'
-        ],
-        [
-          '.onblide-ml-editor-actions > .onblide-ml-editor-action:nth-child(3)',
-          '.onblide-ml-dock-discard-action .onblide-ml-dock-action'
-        ]
-      ];
-      const layer = document.createElement('div');
-      layer.className = 'onblide-ml-editor-shared-layer';
-      layer.setAttribute('aria-hidden', 'true');
-      layer.inert = true;
-      const items = [];
-      for (const [sourceSelector, targetSelector] of matches) {
-        const source = modal.querySelector(sourceSelector);
-        const target = tray.querySelector(targetSelector);
-        if (!source || !target) continue;
-        const sourceRect = source.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        if (!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height) continue;
-        const clone = source.cloneNode(true);
-        clone.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
-        clone.removeAttribute('id');
-        clone.style.position = 'absolute';
-        clone.style.left = `${sourceRect.left - modalRect.left}px`;
-        clone.style.top = `${sourceRect.top - modalRect.top}px`;
-        clone.style.width = `${sourceRect.width}px`;
-        clone.style.height = `${sourceRect.height}px`;
-        clone.style.margin = '0';
-        clone.style.transformOrigin = 'center center';
-        layer.appendChild(clone);
-        state.editorSharedSources.push({ element: source, visibility: source.style.visibility });
-        source.style.visibility = 'hidden';
-        const isSurface = sourceSelector === '.onblide-ml-editor-strip-shell';
-        const sourceStyle = isSurface ? getComputedStyle(source) : null;
-        const targetStyle = isSurface ? getComputedStyle(target) : null;
-        items.push({
-          clone,
-          sourceRect,
-          targetRect,
-          sourceRadius: sourceStyle ? Number.parseFloat(sourceStyle.borderTopLeftRadius) : 0,
-          targetRadius: targetStyle ? Number.parseFloat(targetStyle.borderTopLeftRadius) : 0,
-          sourceBottomRadius: sourceStyle ? Number.parseFloat(sourceStyle.borderBottomLeftRadius) : 0,
-          targetBottomRadius: targetStyle ? Number.parseFloat(targetStyle.borderBottomLeftRadius) : 0
-        });
-      }
-      if (!items.length) return [];
-      modal.appendChild(layer);
-      state.editorSharedLayer = layer;
-      return items;
-    }
-
-    function trackEditorSharedElements(modal, dockRect, items) {
-      if (!items.length) return;
-      const sourceModal = modal.getBoundingClientRect();
-      const targetScaleY = dockRect.height / sourceModal.height;
-      const center = (rect) => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-      const sourceCenter = center(sourceModal);
-      const interpolate = (start, end, progress) => start + (end - start) * progress;
-      const update = () => {
-        if (!state.editorSharedLayer || !modal.isConnected) return;
-        const currentModal = modal.getBoundingClientRect();
-        const currentCenter = center(currentModal);
-        const scaleX = currentModal.width / sourceModal.width;
-        const scaleY = currentModal.height / sourceModal.height;
-        const progress = targetScaleY === 1 ? 1 : Math.max(0, Math.min(1, (scaleY - 1) / (targetScaleY - 1)));
-        for (const {
-          clone,
-          sourceRect,
-          targetRect,
-          sourceRadius,
-          targetRadius,
-          sourceBottomRadius,
-          targetBottomRadius
-        } of items) {
-          const originalCenter = center(sourceRect);
-          const destinationCenter = center(targetRect);
-          const desiredX = interpolate(originalCenter.x, destinationCenter.x, progress);
-          const desiredY = interpolate(originalCenter.y, destinationCenter.y, progress);
-          const x = (desiredX - currentCenter.x) / scaleX - (originalCenter.x - sourceCenter.x);
-          const y = (desiredY - currentCenter.y) / scaleY - (originalCenter.y - sourceCenter.y);
-          const width = interpolate(sourceRect.width, targetRect.width, progress);
-          const height = interpolate(sourceRect.height, targetRect.height, progress);
-          const visualScaleX = width / sourceRect.width;
-          const visualScaleY = height / sourceRect.height;
-          // Counter the modal scale so shared elements keep their intended screen-space size.
-          clone.style.transform = `translate(${x}px, ${y}px) scale(${visualScaleX / scaleX}, ${visualScaleY / scaleY})`;
-          if (sourceRadius || targetRadius) {
-            const top = interpolate(sourceRadius, targetRadius, progress);
-            const bottom = interpolate(sourceBottomRadius, targetBottomRadius, progress);
-            clone.style.borderRadius = `${top / visualScaleX}px ${top / visualScaleX}px ${bottom / visualScaleX}px ${bottom / visualScaleX}px / ${top / visualScaleY}px ${top / visualScaleY}px ${bottom / visualScaleY}px ${bottom / visualScaleY}px`;
-          }
-        }
-        state.editorSharedFrame = requestAnimationFrame(update);
-      };
-      state.editorSharedFrame = requestAnimationFrame(update);
+      return `translate(${Math.round(translateX)}px, ${Math.round(translateY)}px) scale(${scaleX}, ${scaleY})`;
     }
 
     function hideTrayForEditor() {

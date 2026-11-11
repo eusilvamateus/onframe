@@ -400,11 +400,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /value\('--ob-ease-in-out'\)/);
   assert.match(source, /function animateEditorChildren\(modal, direction, motion\)/);
   assert.match(source, /element\.animate\(keyframes, options\)/);
-  assert.match(source, /motion\.base \+ sequenceIndex \* \(motion\.fast \/ 2\)/);
-  assert.match(source, /prepareEditorSharedElements\(modal, tray\)/);
-  assert.match(source, /trackEditorSharedElements\(modal, dockRect, sharedElements\)/);
-  assert.match(source, /\['\.onblide-ml-editor-strip-shell', '\.onblide-ml-dock-panel'\]/);
-  assert.match(source, /cancelAnimationFrame\(state\.editorSharedFrame\)/);
+  assert.match(source, /delay: opening \? motion\.base \+ sequenceIndex \* \(motion\.fast \/ 2\)/);
   assert.match(
     source,
     /const preservedEditorDialog =\s*state\.qualityDialog && state\.qualityDialog\.mode === 'editor'/
@@ -422,7 +418,7 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(source, /function hideEditor\(\) \{[\s\S]*state\.qualityDialog = null;[\s\S]*removeQualityDialog\(\);/);
   assert.match(source, /restoreTrayAfterDialog\(\);\s+renderQualityDialogRoot\(\);/);
   assert.doesNotMatch(source, /revealTrayForEditorReturn/);
-  assert.match(source, /getEditorMorphGeometry\(modal, dockRect\)/);
+  assert.match(source, /getEditorMorphTransform\(modal, dockRect\)/);
   assert.match(view, /className=\{`onblide-ml-dock-actions\$\{model\.dirty \? ' is-dirty' : ''\}`\}/);
   assert.match(view, /className="onblide-ml-dock-identity"/);
   assert.match(view, /className="onblide-ml-dock-shell"/);
@@ -486,14 +482,10 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-diagnostic-card img \{[\s\S]*background: #fff;/);
   assert.match(styles, /\.onblide-ml-editor-action \{[\s\S]*height: 32px;/);
   assert.match(styles, /\.onblide-ml-tray\.is-editor-hidden \{/);
-  assert.match(styles, /\.onblide-ml-editor-shared-layer \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-opening > \* \{/);
   assert.match(source, /modal\.classList\.add\('is-editor-morphing', 'is-editor-closing'\)/);
   assert.doesNotMatch(styles, /\.onblide-ml-tray\.is-editor-returning/);
-  assert.doesNotMatch(source, /animateEditorElement\(modal, \[\{ opacity: 1 \}, \{ opacity: 0 \}\]/);
-  assert.match(source, /borderRadius: morph\.borderRadius/);
-  assert.match(source, /onblide-ml-editor-actions > \.onblide-ml-editor-action:nth-child/);
   assert.match(styles, /\.onblide-ml-dock-panel \{[\s\S]*max-height: 10px;/);
   assert.match(styles, /\.onblide-ml-dock-panel\.is-expanded \{/);
   assert.match(styles, /bottom: 0;/);

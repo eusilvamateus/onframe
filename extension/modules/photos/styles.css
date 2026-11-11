@@ -461,17 +461,9 @@
 }
 
 .onblide-ml-modal.editor.is-editor-morphing {
-  position: relative;
   transform-origin: center;
   overflow: hidden;
   will-change: transform, border-radius, box-shadow;
-}
-
-.onblide-ml-editor-shared-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
 }
 
 .onblide-ml-modal.editor.is-editor-opening > * {
