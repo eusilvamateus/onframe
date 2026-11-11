@@ -1509,7 +1509,12 @@ function OptionsApp() {
                           }
                     }
                   >
-                    {!collapsed && personName}
+                    {!collapsed && (
+                      <span className="onframe-sidebar-account-trigger">
+                        <span className="onframe-sidebar-account-name">{personName}</span>
+                        <span className="onframe-sidebar-account-email">{connection.user.email}</span>
+                      </span>
+                    )}
                   </Button>
                 }
               />

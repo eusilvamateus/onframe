@@ -681,6 +681,28 @@ input {
   overflow: visible;
   background: var(--ob-surface);
 }
+.onframe-sidebar-account-trigger {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.35;
+  text-align: left;
+}
+.onframe-sidebar-account-name,
+.onframe-sidebar-account-email {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.onframe-sidebar-account-name {
+  color: var(--ob-fg-strong);
+}
+.onframe-sidebar-account-email {
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-12);
+}
 .onframe-options-column {
   position: relative;
   min-width: 0;
