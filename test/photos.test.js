@@ -482,6 +482,12 @@ test('dock de fotos separa recolhimento da abertura do editor', () => {
   assert.match(styles, /\.onblide-ml-diagnostic-card img \{[\s\S]*background: #fff;/);
   assert.match(styles, /\.onblide-ml-editor-action \{[\s\S]*height: 32px;/);
   assert.match(styles, /\.onblide-ml-tray\.is-editor-hidden \{/);
+  assert.match(
+    source,
+    /if \(!\(state\.qualityDialog\?\.mode === 'editor' && !state\.editorTransition\)\) renderTray\(\)/
+  );
+  assert.match(source, /function hideTrayForEditor\(\) \{[\s\S]*?unmountPhotoView\(state\.tray\)/);
+  assert.match(source, /renderTray\(\);\s*const dockRect = readDockRect\(\)/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-morphing \{/);
   assert.match(styles, /\.onblide-ml-modal\.editor\.is-editor-opening > \* \{/);
   assert.match(source, /modal\.classList\.add\('is-editor-morphing', 'is-editor-closing'\)/);

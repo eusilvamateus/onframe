@@ -269,7 +269,7 @@
         document.body.appendChild(state.tray);
       }
 
-      renderTray();
+      if (!(state.qualityDialog?.mode === 'editor' && !state.editorTransition)) renderTray();
       if (!state.editorTransition) renderQualityDialogRoot();
     }
 
@@ -1041,6 +1041,7 @@
         return;
       }
 
+      renderTray();
       const dockRect = readDockRect();
       if (!dockRect) {
         state.qualityDialog = null;
@@ -1209,6 +1210,7 @@
       if (!state.tray) return;
       state.tray.classList.remove('is-editor-leaving', 'is-editor-returning', 'is-editor-returned');
       state.tray.classList.add('is-editor-hidden');
+      unmountPhotoView(state.tray);
     }
 
     function restoreTrayAfterDialog() {
