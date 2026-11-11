@@ -185,6 +185,8 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(options, /page: 'margin'[^]*label: 'Margem de contribuição'/u);
   assert.match(options, /page: 'products'[^]*label: 'Produtos'[^]*Preferências do cadastro de produtos/u);
   assert.match(taxSettings, /tax-configuration-update/u);
+  assert.match(taxSettings, /margin-configuration-update/u);
+  assert.match(products, /label="MC mínima do produto"/u);
   assert.doesNotMatch(taxSettings, /costDecimalPlaces|Precisão dos custos|Casas decimais/u);
   assert.match(productSettings, /product-settings-update/u);
   assert.match(productSettings, /label="Casas decimais do custo"/u);

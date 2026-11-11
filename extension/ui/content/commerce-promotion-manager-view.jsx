@@ -112,6 +112,9 @@ function MarginSummary({ row }) {
         <strong className={row.marginSummary.tone}>{row.marginSummary.percentage || '—'}</strong>
       )}
       {row.marginSummary.amount && <small>{row.marginSummary.amount}</small>}
+      {row.marginSummary.recommendation && (
+        <small className={row.marginSummary.recommendationTone}>{row.marginSummary.recommendation}</small>
+      )}
     </div>
   );
 }

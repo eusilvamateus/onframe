@@ -1,6 +1,6 @@
 import { read, utils, writeFileXLSX } from 'xlsx';
 
-export const PRODUCT_SPREADSHEET_HEADERS = ['SKU', 'Nome', 'Custo (R$)', 'Imposto (%)', 'Status'];
+export const PRODUCT_SPREADSHEET_HEADERS = ['SKU', 'Nome', 'Custo (R$)', 'Imposto (%)', 'MC mínima (%)', 'Status'];
 
 export const PRODUCT_COST_SPREADSHEET_HEADERS = ['SKU', 'Descrição', 'Tipo', 'Valor'];
 export const PRODUCT_ACCOUNT_TAX_SPREADSHEET_HEADERS = ['SKU', 'ID da conta Mercado Livre', 'Imposto (%)'];
@@ -10,6 +10,7 @@ const HEADER_KEYS = [
   ['nome', 'name'],
   ['custo r', 'cost'],
   ['imposto', 'taxRate'],
+  ['mc minima', 'minimumContributionMargin'],
   ['status', 'status']
 ];
 
@@ -42,6 +43,7 @@ function headerKey(value) {
   if (direct) return direct[1];
   if (normalized === 'custo' || normalized === 'custo do produto') return 'cost';
   if (normalized === 'aliquota de imposto' || normalized === 'imposto percentual') return 'taxRate';
+  if (normalized === 'margem minima' || normalized === 'mc minima') return 'minimumContributionMargin';
   return null;
 }
 
@@ -119,6 +121,9 @@ export function parseProductWorkbook(buffer) {
         name: String(value('name') ?? '').trim(),
         cost: spreadsheetNumber(value('cost')),
         taxRate: spreadsheetNumber(value('taxRate')),
+        ...(indexes.has('minimumContributionMargin')
+          ? { minimumContributionMargin: spreadsheetNumber(value('minimumContributionMargin')) }
+          : {}),
         customCosts: [],
         accountTaxRates: [],
         status: spreadsheetStatus(value('status'))
@@ -220,14 +225,17 @@ function productsWorksheet(products) {
       product.name,
       Number(product.cost || 0),
       product.taxRate === null || product.taxRate === undefined ? '' : Number(product.taxRate),
+      product.minimumContributionMargin === null || product.minimumContributionMargin === undefined
+        ? ''
+        : Number(product.minimumContributionMargin),
       product.status === 'inactive' ? 'Inativo' : 'Ativo'
     ])
   ];
   const worksheet = utils.aoa_to_sheet(data);
-  worksheet['!cols'] = [{ wch: 20 }, { wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 14 }];
-  worksheet['!autofilter'] = { ref: `A1:E${Math.max(1, data.length)}` };
+  worksheet['!cols'] = [{ wch: 20 }, { wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 14 }];
+  worksheet['!autofilter'] = { ref: `A1:F${Math.max(1, data.length)}` };
   for (let row = 2; row <= data.length; row += 1) {
-    for (const column of ['C', 'D']) {
+    for (const column of ['C', 'D', 'E']) {
       if (worksheet[`${column}${row}`]) worksheet[`${column}${row}`].z = '0.00';
     }
   }
@@ -281,6 +289,7 @@ export function createProductWorkbook(products = [], includeInstructions = false
         'Imposto (%)',
         'Alíquota específica do produto. Deixe vazio para herdar a configuração da conta ou do workspace.'
       ],
+      ['MC mínima (%)', 'Limite específico do produto. Deixe vazio para herdar a MC mínima padrão do workspace.'],
       [
         'Impostos por conta',
         'Na aba Impostos por conta, informe o SKU, o ID numérico da conta do Mercado Livre e a alíquota específica.'

@@ -881,7 +881,7 @@ function Settings({
         <ProductSettings workspaceId={workspace.id} />
       )}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && (
-        <TaxSettings workspaceId={workspace.id} />
+        <TaxSettings key={workspace.id} />
       )}
       {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}

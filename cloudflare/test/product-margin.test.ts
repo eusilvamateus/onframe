@@ -47,8 +47,34 @@ test('margem de contribuicao usa o valor liquido oficial da promocao', () => {
     customCost: 12.24,
     amount: 45.14,
     percentage: 12.47,
+    minimumPercentage: null,
+    minimumSource: null,
+    minimumStatus: null,
     formula: 'you_receive - product_cost - tax_amount - custom_costs'
   });
+});
+
+test('margem compara o limite do produto e herda o padrão do workspace', () => {
+  const estimate = { dealPrice: 100, youReceive: 70, currency_id: 'BRL' };
+  const inherited = buildContributionMargin(estimate, {
+    status: 'matched',
+    workspaceMinimumContributionMargin: 25,
+    tax: { configured: true, rate: 10, base: 'sale_price' },
+    product: { cost: 40, minimumContributionMargin: null, customCosts: [] }
+  });
+  assert.equal(inherited.minimumPercentage, 25);
+  assert.equal(inherited.minimumSource, 'workspace');
+  assert.equal(inherited.minimumStatus, 'below_minimum');
+
+  const overridden = buildContributionMargin(estimate, {
+    status: 'matched',
+    workspaceMinimumContributionMargin: 25,
+    tax: { configured: true, rate: 10, base: 'sale_price' },
+    product: { cost: 40, minimumContributionMargin: 20, customCosts: [] }
+  });
+  assert.equal(overridden.minimumPercentage, 20);
+  assert.equal(overridden.minimumSource, 'product');
+  assert.equal(overridden.minimumStatus, 'meets_minimum');
 });
 
 test('margem de contribuicao preserva resultado negativo', () => {

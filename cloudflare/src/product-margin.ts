@@ -77,6 +77,10 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
   const taxBase = tax?.configured === true && tax.base === 'sale_price' ? 'sale_price' : null;
   const taxSource = tax?.configured === true && typeof tax.source === 'string' ? tax.source : null;
   const taxSourceId = tax?.configured === true && typeof tax.sourceId === 'string' ? tax.sourceId : null;
+  const productMinimum = numberOrNull(product?.minimumContributionMargin);
+  const workspaceMinimum = numberOrNull(productMatch?.workspaceMinimumContributionMargin);
+  const minimumPercentage = productMinimum ?? workspaceMinimum;
+  const minimumSource = productMinimum !== null ? 'product' : workspaceMinimum !== null ? 'workspace' : null;
   const calculatedCustomCosts = product ? customCosts(product.customCosts, salePriceCents) : null;
   const missing: string[] = [];
 
@@ -115,6 +119,14 @@ export function buildContributionMargin(estimateValue: unknown, productMatchValu
     customCost: moneyFromCents(customCostCents),
     amount,
     percentage,
+    minimumPercentage,
+    minimumSource,
+    minimumStatus:
+      !complete || minimumPercentage === null
+        ? null
+        : percentage! < minimumPercentage
+          ? 'below_minimum'
+          : 'meets_minimum',
     formula: 'you_receive - product_cost - tax_amount - custom_costs'
   };
 }

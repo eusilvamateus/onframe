@@ -43,6 +43,7 @@ const EMPTY_FORM = {
   name: '',
   cost: 0,
   taxRate: null,
+  minimumContributionMargin: null,
   accountTaxRates: [],
   customCosts: [],
   status: 'active'
@@ -217,6 +218,7 @@ function ProductForm({ product, accounts, admin, busy, costDecimalPlaces, onClos
           name: product.name,
           cost: product.cost,
           taxRate: product.taxRate,
+          minimumContributionMargin: product.minimumContributionMargin ?? null,
           accountTaxRates: (product.accountTaxRates || []).map((rate) => ({ ...rate, key: accountTaxRateKey() })),
           customCosts: (product.customCosts || []).map((cost) => ({ ...cost, key: customCostKey() })),
           status: product.status
@@ -465,6 +467,24 @@ function ProductForm({ product, accounts, admin, busy, costDecimalPlaces, onClos
         </section>
 
         <section className="onframe-product-form-section">
+          <h3>Margem de contribuição</h3>
+          <NumberField
+            label="MC mínima do produto"
+            hint="Deixe vazio para usar a MC mínima padrão do workspace."
+            value={values.minimumContributionMargin}
+            min={0}
+            max={100}
+            decimals={2}
+            step={0.01}
+            controls="none"
+            endAddon="%"
+            width={240}
+            disabled={!admin || locked}
+            onChange={(value) => setField('minimumContributionMargin', value)}
+          />
+        </section>
+
+        <section className="onframe-product-form-section">
           <h3>Impostos</h3>
           <div className="onframe-product-tax-default">
             <NumberField
@@ -704,6 +724,15 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
       width: 105,
       render: (value) =>
         value === null ? 'Herdado' : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%`
+    },
+    {
+      key: 'minimumContributionMargin',
+      label: 'MC mínima',
+      width: 112,
+      render: (value) =>
+        value === null || value === undefined
+          ? 'Global'
+          : `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%`
     },
     {
       key: 'actions',

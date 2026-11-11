@@ -12,11 +12,13 @@ type ProductRow = {
   name: string;
   current_cost_decimal: string;
   tax_rate_bps: number | null;
+  minimum_contribution_margin_bps: number | null;
   custom_costs_json: string;
   status: 'active' | 'inactive';
   created_at: number;
   updated_at: number;
   cost_display_decimal_places?: number;
+  workspace_minimum_contribution_margin_bps?: number | null;
 };
 
 type ProductCustomCost = {
@@ -44,6 +46,8 @@ type ProductData = {
   cost: number;
   costDecimal: string;
   taxRateBps: number | null;
+  minimumContributionMarginBps: number | null;
+  minimumContributionMarginProvided: boolean;
   customCosts: ProductCustomCost[];
   customCostsJson: string;
   accountTaxRateInputs: ProductAccountTaxRateInput[];
@@ -64,6 +68,7 @@ type ProductImportPlanRow = {
     name: string;
     cost: number;
     taxRate: number | null;
+    minimumContributionMargin: number | null;
     customCosts: Array<{ description: string; type: 'fixed' | 'percentage'; value: number }>;
     accountTaxRates: Array<{ sellerAccountId: string; accountUserId: string; taxRate: number }>;
     status: 'active' | 'inactive';
@@ -274,10 +279,12 @@ export async function matchProductForPromotionItem(
     `
     SELECT
       product.id, product.sku, product.name, product.current_cost_decimal, product.tax_rate_bps,
-      product.custom_costs_json, product.status, product.created_at, product.updated_at,
-      workspace.cost_display_decimal_places
+      product.minimum_contribution_margin_bps, product.custom_costs_json, product.status,
+      product.created_at, product.updated_at, workspace.cost_display_decimal_places,
+      margin.minimum_contribution_margin_bps AS workspace_minimum_contribution_margin_bps
     FROM products product
     JOIN workspaces workspace ON workspace.id = product.workspace_id
+    LEFT JOIN workspace_margin_settings margin ON margin.workspace_id = product.workspace_id
     WHERE product.workspace_id = ? AND product.normalized_sku = ?
       AND product.status = 'active' AND product.archived_at IS NULL
   `
@@ -293,6 +300,10 @@ export async function matchProductForPromotionItem(
     variationId: resolution.variationId,
     reason: null,
     costDecimalPlaces: normalizedCostDecimalPlaces(product.cost_display_decimal_places),
+    workspaceMinimumContributionMargin:
+      product.workspace_minimum_contribution_margin_bps == null
+        ? null
+        : product.workspace_minimum_contribution_margin_bps / 100,
     product: productPayload(product)
   };
 }
@@ -304,6 +315,8 @@ function productPayload(row: ProductRow, accountTaxRates: ProductAccountTaxRate[
     name: row.name,
     cost: Number(row.current_cost_decimal),
     taxRate: row.tax_rate_bps === null ? null : row.tax_rate_bps / 100,
+    minimumContributionMargin:
+      row.minimum_contribution_margin_bps === null ? null : row.minimum_contribution_margin_bps / 100,
     customCosts: customCostsPayload(row.custom_costs_json),
     accountTaxRates: accountTaxRates.map((rate) => ({
       sellerAccountId: rate.sellerAccountId,
@@ -424,7 +437,8 @@ async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> 
 async function assertProduct(env: ProductEnv, actor: ProductActor, productId: string): Promise<ProductRow> {
   const product = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, minimum_contribution_margin_bps,
+      custom_costs_json, status, created_at, updated_at
     FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `
   )
@@ -508,7 +522,8 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const page = Math.min(requestedPage, totalPages);
   const rows = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, name, current_cost_decimal, tax_rate_bps, minimum_contribution_margin_bps,
+      custom_costs_json, status, created_at, updated_at
     FROM products WHERE ${clause}
     ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `
@@ -538,6 +553,8 @@ function parseProductBody(body: Record<string, unknown>): ProductData {
     cost: cost.value,
     costDecimal: cost.decimal,
     taxRateBps: optionalDecimalToInteger(body.taxRate, 100, 10_000),
+    minimumContributionMarginBps: optionalDecimalToInteger(body.minimumContributionMargin, 100, 10_000),
+    minimumContributionMarginProvided: Object.prototype.hasOwnProperty.call(body, 'minimumContributionMargin'),
     customCosts,
     customCostsJson: JSON.stringify(customCosts),
     accountTaxRateInputs,
@@ -604,6 +621,8 @@ function importRowPlan(source: unknown, index: number): ProductImportPlanRow {
         name: data.name,
         cost: data.cost,
         taxRate: data.taxRateBps === null ? null : data.taxRateBps / 100,
+        minimumContributionMargin:
+          data.minimumContributionMarginBps === null ? null : data.minimumContributionMarginBps / 100,
         customCosts: data.customCosts.map((cost) => ({
           description: cost.description,
           type: cost.type,
@@ -642,6 +661,8 @@ function productMatchesImport(
     product.name === data.name &&
     product.current_cost_decimal === data.costDecimal &&
     product.tax_rate_bps === data.taxRateBps &&
+    (!data.minimumContributionMarginProvided ||
+      product.minimum_contribution_margin_bps === data.minimumContributionMarginBps) &&
     JSON.stringify(storedCustomCosts(product.custom_costs_json)) === data.customCostsJson &&
     JSON.stringify(accountTaxRates) === JSON.stringify(data.accountTaxRates) &&
     product.status === data.status
@@ -690,7 +711,8 @@ async function buildProductImportPlan(
   }
   const existing = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps, custom_costs_json, status, created_at, updated_at
+    SELECT id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps,
+      minimum_contribution_margin_bps, custom_costs_json, status, created_at, updated_at
     FROM products WHERE workspace_id = ? AND archived_at IS NULL
   `
   )
@@ -705,6 +727,10 @@ async function buildProductImportPlan(
     row.existing = product;
     row.existingAccountTaxRates = existingAccountRates.get(product.id) || [];
     row.productId = product.id;
+    if (row.values && !row.data.minimumContributionMarginProvided) {
+      row.values.minimumContributionMargin =
+        product.minimum_contribution_margin_bps === null ? null : product.minimum_contribution_margin_bps / 100;
+    }
     row.action = productMatchesImport(product, row.data, row.existingAccountTaxRates) ? 'unchanged' : 'update';
   }
   return plan;
@@ -760,8 +786,9 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             `
           INSERT OR IGNORE INTO products (
             id, workspace_id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps,
-            custom_costs_json, status, created_by_user_id, updated_by_user_id, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            minimum_contribution_margin_bps, custom_costs_json, status, created_by_user_id,
+            updated_by_user_id, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
           ).bind(
             productId,
@@ -771,6 +798,7 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             data.name,
             data.costDecimal,
             data.taxRateBps,
+            data.minimumContributionMarginBps,
             data.customCostsJson,
             data.status,
             actor.userId,
@@ -802,7 +830,8 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
           env.ONFRAME_DB.prepare(
             `
           UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_decimal = ?,
-            tax_rate_bps = ?, custom_costs_json = ?, status = ?, updated_by_user_id = ?, updated_at = ?
+            tax_rate_bps = ?, minimum_contribution_margin_bps = ?, custom_costs_json = ?, status = ?,
+            updated_by_user_id = ?, updated_at = ?
           WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
         `
           ).bind(
@@ -811,6 +840,9 @@ export async function commitProductImport(request: Request, env: ProductEnv, act
             data.name,
             data.costDecimal,
             data.taxRateBps,
+            data.minimumContributionMarginProvided
+              ? data.minimumContributionMarginBps
+              : (row.existing?.minimum_contribution_margin_bps ?? null),
             data.customCostsJson,
             data.status,
             actor.userId,
@@ -890,8 +922,9 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
         `
         INSERT INTO products (
           id, workspace_id, sku, normalized_sku, name, current_cost_decimal, tax_rate_bps,
-          custom_costs_json, status, created_by_user_id, updated_by_user_id, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          minimum_contribution_margin_bps, custom_costs_json, status, created_by_user_id,
+          updated_by_user_id, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       ).bind(
         id,
@@ -901,6 +934,7 @@ export async function createProduct(request: Request, env: ProductEnv, actor: Pr
         data.name,
         data.costDecimal,
         data.taxRateBps,
+        data.minimumContributionMarginBps,
         data.customCostsJson,
         data.status,
         actor.userId,
@@ -942,7 +976,8 @@ export async function updateProduct(
     env.ONFRAME_DB.prepare(
       `
     UPDATE products SET sku = ?, normalized_sku = ?, name = ?, current_cost_decimal = ?,
-      tax_rate_bps = ?, custom_costs_json = ?, status = ?, updated_by_user_id = ?, updated_at = ?
+      tax_rate_bps = ?, minimum_contribution_margin_bps = ?, custom_costs_json = ?, status = ?,
+      updated_by_user_id = ?, updated_at = ?
     WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `
     ).bind(
@@ -951,6 +986,9 @@ export async function updateProduct(
       data.name,
       data.costDecimal,
       data.taxRateBps,
+      data.minimumContributionMarginProvided
+        ? data.minimumContributionMarginBps
+        : current.minimum_contribution_margin_bps,
       data.customCostsJson,
       data.status,
       actor.userId,

@@ -636,6 +636,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /<span title="Margem de contribuição">M\. de contribuição<\/span>/);
   assert.match(view, /row\.marginSummary\.percentage \|\| '—'/);
   assert.match(view, /row\.marginSummary\.amount && <small>\{row\.marginSummary\.amount\}<\/small>/);
+  assert.match(view, /row\.marginSummary\.recommendation/);
+  assert.match(source, /contributionMargin\.minimumStatus === 'below_minimum'/);
   assert.match(view, /onframe-promotion-manager-editor\$\{row\.readOnly \? ' is-readonly' : ''\}/);
   assert.match(view, /Kbd,[\s\S]*from '@onblide\/ui'/s);
   assert.match(view, /<Kbd size="sm">Esc<\/Kbd> cancela/);

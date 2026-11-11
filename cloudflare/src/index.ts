@@ -32,6 +32,7 @@ import {
 } from './products';
 import { ProductSettingsError, getProductSettings, updateProductSettings } from './product-settings';
 import { TaxConfigurationError, getTaxConfiguration, updateTaxConfiguration } from './tax-configuration';
+import { MarginConfigurationError, getMarginConfiguration, updateMarginConfiguration } from './margin-configuration';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -2399,6 +2400,12 @@ export default {
         if (request.method === 'PUT') return json(await updateTaxConfiguration(request, env, actor, requestId));
       }
 
+      if (url.pathname === '/v1/app/margin-configuration') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'GET') return json(await getMarginConfiguration(env, actor));
+        if (request.method === 'PUT') return json(await updateMarginConfiguration(request, env, actor, requestId));
+      }
+
       if (url.pathname === '/v1/app/products/import/preview' && request.method === 'POST') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await previewProductImport(request, env, actor));
@@ -2571,6 +2578,7 @@ export default {
         error instanceof ProductRequestError ||
         error instanceof ProductSettingsError ||
         error instanceof TaxConfigurationError ||
+        error instanceof MarginConfigurationError ||
         error instanceof SupabaseAuthError ||
         error instanceof IdentitySecurityError
       ) {

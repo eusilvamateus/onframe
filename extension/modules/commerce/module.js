@@ -1415,7 +1415,19 @@
                 )
               : '',
           percentage: completeMargin ? formatContributionPercent(contributionMargin.percentage) : '',
-          tone: completeMargin && Number(contributionMargin.amount) < 0 ? 'danger' : completeMargin ? 'success' : '',
+          tone:
+            completeMargin && contributionMargin.minimumStatus === 'below_minimum'
+              ? 'danger'
+              : completeMargin && Number(contributionMargin.amount) < 0
+                ? 'danger'
+                : completeMargin
+                  ? 'success'
+                  : '',
+          recommendation:
+            completeMargin && contributionMargin.minimumStatus === 'below_minimum'
+              ? `Abaixo da MC mínima de ${formatContributionPercent(contributionMargin.minimumPercentage)}`
+              : '',
+          recommendationTone: 'below-minimum',
           loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
         },
         metrics,

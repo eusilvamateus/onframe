@@ -1343,6 +1343,11 @@ body:has(
   color: var(--ob-danger);
 }
 
+.onframe-promotion-manager-margin-summary small.below-minimum {
+  color: var(--ob-danger);
+  font-weight: var(--ob-w-semibold) !important;
+}
+
 .onframe-promotion-manager-actions {
   display: flex;
   justify-content: flex-end;

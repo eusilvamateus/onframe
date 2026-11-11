@@ -18,6 +18,7 @@ test('planilha de produtos preserva os campos do catalogo', () => {
       name: 'Mesa dobrável',
       cost: 153.45,
       taxRate: 7.25,
+      minimumContributionMargin: 14.5,
       customCosts: [
         { description: 'Embalagem', type: 'fixed', value: 3.5 },
         { description: 'Comissão comercial', type: 'percentage', value: 2.25 }
@@ -33,6 +34,7 @@ test('planilha de produtos preserva os campos do catalogo', () => {
       name: 'Mesa dobrável',
       cost: 153.45,
       taxRate: 7.25,
+      minimumContributionMargin: 14.5,
       customCosts: [
         { description: 'Embalagem', type: 'fixed', value: 3.5 },
         { description: 'Comissão comercial', type: 'percentage', value: 2.25 }
@@ -117,6 +119,21 @@ test('planilha preserva imposto vazio como configuracao herdada', () => {
     }
   ]);
   assert.equal(parseProductWorkbook(buffer(workbook))[0].taxRate, '');
+});
+
+test('planilha preserva o limite de margem individual do produto', () => {
+  const workbook = createProductWorkbook([
+    {
+      sku: 'MC-01',
+      name: 'Produto com limite',
+      cost: 50,
+      taxRate: null,
+      minimumContributionMargin: 17.25,
+      customCosts: [],
+      status: 'active'
+    }
+  ]);
+  assert.equal(parseProductWorkbook(buffer(workbook))[0].minimumContributionMargin, 17.25);
 });
 
 test('planilha sem o contrato oficial e rejeitada antes do envio', () => {

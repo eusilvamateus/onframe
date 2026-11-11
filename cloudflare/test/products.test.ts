@@ -80,6 +80,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       name: 'Mesa dobrável 1,80 m',
       cost: 152.35,
       taxRate: 7.25,
+      minimumContributionMargin: 18.75,
       accountTaxRates: [{ sellerAccountId: 'account-1', taxRate: 9.5 }],
       customCosts: [{ description: 'Embalagem', type: 'fixed', value: 4.5 }],
       status: 'active'
@@ -92,6 +93,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(created.sku, 'Mesa-180');
     assert.equal(created.cost, 152.35);
     assert.equal(created.taxRate, 7.25);
+    assert.equal(created.minimumContributionMargin, 18.75);
     assert.deepEqual(created.accountTaxRates, [
       { sellerAccountId: 'account-1', accountUserId: '310458346', taxRate: 9.5 }
     ]);
@@ -362,6 +364,8 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(itemMatch.source, 'item');
     assert.equal(itemMatch.product?.id, created.id);
     assert.equal(itemMatch.product?.cost, 170);
+    assert.equal(itemMatch.product?.minimumContributionMargin, 18.75);
+    assert.equal(itemMatch.workspaceMinimumContributionMargin, null);
     assert.equal(itemMatch.costDecimalPlaces, 5);
 
     const variationMatch = await matchProductForPromotionItem(
@@ -417,6 +421,16 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       'request-inherited-tax'
     );
     assert.equal(inheritedTax.taxRate, null);
+    await db
+      .prepare(
+        "INSERT INTO workspace_margin_settings (workspace_id, minimum_contribution_margin_bps, created_at, updated_at) VALUES ('workspace-1', 1250, 1, 1)"
+      )
+      .run();
+    const inheritedMargin = await matchProductForPromotionItem(env, admin, {
+      seller_custom_field: 'HERDA-IMPOSTO'
+    });
+    assert.equal(inheritedMargin.product?.minimumContributionMargin, null);
+    assert.equal(inheritedMargin.workspaceMinimumContributionMargin, 12.5);
     const inheritedPreview = await previewProductImport(
       productRequest({
         rows: [

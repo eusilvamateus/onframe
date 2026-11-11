@@ -61,6 +61,12 @@ async function handleRemoteMessage(message) {
   if (action === 'tax-configuration') return requestPlatform('/v1/app/tax-configuration');
   if (action === 'tax-configuration-update')
     return requestPlatform('/v1/app/tax-configuration', { method: 'PUT', body: JSON.stringify(message.payload || {}) });
+  if (action === 'margin-configuration') return requestPlatform('/v1/app/margin-configuration');
+  if (action === 'margin-configuration-update')
+    return requestPlatform('/v1/app/margin-configuration', {
+      method: 'PUT',
+      body: JSON.stringify(message.payload || {})
+    });
   if (action === 'product-create')
     return requestPlatform('/v1/app/products', { method: 'POST', body: JSON.stringify(message.payload || {}) });
   if (action === 'product-update')
