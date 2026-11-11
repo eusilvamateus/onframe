@@ -103,8 +103,8 @@ async function updateCharacteristicsFamily(client, itemId, input = {}) {
   const prepared = await mapLimit(targets.items, CONCURRENCY_READ, async (target) =>
     prepareCharacteristicsTarget(client, target)
   );
-  const editableTargets = prepared.filter((target) => target.eligible);
-  const editableVariations = editableTargets.filter((target) => !target.current);
+  const groups = groupCharacteristicsTargets(prepared);
+  const editableVariations = groups.filter((group) => group.representative?.eligible && !group.current);
 
   if (!editableVariations.length) {
     const err = new Error('bulk_characteristics_no_editable_variations');
@@ -112,25 +112,42 @@ async function updateCharacteristicsFamily(client, itemId, input = {}) {
     throw err;
   }
 
-  const results = await mapLimit(prepared, CONCURRENCY_WRITE, async (target) => {
-    if (!target.eligible) return stripPreparedTarget(target);
+  const results = await mapLimit(groups, CONCURRENCY_WRITE, async (group) => {
+    const target = group.representative;
+    if (!target.eligible) {
+      return {
+        itemId: target.itemId,
+        itemIds: group.itemIds,
+        userProductId: target.userProductId || null,
+        title: target.title || null,
+        current: group.current,
+        eligible: false,
+        status: target.status,
+        reasonCode: target.reasonCode || null,
+        statusCode: target.statusCode || null,
+        message: target.message || null
+      };
+    }
     try {
       const result = await updateOwnedCharacteristics(client, target.item, updates);
       return {
         itemId: target.itemId,
+        itemIds: group.itemIds,
         userProductId: target.userProductId || null,
         title: target.title || null,
-        current: Boolean(target.current),
+        current: group.current,
         eligible: true,
         status: 'applied',
+        propagation: 'asynchronous',
         result
       };
     } catch (err) {
       return {
         itemId: target.itemId,
+        itemIds: group.itemIds,
         userProductId: target.userProductId || null,
         title: target.title || null,
-        current: Boolean(target.current),
+        current: group.current,
         eligible: false,
         status: 'failed',
         reasonCode: err && err.message ? String(err.message) : 'characteristics_target_error',
@@ -141,6 +158,38 @@ async function updateCharacteristicsFamily(client, itemId, input = {}) {
   });
 
   return buildCharacteristicsBulkResponse(targets, results);
+}
+
+function groupCharacteristicsTargets(targets) {
+  const groups = new Map();
+  for (const target of targets) {
+    const userProductId = target.userProductId || null;
+    const key = userProductId || `item:${target.itemId}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(target);
+  }
+
+  return Array.from(groups.values(), (members) => {
+    const eligible = members.filter((target) => target.eligible);
+    const representative =
+      eligible.find((target) => target.current) ||
+      eligible[0] ||
+      members.find((target) => target.current) ||
+      members[0];
+    return {
+      representative,
+      itemId: representative.itemId,
+      userProductId: representative.userProductId || null,
+      title: representative.title || null,
+      current: members.some((target) => target.current),
+      eligible: Boolean(eligible.length),
+      status: representative.status,
+      reasonCode: representative.reasonCode || null,
+      statusCode: representative.statusCode || null,
+      message: representative.message || null,
+      itemIds: members.map((target) => target.itemId)
+    };
+  });
 }
 
 async function updateOwnedCharacteristics(client, item, inputUpdates) {
@@ -651,12 +700,6 @@ function blockedTarget(target, item, reasonCode, message) {
     statusCode: 409,
     message
   };
-}
-
-function stripPreparedTarget(target) {
-  const output = Object.assign({}, target);
-  delete output.item;
-  return output;
 }
 
 function buildCharacteristicsBulkResponse(targets, results) {

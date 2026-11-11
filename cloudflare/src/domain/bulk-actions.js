@@ -113,7 +113,7 @@ async function resolveFamilyTargets(client, itemId, input = {}) {
   }
 
   const userProductIds = unique([item.user_product_id].concat(familyUserProductIds));
-  const search = await searchItemsByStatuses(client, item.seller_id, userProductIds.join(','), 100);
+  const search = await searchItemsByStatuses(client, item.seller_id, userProductIds.join(','), 100, true);
   const itemIds = search.itemIds;
   if (!itemIds.length) {
     const err = new Error('bulk_family_without_editable_items');
@@ -161,17 +161,18 @@ async function resolveSourceItem(client, subjectId) {
   return assertOwnedItem(client, itemId);
 }
 
-async function searchItemsByStatuses(client, sellerId, userProductIds, limit) {
+async function searchItemsByStatuses(client, sellerId, userProductIds, limit, fetchAll = false) {
   const searches = await Promise.all(
     BULK_ITEM_STATUSES.map(async (status) => ({
       status,
-      response: await client.searchItemsByUserProduct(sellerId, userProductIds, { status, limit })
+      itemIds: fetchAll
+        ? await searchAllItemsByUserProduct(client, sellerId, userProductIds, status)
+        : extractSearchResults(await client.searchItemsByUserProduct(sellerId, userProductIds, { status, limit }))
     }))
   );
   const statusByItemId = new Map();
-  searches.forEach(({ status, response }) => {
-    const results = Array.isArray(response && response.results) ? response.results : [];
-    results.forEach((itemId) => {
+  searches.forEach(({ status, itemIds }) => {
+    itemIds.forEach((itemId) => {
       const normalizedId = String(itemId);
       if (!statusByItemId.has(normalizedId)) statusByItemId.set(normalizedId, status);
     });
@@ -180,6 +181,88 @@ async function searchItemsByStatuses(client, sellerId, userProductIds, limit) {
     itemIds: Array.from(statusByItemId.keys()),
     statusByItemId
   };
+}
+
+async function searchAllItemsByUserProduct(client, sellerId, userProductIds, status) {
+  const limit = 100;
+  const itemIds = new Set();
+  let offset = 0;
+  let useScan = false;
+
+  for (let page = 0; page < 1000; page += 1) {
+    const options = { status, limit };
+    if (offset > 0) options.offset = offset;
+    const response = await client.searchItemsByUserProduct(sellerId, userProductIds, options);
+    const results = extractSearchResults(response);
+    results.forEach((itemId) => itemIds.add(String(itemId)));
+    const totalValue = response && response.paging && response.paging.total;
+    const total =
+      typeof totalValue === 'number' || (typeof totalValue === 'string' && totalValue.trim())
+        ? Number(totalValue)
+        : NaN;
+
+    if (Number.isFinite(total) && total > 1000) {
+      useScan = true;
+      break;
+    }
+    if (results.length < limit || (Number.isFinite(total) && offset + results.length >= total)) {
+      return Array.from(itemIds);
+    }
+    offset += results.length;
+    if (offset >= 1000) {
+      useScan = true;
+      break;
+    }
+  }
+
+  if (!useScan) throw bulkSearchError('bulk_item_search_page_limit');
+
+  itemIds.clear();
+  let response = await client.searchItemsByUserProduct(sellerId, userProductIds, {
+    status,
+    limit,
+    search_type: 'scan'
+  });
+  let scrollId = response && response.scroll_id;
+  let page = 0;
+
+  while (true) {
+    const results = extractSearchResults(response);
+    results.forEach((itemId) => itemIds.add(String(itemId)));
+    if (!scrollId) {
+      const scanTotalValue = response && response.paging && response.paging.total;
+      const scanTotal =
+        typeof scanTotalValue === 'number' || (typeof scanTotalValue === 'string' && scanTotalValue.trim())
+          ? Number(scanTotalValue)
+          : NaN;
+      if (
+        (Number.isFinite(scanTotal) && scanTotal > itemIds.size) ||
+        (!Number.isFinite(scanTotal) && results.length >= limit)
+      ) {
+        throw bulkSearchError('bulk_item_search_scroll_unavailable');
+      }
+      return Array.from(itemIds);
+    }
+    if (page >= 999) throw bulkSearchError('bulk_item_search_page_limit');
+    page += 1;
+    response = await client.searchItemsByUserProduct(sellerId, userProductIds, {
+      status,
+      limit,
+      search_type: 'scan',
+      scroll_id: scrollId
+    });
+    scrollId = response && response.scroll_id;
+  }
+}
+
+function extractSearchResults(response) {
+  return Array.isArray(response && response.results) ? response.results : [];
+}
+
+function bulkSearchError(code) {
+  const err = new Error(code);
+  err.statusCode = 502;
+  return err;
 }
 
 async function previewTarget(client, operation, target) {
