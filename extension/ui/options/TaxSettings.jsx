@@ -120,7 +120,6 @@ export function TaxSettings() {
         </Alert>
       )}
       <SectionHeader
-        eyebrow="Margem de contribuição"
         title="Parâmetros de margem"
         copy="Configure limites e alíquotas usados na leitura de margem das promoções."
       />

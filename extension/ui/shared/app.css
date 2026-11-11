@@ -429,7 +429,7 @@ input {
   padding-top: var(--ob-space-8);
 }
 .onframe-tax-settings {
-  max-width: 880px;
+  width: 100%;
 }
 .onframe-tax-settings-section {
   display: grid;
