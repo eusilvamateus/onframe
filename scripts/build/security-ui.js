@@ -10,6 +10,9 @@ fs.mkdirSync(output, { recursive: true });
 fs.copyFileSync(path.join(root, 'extension', 'ui', 'passkeys', 'index.html'), path.join(output, 'index.html'));
 fs.copyFileSync(path.join(root, 'extension', 'core', 'remote-auth.js'), path.join(output, 'remote-auth.js'));
 fs.copyFileSync(require.resolve('@onblide/ui/theme-init'), path.join(output, 'theme-init.js'));
+for (const logo of ['onframe-horizontal-black.png', 'onframe-horizontal-primary.png', 'onframe-horizontal-white.png']) {
+  fs.copyFileSync(path.join(root, 'extension', 'assets', logo), path.join(output, logo));
+}
 fs.copyFileSync(
   path.join(root, 'extension', 'assets', 'onframe-stacked-primary.png'),
   path.join(output, 'onframe-stacked-primary.png')

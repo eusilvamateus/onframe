@@ -114,8 +114,8 @@ test('renderiza magic link sem transformar o acesso em OTP', () => {
   assert.equal(delivery.recipient, 'pessoa@example.com');
   assert.equal(delivery.subject, 'Seu link de acesso');
   assert.doesNotMatch(delivery.html, /class="access-code"/);
-  assert.match(delivery.html, /onframe-stacked-primary\.png/);
-  assert.match(delivery.html, /<td align="center"><img[^>]+alt="OnFrame"/);
+  assert.match(delivery.html, /onframe-horizontal-primary\.png/);
+  assert.match(delivery.html, /onframe-horizontal-white\.png/);
   assert.doesNotMatch(delivery.html, /alt="Onblide"|border-left:1px solid #ececec/);
   assert.match(delivery.html, /auth\/v1\/verify\?token=token-hash-principal&amp;type=magiclink/);
 });
@@ -125,8 +125,8 @@ test('verificacao de identidade recebe codigo sem alterar o login por magic link
   payload.email_data.redirect_to = 'https://onframe.onblide.com/connect?verification=email';
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), payload);
   assert.equal(delivery.subject, 'Confirme seu e-mail no OnFrame');
-  assert.match(delivery.html, /class="access-code"[^>]*>12345678<\/span>/);
-  assert.doesNotMatch(delivery.html, /class="code-cell"|class="code-gap"/);
+  assert.equal(delivery.html.match(/class="access-code-cell"/gu)?.length, 8);
+  assert.match(delivery.html, /aria-label="Código de acesso: 12345678"/);
   assert.doesNotMatch(delivery.html, /auth\/v1\/verify/);
   payload.email_data.redirect_to = 'https://example.com/connect?verification=email';
   assert.equal(deliveriesForEvent(runtime(new FakeD1()), payload)[0].subject, 'Seu link de acesso');
@@ -137,12 +137,17 @@ test('login faseado recebe OTP sem link que consuma o codigo', () => {
   payload.email_data.redirect_to = 'https://onframe.onblide.com/connect?verification=login';
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), payload);
   assert.equal(delivery.subject, 'Seu código de acesso ao OnFrame');
-  assert.match(delivery.html, /class="access-code"[^>]*>12345678<\/span>/);
+  assert.equal(delivery.html.match(/class="access-code-cell"/gu)?.length, 8);
+  assert.match(delivery.html, /width:32px;height:48px/);
   assert.equal(delivery.html.match(/12345678/gu)?.length, 1);
-  assert.doesNotMatch(delivery.html, /class="code-cell"|class="code-gap"/);
   assert.match(delivery.html, /Não foi você\?/);
-  assert.doesNotMatch(delivery.html, /background:#fde6d3/);
+  assert.match(delivery.html, /@media \(prefers-color-scheme: dark\)/);
+  assert.match(delivery.html, /\.email-logo-dark\{display:block!important/);
   assert.doesNotMatch(delivery.html, /auth\/v1\/verify/);
+  payload.email_data.token = '123456';
+  const [shortCode] = deliveriesForEvent(runtime(new FakeD1()), payload);
+  assert.equal(shortCode.html.match(/class="access-code-cell"/gu)?.length, 6);
+  assert.match(shortCode.html, /width:40px;height:48px/);
   payload.email_data.redirect_to = 'https://example.com/connect?verification=login';
   assert.equal(deliveriesForEvent(runtime(new FakeD1()), payload)[0].subject, 'Seu link de acesso');
 });
@@ -151,24 +156,22 @@ test('aplica a superfície bordered do design system aos e-mails', () => {
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), event('magiclink'));
 
   assert.match(delivery.html, /background:#ffffff/);
-  assert.match(delivery.html, /border:1px solid #ececec;border-radius:12px;background:#ffffff;box-shadow:none/);
+  assert.match(delivery.html, /border:1px solid #ececec;border-radius:16px/);
   assert.doesNotMatch(delivery.html, /background:#f2f0e8/);
-  assert.doesNotMatch(delivery.html, /box-shadow:(?!none)/);
-  assert.match(
-    delivery.html,
-    /font-family:'JetBrains Mono','Courier New',monospace;font-size:12px;font-weight:600;letter-spacing:\.04em/
-  );
-  assert.match(delivery.html, /margin:24px 0 8px/);
-  assert.match(delivery.html, /border-radius:10px;color:#ffffff;font-size:14px;font-weight:600/);
+  assert.match(delivery.html, /font-size:22px;font-weight:600;letter-spacing:0;line-height:30px/);
+  assert.match(delivery.html, /font-size:15px;line-height:24px/);
+  assert.match(delivery.html, /border-radius:8px;color:#ffffff;font-size:15px;font-weight:600/);
+  assert.match(delivery.html, /Se o botão não funcionar, copie e cole este endereço/);
   assert.doesNotMatch(delivery.html, /\.action-link \{/);
-  assert.doesNotMatch(delivery.html, /\.access-code \{/);
+  assert.match(delivery.html, /\.access-code-cell\{background:#121212!important/);
 });
 
-test('notificações de segurança usam nota textual sem caixa de alerta', () => {
+test('notificações de segurança destacam a orientação em um aviso', () => {
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), event('password_changed_notification'));
 
-  assert.match(delivery.html, /Segurança da conta/);
-  assert.doesNotMatch(delivery.html, /background:#fde6d3|background:#e0eaff/);
+  assert.match(delivery.html, /class="email-notice"/);
+  assert.match(delivery.html, /Não foi você\?/);
+  assert.match(delivery.html, /Se você não fez esta alteração, recupere o acesso imediatamente\./);
 });
 
 test('separa as duas confirmações da alteração segura de e-mail', () => {

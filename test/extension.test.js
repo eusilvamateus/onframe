@@ -318,10 +318,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(options, /page: 'appearance'/);
   assert.match(options, /actions=\{<ThemeSelector \/>\}/);
   assert.match(control, /export function useThemeSubmenuItem\(\)/);
-  assert.match(
-    control,
-    /type: 'submenu',[\s\S]*label: 'Aparência',[\s\S]*icon: selected\.icon/
-  );
+  assert.match(control, /type: 'submenu',[\s\S]*label: 'Aparência',[\s\S]*icon: selected\.icon/);
   assert.match(options, /const appearanceMenuItem = useThemeSubmenuItem\(\);/);
   assert.match(options, /appearanceMenuItem,[\s\S]*\{ type: 'separator' \}/);
   assert.doesNotMatch(options, /type: 'custom'[\s\S]*content: <ThemeTabs \/>/);
@@ -337,6 +334,9 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(extensionBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /hosted: path\.join\(root, 'extension', 'ui', 'hosted', 'app\.jsx'\)/);
+  assert.match(securityBuild, /onframe-horizontal-black\.png/);
+  assert.match(securityBuild, /onframe-horizontal-primary\.png/);
+  assert.match(securityBuild, /onframe-horizontal-white\.png/);
   assert.equal(manifest.content_scripts[0].js[0], 'core/theme-sync.js');
   assert.match(themeSync, /data-onframe-theme/);
   assert.match(themeSync, /prefers-color-scheme: dark/);
