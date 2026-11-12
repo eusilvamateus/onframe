@@ -510,7 +510,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
           </div>
           <div className="onframe-history-pagination">
             <span>{total === 1 ? '1 alteração' : `${total} alterações`}</span>
-            <Pagination size="sm" page={page} total={totalPages} onChange={setPage} />
+            <Pagination page={page} total={totalPages} onChange={setPage} />
           </div>
         </>
       ) : null}
