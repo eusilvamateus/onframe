@@ -30,12 +30,12 @@ diretamente e não guarda credenciais de conta no computador.
 
 ## Pessoas e workspaces
 
-Cada pessoa recebe um perfil no workspace. `Administrador` gerencia contas,
-pessoas, convites e o nome do workspace. `Colaborador` e o perfil operacional
-padrao, cujas permissoes podem ser editadas pelo administrador. Outros perfis
-podem ser criados com permissoes granulares. Pessoas nao administradoras usam
-apenas as contas Mercado Livre atribuidas a elas; podem participar de um
-workspace sem nenhuma conta atribuida.
+Cada pessoa recebe uma atribuicao no workspace. `Administrador` gerencia contas,
+pessoas, convites, perfis e o nome do workspace. As demais pessoas recebem um
+perfil de acesso criado pelo administrador, com permissoes granulares, e usam
+apenas as contas Mercado Livre atribuidas a elas. Podem participar de um
+workspace sem nenhuma conta atribuida. O antigo `Colaborador` nao e mais um
+perfil reservado.
 
 O painel permite convidar por e-mail ou por link compartilhável. Ambos são de
 uso único, expiram em sete dias e podem ser revogados. O link abre uma página

@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, ListItem, Modal, Tooltip } from '@onblide/ui';
+import { Button, Checkbox, ListItem, Modal, Select, Tooltip } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { WorkspaceSession } from '../extension/ui/popup/WorkspaceSession.jsx';
+import { WorkspaceAccessModal } from '../extension/ui/shared/WorkspaceAccessModal.jsx';
 
 const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', roleId: 'admin', accounts: [] };
 const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', roleId: 'admin', accounts: [] };
@@ -111,4 +112,46 @@ test('convite em andamento reabre com o rascunho e cancelar limpa a retomada', a
     renderer?.unmount();
     globalThis.document = originalDocument;
   }
+});
+
+test('convite exige perfil explicito e concede administracao separadamente', async () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { activeElement: null, addEventListener() {}, removeEventListener() {} } as unknown as Document;
+  const confirmations = [];
+  let renderer;
+  try {
+    await act(async () => {
+      renderer = create(
+        <WorkspaceAccessModal
+          dialog={{ type: 'invite' }}
+          accounts={[]}
+          roles={[
+            { id: 'admin', name: 'Administrador' },
+            { id: 'collaborator:workspace-1', name: 'Colaborador' }
+          ]}
+          onClose={() => {}}
+          onConfirm={(value) => confirmations.push(value)}
+        />
+      );
+    });
+    const profile = renderer.root.findByType(Select);
+    assert.deepEqual(profile.props.options, ['Colaborador']);
+    assert.equal(profile.props.value, null);
+    assert.equal(
+      renderer.root.findAllByType(Button).find((button) => button.props.children === 'Enviar convite')?.props.disabled,
+      true
+    );
+    await act(async () => profile.props.onChange('Colaborador'));
+    assert.equal(renderer.root.findByType(Select).props.value, 'Colaborador');
+    const adminControl = renderer.root
+      .findAllByType(Checkbox)
+      .find((checkbox) => checkbox.props.label === 'Administrador do workspace');
+    await act(async () => adminControl.props.onChange(true));
+    assert.equal(renderer.root.findAllByType(Select).length, 0);
+    assert.ok(renderer.root.findAllByType(Button).some((button) => button.props.children === 'Convidar administrador'));
+  } finally {
+    if (renderer) await act(async () => renderer.unmount());
+    globalThis.document = originalDocument;
+  }
+  assert.deepEqual(confirmations, []);
 });

@@ -49,11 +49,12 @@ export function WorkspaceAccessModal({
   if (!dialog || !['invite', 'member'].includes(dialog.type)) return null;
   const isInvite = dialog.type === 'invite';
   const { kind, email, accountIds } = values;
-  const availableRoles = roles;
-  const roleId = values.roleId || (isInvite ? availableRoles.find((option) => option.isDefault)?.id : '');
-  const selectedRole = availableRoles.find((option) => option.id === roleId);
+  const accessRoles = roles.filter((option) => option.id !== 'admin');
+  const roleId = values.roleId;
+  const selectedRole = roles.find((option) => option.id === roleId);
   const administrator = roleId === 'admin';
   const demotingAdmin = !isInvite && member.roleId === 'admin' && !administrator;
+  const promotingAdmin = administrator && (isInvite || member.roleId !== 'admin');
 
   function update(patch) {
     const next = { ...values, ...patch };
@@ -76,7 +77,15 @@ export function WorkspaceAccessModal({
             disabled={busy || !selectedRole || (isInvite && kind === 'email' && !email.trim())}
             onClick={() => onConfirm({ kind, email: email.trim(), roleId, accountIds })}
           >
-            {isInvite ? 'Enviar convite' : demotingAdmin ? 'Rebaixar administrador' : 'Salvar acesso'}
+            {isInvite
+              ? administrator
+                ? 'Convidar administrador'
+                : 'Enviar convite'
+              : demotingAdmin
+                ? 'Rebaixar administrador'
+                : promotingAdmin
+                  ? 'Tornar administrador'
+                  : 'Salvar acesso'}
           </Button>
         </>
       }
@@ -108,18 +117,15 @@ export function WorkspaceAccessModal({
             onChange={(event) => update({ email: event.target.value })}
           />
         )}
-        <Select
-          label="Perfil de usuário"
-          options={availableRoles.map((option) => option.name)}
-          value={selectedRole?.name || null}
-          disabled={availableRoles.length === 0}
-          onChange={(value) => {
-            const nextRole = availableRoles.find((option) => option.name === value);
-            if (nextRole) update({ roleId: nextRole.id });
-          }}
+        <Checkbox
+          label="Administrador do workspace"
+          checked={administrator}
+          onChange={(checked) => update({ roleId: checked ? 'admin' : '' })}
         />
-        {administrator && (
-          <p className="onframe-muted">Administradores acessam todas as contas e podem gerenciar pessoas e convites.</p>
+        {promotingAdmin && (
+          <Alert appearance="soft" tone="warning">
+            Administradores acessam todas as contas e podem gerenciar pessoas, convites e perfis.
+          </Alert>
         )}
         {demotingAdmin && (
           <Alert appearance="soft" tone="warning">
@@ -128,6 +134,17 @@ export function WorkspaceAccessModal({
         )}
         {!administrator && (
           <div className="onframe-stack">
+            <Select
+              label="Perfil de acesso"
+              options={accessRoles.map((option) => option.name)}
+              value={selectedRole?.name || null}
+              disabled={accessRoles.length === 0}
+              onChange={(value) => {
+                const nextRole = accessRoles.find((option) => option.name === value);
+                if (nextRole) update({ roleId: nextRole.id });
+              }}
+            />
+            {accessRoles.length === 0 && <p className="onframe-muted">Crie um perfil de acesso para esta pessoa.</p>}
             <p className="onframe-field-label">Contas atribuídas</p>
             {accounts.length === 0 ? (
               <p className="onframe-muted">Nenhuma conta conectada.</p>

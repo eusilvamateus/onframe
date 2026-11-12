@@ -310,7 +310,7 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'admin-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1)"
       ),
       db.prepare(
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator:workspace-1', 1, 1)"

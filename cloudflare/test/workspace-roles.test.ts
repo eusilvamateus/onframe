@@ -3,7 +3,13 @@ import test from 'node:test';
 import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
-import { deleteWorkspaceRole, listWorkspaceRoles, saveWorkspaceRole, updateWorkspaceMember } from '../src/index.ts';
+import {
+  deleteWorkspaceRole,
+  listWorkspaceRoles,
+  provisionActor,
+  saveWorkspaceRole,
+  updateWorkspaceMember
+} from '../src/index.ts';
 import { hasPermission, validPermissions } from '../src/permissions.ts';
 import { handleRemoteApiRequest, remotePermission } from '../src/remote-api.ts';
 
@@ -98,35 +104,44 @@ test('perfis personalizados respeitam workspace, atribuicao e exclusao', async (
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'admin-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1)"
       ),
       db.prepare(
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'member-1', 'collaborator:workspace-1', 1, 1)"
       )
     ]);
     const env = { ONFRAME_DB: db } as Parameters<typeof saveWorkspaceRole>[1];
+    const newMember = await provisionActor(env as Parameters<typeof provisionActor>[0], {
+      subject: 'subject-new',
+      email: 'new@example.com',
+      name: 'Nova pessoa',
+      authSessionId: 'session-new',
+      identityVersion: 1
+    });
+    const newWorkspaceRoles = await db
+      .prepare('SELECT COUNT(*) AS count FROM workspace_roles WHERE workspace_id = ?')
+      .bind(newMember.workspaceId)
+      .first<{ count: number }>();
+    assert.equal(newWorkspaceRoles?.count, 0);
     const created = await saveWorkspaceRole(roleRequest('Analista', ['accounts.read', 'products.read']), env, admin);
     const custom = created.roles.find((role) => role.name === 'Analista');
     assert.ok(custom);
     assert.equal(custom.system, false);
     assert.deepEqual(custom.permissions.sort(), ['accounts.read', 'products.read']);
     assert.equal((await listWorkspaceRoles(env, admin)).length, 3);
-    const defaultRole = await saveWorkspaceRole(
-      roleRequest('Colaborador', ['accounts.read', 'products.read']),
+    const renamedRole = await saveWorkspaceRole(
+      roleRequest('Operacional', ['accounts.read', 'products.read']),
       env,
       admin,
       'collaborator:workspace-1'
     );
-    assert.deepEqual(defaultRole.roles.find((role) => role.isDefault)?.permissions.sort(), [
+    assert.equal(renamedRole.roles.find((role) => role.id === 'collaborator:workspace-1')?.name, 'Operacional');
+    assert.deepEqual(renamedRole.roles.find((role) => role.id === 'collaborator:workspace-1')?.permissions.sort(), [
       'accounts.read',
       'products.read'
     ]);
-    await assert.rejects(
-      saveWorkspaceRole(roleRequest('Outro nome', ['accounts.read']), env, admin, 'collaborator:workspace-1'),
-      { code: 'workspace_role_not_editable' }
-    );
     await assert.rejects(deleteWorkspaceRole(env, admin, 'collaborator:workspace-1'), {
-      code: 'workspace_role_not_editable'
+      code: 'workspace_role_in_use'
     });
 
     await assert.rejects(saveWorkspaceRole(roleRequest('analista', []), env, admin), {
@@ -153,6 +168,11 @@ test('perfis personalizados respeitam workspace, atribuicao e exclusao', async (
       .bind('member-1')
       .first<{ role_id: string }>();
     assert.deepEqual(membership, { role_id: custom.id });
+    const withoutLegacyRole = await deleteWorkspaceRole(env, admin, 'collaborator:workspace-1');
+    assert.equal(
+      withoutLegacyRole.roles.some((role) => role.id === 'collaborator:workspace-1'),
+      false
+    );
     await assert.rejects(deleteWorkspaceRole(env, admin, custom.id), { code: 'workspace_role_in_use' });
 
     const updated = await saveWorkspaceRole(
@@ -169,7 +189,7 @@ test('perfis personalizados respeitam workspace, atribuicao e exclusao', async (
     await updateWorkspaceMember(
       new Request('https://onframe.test/v1/members/member-1', {
         method: 'PATCH',
-        body: JSON.stringify({ roleId: 'collaborator:workspace-1', accountIds: [] })
+        body: JSON.stringify({ roleId: 'admin', accountIds: [] })
       }),
       env,
       admin,
@@ -228,6 +248,11 @@ test('migracao preserva membros e convites existentes sem campos legados', async
     ]);
     const sql = await readFile(new URL('../migrations/0022_role_id_only.sql', import.meta.url), 'utf8');
     await db.batch(unstable_splitSqlQuery(sql).map((statement) => db.prepare(statement)));
+    const nextSql = await readFile(
+      new URL('../migrations/0023_remove_default_workspace_role.sql', import.meta.url),
+      'utf8'
+    );
+    await db.batch(unstable_splitSqlQuery(nextSql).map((statement) => db.prepare(statement)));
     const member = await db
       .prepare("SELECT role_id FROM workspace_members WHERE user_id = 'member-1'")
       .first<{ role_id: string }>();
@@ -235,15 +260,20 @@ test('migracao preserva membros e convites existentes sem campos legados', async
       .prepare("SELECT role_id FROM workspace_invitations WHERE id = 'invite-1'")
       .first<{ role_id: string }>();
     const role = await db
-      .prepare("SELECT is_default FROM workspace_roles WHERE id = 'collaborator:workspace-1'")
-      .first<{ is_default: number }>();
+      .prepare("SELECT name FROM workspace_roles WHERE id = 'collaborator:workspace-1'")
+      .first<{ name: string }>();
     const permissions = await db
       .prepare("SELECT permission FROM workspace_role_permissions WHERE role_id = 'collaborator:workspace-1'")
       .all<{ permission: string }>();
     assert.equal(member?.role_id, 'collaborator:workspace-1');
     assert.equal(invite?.role_id, 'collaborator:workspace-1');
-    assert.equal(role?.is_default, 1);
+    assert.equal(role?.name, 'Colaborador');
     assert.ok(permissions.results.length > 0);
+    const roleColumns = await db.prepare('PRAGMA table_info(workspace_roles)').all<{ name: string }>();
+    assert.equal(
+      roleColumns.results.some((column) => column.name === 'is_default'),
+      false
+    );
     for (const table of ['workspace_members', 'workspace_invitations']) {
       const columns = await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
       assert.equal(

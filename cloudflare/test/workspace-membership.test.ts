@@ -98,6 +98,10 @@ test('novo acesso apos sair nao recoloca a pessoa no workspace anterior', async 
       (query) => query.sql.includes('INSERT INTO workspace_members') && query.values.includes(result.workspaceId)
     )
   );
+  assert.equal(
+    queries.some((query) => query.sql.includes('INSERT INTO workspace_roles')),
+    false
+  );
 });
 
 test('administrador nao pode gerenciar ou remover a si mesmo pela rota de membros', async () => {
@@ -230,7 +234,7 @@ test('resumo do workspace respeita atribuicoes e considera apenas pendencias e e
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'admin-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1)"
       ),
       db.prepare(
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator:workspace-1', 1, 1)"
@@ -326,7 +330,7 @@ test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login'
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Original', 'user-1', 1, 1), ('workspace-2', 'Outro', 'user-2', 2, 2)"
       ),
       db.prepare(
-        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1), ('collaborator:workspace-2', 'workspace-2', 'Colaborador', NULL, 2, 2, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1), ('collaborator:workspace-2', 'workspace-2', 'Colaborador', NULL, 2, 2)"
       ),
       db.prepare(
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1), ('workspace-1', 'user-2', 'admin', 2, 2), ('workspace-2', 'user-1', 'collaborator:workspace-2', 3, 3)"

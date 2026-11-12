@@ -33,14 +33,7 @@ import {
 import { ProductSettingsError, getProductSettings, updateProductSettings } from './product-settings';
 import { TaxConfigurationError, getTaxConfiguration, updateTaxConfiguration } from './tax-configuration';
 import { MarginConfigurationError, getMarginConfiguration, updateMarginConfiguration } from './margin-configuration';
-import {
-  ALL_PERMISSIONS,
-  DEFAULT_COLLABORATOR_PERMISSIONS,
-  hasPermission,
-  isWorkspaceAdmin,
-  validPermissions,
-  type Permission
-} from './permissions';
+import { ALL_PERMISSIONS, hasPermission, isWorkspaceAdmin, validPermissions, type Permission } from './permissions';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -432,18 +425,6 @@ export async function provisionActor(env: Env, identity: SupabaseIdentity): Prom
       ON CONFLICT(id) DO NOTHING
     `
           ).bind(workspaceId, `OnFrame - ${identity.name}`, userId, timestamp, timestamp),
-          env.ONFRAME_DB.prepare(
-            `
-      INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default)
-      VALUES (?, ?, 'Colaborador', NULL, ?, ?, 1)
-      ON CONFLICT(id) DO NOTHING
-    `
-          ).bind(`collaborator:${workspaceId}`, workspaceId, timestamp, timestamp),
-          ...DEFAULT_COLLABORATOR_PERMISSIONS.map((permission) =>
-            env.ONFRAME_DB.prepare(
-              'INSERT INTO workspace_role_permissions (role_id, permission) VALUES (?, ?) ON CONFLICT DO NOTHING'
-            ).bind(`collaborator:${workspaceId}`, permission)
-          ),
           env.ONFRAME_DB.prepare(
             `
       INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at)
@@ -1356,16 +1337,16 @@ async function assignableRole(env: RuntimeEnv, workspaceId: string, body: Record
 export async function listWorkspaceRoles(env: RuntimeEnv, actor: ExtensionSessionActor) {
   await assertWorkspaceAdministrator(actor);
   const roles = await env.ONFRAME_DB.prepare(
-    `SELECT roles.id, roles.name, roles.is_default,
+    `SELECT roles.id, roles.name,
       (SELECT COUNT(*) FROM workspace_members members WHERE members.workspace_id = ? AND members.role_id = roles.id) AS member_count,
       (SELECT COUNT(*) FROM workspace_invitations invitations
        WHERE invitations.workspace_id = ? AND invitations.role_id = roles.id
          AND invitations.accepted_at IS NULL AND invitations.revoked_at IS NULL AND invitations.expires_at > ?) AS invitation_count
      FROM workspace_roles roles WHERE roles.workspace_id = ? OR roles.id = 'admin'
-     ORDER BY CASE WHEN roles.id = 'admin' THEN 0 WHEN roles.is_default = 1 THEN 1 ELSE 2 END, roles.name COLLATE NOCASE`
+     ORDER BY CASE WHEN roles.id = 'admin' THEN 0 ELSE 1 END, roles.name COLLATE NOCASE`
   )
     .bind(actor.workspaceId, actor.workspaceId, now(), actor.workspaceId)
-    .all<{ id: string; name: string; is_default: number; member_count: number; invitation_count: number }>();
+    .all<{ id: string; name: string; member_count: number; invitation_count: number }>();
   const permissions = await env.ONFRAME_DB.prepare(
     `SELECT role_id, permission FROM workspace_role_permissions
      WHERE role_id IN (SELECT id FROM workspace_roles WHERE workspace_id = ? OR id = 'admin')`
@@ -1375,10 +1356,9 @@ export async function listWorkspaceRoles(env: RuntimeEnv, actor: ExtensionSessio
   return roles.results.map((role) => ({
     id: role.id,
     name: role.name,
-    system: role.id === 'admin' || role.is_default === 1,
+    system: role.id === 'admin',
     editable: role.id !== 'admin',
-    deletable: role.id !== 'admin' && role.is_default !== 1,
-    isDefault: role.is_default === 1,
+    deletable: role.id !== 'admin',
     permissions: permissions.results.filter((entry) => entry.role_id === role.id).map((entry) => entry.permission),
     memberCount: Number(role.member_count),
     invitationCount: Number(role.invitation_count)
@@ -1404,13 +1384,10 @@ export async function saveWorkspaceRole(
     .first();
   if (existingName) throw new RequestError('workspace_role_name_taken', 409);
   if (roleId) {
-    const existing = await env.ONFRAME_DB.prepare(
-      'SELECT id, name, is_default FROM workspace_roles WHERE id = ? AND workspace_id = ?'
-    )
+    const existing = await env.ONFRAME_DB.prepare('SELECT id FROM workspace_roles WHERE id = ? AND workspace_id = ?')
       .bind(roleId, actor.workspaceId)
-      .first<{ id: string; name: string; is_default: number }>();
+      .first();
     if (!existing) throw new RequestError('workspace_role_not_editable', 404);
-    if (existing.is_default === 1 && name !== existing.name) throw new RequestError('workspace_role_not_editable', 400);
   }
   const id = roleId || crypto.randomUUID();
   const timestamp = now();
@@ -1443,9 +1420,7 @@ export async function saveWorkspaceRole(
 
 export async function deleteWorkspaceRole(env: RuntimeEnv, actor: ExtensionSessionActor, roleId: string) {
   await assertWorkspaceAdministrator(actor);
-  const role = await env.ONFRAME_DB.prepare(
-    'SELECT id FROM workspace_roles WHERE id = ? AND workspace_id = ? AND is_default = 0'
-  )
+  const role = await env.ONFRAME_DB.prepare('SELECT id FROM workspace_roles WHERE id = ? AND workspace_id = ?')
     .bind(roleId, actor.workspaceId)
     .first();
   if (!role) throw new RequestError('workspace_role_not_editable', 404);

@@ -14,17 +14,6 @@ export type PermissionActor = {
   permissions?: string[];
 };
 
-export const DEFAULT_COLLABORATOR_PERMISSIONS = [
-  'accounts.read',
-  'listings.read',
-  'listings.write',
-  'promotions.read',
-  'promotions.write',
-  'promotions.delete',
-  'products.read',
-  'history.read'
-] as const;
-
 export function isWorkspaceAdmin(actor: Pick<PermissionActor, 'roleId'>): boolean {
   return actor.roleId === 'admin';
 }

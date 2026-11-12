@@ -51,7 +51,7 @@ test('configura a precisão visual dos custos no escopo de produtos', async () =
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1)"
       ),
       db.prepare(
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator:workspace-1', 1, 1)"

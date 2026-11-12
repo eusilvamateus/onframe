@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, Table } from '@onblide/ui';
+import { Button, ListItem, Table } from '@onblide/ui';
 import { create } from 'react-test-renderer';
 import { WorkspacePeople } from '../extension/ui/options/WorkspacePeople.jsx';
+import { WorkspaceRoles } from '../extension/ui/options/WorkspaceRoles.jsx';
 import { SectionHeader } from '../extension/ui/shared/SectionHeader.jsx';
 
 const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', roleId: 'admin', accounts: [] };
@@ -58,4 +59,30 @@ test('saida exige outro administrador e permanece separada da remocao', () => {
   leaveSection?.props.actions.props.onClick();
   assert.deepEqual(shared.calls, ['leave']);
   shared.renderer.unmount();
+});
+
+test('administrador fica fora dos perfis editaveis', () => {
+  const renderer = create(
+    <WorkspaceRoles
+      roles={[
+        { id: 'admin', name: 'Administrador', memberCount: 1, permissions: ['accounts.read'] },
+        { id: 'collaborator:workspace-1', name: 'Colaborador', memberCount: 0, permissions: [] }
+      ]}
+      onChanged={() => {}}
+    />
+  );
+  const items = renderer.root.findAllByType(ListItem);
+  assert.deepEqual(
+    items.map((item) => item.props.title),
+    ['Colaborador']
+  );
+  const actions = items[0].props.trailing.props.children;
+  assert.deepEqual(
+    actions.map((button) => button.props.children),
+    ['Editar', 'Excluir']
+  );
+  assert.ok(
+    renderer.root.findAllByType(SectionHeader).some((item) => item.props.title === 'Administração do workspace')
+  );
+  renderer.unmount();
 });

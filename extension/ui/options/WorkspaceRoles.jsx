@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, AlertDialog, Badge, Button, Checkbox, Input, List, ListItem, Modal, Ph } from '@onblide/ui';
+import { Alert, AlertDialog, Button, Checkbox, Input, List, ListItem, Modal, Ph } from '@onblide/ui';
 import { SectionHeader } from '../shared/SectionHeader';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 
@@ -18,6 +18,8 @@ function permissionSummary(role) {
 }
 
 export function WorkspaceRoles({ roles = [], onChanged }) {
+  const administrator = roles.find((role) => role.id === 'admin');
+  const accessRoles = roles.filter((role) => role.id !== 'admin');
   const [draft, setDraft] = useState(null);
   const [removal, setRemoval] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -28,7 +30,6 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
     setDraft({
       id: role?.id || null,
       name: role?.name || '',
-      isDefault: role?.isDefault || false,
       permissions: role?.permissions || []
     });
   }
@@ -94,46 +95,62 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
   }
 
   return (
-    <section className="onframe-stack" aria-label="Perfis de usuários">
-      <SectionHeader
-        title="Perfis do workspace"
-        copy="Defina o que cada perfil pode fazer. As contas acessíveis são atribuídas a cada pessoa."
-        actions={
-          <Button icon={<Ph n="plus" size={17} />} onClick={() => openEditor()}>
-            Criar perfil
-          </Button>
-        }
-      />
-      {error && !draft && (
-        <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
-          {error}
-        </Alert>
+    <div className="onframe-stack" aria-label="Perfis de usuários">
+      {administrator && (
+        <section className="onframe-stack" aria-label="Administração do workspace">
+          <SectionHeader title="Administração do workspace" />
+          <div className="onframe-list-row">
+            <Ph n="shield-check" size={20} />
+            <div>
+              <p className="onframe-list-title">Administrador</p>
+              <p className="onframe-list-meta">
+                Acesso a todas as contas e à gestão do workspace · {administrator.memberCount || 0}{' '}
+                {administrator.memberCount === 1 ? 'pessoa' : 'pessoas'}
+              </p>
+            </div>
+          </div>
+        </section>
       )}
-      <List ariaLabel="Perfis de usuários" dividers>
-        {roles.map((role) => (
-          <ListItem
-            key={role.id}
-            leading={<Ph n={role.system ? 'shield-check' : 'users'} size={20} />}
-            title={role.name}
-            description={permissionSummary(role)}
-            meta={role.system ? <Badge tone="neutral">Padrão</Badge> : undefined}
-            trailing={
-              role.editable ? (
-                <div className="onframe-actions">
-                  <Button kind="secondary" size="sm" onClick={() => openEditor(role)}>
-                    Editar
-                  </Button>
-                  {role.deletable && (
+      <section className="onframe-stack" aria-label="Perfis de acesso">
+        <SectionHeader
+          title="Perfis de acesso"
+          copy="Defina as permissões de cada perfil. As contas acessíveis são atribuídas a cada pessoa."
+          actions={
+            <Button icon={<Ph n="plus" size={17} />} onClick={() => openEditor()}>
+              Criar perfil
+            </Button>
+          }
+        />
+        {error && !draft && (
+          <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
+        {accessRoles.length === 0 ? (
+          <p className="onframe-empty">Nenhum perfil de acesso criado.</p>
+        ) : (
+          <List ariaLabel="Perfis de acesso" dividers>
+            {accessRoles.map((role) => (
+              <ListItem
+                key={role.id}
+                leading={<Ph n="users" size={20} />}
+                title={role.name}
+                description={permissionSummary(role)}
+                trailing={
+                  <div className="onframe-actions">
+                    <Button kind="secondary" size="sm" onClick={() => openEditor(role)}>
+                      Editar
+                    </Button>
                     <Button kind="ghost" size="sm" onClick={() => setRemoval(role)}>
                       Excluir
                     </Button>
-                  )}
-                </div>
-              ) : null
-            }
-          />
-        ))}
-      </List>
+                  </div>
+                }
+              />
+            ))}
+          </List>
+        )}
+      </section>
       <Modal
         open={Boolean(draft)}
         onClose={busy ? undefined : () => setDraft(null)}
@@ -161,7 +178,6 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
               label="Nome do perfil"
               value={draft.name}
               maxLength={60}
-              disabled={draft.isDefault}
               onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
             />
             <div className="onframe-role-permissions" aria-label="Permissões do perfil">
@@ -201,6 +217,6 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
       >
         Esta ação não pode ser desfeita. Perfis atribuídos a pessoas ou convites pendentes não podem ser excluídos.
       </AlertDialog>
-    </section>
+    </div>
   );
 }
