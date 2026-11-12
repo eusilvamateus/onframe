@@ -167,6 +167,21 @@ const SETTINGS_PAGE_META = {
   }
 };
 
+function routeFromHash(hash) {
+  if (HASH_VIEWS[hash]) return { view: HASH_VIEWS[hash], tab: 'account', page: 'index' };
+  for (const [tab, pages] of Object.entries(SETTINGS_PAGE_META)) {
+    for (const page of Object.keys(pages)) {
+      if (hash === `#configuracoes-${tab}-${page}`) return { view: 'settings', tab, page };
+    }
+  }
+  return { view: 'home', tab: 'account', page: 'index' };
+}
+
+function hashFromRoute(view, tab, page) {
+  if (view === 'settings' && SETTINGS_PAGE_META[tab]?.[page]) return `#configuracoes-${tab}-${page}`;
+  return VIEW_HASHES[view] || VIEW_HASHES.home;
+}
+
 function searchValue(value) {
   return String(value || '')
     .normalize('NFD')
@@ -901,6 +916,7 @@ function Settings({
 }
 
 function OptionsApp() {
+  const [initialRoute] = useState(() => routeFromHash(window.location.hash));
   const [connection, setConnection] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -908,9 +924,10 @@ function OptionsApp() {
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
-  const [view, setView] = useState(() => HASH_VIEWS[window.location.hash] || 'home');
-  const [settingsTab, setSettingsTab] = useState('account');
-  const [settingsPage, setSettingsPage] = useState('index');
+  const [view, setView] = useState(initialRoute.view);
+  const [settingsTab, setSettingsTab] = useState(initialRoute.tab);
+  const [settingsPage, setSettingsPage] = useState(initialRoute.page);
+  const routeInitialized = useRef(false);
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1037,12 +1054,43 @@ function OptionsApp() {
     void reload();
   }, [reload]);
   useEffect(() => {
-    const hash = VIEW_HASHES[view] || VIEW_HASHES.home;
+    const hash = hashFromRoute(view, settingsTab, settingsPage);
     const target = `${window.location.pathname}${window.location.search}${hash}`;
     if (window.location.hash !== hash) {
-      window.history.replaceState(null, document.title, target);
+      window.history[routeInitialized.current ? 'pushState' : 'replaceState'](null, document.title, target);
     }
-  }, [view]);
+    routeInitialized.current = true;
+  }, [view, settingsTab, settingsPage]);
+  useEffect(() => {
+    const restoreRoute = () => {
+      const route = routeFromHash(window.location.hash);
+      const hash = hashFromRoute(route.view, route.tab, route.page);
+      if (window.location.hash !== hash) {
+        window.history.replaceState(
+          null,
+          document.title,
+          `${window.location.pathname}${window.location.search}${hash}`
+        );
+      }
+      setView(route.view);
+      setSettingsTab(route.tab);
+      setSettingsPage(route.page);
+    };
+    window.addEventListener('popstate', restoreRoute);
+    window.addEventListener('hashchange', restoreRoute);
+    return () => {
+      window.removeEventListener('popstate', restoreRoute);
+      window.removeEventListener('hashchange', restoreRoute);
+    };
+  }, []);
+  useEffect(() => {
+    if (!connection?.connected || view !== 'settings' || settingsTab !== 'workspace') return;
+    if (connection.workspace?.role === 'admin') return;
+    const hash = VIEW_HASHES.settings;
+    window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}${hash}`);
+    setSettingsTab('account');
+    setSettingsPage('index');
+  }, [connection?.connected, connection?.workspace?.role, view, settingsTab]);
   useEffect(() => {
     const refreshOnFocus = () => {
       void reload().then(loadView);
@@ -1060,11 +1108,11 @@ function OptionsApp() {
     acceptingInvitation.current = true;
     void sendRemoteMessage('invitation-accept', { token })
       .then(() => {
-        window.history.replaceState(null, document.title, window.location.pathname);
+        window.history.replaceState(null, document.title, window.location.pathname + window.location.hash);
         return reload();
       })
       .catch((error) => {
-        window.history.replaceState(null, document.title, window.location.pathname);
+        window.history.replaceState(null, document.title, window.location.pathname + window.location.hash);
         setNotice({ tone: 'danger', message: userError(error) });
       });
   }, [connection?.connected, reload]);

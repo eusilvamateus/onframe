@@ -828,6 +828,31 @@ test('encerramento de sessões exige confirmação em diálogo com carregamento'
   assert.doesNotMatch(sessions, /role="region" aria-label="Confirmar encerramento"/);
 });
 
+test('rotas internas de configurações sobrevivem ao reload e têm hash próprio', () => {
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const source = options.slice(options.indexOf('const VIEW_HASHES ='), options.indexOf('function searchValue('));
+  const { routeFromHash, hashFromRoute, SETTINGS_PAGE_META } = vm.runInNewContext(
+    `${source}\n({ routeFromHash, hashFromRoute, SETTINGS_PAGE_META })`
+  );
+  for (const [tab, pages] of Object.entries(SETTINGS_PAGE_META)) {
+    for (const page of Object.keys(pages)) {
+      const hash = hashFromRoute('settings', tab, page);
+      const route = routeFromHash(hash);
+      assert.equal(hash, `#configuracoes-${tab}-${page}`);
+      assert.equal(route.view, 'settings');
+      assert.equal(route.tab, tab);
+      assert.equal(route.page, page);
+    }
+  }
+  assert.equal(hashFromRoute('settings', 'account', 'index'), '#configuracoes');
+  assert.equal(routeFromHash('#configuracoes').page, 'index');
+  assert.equal(routeFromHash('#history').view, 'history');
+  assert.equal(routeFromHash('#desconhecido').view, 'home');
+  assert.match(options, /window\.addEventListener\('popstate', restoreRoute\)/);
+  assert.match(options, /window\.addEventListener\('hashchange', restoreRoute\)/);
+  assert.match(options, /routeInitialized\.current \? 'pushState' : 'replaceState'/);
+});
+
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
   const sharedCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
