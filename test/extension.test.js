@@ -1126,22 +1126,29 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /\{ label: 'Início', icon: 'house', href: '#inicio' \}/);
   assert.match(options, /const pageContext = \(/);
   assert.match(options, /crumbs={pageContext}/);
-  assert.match(options, /function PageHeader\(\{ meta, actions, reserveContextSpace = false \}\)/);
+  assert.match(options, /function PageHeader\(\{ meta, actions, onBack, reserveContextSpace = false \}\)/);
   assert.match(options, /<h1 className="onframe-page-title">\{meta\.title\}<\/h1>/);
   assert.doesNotMatch(options, /showTitle=/);
   assert.match(options, /onframe-options-content--root/);
+  assert.match(options, /const contentWidth =/);
+  assert.match(options, /onframe-options-content--\$\{contentWidth\}/);
+  assert.match(optionsCss, /\.onframe-options-content--compact\s*\{[^}]*max-width: 720px;/);
+  assert.match(optionsCss, /\.onframe-options-content--medium\s*\{[^}]*max-width: 880px;/);
+  assert.match(optionsCss, /\.onframe-options-content--wide\s*\{[^}]*max-width: 1200px;/);
   assert.doesNotMatch(options, /Atualizar dados/);
   assert.doesNotMatch(options, /function refreshView/);
   assert.match(options, /<div className="onframe-options-desktop-context">\{pageContext\}<\/div>/);
   assert.doesNotMatch(options, /onframe-options-desktop-context">\s*<Navbar/);
   assert.match(options, /setSettingsPage\('security'\)/);
-  assert.match(options, />\s*Voltar\s*<\/Button>/);
+  assert.match(options, /<Tooltip label="Voltar" placement="bottom">/);
+  assert.match(options, /iconOnly\s+aria-label="Voltar"/);
+  assert.match(options, /onBack=\{goBackFromSettingsDetail\}/);
   assert.match(options, /className="onframe-options-context-crumbs"/);
   assert.match(
     options,
     /<Breadcrumbs items=\{breadcrumbs\} size="sm" maxItems=\{3\} onNavigate=\{navigateBreadcrumb\} \/>/
   );
-  assert.match(options, /<Button\s+kind="primary"\s+size="sm"\s+icon=\{<Ph n="caret-circle-left" size=\{16\} \/>\}/);
+  assert.match(options, /icon=\{<Ph n="arrow-left" size=\{18\} \/>\}/);
   assert.match(options, /onNavigate={navigateBreadcrumb}/);
   assert.match(options, /reserveContextSpace/);
   assert.match(options, /SearchInput/);
@@ -1166,11 +1173,12 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /SETTINGS_OPTIONS/);
   assert.match(options, /SETTINGS_SECTIONS/);
   assert.match(options, /SettingsDirectory/);
-  assert.match(options, /ListSubheader/);
+  assert.match(options, /className="onframe-settings-directory"/);
+  assert.match(options, /<List as="nav" dividers ariaLabel=\{section\.label\}>/);
   assert.doesNotMatch(options, /<Tabs tabs=\{tabs\} active=\{activeTab\}/);
   assert.doesNotMatch(options, /<Card padding=\{0\}>\s*<List/);
   assert.match(options, /<List as="nav" dividers ariaLabel=\{ariaLabel\}>/);
-  assert.match(options, /<List as="nav" dividers ariaLabel="Configurações">/);
+  assert.doesNotMatch(options, /ListSubheader/);
   assert.doesNotMatch(options, /<List[^>]*dividers[^>]*ariaLabel="(?:Formas de entrar|Navegadores autorizados)"/);
   assert.doesNotMatch(options, /trailing=\{<Ph n="caret-right" size=\{18\} \/>\}/);
   assert.doesNotMatch(

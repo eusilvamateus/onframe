@@ -71,7 +71,7 @@ export function AppearanceSettings() {
     <section className="onframe-appearance-settings" aria-label="Aparência">
       <p className="onframe-appearance-intro">Escolha como o Onframe aparece para você. A mudança vale na hora.</p>
       <div className="onframe-appearance-section">
-        <h2 className="onframe-appearance-heading">Tema</h2>
+        <h2 className="onframe-section-title">Tema</h2>
         <div className="onframe-appearance-options" role="radiogroup" aria-label="Tema">
           {APPEARANCE_OPTIONS.map((option) => {
             const selected = preference === option.value;

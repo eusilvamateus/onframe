@@ -15,7 +15,6 @@ import {
   Link,
   List,
   ListItem,
-  ListSubheader,
   Menu,
   Modal,
   Navbar,
@@ -179,14 +178,29 @@ function feedbackSurface({ tone, visible = false, needsAttention = false }) {
   return visible ? 'none' : 'toast';
 }
 
-function PageHeader({ meta, actions, reserveContextSpace = false }) {
+function PageHeader({ meta, actions, onBack, reserveContextSpace = false }) {
   return (
     <header className="onframe-page-header">
       <div className="onframe-stack" style={{ gap: 'var(--ob-space-4)' }}>
         {reserveContextSpace && <div className="onframe-page-context-spacer" aria-hidden="true" />}
         <div>
           {meta.eyebrow && <p className="onframe-eyebrow">{meta.eyebrow}</p>}
-          <h1 className="onframe-page-title">{meta.title}</h1>
+          <div className="onframe-page-heading">
+            {onBack && (
+              <Tooltip label="Voltar" placement="bottom">
+                <Button
+                  kind="quiet"
+                  tone="neutral"
+                  size="sm"
+                  iconOnly
+                  aria-label="Voltar"
+                  icon={<Ph n="arrow-left" size={18} />}
+                  onClick={onBack}
+                />
+              </Tooltip>
+            )}
+            <h1 className="onframe-page-title">{meta.title}</h1>
+          </div>
         </div>
       </div>
       {actions && <div className="onframe-actions">{actions}</div>}
@@ -322,7 +336,7 @@ function Integrations({
 }) {
   const [mode, setMode] = useState('list');
   return (
-    <div className="onframe-stack">
+    <div className="onframe-stack onframe-integrations">
       <div className="onframe-integration-header">
         <SectionHeader
           eyebrow="Mercado Livre"
@@ -346,18 +360,6 @@ function Integrations({
           {feedback.message}
         </Alert>
       )}
-      {accounts.length > 0 && (
-        <div className="onframe-integration-view-bar">
-          <ButtonGroup selection="single" value={mode} onChange={setMode} ariaLabel="Visualização das contas" size="md">
-            <Tooltip label="Visualizar como lista">
-              <ToggleButton value="list" appearance="ghost" icon="list-bullets" ariaLabel="Lista" />
-            </Tooltip>
-            <Tooltip label="Visualizar como cards">
-              <ToggleButton value="cards" appearance="ghost" icon="squares-four" ariaLabel="Cards" />
-            </Tooltip>
-          </ButtonGroup>
-        </div>
-      )}
       {accounts.length === 0 ? (
         <Card padding="var(--ob-space-24)">
           <SectionHeader
@@ -378,20 +380,38 @@ function Integrations({
           />
         </Card>
       ) : (
-        <div className={mode === 'cards' ? 'onframe-integration-grid' : 'onframe-integration-list'}>
-          {accounts.map((account) => (
-            <IntegrationAccount
-              key={account.id || account.user_id}
-              account={account}
-              admin={admin}
-              mode={mode}
-              loading={loading}
-              onUpdate={onUpdate}
-              onRename={onRename}
-              onRemove={onRemove}
-            />
-          ))}
-        </div>
+        <section className="onframe-integration-results" aria-label="Contas">
+          <div className="onframe-integration-view-bar">
+            <ButtonGroup
+              selection="single"
+              value={mode}
+              onChange={setMode}
+              ariaLabel="Visualização das contas"
+              size="md"
+            >
+              <Tooltip label="Visualizar como lista">
+                <ToggleButton value="list" appearance="ghost" icon="list-bullets" ariaLabel="Lista" />
+              </Tooltip>
+              <Tooltip label="Visualizar como cards">
+                <ToggleButton value="cards" appearance="ghost" icon="squares-four" ariaLabel="Cards" />
+              </Tooltip>
+            </ButtonGroup>
+          </div>
+          <div className={mode === 'cards' ? 'onframe-integration-grid' : 'onframe-integration-list'}>
+            {accounts.map((account) => (
+              <IntegrationAccount
+                key={account.id || account.user_id}
+                account={account}
+                admin={admin}
+                mode={mode}
+                loading={loading}
+                onUpdate={onUpdate}
+                onRename={onRename}
+                onRemove={onRemove}
+              />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
@@ -428,12 +448,16 @@ function SettingsDirectory({ options, onNavigate }) {
     options: options.filter((option) => option.tab === section.id)
   })).filter((section) => section.options.length > 0);
   return (
-    <List as="nav" dividers ariaLabel="Configurações">
-      {sections.flatMap((section) => [
-        <ListSubheader key={`header-${section.id}`}>{section.label}</ListSubheader>,
-        ...settingsOptionItems(section.options, onNavigate)
-      ])}
-    </List>
+    <div className="onframe-settings-directory">
+      {sections.map((section) => (
+        <section className="onframe-settings-directory-section" key={section.id}>
+          <h2 className="onframe-section-title">{section.label}</h2>
+          <List as="nav" dividers ariaLabel={section.label}>
+            {settingsOptionItems(section.options, onNavigate)}
+          </List>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -1336,6 +1360,14 @@ function OptionsApp() {
   const settingsDetail =
     view === 'settings' && settingsPage !== 'index' ? SETTINGS_PAGE_META[settingsTab]?.[settingsPage] : undefined;
   const meta = settingsDetail || VIEW_META[view];
+  const contentWidth =
+    view === 'products' || (view === 'settings' && settingsPage === 'people')
+      ? 'wide'
+      : view === 'integrations' ||
+          view === 'history' ||
+          (view === 'settings' && ['profile', 'margin', 'sessions'].includes(settingsPage))
+        ? 'medium'
+        : 'compact';
   const breadcrumbs = settingsDetail
     ? [
         { label: 'Início', icon: 'house', href: '#inicio' },
@@ -1446,16 +1478,6 @@ function OptionsApp() {
     ) : null;
   const pageContext = (
     <div className="onframe-options-context-crumbs">
-      {settingsDetail && (
-        <Button
-          kind="primary"
-          size="sm"
-          icon={<Ph n="caret-circle-left" size={16} />}
-          onClick={goBackFromSettingsDetail}
-        >
-          Voltar
-        </Button>
-      )}
       <Breadcrumbs items={breadcrumbs} size="sm" maxItems={3} onNavigate={navigateBreadcrumb} />
     </div>
   );
@@ -1532,9 +1554,14 @@ function OptionsApp() {
           </div>
           <section className="onframe-options-main">
             <div
-              className={`onframe-options-content${settingsDetail ? '' : ' onframe-options-content--root'}${settingsDetail && settingsPage === 'appearance' ? ' onframe-options-content--appearance' : ''}`}
+              className={`onframe-options-content onframe-options-content--${contentWidth}${settingsDetail ? '' : ' onframe-options-content--root'}`}
             >
-              <PageHeader meta={meta} actions={pageHeaderActions} reserveContextSpace />
+              <PageHeader
+                meta={meta}
+                actions={pageHeaderActions}
+                onBack={goBackFromSettingsDetail}
+                reserveContextSpace
+              />
               {notice && (
                 <Alert
                   appearance="soft"

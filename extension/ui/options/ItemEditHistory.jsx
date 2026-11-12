@@ -423,7 +423,7 @@ export function ItemEditHistory({ accounts, members, currentUser, admin, onOpenA
   }
 
   return (
-    <div className="onframe-stack">
+    <div className="onframe-stack onframe-history-page">
       <SectionHeader
         eyebrow="Anúncios"
         title="Alterações confirmadas"
