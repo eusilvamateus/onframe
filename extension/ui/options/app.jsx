@@ -24,6 +24,7 @@ import {
   Select,
   Sidebar,
   Skeleton,
+  Tabs,
   ToastStack,
   ToggleButton,
   Tooltip,
@@ -97,19 +98,10 @@ const SETTINGS_OPTIONS = [
     tab: 'workspace',
     page: 'people',
     category: 'Workspace',
-    label: 'Pessoas',
-    description: 'Acessos, permissões e convites.',
-    icon: 'users-three',
-    keywords: 'membros colaboradores administradores convite permissao'
-  },
-  {
-    tab: 'workspace',
-    page: 'roles',
-    category: 'Workspace',
     label: 'Perfis de usuários',
-    description: 'Permissões de acesso para as pessoas do workspace.',
-    icon: 'shield-check',
-    keywords: 'perfis roles permissões acesso leitura edição exclusão'
+    description: 'Pessoas, perfis e convites do workspace.',
+    icon: 'users-three',
+    keywords: 'membros administradores convites permissoes roles acesso'
   },
   {
     tab: 'workspace',
@@ -167,7 +159,7 @@ const SETTINGS_PAGE_META = {
   },
   workspace: {
     general: { title: 'Geral', icon: 'buildings' },
-    people: { title: 'Pessoas', icon: 'users-three' },
+    people: { title: 'Perfis de usuários', icon: 'users-three' },
     roles: { title: 'Perfis de usuários', icon: 'shield-check' },
     products: { title: 'Configurações de produtos', icon: 'package' },
     margin: { title: 'Margem de contribuição', icon: 'percent' }
@@ -821,9 +813,7 @@ function Settings({
   onDisconnect,
   onSaveWorkspace,
   onInvite,
-  onOpenRoles,
   onEdit,
-  onRemove,
   onRevoke,
   onLeave
 }) {
@@ -933,23 +923,33 @@ function Settings({
           onSaveWorkspace={onSaveWorkspace}
         />
       )}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && (
-        <WorkspacePeople
-          members={members}
-          invitations={invitations}
-          roles={roles}
-          currentUserId={profile?.user?.id}
-          loading={loading}
-          onInvite={onInvite}
-          onOpenRoles={onOpenRoles}
-          onEdit={onEdit}
-          onRemove={onRemove}
-          onRevoke={onRevoke}
-          onLeave={onLeave}
-        />
-      )}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'roles' && (
-        <WorkspaceRoles roles={roles} onChanged={onRolesChanged} />
+      {!isIndex && activeSection === 'workspace' && admin && ['people', 'roles'].includes(settingsPage) && (
+        <div className="onframe-stack onframe-access-page">
+          <p className="onframe-muted">Quem tem acesso ao workspace e o que cada pessoa pode fazer.</p>
+          <Tabs
+            tabs={[
+              { id: 'people', label: 'Pessoas', icon: 'users-three', badge: members.length + invitations.length },
+              { id: 'roles', label: 'Perfis', icon: 'identification-badge', badge: roles.length }
+            ]}
+            active={settingsPage}
+            onChange={onSettingsPageChange}
+          />
+          {settingsPage === 'people' ? (
+            <WorkspacePeople
+              members={members}
+              invitations={invitations}
+              roles={roles}
+              currentUserId={profile?.user?.id}
+              loading={loading}
+              onInvite={onInvite}
+              onEdit={onEdit}
+              onRevoke={onRevoke}
+              onLeave={onLeave}
+            />
+          ) : (
+            <WorkspaceRoles roles={roles} onChanged={onRolesChanged} />
+          )}
+        </div>
       )}
       {!isIndex && activeSection === 'workspace' && canSettingsRead && settingsPage === 'products' && (
         <ProductSettings workspaceId={workspace.id} canWrite={canSettingsWrite} />
@@ -1463,11 +1463,11 @@ function OptionsApp() {
     view === 'settings' && settingsPage !== 'index' ? SETTINGS_PAGE_META[settingsTab]?.[settingsPage] : undefined;
   const meta = settingsDetail || VIEW_META[view];
   const contentWidth =
-    view === 'products' || (view === 'settings' && settingsPage === 'people')
+    view === 'products'
       ? 'wide'
       : view === 'integrations' ||
           view === 'history' ||
-          (view === 'settings' && ['profile', 'margin', 'sessions'].includes(settingsPage))
+          (view === 'settings' && ['profile', 'margin', 'sessions', 'people', 'roles'].includes(settingsPage))
         ? 'medium'
         : 'compact';
   const breadcrumbs = settingsDetail
@@ -1773,9 +1773,7 @@ function OptionsApp() {
                   onDisconnect={() => void disconnect()}
                   onSaveWorkspace={(name) => void saveWorkspace(name)}
                   onInvite={() => setDialog({ type: 'invite' })}
-                  onOpenRoles={() => openSettings('workspace', 'roles')}
                   onEdit={(member) => setDialog({ type: 'member', member })}
-                  onRemove={(member) => setDialog({ type: 'member-delete', member })}
                   onRevoke={(invitation) => void revokeInvitation(invitation)}
                   onLeave={() => setDialog({ type: 'workspace-leave' })}
                 />
@@ -1788,20 +1786,18 @@ function OptionsApp() {
           accounts={accounts}
           roles={roles}
           busy={loading}
+          presentation="drawer"
+          onRemove={(member) => setDialog({ type: 'member-delete', member })}
           onClose={() => setDialog(null)}
           onConfirm={(values) => void submitMember(values)}
         />
         <Modal
-          open={
-            dialog?.type === 'account-delete' || dialog?.type === 'member-delete' || dialog?.type === 'workspace-leave'
-          }
+          open={dialog?.type === 'account-delete' || dialog?.type === 'workspace-leave'}
           onClose={() => setDialog(null)}
           title={
             dialog?.type === 'workspace-leave'
               ? 'Sair do workspace'
-              : dialog?.type === 'account-delete'
-                ? 'Remover conta'
-                : 'Remover pessoa'
+              : 'Remover conta'
           }
           footer={
             <>
@@ -1825,12 +1821,22 @@ function OptionsApp() {
                 ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
                 : dialog?.type === 'account-delete'
                   ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
-                  : dialog?.member
-                    ? `Remover ${dialog.member.name || dialog.member.email} deste workspace? O acesso às contas atribuídas será encerrado.`
-                    : ''}
+                  : ''}
             </p>
           </div>
         </Modal>
+        <AlertDialog
+          open={dialog?.type === 'member-delete'}
+          onClose={() => setDialog(null)}
+          title={dialog?.member ? `Remover ${dialog.member.name || dialog.member.email} do workspace?` : 'Remover pessoa?'}
+          confirmLabel="Remover"
+          cancelLabel="Manter"
+          tone="danger"
+          loading={loading}
+          onConfirm={() => void confirmDialog()}
+        >
+          O acesso desta pessoa ao workspace e às contas atribuídas será encerrado.
+        </AlertDialog>
       </main>
     </FeedbackRoot>
   );

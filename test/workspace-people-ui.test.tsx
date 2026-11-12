@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, ListItem, Table } from '@onblide/ui';
+import { Button, ListItem, Menu } from '@onblide/ui';
 import { create } from 'react-test-renderer';
 import { WorkspacePeople } from '../extension/ui/options/WorkspacePeople.jsx';
 import { WorkspaceRoles } from '../extension/ui/options/WorkspaceRoles.jsx';
@@ -16,11 +16,11 @@ function renderPeople(members: (typeof self)[]) {
     <WorkspacePeople
       members={members}
       invitations={[]}
+      roles={[{ id: 'admin', name: 'Administrador' }]}
       currentUserId={self.id}
       loading={false}
       onInvite={() => calls.push('invite')}
       onEdit={() => calls.push('edit')}
-      onRemove={() => calls.push('remove')}
       onRevoke={() => calls.push('revoke')}
       onLeave={() => calls.push('leave')}
     />
@@ -28,17 +28,14 @@ function renderPeople(members: (typeof self)[]) {
   return { renderer, calls };
 }
 
-test('linha da propria pessoa nao oferece gerenciar ou remover', () => {
+test('a propria pessoa nao pode gerenciar o proprio acesso pela lista', () => {
   const { renderer, calls } = renderPeople([self, other]);
-  const table = renderer.root.findByType(Table);
-  const actions = table.props.columns.find((column: { key: string }) => column.key === 'actions');
-  assert.equal(actions.render(null, self), null);
-  const otherActions = actions.render(null, other);
-  assert.equal(otherActions.props.children.length, 2);
-  otherActions.props.children[0].props.onClick();
-  otherActions.props.children[1].props.onClick();
-  assert.deepEqual(calls, ['edit', 'remove']);
-  assert.match(JSON.stringify(table.props.columns[0].render(null, self)), /\(você\)/);
+  const people = renderer.root.findAllByType(ListItem);
+  assert.equal(people.length, 2);
+  assert.equal(people[0].props.onClick, undefined);
+  assert.match(JSON.stringify(people[0].props.title), /Você/);
+  people[1].props.onClick();
+  assert.deepEqual(calls, ['edit']);
   renderer.unmount();
 });
 
@@ -61,28 +58,22 @@ test('saida exige outro administrador e permanece separada da remocao', () => {
   shared.renderer.unmount();
 });
 
-test('administrador fica fora dos perfis editaveis', () => {
+test('administrador e visivel, mas nao pode ser editado ou excluido', () => {
   const renderer = create(
     <WorkspaceRoles
       roles={[
         { id: 'admin', name: 'Administrador', memberCount: 1, permissions: ['accounts.read'] },
-        { id: 'collaborator:workspace-1', name: 'Colaborador', memberCount: 0, permissions: [] }
+        { id: 'custom-1', name: 'Financeiro', memberCount: 1, permissions: [] }
       ]}
       onChanged={() => {}}
     />
   );
   const items = renderer.root.findAllByType(ListItem);
-  assert.deepEqual(
-    items.map((item) => item.props.title),
-    ['Colaborador']
-  );
-  const actions = items[0].props.trailing.props.children;
-  assert.deepEqual(
-    actions.map((button) => button.props.children),
-    ['Editar', 'Excluir']
-  );
-  assert.ok(
-    renderer.root.findAllByType(SectionHeader).some((item) => item.props.title === 'Administração do workspace')
-  );
+  assert.equal(items.length, 2);
+  const menus = renderer.root.findAllByType(Menu);
+  assert.equal(menus[0].props.items[0].label, 'Ver permissões');
+  assert.equal(menus[0].props.items[3].disabled, true);
+  assert.equal(menus[1].props.items[0].label, 'Editar');
+  assert.equal(menus[1].props.items[3].disabled, true);
   renderer.unmount();
 });

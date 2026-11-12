@@ -1,111 +1,188 @@
-import { Avatar, Badge, Button, Divider, Ph, Table } from '@onblide/ui';
+import { useMemo, useState } from 'react';
+import { AlertDialog, Avatar, Badge, Button, Divider, List, ListItem, Ph, SearchInput, Select } from '@onblide/ui';
 import { SectionHeader } from '../shared/SectionHeader';
 import { formatDate } from '../shared/runtime';
 
 function accountAssignments(member) {
   if (member.roleId === 'admin') return 'Todas as contas';
   const accounts = member.accounts || [];
-  return accounts.map((account) => account.nickname || account.meliUserId || account.id).join(', ') || 'Nenhuma';
+  return (
+    accounts.map((account) => account.nickname || account.meliUserId || account.id).join(', ') ||
+    'Nenhuma conta atribuída'
+  );
 }
 
 export function WorkspacePeople({
   members,
   invitations,
+  roles,
   currentUserId,
   loading,
   onInvite,
-  onOpenRoles,
   onEdit,
-  onRemove,
   onRevoke,
   onLeave
 }) {
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('Todos os perfis');
+  const [revocation, setRevocation] = useState(null);
   const canLeave = members.filter((member) => member.roleId === 'admin').length > 1;
-  const columns = [
-    {
-      key: 'name',
-      label: 'Pessoa',
-      bold: true,
-      render: (_, member) => (
-        <div className="onframe-row">
-          <Avatar name={member.name || member.email} src={member.avatarUrl} alt="" size={32} />
-          <div>
-            <p className="onframe-list-title">
-              {member.name || member.email}
-              {member.id === currentUserId ? ' (você)' : ''}
-            </p>
-            <p className="onframe-list-meta">{member.email}</p>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'role',
-      label: 'Permissão',
-      render: (_, member) => <Badge tone={member.roleId === 'admin' ? 'primary' : 'neutral'}>{member.roleName}</Badge>
-    },
-    { key: 'accounts', label: 'Contas', render: (_, member) => accountAssignments(member) },
-    {
-      key: 'actions',
-      label: '',
-      width: 210,
-      render: (_, member) =>
-        member.id === currentUserId ? null : (
-          <div className="onframe-actions">
-            <Button kind="secondary" size="sm" disabled={loading} onClick={() => onEdit(member)}>
-              Gerenciar
-            </Button>
-            <Button kind="ghost" size="sm" disabled={loading} onClick={() => onRemove(member)}>
-              Remover
-            </Button>
-          </div>
-        )
-    }
-  ];
+  const roleOptions = ['Todos os perfis', ...roles.map((role) => role.name)];
+  const visible = useMemo(() => {
+    const search = query.trim().toLocaleLowerCase('pt-BR');
+    return [
+      ...members.map((member) => ({ kind: 'member', id: member.id, roleName: member.roleName, data: member })),
+      ...invitations.map((invitation) => ({
+        kind: 'invitation',
+        id: invitation.id,
+        roleName: invitation.roleName,
+        data: invitation
+      }))
+    ].filter((entry) => {
+      if (roleFilter !== 'Todos os perfis' && entry.roleName !== roleFilter) return false;
+      if (!search) return true;
+      const name = entry.kind === 'member' ? entry.data.name : entry.data.email || 'Link compartilhável';
+      return `${name} ${entry.data.email || ''}`.toLocaleLowerCase('pt-BR').includes(search);
+    });
+  }, [members, invitations, query, roleFilter]);
+
   return (
     <div className="onframe-stack">
-      <section className="onframe-stack" aria-label="Acesso ao workspace">
+      <section className="onframe-stack" aria-label="Pessoas do workspace">
         <SectionHeader
-          title="Acesso ao workspace"
-          copy="Gerencie quem participa do workspace e quais contas cada pessoa pode acessar."
+          title="Pessoas"
           actions={
-            <div className="onframe-actions">
-              <Button kind="secondary" onClick={onOpenRoles} icon={<Ph n="shield-check" size={17} />}>
-                Perfis de usuários
-              </Button>
-              <Button disabled={loading} onClick={onInvite} icon={<Ph n="user-plus" size={17} />}>
-                Convidar pessoa
-              </Button>
-            </div>
+            <Button disabled={loading} onClick={onInvite} icon={<Ph n="user-plus" size={17} />}>
+              Convidar pessoa
+            </Button>
           }
         />
-        <Table columns={columns} rows={members} loading={loading} emptyState="Ainda não há pessoas neste workspace." />
-      </section>
-      <section className="onframe-stack" aria-label="Convites pendentes">
-        <SectionHeader title="Convites pendentes" />
-        {invitations.length === 0 ? (
-          <p className="onframe-empty">Não há convites pendentes.</p>
-        ) : (
-          <div className="onframe-list">
-            {invitations.map((invitation) => (
-              <div className="onframe-list-row" key={invitation.id}>
-                <Avatar name={invitation.kind === 'email' ? invitation.email : 'Link'} size={32} />
-                <div className="onframe-grow">
-                  <p className="onframe-list-title">
-                    {invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
-                  </p>
-                  <p className="onframe-list-meta">
-                    {invitation.roleName} · expira {formatDate(invitation.expiresAt)}
-                  </p>
-                </div>
-                <Button kind="ghost" size="sm" disabled={loading} onClick={() => onRevoke(invitation)}>
-                  Revogar
-                </Button>
-              </div>
-            ))}
+        <div className="onframe-access-filters">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por nome ou e-mail"
+            ariaLabel="Buscar pessoas"
+            width="100%"
+          />
+          <Select
+            value={roleFilter}
+            onChange={setRoleFilter}
+            options={roleOptions}
+            width="100%"
+            ariaLabel="Filtrar por perfil"
+          />
+        </div>
+        {visible.length === 0 ? (
+          <div className="onframe-access-empty">
+            <p>
+              {query || roleFilter !== 'Todos os perfis'
+                ? 'Ninguém encontrado.'
+                : 'Ainda não há pessoas neste workspace.'}
+            </p>
+            {(query || roleFilter !== 'Todos os perfis') && (
+              <Button
+                kind="secondary"
+                size="sm"
+                onClick={() => {
+                  setQuery('');
+                  setRoleFilter('Todos os perfis');
+                }}
+              >
+                Limpar busca
+              </Button>
+            )}
           </div>
+        ) : (
+          <List ariaLabel="Pessoas e convites do workspace">
+            {visible.map((entry) => {
+              if (entry.kind === 'invitation') {
+                const invitation = entry.data;
+                const name = invitation.kind === 'email' ? invitation.email : 'Link compartilhável';
+                return (
+                  <ListItem
+                    key={`invitation-${entry.id}`}
+                    leading={<Avatar name={name} size={36} />}
+                    title={
+                      <span className="onframe-access-name">
+                        {name}
+                        <Badge size="sm" tone="warning" appearance="ghost" dot>
+                          Convite pendente
+                        </Badge>
+                      </span>
+                    }
+                    description={`Expira em ${formatDate(invitation.expiresAt)}`}
+                    meta={
+                      <span className="onframe-access-role-meta" title={invitation.roleName}>
+                        {invitation.roleName}
+                      </span>
+                    }
+                    trailing={
+                      <Button kind="ghost" size="sm" disabled={loading} onClick={() => setRevocation(invitation)}>
+                        Revogar
+                      </Button>
+                    }
+                  />
+                );
+              }
+              const member = entry.data;
+              const self = member.id === currentUserId;
+              return (
+                <ListItem
+                  key={`member-${entry.id}`}
+                  wrap
+                  leading={<Avatar name={member.name || member.email} src={member.avatarUrl} alt="" size={36} />}
+                  title={
+                    <span className="onframe-access-name">
+                      {member.name || member.email}
+                      {self && (
+                        <Badge size="sm" appearance="ghost">
+                          Você
+                        </Badge>
+                      )}
+                    </span>
+                  }
+                  description={`${member.email} · ${accountAssignments(member)}`}
+                  meta={
+                    <span className="onframe-access-role-meta" title={member.roleName || 'Sem perfil'}>
+                      {member.roleName || 'Sem perfil'}
+                    </span>
+                  }
+                  trailing={!self && <Ph n="caret-right" size={16} />}
+                  onClick={!self && !loading ? () => onEdit(member) : undefined}
+                  role={!self ? 'button' : undefined}
+                  tabIndex={!self && !loading ? 0 : undefined}
+                  onKeyDown={
+                    !self && !loading
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            onEdit(member);
+                          }
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </List>
         )}
       </section>
+      <AlertDialog
+        open={Boolean(revocation)}
+        onClose={() => setRevocation(null)}
+        title="Revogar convite?"
+        confirmLabel="Revogar convite"
+        cancelLabel="Manter"
+        tone="danger"
+        loading={loading}
+        onConfirm={() => {
+          onRevoke(revocation);
+          setRevocation(null);
+        }}
+      >
+        O convite deixará de funcionar. Você poderá convidar esta pessoa novamente depois.
+      </AlertDialog>
       <Divider decorative />
       <section className="onframe-stack" aria-label="Sair do workspace">
         <SectionHeader
