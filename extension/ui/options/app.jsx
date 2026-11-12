@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import '@onblide/ui/styles.css';
 import {
   Alert,
+  AlertDialog,
   Avatar,
   Badge,
   Breadcrumbs,
@@ -664,31 +665,27 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
           </Button>
         }
       />
-      {confirmation && (
-        <div className="onframe-stack" role="region" aria-label="Confirmar encerramento">
-          <Alert appearance="soft" tone="warning">
-            {confirmation === 'all'
-              ? 'Você precisará entrar novamente em todos os dispositivos.'
-              : `Encerrar a sessão de ${confirmation.browser} em ${confirmation.operatingSystem}, iniciada em ${formatDate(confirmation.createdAt)}?${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`}
-          </Alert>
-          <div className="onframe-actions">
-            <Button kind="secondary" disabled={loading} onClick={() => setConfirmation(null)}>
-              Cancelar
-            </Button>
-            <Button
-              kind="danger"
-              disabled={loading}
-              onClick={async () => {
-                const result =
-                  confirmation === 'all' ? await onRemoveAllSessions() : await onRemoveSession(confirmation);
-                if (result !== null) setConfirmation(null);
-              }}
-            >
-              Confirmar encerramento
-            </Button>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        open={Boolean(confirmation)}
+        onClose={() => setConfirmation(null)}
+        title={confirmation === 'all' ? 'Sair de todas as sessões?' : 'Encerrar sessão?'}
+        confirmLabel={confirmation === 'all' ? 'Sair de todas as sessões' : 'Encerrar sessão'}
+        cancelLabel="Cancelar"
+        tone="danger"
+        loading={loading}
+        onConfirm={async () => {
+          if (!confirmation) return;
+          if (confirmation === 'all') await onRemoveAllSessions();
+          else await onRemoveSession(confirmation);
+          setConfirmation(null);
+        }}
+      >
+        {confirmation === 'all'
+          ? 'Você precisará entrar novamente em todos os dispositivos, incluindo este.'
+          : confirmation
+            ? `A sessão de ${confirmation.browser} em ${confirmation.operatingSystem}, iniciada em ${formatDate(confirmation.createdAt)}, será encerrada.${confirmation.current ? ' Você precisará entrar novamente neste dispositivo.' : ''}`
+            : null}
+      </AlertDialog>
     </div>
   );
 }

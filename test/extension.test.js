@@ -816,6 +816,18 @@ test('fontes do content script usam URLs da extensão', () => {
   }
 });
 
+test('encerramento de sessões exige confirmação em diálogo com carregamento', () => {
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const sessions = options.slice(
+    options.indexOf('function SessionsSettings('),
+    options.indexOf('function WorkspaceGeneralSettings(')
+  );
+  assert.match(sessions, /<AlertDialog[\s\S]*open=\{Boolean\(confirmation\)\}[\s\S]*loading=\{loading\}/);
+  assert.match(sessions, /confirmLabel=\{confirmation === 'all' \? 'Sair de todas as sessões' : 'Encerrar sessão'\}/);
+  assert.match(sessions, /tone="danger"/);
+  assert.doesNotMatch(sessions, /role="region" aria-label="Confirmar encerramento"/);
+});
+
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
   const sharedCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
