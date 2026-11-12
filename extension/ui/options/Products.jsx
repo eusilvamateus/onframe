@@ -175,11 +175,22 @@ function ProductChipFilter({ ariaLabel, icon, options, value, selected, width, o
 }
 
 function ProductSku({ sku }) {
+  const [copiedSku, setCopiedSku] = useState(null);
+  const resetTimer = useRef(null);
+  const copied = copiedSku === sku;
+
+  useEffect(() => () => clearTimeout(resetTimer.current), []);
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(sku);
+      clearTimeout(resetTimer.current);
+      setCopiedSku(sku);
+      resetTimer.current = setTimeout(() => setCopiedSku(null), 1500);
       toast({ tone: 'success', title: 'SKU copiado.' });
     } catch {
+      clearTimeout(resetTimer.current);
+      setCopiedSku(null);
       toast({ tone: 'danger', title: 'Não foi possível copiar o SKU.' });
     }
   };
@@ -204,7 +215,7 @@ function ProductSku({ sku }) {
         }}
       >
         <span className="onframe-product-sku-value">{sku}</span>
-        <Ph n="copy" size={13} />
+        <Ph n={copied ? 'check' : 'copy'} size={13} c={copied ? 'var(--ob-success)' : undefined} />
       </Button>
     </Tooltip>
   );
