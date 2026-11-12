@@ -50,7 +50,7 @@ export function SecuritySettings({
       </section>
       <section className="onframe-stack" aria-label="Proteção da conta">
         <SectionHeader title="Proteção da conta" />
-        <List as="nav" dividers ariaLabel="Proteção da conta">
+        <List as="nav" ariaLabel="Proteção da conta">
           <ListItem
             leading={<Ph n="shield-check" size={20} />}
             title="Verificação em duas etapas"

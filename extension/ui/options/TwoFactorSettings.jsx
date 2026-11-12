@@ -535,7 +535,7 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
             </Alert>
           )}
           {factors.length > 0 && (
-            <List dividers ariaLabel="Aplicativos autenticadores">
+            <List ariaLabel="Aplicativos autenticadores">
               {factors.map((factor) => (
                 <ListItem
                   key={factor.id}
@@ -635,7 +635,7 @@ export function PasskeySettings({ profile, securityOverview }) {
             </div>
             <div className="onframe-passkey-list-frame">
               {passkeyCount > 0 ? (
-                <List dividers ariaLabel="Chaves cadastradas">
+                <List ariaLabel="Chaves cadastradas">
                   {passkeys.map((key) => (
                     <ListItem
                       key={key.id}

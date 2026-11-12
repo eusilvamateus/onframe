@@ -129,7 +129,7 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
         {accessRoles.length === 0 ? (
           <p className="onframe-empty">Nenhum perfil de acesso criado.</p>
         ) : (
-          <List ariaLabel="Perfis de acesso" dividers>
+          <List ariaLabel="Perfis de acesso">
             {accessRoles.map((role) => (
               <ListItem
                 key={role.id}

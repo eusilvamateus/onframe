@@ -481,7 +481,7 @@ function settingsOptionItems(options, onNavigate, showCategory = false) {
 
 function SettingsOptionList({ options, ariaLabel, onNavigate, showCategory = false }) {
   return (
-    <List as="nav" dividers ariaLabel={ariaLabel}>
+    <List as="nav" ariaLabel={ariaLabel}>
       {settingsOptionItems(options, onNavigate, showCategory)}
     </List>
   );
@@ -497,7 +497,7 @@ function SettingsDirectory({ options, onNavigate }) {
       {sections.map((section) => (
         <section className="onframe-settings-directory-section" key={section.id}>
           <h2 className="onframe-section-title">{section.label}</h2>
-          <List as="nav" dividers ariaLabel={section.label}>
+          <List as="nav" ariaLabel={section.label}>
             {settingsOptionItems(section.options, onNavigate)}
           </List>
         </section>
@@ -649,7 +649,7 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
           title="Sessões ativas"
           copy="Confira os detalhes de cada sessão e encerre as que não reconhece."
         />
-        <List ariaLabel="Sessões ativas" dividers>
+        <List ariaLabel="Sessões ativas">
           {sessions.map((session) => (
             <ListItem
               key={session.id}
