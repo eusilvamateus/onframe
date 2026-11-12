@@ -92,7 +92,7 @@ test('estado retomavel do popup persiste somente dados nao sensiveis na sessao',
         inviteDraft: {
           kind: 'email',
           email: 'pessoa@example.com',
-          role: 'collaborator',
+          roleId: 'collaborator:workspace-1',
           accountIds: ['account-1'],
           token: 'secreto'
         }

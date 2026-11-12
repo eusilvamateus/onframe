@@ -9,12 +9,14 @@ alterna o contexto ativo pelo seletor do painel.
 ## Perfis de usuarios
 
 O workspace oferece os perfis padrao `Administrador` e `Colaborador`. O primeiro
-gerencia contas, pessoas, convites e configuracoes; o segundo conserva o acesso
-operacional anterior. Esses perfis sao fixos. Administradores podem criar,
-renomear, editar e excluir perfis personalizados, desde que nao estejam
-atribuidos a pessoas ou convites pendentes.
+gerencia contas, pessoas, convites e configuracoes e nao pode ser alterado. O
+segundo e criado por workspace com permissoes operacionais iniciais; um
+administrador pode editar suas permissoes, mas nao renomea-lo nem exclui-lo.
+Administradores tambem podem criar, renomear, editar e excluir perfis
+personalizados, desde que nao estejam atribuidos a pessoas ou convites
+pendentes.
 
-Cada perfil personalizado define permissoes de leitura, edicao e, quando a
+Cada perfil editavel define permissoes de leitura, edicao e, quando a
 operacao existe, exclusao para contas Mercado Livre, anuncios, promocoes,
 produtos, historico e configuracoes. Edicao e exclusao exigem leitura do mesmo
 recurso. Anuncios e promocoes tambem exigem leitura de contas. As permissoes

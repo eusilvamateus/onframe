@@ -3,7 +3,7 @@ import { hasPermission, type Permission } from './permissions';
 export type ProductActor = {
   userId: string;
   workspaceId: string;
-  workspaceRole: 'admin' | 'collaborator';
+  roleId: string;
   permissions?: string[];
 };
 
@@ -381,7 +381,7 @@ async function productAccountTaxRates(env: ProductEnv, actor: ProductActor) {
     ORDER BY rate.seller_account_id
   `
   )
-    .bind(actor.workspaceId, actor.workspaceRole, actor.userId)
+    .bind(actor.workspaceId, actor.roleId, actor.userId)
     .all<{
       product_id: string;
       seller_account_id: string;
@@ -433,11 +433,11 @@ async function assertAdmin(
 ): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
     `
-    SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+    SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?
   `
   )
     .bind(actor.workspaceId, actor.userId)
-    .first<{ role: string }>();
+    .first<{ role_id: string }>();
   if (!membership || !hasPermission(actor, permission)) throw new ProductRequestError('product_access_forbidden', 403);
 }
 

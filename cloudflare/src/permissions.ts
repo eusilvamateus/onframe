@@ -10,16 +10,31 @@ export const PERMISSION_RESOURCES = {
 export type Permission = `${keyof typeof PERMISSION_RESOURCES}.${'read' | 'write' | 'delete'}`;
 
 export type PermissionActor = {
-  workspaceRole: 'admin' | 'collaborator';
+  roleId: string;
   permissions?: string[];
 };
+
+export const DEFAULT_COLLABORATOR_PERMISSIONS = [
+  'accounts.read',
+  'listings.read',
+  'listings.write',
+  'promotions.read',
+  'promotions.write',
+  'promotions.delete',
+  'products.read',
+  'history.read'
+] as const;
+
+export function isWorkspaceAdmin(actor: Pick<PermissionActor, 'roleId'>): boolean {
+  return actor.roleId === 'admin';
+}
 
 export const ALL_PERMISSIONS = Object.entries(PERMISSION_RESOURCES).flatMap(([resource, actions]) =>
   actions.map((action) => `${resource}.${action}`)
 );
 
 export function hasPermission(actor: PermissionActor, permission: Permission): boolean {
-  return actor.workspaceRole === 'admin' || actor.permissions?.includes(permission) === true;
+  return isWorkspaceAdmin(actor) || actor.permissions?.includes(permission) === true;
 }
 
 export function validPermissions(value: unknown): string[] | null {

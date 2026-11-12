@@ -5,13 +5,14 @@ import { Button, ListItem, Modal, Tooltip } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { WorkspaceSession } from '../extension/ui/popup/WorkspaceSession.jsx';
 
-const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', role: 'admin', accounts: [] };
-const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', role: 'admin', accounts: [] };
+const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', roleId: 'admin', accounts: [] };
+const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', roleId: 'admin', accounts: [] };
 const invitation = {
   id: 'invite-1',
   kind: 'email',
   email: 'convite@example.com',
-  role: 'collaborator',
+  roleId: 'collaborator:workspace-1',
+  roleName: 'Colaborador',
   expiresAt: '2026-10-20T12:00:00.000Z'
 };
 
@@ -37,7 +38,7 @@ test('sessao do workspace lista pessoas, convites e mantem a propria conta sem a
   await act(async () => {
     renderer = create(
       <WorkspaceSession
-        connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+        connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', roleId: 'admin' } }}
         onBack={() => {}}
         onOpenOptions={() => {}}
         onConnectionChanged={async () => {}}
@@ -79,13 +80,13 @@ test('convite em andamento reabre com o rascunho e cancelar limpa a retomada', a
     await act(async () => {
       renderer = create(
         <WorkspaceSession
-          connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+          connection={{ user: self, workspace: { id: 'workspace-1', name: 'Meu workspace', roleId: 'admin' } }}
           initialState={{
             inviteOpen: true,
             inviteDraft: {
               kind: 'email',
               email: 'rascunho@example.com',
-              role: 'collaborator',
+              roleId: 'collaborator:workspace-1',
               accountIds: ['account-1']
             }
           }}

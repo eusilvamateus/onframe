@@ -5,7 +5,7 @@ type ProductSettingsEnv = { ONFRAME_DB: D1Database };
 export type ProductSettingsActor = {
   userId: string;
   workspaceId: string;
-  workspaceRole: 'admin' | 'collaborator';
+  roleId: string;
   permissions?: string[];
 };
 
@@ -24,10 +24,10 @@ async function assertAdmin(
   permission: Permission
 ): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
-    'SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?'
+    'SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?'
   )
     .bind(actor.workspaceId, actor.userId)
-    .first<{ role: string }>();
+    .first<{ role_id: string }>();
   if (!membership || !hasPermission(actor, permission))
     throw new ProductSettingsError('product_settings_forbidden', 403);
 }

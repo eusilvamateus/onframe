@@ -33,7 +33,14 @@ import {
 import { ProductSettingsError, getProductSettings, updateProductSettings } from './product-settings';
 import { TaxConfigurationError, getTaxConfiguration, updateTaxConfiguration } from './tax-configuration';
 import { MarginConfigurationError, getMarginConfiguration, updateMarginConfiguration } from './margin-configuration';
-import { ALL_PERMISSIONS, hasPermission, validPermissions, type Permission } from './permissions';
+import {
+  ALL_PERMISSIONS,
+  DEFAULT_COLLABORATOR_PERMISSIONS,
+  hasPermission,
+  isWorkspaceAdmin,
+  validPermissions,
+  type Permission
+} from './permissions';
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const AUTH_FLOW_TTL_MS = 30 * 60 * 1000;
@@ -81,7 +88,6 @@ type ExtensionSessionActor = {
   displayName: string;
   avatarUrl: string | null;
   workspaceName: string;
-  workspaceRole: 'admin' | 'collaborator';
   roleId: string;
   permissions: string[];
   label: string | null;
@@ -428,8 +434,20 @@ export async function provisionActor(env: Env, identity: SupabaseIdentity): Prom
           ).bind(workspaceId, `OnFrame - ${identity.name}`, userId, timestamp, timestamp),
           env.ONFRAME_DB.prepare(
             `
-      INSERT INTO workspace_members (workspace_id, user_id, role, role_id, created_at, updated_at)
-      VALUES (?, ?, 'admin', 'admin', ?, ?)
+      INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default)
+      VALUES (?, ?, 'Colaborador', NULL, ?, ?, 1)
+      ON CONFLICT(id) DO NOTHING
+    `
+          ).bind(`collaborator:${workspaceId}`, workspaceId, timestamp, timestamp),
+          ...DEFAULT_COLLABORATOR_PERMISSIONS.map((permission) =>
+            env.ONFRAME_DB.prepare(
+              'INSERT INTO workspace_role_permissions (role_id, permission) VALUES (?, ?) ON CONFLICT DO NOTHING'
+            ).bind(`collaborator:${workspaceId}`, permission)
+          ),
+          env.ONFRAME_DB.prepare(
+            `
+      INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at)
+      VALUES (?, ?, 'admin', ?, ?)
       ON CONFLICT(workspace_id, user_id) DO NOTHING
     `
           ).bind(workspaceId, userId, timestamp, timestamp)
@@ -763,10 +781,9 @@ async function authenticateExtensionSession(request: Request, env: RuntimeEnv): 
       users.display_name,
       users.avatar_url,
       workspaces.name AS workspace_name,
-      workspace_members.role AS workspace_role,
-      COALESCE(workspace_members.role_id, workspace_members.role) AS role_id,
+      workspace_members.role_id,
       (SELECT group_concat(permission) FROM workspace_role_permissions
-       WHERE role_id = COALESCE(workspace_members.role_id, workspace_members.role)) AS permissions_csv
+       WHERE role_id = workspace_members.role_id) AS permissions_csv
     FROM extension_sessions
     INNER JOIN users ON users.id = extension_sessions.user_id
     INNER JOIN workspaces ON workspaces.id = extension_sessions.workspace_id
@@ -791,7 +808,6 @@ async function authenticateExtensionSession(request: Request, env: RuntimeEnv): 
       display_name: string | null;
       avatar_url: string | null;
       workspace_name: string;
-      workspace_role: 'admin' | 'collaborator';
       role_id: string;
       permissions_csv: string | null;
     }>();
@@ -825,7 +841,6 @@ async function authenticateExtensionSession(request: Request, env: RuntimeEnv): 
     displayName: record.display_name || record.email,
     avatarUrl: record.avatar_url,
     workspaceName: record.workspace_name,
-    workspaceRole: record.workspace_role,
     roleId: record.role_id,
     permissions: record.permissions_csv?.split(',') || [],
     label: record.label,
@@ -852,9 +867,8 @@ function extensionSessionPayload(actor: ExtensionSessionActor): Record<string, u
     workspace: {
       id: actor.workspaceId,
       name: actor.workspaceName,
-      role: actor.workspaceRole,
       roleId: actor.roleId,
-      permissions: actor.workspaceRole === 'admin' ? ALL_PERMISSIONS : actor.permissions
+      permissions: isWorkspaceAdmin(actor) ? ALL_PERMISSIONS : actor.permissions
     }
   };
 }
@@ -870,13 +884,13 @@ async function assertWorkspaceCanManageAccounts(
 ): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
     `
-    SELECT role
+    SELECT role_id
     FROM workspace_members
     WHERE workspace_id = ? AND user_id = ?
   `
   )
     .bind(actor.workspaceId, actor.userId)
-    .first<{ role: string }>();
+    .first<{ role_id: string }>();
 
   if (!membership || !hasPermission(actor, permission)) {
     throw new RequestError('workspace_account_access_forbidden', 403);
@@ -1102,7 +1116,7 @@ export async function listWorkspaceAccounts(
     ORDER BY nickname COLLATE NOCASE, meli_user_id
   `
   )
-    .bind(actor.workspaceId, actor.workspaceRole, actor.userId)
+    .bind(actor.workspaceId, actor.roleId, actor.userId)
     .all<{
       id: string;
       meli_user_id: string;
@@ -1164,7 +1178,7 @@ export async function updateWorkspaceAccount(
           WHERE account_members.seller_account_id = seller_accounts.id AND account_members.user_id = ?))
     `
         )
-          .bind(enabled ? 1 : 0, now(), actor.workspaceId, meliUserId, actor.workspaceRole, actor.userId)
+          .bind(enabled ? 1 : 0, now(), actor.workspaceId, meliUserId, actor.roleId, actor.userId)
           .run()
       : await env.ONFRAME_DB.prepare(
           `
@@ -1174,7 +1188,7 @@ export async function updateWorkspaceAccount(
           WHERE account_members.seller_account_id = seller_accounts.id AND account_members.user_id = ?))
     `
         )
-          .bind(trimmedName, now(), actor.workspaceId, meliUserId, actor.workspaceRole, actor.userId)
+          .bind(trimmedName, now(), actor.workspaceId, meliUserId, actor.roleId, actor.userId)
           .run();
   if (result.meta.changes !== 1) throw new RequestError('workspace_account_not_found', 404);
 
@@ -1199,7 +1213,7 @@ async function deleteWorkspaceAccount(
         WHERE account_members.seller_account_id = seller_accounts.id AND account_members.user_id = ?))
   `
   )
-    .bind(actor.workspaceId, meliUserId, actor.workspaceRole, actor.userId)
+    .bind(actor.workspaceId, meliUserId, actor.roleId, actor.userId)
     .run();
   if (result.meta.changes !== 1) throw new RequestError('workspace_account_not_found', 404);
 
@@ -1313,11 +1327,6 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#039;');
 }
 
-function workspaceRole(value: unknown): 'admin' | 'collaborator' {
-  if (value === 'admin' || value === 'collaborator') return value;
-  throw new RequestError('invalid_workspace_role', 400);
-}
-
 function accountIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const ids = Array.from(new Set(value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)));
@@ -1326,7 +1335,7 @@ function accountIds(value: unknown): string[] {
 }
 
 async function assertWorkspaceAdministrator(actor: ExtensionSessionActor): Promise<void> {
-  if (actor.workspaceRole !== 'admin') throw new RequestError('workspace_admin_required', 403);
+  if (!isWorkspaceAdmin(actor)) throw new RequestError('workspace_admin_required', 403);
 }
 
 function requirePermission(actor: ExtensionSessionActor, permission: Permission): void {
@@ -1334,39 +1343,42 @@ function requirePermission(actor: ExtensionSessionActor, permission: Permission)
 }
 
 async function assignableRole(env: RuntimeEnv, workspaceId: string, body: Record<string, unknown>) {
-  const roleId = typeof body.roleId === 'string' ? body.roleId : workspaceRole(body.role);
+  const roleId = typeof body.roleId === 'string' ? body.roleId : '';
   const role = await env.ONFRAME_DB.prepare(
-    'SELECT id, name, system_key FROM workspace_roles WHERE id = ? AND (workspace_id = ? OR system_key IS NOT NULL)'
+    "SELECT id, name FROM workspace_roles WHERE id = ? AND (workspace_id = ? OR id = 'admin')"
   )
     .bind(roleId, workspaceId)
-    .first<{ id: string; name: string; system_key: 'admin' | 'collaborator' | null }>();
+    .first<{ id: string; name: string }>();
   if (!role) throw new RequestError('workspace_role_not_found', 404);
-  return { ...role, legacyRole: role.system_key === 'admin' ? 'admin' : 'collaborator' };
+  return role;
 }
 
 export async function listWorkspaceRoles(env: RuntimeEnv, actor: ExtensionSessionActor) {
   await assertWorkspaceAdministrator(actor);
   const roles = await env.ONFRAME_DB.prepare(
-    `SELECT roles.id, roles.name, roles.system_key,
+    `SELECT roles.id, roles.name, roles.is_default,
       (SELECT COUNT(*) FROM workspace_members members WHERE members.workspace_id = ? AND members.role_id = roles.id) AS member_count,
       (SELECT COUNT(*) FROM workspace_invitations invitations
        WHERE invitations.workspace_id = ? AND invitations.role_id = roles.id
          AND invitations.accepted_at IS NULL AND invitations.revoked_at IS NULL AND invitations.expires_at > ?) AS invitation_count
-     FROM workspace_roles roles WHERE roles.workspace_id = ? OR roles.system_key IS NOT NULL
-     ORDER BY CASE roles.system_key WHEN 'admin' THEN 0 WHEN 'collaborator' THEN 1 ELSE 2 END, roles.name COLLATE NOCASE`
+     FROM workspace_roles roles WHERE roles.workspace_id = ? OR roles.id = 'admin'
+     ORDER BY CASE WHEN roles.id = 'admin' THEN 0 WHEN roles.is_default = 1 THEN 1 ELSE 2 END, roles.name COLLATE NOCASE`
   )
     .bind(actor.workspaceId, actor.workspaceId, now(), actor.workspaceId)
-    .all<{ id: string; name: string; system_key: string | null; member_count: number; invitation_count: number }>();
+    .all<{ id: string; name: string; is_default: number; member_count: number; invitation_count: number }>();
   const permissions = await env.ONFRAME_DB.prepare(
     `SELECT role_id, permission FROM workspace_role_permissions
-     WHERE role_id IN (SELECT id FROM workspace_roles WHERE workspace_id = ? OR system_key IS NOT NULL)`
+     WHERE role_id IN (SELECT id FROM workspace_roles WHERE workspace_id = ? OR id = 'admin')`
   )
     .bind(actor.workspaceId)
     .all<{ role_id: string; permission: string }>();
   return roles.results.map((role) => ({
     id: role.id,
     name: role.name,
-    system: role.system_key !== null,
+    system: role.id === 'admin' || role.is_default === 1,
+    editable: role.id !== 'admin',
+    deletable: role.id !== 'admin' && role.is_default !== 1,
+    isDefault: role.is_default === 1,
     permissions: permissions.results.filter((entry) => entry.role_id === role.id).map((entry) => entry.permission),
     memberCount: Number(role.member_count),
     invitationCount: Number(role.invitation_count)
@@ -1392,10 +1404,13 @@ export async function saveWorkspaceRole(
     .first();
   if (existingName) throw new RequestError('workspace_role_name_taken', 409);
   if (roleId) {
-    const existing = await env.ONFRAME_DB.prepare('SELECT id FROM workspace_roles WHERE id = ? AND workspace_id = ?')
+    const existing = await env.ONFRAME_DB.prepare(
+      'SELECT id, name, is_default FROM workspace_roles WHERE id = ? AND workspace_id = ?'
+    )
       .bind(roleId, actor.workspaceId)
-      .first();
+      .first<{ id: string; name: string; is_default: number }>();
     if (!existing) throw new RequestError('workspace_role_not_editable', 404);
+    if (existing.is_default === 1 && name !== existing.name) throw new RequestError('workspace_role_not_editable', 400);
   }
   const id = roleId || crypto.randomUUID();
   const timestamp = now();
@@ -1428,7 +1443,9 @@ export async function saveWorkspaceRole(
 
 export async function deleteWorkspaceRole(env: RuntimeEnv, actor: ExtensionSessionActor, roleId: string) {
   await assertWorkspaceAdministrator(actor);
-  const role = await env.ONFRAME_DB.prepare('SELECT id FROM workspace_roles WHERE id = ? AND workspace_id = ?')
+  const role = await env.ONFRAME_DB.prepare(
+    'SELECT id FROM workspace_roles WHERE id = ? AND workspace_id = ? AND is_default = 0'
+  )
     .bind(roleId, actor.workspaceId)
     .first();
   if (!role) throw new RequestError('workspace_role_not_editable', 404);
@@ -1469,7 +1486,7 @@ async function listWorkspaces(env: RuntimeEnv, actor: ExtensionSessionActor): Pr
     SELECT
       workspaces.id,
       workspaces.name,
-      workspace_members.role,
+      workspace_members.role_id,
       (SELECT COUNT(*) FROM workspace_members members WHERE members.workspace_id = workspaces.id) AS member_count,
       (SELECT COUNT(*) FROM seller_accounts accounts WHERE accounts.workspace_id = workspaces.id) AS account_count
     FROM workspace_members
@@ -1482,14 +1499,14 @@ async function listWorkspaces(env: RuntimeEnv, actor: ExtensionSessionActor): Pr
     .all<{
       id: string;
       name: string;
-      role: 'admin' | 'collaborator';
+      role_id: string;
       member_count: number;
       account_count: number;
     }>();
   return result.results.map((workspace) => ({
     id: workspace.id,
     name: workspace.name,
-    role: workspace.role,
+    roleId: workspace.role_id,
     memberCount: Number(workspace.member_count),
     accountCount: Number(workspace.account_count)
   }));
@@ -1502,13 +1519,13 @@ async function activateWorkspace(
 ): Promise<Response> {
   const membership = await env.ONFRAME_DB.prepare(
     `
-    SELECT role
+    SELECT role_id
     FROM workspace_members
     WHERE workspace_id = ? AND user_id = ?
   `
   )
     .bind(workspaceId, actor.userId)
-    .first<{ role: 'admin' | 'collaborator' }>();
+    .first<{ role_id: string }>();
   if (!membership) throw new RequestError('workspace_access_forbidden', 403);
 
   const session = await createExtensionSession(env, { ...actor, workspaceId }, actor.label || 'Extensão OnFrame');
@@ -1529,7 +1546,7 @@ export async function workspaceOverview(
 ): Promise<Record<string, unknown>> {
   const accountSummary = !hasPermission(actor, 'accounts.read')
     ? env.ONFRAME_DB.prepare('SELECT 0 AS count, 0 AS disabled_count')
-    : actor.workspaceRole === 'admin'
+    : isWorkspaceAdmin(actor)
       ? env.ONFRAME_DB.prepare(
           `
         SELECT COUNT(*) AS count,
@@ -1551,10 +1568,9 @@ export async function workspaceOverview(
           )
       `
         ).bind(actor.workspaceId, actor.userId);
-  const pendingInvitations =
-    actor.workspaceRole === 'admin'
-      ? env.ONFRAME_DB.prepare(
-          `
+  const pendingInvitations = isWorkspaceAdmin(actor)
+    ? env.ONFRAME_DB.prepare(
+        `
         SELECT COUNT(*) AS count
         FROM workspace_invitations
         WHERE workspace_id = ?
@@ -1562,11 +1578,11 @@ export async function workspaceOverview(
           AND revoked_at IS NULL
           AND expires_at > ?
       `
-        ).bind(actor.workspaceId, now())
-      : env.ONFRAME_DB.prepare('SELECT 0 AS count');
+      ).bind(actor.workspaceId, now())
+    : env.ONFRAME_DB.prepare('SELECT 0 AS count');
   const recentEdits = !hasPermission(actor, 'history.read')
     ? env.ONFRAME_DB.prepare('SELECT 0 AS count')
-    : actor.workspaceRole === 'admin'
+    : isWorkspaceAdmin(actor)
       ? env.ONFRAME_DB.prepare(
           `
         SELECT COUNT(*) AS count
@@ -1603,7 +1619,7 @@ export async function workspaceOverview(
     Number((result.results[0] as { count?: number } | undefined)?.count || 0);
   const accountRow = accounts.results[0] as { count?: number; disabled_count?: number } | undefined;
   return {
-    workspace: { id: actor.workspaceId, name: actor.workspaceName, role: actor.workspaceRole },
+    workspace: { id: actor.workspaceId, name: actor.workspaceName, roleId: actor.roleId },
     accountCount: Number(accountRow?.count || 0),
     disabledAccountCount: Number(accountRow?.disabled_count || 0),
     memberCount: countAt(members),
@@ -1695,14 +1711,13 @@ async function listWorkspaceMembers(
   await assertWorkspaceAdministrator(actor);
   const members = await env.ONFRAME_DB.prepare(
     `
-    SELECT users.id, users.email, users.display_name, users.avatar_url, workspace_members.role,
-      COALESCE(workspace_members.role_id, workspace_members.role) AS role_id,
+    SELECT users.id, users.email, users.display_name, users.avatar_url, workspace_members.role_id,
       workspace_roles.name AS role_name, workspace_members.created_at
     FROM workspace_members
     INNER JOIN users ON users.id = workspace_members.user_id
-    LEFT JOIN workspace_roles ON workspace_roles.id = COALESCE(workspace_members.role_id, workspace_members.role)
+    LEFT JOIN workspace_roles ON workspace_roles.id = workspace_members.role_id
     WHERE workspace_members.workspace_id = ?
-    ORDER BY CASE workspace_members.role WHEN 'admin' THEN 0 ELSE 1 END, users.display_name COLLATE NOCASE, users.email
+    ORDER BY CASE workspace_members.role_id WHEN 'admin' THEN 0 ELSE 1 END, users.display_name COLLATE NOCASE, users.email
   `
   )
     .bind(actor.workspaceId)
@@ -1711,7 +1726,6 @@ async function listWorkspaceMembers(
       email: string;
       display_name: string | null;
       avatar_url: string | null;
-      role: 'admin' | 'collaborator';
       role_id: string;
       role_name: string | null;
       created_at: number;
@@ -1738,11 +1752,10 @@ async function listWorkspaceMembers(
     email: member.email,
     name: member.display_name || member.email,
     avatarUrl: member.avatar_url,
-    role: member.role,
     roleId: member.role_id,
-    roleName: member.role_name || (member.role === 'admin' ? 'Administrador' : 'Colaborador'),
+    roleName: member.role_name,
     joinedAt: new Date(member.created_at).toISOString(),
-    accounts: member.role === 'admin' ? [] : byUser.get(member.id) || []
+    accounts: member.role_id === 'admin' ? [] : byUser.get(member.id) || []
   }));
 }
 
@@ -1756,25 +1769,24 @@ export async function updateWorkspaceMember(
   if (userId === actor.userId) throw new RequestError('workspace_self_management_forbidden', 403);
   const body = await readRequestObject(request);
   const targetRole = await assignableRole(env, actor.workspaceId, body);
-  const role = targetRole.legacyRole;
-  const assignments = role === 'collaborator' ? accountIds(body.accountIds) : [];
+  const assignments = targetRole.id === 'admin' ? [] : accountIds(body.accountIds);
   await assertAccountsBelongToWorkspace(env, actor.workspaceId, assignments);
   const member = await env.ONFRAME_DB.prepare(
     `
-    SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+    SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?
   `
   )
     .bind(actor.workspaceId, userId)
-    .first<{ role: 'admin' | 'collaborator' }>();
+    .first<{ role_id: string }>();
   if (!member) throw new RequestError('workspace_member_not_found', 404);
   const timestamp = now();
   const updated = await env.ONFRAME_DB.prepare(
     `
-    UPDATE workspace_members SET role = ?, role_id = ?, updated_at = ? WHERE workspace_id = ? AND user_id = ?
-      AND (role <> 'admin' OR ? = 'admin' OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role = 'admin') > 1)
+    UPDATE workspace_members SET role_id = ?, updated_at = ? WHERE workspace_id = ? AND user_id = ?
+      AND (role_id <> 'admin' OR ? = 'admin' OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role_id = 'admin') > 1)
   `
   )
-    .bind(role, targetRole.id, timestamp, actor.workspaceId, userId, role, actor.workspaceId)
+    .bind(targetRole.id, timestamp, actor.workspaceId, userId, targetRole.id, actor.workspaceId)
     .run();
   if (updated.meta.changes !== 1) throw new RequestError('workspace_last_admin_required', 409);
   await env.ONFRAME_DB.batch([
@@ -1799,14 +1811,14 @@ export async function removeWorkspaceMember(
   await assertWorkspaceAdministrator(actor);
   if (userId === actor.userId) throw new RequestError('workspace_self_management_forbidden', 403);
   const member = await env.ONFRAME_DB.prepare(
-    `SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?`
+    `SELECT role_id FROM workspace_members WHERE workspace_id = ? AND user_id = ?`
   )
     .bind(actor.workspaceId, userId)
-    .first<{ role: 'admin' | 'collaborator' }>();
+    .first<{ role_id: string }>();
   if (!member) throw new RequestError('workspace_member_not_found', 404);
-  if (member.role === 'admin') {
+  if (member.role_id === 'admin') {
     const count = await env.ONFRAME_DB.prepare(
-      `SELECT COUNT(*) AS count FROM workspace_members WHERE workspace_id = ? AND role = 'admin'`
+      `SELECT COUNT(*) AS count FROM workspace_members WHERE workspace_id = ? AND role_id = 'admin'`
     )
       .bind(actor.workspaceId)
       .first<{ count: number }>();
@@ -1815,7 +1827,7 @@ export async function removeWorkspaceMember(
   const removed = await env.ONFRAME_DB.prepare(
     `
     DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?
-      AND (role <> 'admin' OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role = 'admin') > 1)
+      AND (role_id <> 'admin' OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role_id = 'admin') > 1)
   `
   )
     .bind(actor.workspaceId, userId, actor.workspaceId)
@@ -1843,8 +1855,8 @@ export async function leaveWorkspace(env: RuntimeEnv, actor: ExtensionSessionAct
     .first<{ workspace_id: string }>();
   const removed = await env.ONFRAME_DB.prepare(
     `
-    DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ? AND role = 'admin'
-      AND (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role = 'admin') > 1
+    DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ? AND role_id = 'admin'
+      AND (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role_id = 'admin') > 1
   `
   )
     .bind(actor.workspaceId, actor.userId, actor.workspaceId)
@@ -1944,7 +1956,6 @@ async function createWorkspaceInvitation(
   const kind = body.kind === 'email' || body.kind === 'link' ? body.kind : '';
   if (!kind) throw new RequestError('invalid_invitation_kind', 400);
   const targetRole = await assignableRole(env, actor.workspaceId, body);
-  const role = targetRole.legacyRole;
   const email = kind === 'email' ? optionalEmail(body.email) : null;
   if (kind === 'email' && !email) throw new RequestError('invalid_invitation_email', 400);
   if (email) {
@@ -1958,7 +1969,7 @@ async function createWorkspaceInvitation(
       .first();
     if (member) throw new RequestError('workspace_already_member', 409);
   }
-  const assignments = role === 'collaborator' ? accountIds(body.accountIds) : [];
+  const assignments = targetRole.id === 'admin' ? [] : accountIds(body.accountIds);
   await assertAccountsBelongToWorkspace(env, actor.workspaceId, assignments);
   const token = randomSecret(32);
   const timestamp = now();
@@ -1979,8 +1990,8 @@ async function createWorkspaceInvitation(
   await env.ONFRAME_DB.batch([
     env.ONFRAME_DB.prepare(
       `
-      INSERT INTO workspace_invitations (id, workspace_id, token_hash, kind, email, role, role_id, created_by_user_id, expires_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO workspace_invitations (id, workspace_id, token_hash, kind, email, role_id, created_by_user_id, expires_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
     ).bind(
       id,
@@ -1988,7 +1999,6 @@ async function createWorkspaceInvitation(
       await sha256(token),
       kind,
       email,
-      role,
       targetRole.id,
       actor.userId,
       expiresAt,
@@ -2011,7 +2021,6 @@ async function createWorkspaceInvitation(
       id,
       kind,
       email,
-      role,
       roleId: targetRole.id,
       roleName: targetRole.name,
       expiresAt: new Date(expiresAt).toISOString(),
@@ -2027,10 +2036,10 @@ async function listWorkspaceInvitations(
   await assertWorkspaceAdministrator(actor);
   const result = await env.ONFRAME_DB.prepare(
     `
-    SELECT workspace_invitations.id, kind, email, role, COALESCE(role_id, role) AS role_id,
+    SELECT workspace_invitations.id, kind, email, workspace_invitations.role_id,
       workspace_roles.name AS role_name, expires_at, workspace_invitations.created_at
     FROM workspace_invitations
-    LEFT JOIN workspace_roles ON workspace_roles.id = COALESCE(workspace_invitations.role_id, workspace_invitations.role)
+    LEFT JOIN workspace_roles ON workspace_roles.id = workspace_invitations.role_id
     WHERE workspace_invitations.workspace_id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?
     ORDER BY workspace_invitations.created_at DESC
   `
@@ -2040,7 +2049,6 @@ async function listWorkspaceInvitations(
       id: string;
       kind: 'email' | 'link';
       email: string | null;
-      role: 'admin' | 'collaborator';
       role_id: string;
       role_name: string | null;
       expires_at: number;
@@ -2050,9 +2058,8 @@ async function listWorkspaceInvitations(
     id: invitation.id,
     kind: invitation.kind,
     email: invitation.email,
-    role: invitation.role,
     roleId: invitation.role_id,
-    roleName: invitation.role_name || (invitation.role === 'admin' ? 'Administrador' : 'Colaborador'),
+    roleName: invitation.role_name,
     expiresAt: new Date(invitation.expires_at).toISOString(),
     createdAt: new Date(invitation.created_at).toISOString()
   }));
@@ -2085,7 +2092,7 @@ export async function acceptWorkspaceInvitation(
   const timestamp = now();
   const invitation = await env.ONFRAME_DB.prepare(
     `
-    SELECT id, workspace_id, kind, email, role, COALESCE(role_id, role) AS role_id
+    SELECT id, workspace_id, kind, email, role_id
     FROM workspace_invitations
     WHERE token_hash = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?
   `
@@ -2096,7 +2103,6 @@ export async function acceptWorkspaceInvitation(
       workspace_id: string;
       kind: 'email' | 'link';
       email: string | null;
-      role: 'admin' | 'collaborator';
       role_id: string;
     }>();
   if (!invitation) throw new RequestError('workspace_invitation_unavailable', 404);
@@ -2131,11 +2137,11 @@ export async function acceptWorkspaceInvitation(
   await env.ONFRAME_DB.batch([
     env.ONFRAME_DB.prepare(
       `
-      INSERT INTO workspace_members (workspace_id, user_id, role, role_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(workspace_id, user_id) DO NOTHING
     `
-    ).bind(invitation.workspace_id, actor.userId, invitation.role, invitation.role_id, timestamp, timestamp),
+    ).bind(invitation.workspace_id, actor.userId, invitation.role_id, timestamp, timestamp),
     ...assignments.results.map((assignment) =>
       env.ONFRAME_DB.prepare(
         `

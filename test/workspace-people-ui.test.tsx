@@ -6,8 +6,8 @@ import { create } from 'react-test-renderer';
 import { WorkspacePeople } from '../extension/ui/options/WorkspacePeople.jsx';
 import { SectionHeader } from '../extension/ui/shared/SectionHeader.jsx';
 
-const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', role: 'admin', accounts: [] };
-const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', role: 'admin', accounts: [] };
+const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', roleId: 'admin', accounts: [] };
+const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', roleId: 'admin', accounts: [] };
 
 function renderPeople(members: (typeof self)[]) {
   const calls: string[] = [];

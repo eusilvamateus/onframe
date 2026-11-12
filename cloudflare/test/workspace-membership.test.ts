@@ -15,7 +15,7 @@ import {
 const actor = {
   userId: 'user-1',
   workspaceId: 'workspace-1',
-  workspaceRole: 'admin',
+  roleId: 'admin',
   subject: 'subject-1',
   authSessionId: 'auth-session-1',
   identityVersion: 1,
@@ -164,7 +164,7 @@ test('saida sem outro workspace encerra a sessao sem reingressar no mesmo', asyn
 
 test('remocao de outra pessoa permite retirar um administrador quando ha outro', async () => {
   const { env, queries } = database((sql) => {
-    if (sql.includes('SELECT role FROM workspace_members')) return { role: 'admin' };
+    if (sql.includes('SELECT role_id FROM workspace_members')) return { role_id: 'admin' };
     if (sql.includes('SELECT COUNT(*) AS count')) return { count: 2 };
     return null;
   });
@@ -183,7 +183,7 @@ test('remocao de outra pessoa permite retirar um administrador quando ha outro',
 test('convite nao altera papel de quem ja participa do workspace', async () => {
   const { env, queries } = database((sql) => {
     if (sql.includes('FROM workspace_invitations'))
-      return { id: 'invite-1', workspace_id: 'workspace-1', kind: 'link', email: null, role: 'admin' };
+      return { id: 'invite-1', workspace_id: 'workspace-1', kind: 'link', email: null, role_id: 'admin' };
     if (sql.includes('SELECT 1 FROM workspace_members')) return { 1: 1 };
     return null;
   });
@@ -230,7 +230,10 @@ test('resumo do workspace respeita atribuicoes e considera apenas pendencias e e
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'admin-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator', 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+      ),
+      db.prepare(
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator:workspace-1', 1, 1)"
       ),
       db.prepare(
         "INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '101', 'Conta 1', 1, 1, 1), ('account-2', 'workspace-1', '102', 'Conta 2', 0, 1, 1), ('account-3', 'workspace-1', '103', 'Conta 3', 1, 1, 1)"
@@ -240,7 +243,7 @@ test('resumo do workspace respeita atribuicoes e considera apenas pendencias e e
       ),
       db
         .prepare(
-          "INSERT INTO workspace_invitations (id, workspace_id, token_hash, kind, email, role, created_by_user_id, expires_at, revoked_at, created_at, updated_at) VALUES ('invite-active', 'workspace-1', 'active', 'email', 'active@example.com', 'collaborator', 'admin-1', ?, NULL, 1, 1), ('invite-expired', 'workspace-1', 'expired', 'email', 'expired@example.com', 'collaborator', 'admin-1', ?, NULL, 1, 1), ('invite-revoked', 'workspace-1', 'revoked', 'email', 'revoked@example.com', 'collaborator', 'admin-1', ?, ?, 1, 1)"
+          "INSERT INTO workspace_invitations (id, workspace_id, token_hash, kind, email, role_id, created_by_user_id, expires_at, revoked_at, created_at, updated_at) VALUES ('invite-active', 'workspace-1', 'active', 'email', 'active@example.com', 'collaborator:workspace-1', 'admin-1', ?, NULL, 1, 1), ('invite-expired', 'workspace-1', 'expired', 'email', 'expired@example.com', 'collaborator:workspace-1', 'admin-1', ?, NULL, 1, 1), ('invite-revoked', 'workspace-1', 'revoked', 'email', 'revoked@example.com', 'collaborator:workspace-1', 'admin-1', ?, ?, 1, 1)"
         )
         .bind(timestamp + 60_000, timestamp - 60_000, timestamp + 60_000, timestamp),
       db
@@ -269,7 +272,7 @@ test('resumo do workspace respeita atribuicoes e considera apenas pendencias e e
     const collaboratorOverview = (await workspaceOverview({ ONFRAME_DB: db } as any, {
       ...actor,
       userId: 'collab-1',
-      workspaceRole: 'collaborator',
+      roleId: 'collaborator:workspace-1',
       permissions: ['accounts.read', 'history.read'],
       workspaceName: 'Principal'
     })) as any;
@@ -323,7 +326,10 @@ test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login'
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Original', 'user-1', 1, 1), ('workspace-2', 'Outro', 'user-2', 2, 2)"
       ),
       db.prepare(
-        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1), ('workspace-1', 'user-2', 'admin', 2, 2), ('workspace-2', 'user-1', 'collaborator', 3, 3)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1), ('collaborator:workspace-2', 'workspace-2', 'Colaborador', NULL, 2, 2, 1)"
+      ),
+      db.prepare(
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1), ('workspace-1', 'user-2', 'admin', 2, 2), ('workspace-2', 'user-1', 'collaborator:workspace-2', 3, 3)"
       ),
       db.prepare(
         "INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at, identity_version, auth_session_id) VALUES ('session-1', 'hash-1', 'user-1', 'workspace-1', 'Extensão OnFrame', 4102444800000, 1, 1, 'auth-session-1')"
@@ -377,7 +383,7 @@ test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login'
       updateWorkspaceMember(
         new Request('https://example.com', {
           method: 'PATCH',
-          body: JSON.stringify({ role: 'collaborator', accountIds: [] })
+          body: JSON.stringify({ roleId: 'collaborator:workspace-1', accountIds: [] })
         }),
         { ONFRAME_DB: db } as any,
         actor,
@@ -394,9 +400,9 @@ test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login'
     assert.equal(
       (
         await db
-          .prepare("SELECT role FROM workspace_members WHERE workspace_id = 'workspace-1' AND user_id = 'user-2'")
-          .first<{ role: string }>()
-      )?.role,
+          .prepare("SELECT role_id FROM workspace_members WHERE workspace_id = 'workspace-1' AND user_id = 'user-2'")
+          .first<{ role_id: string }>()
+      )?.role_id,
       'admin'
     );
   } finally {

@@ -304,12 +304,12 @@ function Popup() {
             </span>
           }
           title="Workspace"
-          description={workspaceSummary(overview, connection.workspace.role)}
+          description={workspaceSummary(overview, connection.workspace.roleId)}
           strong
           onClick={() => openView('workspace')}
           trailing={<Ph n="caret-right" size={16} />}
         />
-        {(connection.workspace.role === 'admin' || connection.workspace.permissions?.includes('accounts.read')) && (
+        {(connection.workspace.roleId === 'admin' || connection.workspace.permissions?.includes('accounts.read')) && (
           <ListItem
             className="onframe-popup-card-row onframe-popup-home-row"
             leading={
@@ -324,7 +324,7 @@ function Popup() {
             trailing={<Ph n="caret-right" size={16} />}
           />
         )}
-        {(connection.workspace.role === 'admin' || connection.workspace.permissions?.includes('history.read')) && (
+        {(connection.workspace.roleId === 'admin' || connection.workspace.permissions?.includes('history.read')) && (
           <ListItem
             className="onframe-popup-card-row onframe-popup-home-row"
             leading={

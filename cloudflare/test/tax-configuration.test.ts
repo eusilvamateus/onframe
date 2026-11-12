@@ -181,18 +181,21 @@ test('administrador mantem padroes do workspace e das contas', async () => {
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'user-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator', 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+      ),
+      db.prepare(
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-2', 'collaborator:workspace-1', 1, 1)"
       ),
       db.prepare(
         "INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '1001', 'LOJA', 1, 1, 1)"
       )
     ]);
     const env = { ONFRAME_DB: db };
-    const admin = { userId: 'user-1', workspaceId: 'workspace-1', workspaceRole: 'admin' } as const;
-    const collaborator = { userId: 'user-2', workspaceId: 'workspace-1', workspaceRole: 'collaborator' } as const;
+    const admin = { userId: 'user-1', workspaceId: 'workspace-1', roleId: 'admin' } as const;
+    const collaborator = { userId: 'user-2', workspaceId: 'workspace-1', roleId: 'collaborator:workspace-1' } as const;
     const request = new Request('https://onframe.onblide.com/v1/app/tax-configuration', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },

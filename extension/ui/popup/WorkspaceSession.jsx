@@ -6,7 +6,7 @@ import { formatDate, sendRemoteMessage, userError } from '../shared/runtime';
 import { PopupSessionHeader } from './PopupSessionHeader';
 
 function memberAccess(member) {
-  if (member.role === 'admin') return 'Administrador · Todas as contas';
+  if (member.roleId === 'admin') return 'Administrador · Todas as contas';
   const count = (member.accounts || []).length;
   return `${member.roleName || 'Colaborador'} · ${count === 0 ? 'Nenhuma conta' : `${count} ${count === 1 ? 'conta' : 'contas'}`}`;
 }
@@ -44,7 +44,7 @@ export function WorkspaceSession({
   footer,
   header
 }) {
-  const admin = connection.workspace.role === 'admin';
+  const admin = connection.workspace.roleId === 'admin';
   const restoredInviteDraft = normalizeInviteDraft(initialState?.inviteDraft);
   const [members, setMembers] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -129,7 +129,7 @@ export function WorkspaceSession({
       if (currentDialog.type === 'member') {
         await sendRemoteMessage('member-update', {
           userId: currentDialog.member.id,
-          payload: { role: values.role, roleId: values.roleId, accountIds: values.accountIds }
+          payload: { roleId: values.roleId, accountIds: values.accountIds }
         });
         await loadWorkspace();
         return { updated: true };
@@ -195,7 +195,7 @@ export function WorkspaceSession({
   }
 
   const currentUserId = connection.user.id;
-  const canLeave = members.filter((member) => member.role === 'admin').length > 1;
+  const canLeave = members.filter((member) => member.roleId === 'admin').length > 1;
   const confirmation = ['member-delete', 'invitation-delete', 'workspace-leave'].includes(dialog?.type);
   const confirmationTitle =
     dialog?.type === 'member-delete'
@@ -314,7 +314,7 @@ export function WorkspaceSession({
                         className="onframe-popup-card-row"
                         leading={<PopupIcon name="envelope-simple" tone="warning" />}
                         title={invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
-                        description={`${invitation.roleName || (invitation.role === 'admin' ? 'Administrador' : 'Colaborador')} · expira ${formatDate(invitation.expiresAt)}`}
+                        description={`${invitation.roleName} · expira ${formatDate(invitation.expiresAt)}`}
                         wrap
                         strong
                         trailing={

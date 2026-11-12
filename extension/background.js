@@ -535,9 +535,10 @@ function serializeRemoteConnection(session, context) {
     workspace: {
       id: String(workspace.id || ''),
       name: String(workspace.name),
-      role: workspace.role === 'admin' ? 'admin' : 'collaborator',
-      roleId: String(workspace.roleId || (workspace.role === 'admin' ? 'admin' : 'collaborator')),
-      permissions: Array.isArray(workspace.permissions) ? workspace.permissions.filter((value) => typeof value === 'string') : []
+      roleId: String(workspace.roleId || ''),
+      permissions: Array.isArray(workspace.permissions)
+        ? workspace.permissions.filter((value) => typeof value === 'string')
+        : []
     }
   };
 }

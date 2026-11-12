@@ -5,7 +5,7 @@ type HistoryEnv = {
 type HistoryActor = {
   userId: string | null;
   workspaceId: string;
-  workspaceRole?: 'admin' | 'collaborator';
+  roleId?: string;
   displayName?: string;
   email?: string;
 };
@@ -159,7 +159,7 @@ export async function listItemEditHistory(
   const filters: string[] = ['events.workspace_id = ?'];
   const values: unknown[] = [actor.workspaceId];
 
-  if (actor.workspaceRole !== 'admin') {
+  if (actor.roleId !== 'admin') {
     filters.push(`EXISTS (
       SELECT 1 FROM account_members
       WHERE account_members.seller_account_id = events.seller_account_id

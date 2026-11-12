@@ -3,7 +3,7 @@ import { SectionHeader } from '../shared/SectionHeader';
 import { formatDate } from '../shared/runtime';
 
 function accountAssignments(member) {
-  if (member.role === 'admin') return 'Todas as contas';
+  if (member.roleId === 'admin') return 'Todas as contas';
   const accounts = member.accounts || [];
   return accounts.map((account) => account.nickname || account.meliUserId || account.id).join(', ') || 'Nenhuma';
 }
@@ -20,7 +20,7 @@ export function WorkspacePeople({
   onRevoke,
   onLeave
 }) {
-  const canLeave = members.filter((member) => member.role === 'admin').length > 1;
+  const canLeave = members.filter((member) => member.roleId === 'admin').length > 1;
   const columns = [
     {
       key: 'name',
@@ -42,11 +42,7 @@ export function WorkspacePeople({
     {
       key: 'role',
       label: 'Permissão',
-      render: (_, member) => (
-        <Badge tone={member.role === 'admin' ? 'primary' : 'neutral'}>
-          {member.roleName || (member.role === 'admin' ? 'Administrador' : 'Colaborador')}
-        </Badge>
-      )
+      render: (_, member) => <Badge tone={member.roleId === 'admin' ? 'primary' : 'neutral'}>{member.roleName}</Badge>
     },
     { key: 'accounts', label: 'Contas', render: (_, member) => accountAssignments(member) },
     {
@@ -99,8 +95,7 @@ export function WorkspacePeople({
                     {invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
                   </p>
                   <p className="onframe-list-meta">
-                    {invitation.roleName || (invitation.role === 'admin' ? 'Administrador' : 'Colaborador')} · expira{' '}
-                    {formatDate(invitation.expiresAt)}
+                    {invitation.roleName} · expira {formatDate(invitation.expiresAt)}
                   </p>
                 </div>
                 <Button kind="ghost" size="sm" disabled={loading} onClick={() => onRevoke(invitation)}>

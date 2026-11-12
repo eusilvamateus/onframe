@@ -310,7 +310,10 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'admin-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator', 1, 1)"
+        "INSERT INTO workspace_roles (id, workspace_id, name, system_key, created_at, updated_at, is_default) VALUES ('collaborator:workspace-1', 'workspace-1', 'Colaborador', NULL, 1, 1, 1)"
+      ),
+      db.prepare(
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'admin-1', 'admin', 1, 1), ('workspace-1', 'collab-1', 'collaborator:workspace-1', 1, 1)"
       ),
       db.prepare(
         "INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '123', 'Conta 1', 1, 1, 1), ('account-2', 'workspace-1', '456', 'Conta 2', 1, 1, 1)"
@@ -324,7 +327,7 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
       actor: {
         userId: 'admin-1',
         workspaceId: 'workspace-1',
-        workspaceRole: 'admin' as const,
+        roleId: 'admin',
         displayName: 'Admin',
         email: 'admin@example.com'
       },
@@ -419,7 +422,7 @@ test('consulta pagina eventos e respeita as contas atribuidas ao colaborador', a
       {
         userId: 'collab-1',
         workspaceId: 'workspace-1',
-        workspaceRole: 'collaborator'
+        roleId: 'collaborator:workspace-1'
       },
       new URL('https://example.com/v1/app/item-edit-history')
     )) as { events: Array<{ account: { id: string } }> };

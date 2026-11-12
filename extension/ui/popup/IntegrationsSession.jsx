@@ -21,7 +21,7 @@ function LoadingAccounts() {
 }
 
 export function IntegrationsSession({ connection, initialState, onStateChange, onBack, footer, header }) {
-  const admin = connection.workspace.role === 'admin';
+  const admin = connection.workspace.roleId === 'admin';
   const canWrite = admin || connection.workspace.permissions?.includes('accounts.write') === true;
   const canDelete = admin || connection.workspace.permissions?.includes('accounts.delete') === true;
   const [accounts, setAccounts] = useState([]);

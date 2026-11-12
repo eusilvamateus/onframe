@@ -59,7 +59,7 @@ test('sessao de integracoes preserva os controles administrativos das contas', a
   await act(async () => {
     renderer = create(
       <IntegrationsSession
-        connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'admin' } }}
+        connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', roleId: 'admin' } }}
         onStateChange={(state) => states.push(state)}
         onBack={() => {}}
         onOpenOptions={() => {}}
@@ -135,7 +135,7 @@ test('colaborador visualiza contas sem controles administrativos', async () => {
   await act(async () => {
     renderer = create(
       <IntegrationsSession
-        connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', role: 'collaborator' } }}
+        connection={{ workspace: { id: 'workspace-1', name: 'Meu workspace', roleId: 'collaborator:workspace-1' } }}
         onBack={() => {}}
         onOpenOptions={() => {}}
       />

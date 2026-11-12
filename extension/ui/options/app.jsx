@@ -179,7 +179,7 @@ const SETTINGS_PAGE_META = {
 };
 
 function workspaceCan(workspace, permission) {
-  return workspace?.role === 'admin' || workspace?.permissions?.includes(permission) === true;
+  return workspace?.roleId === 'admin' || workspace?.permissions?.includes(permission) === true;
 }
 
 function routeFromHash(hash) {
@@ -1033,7 +1033,7 @@ function OptionsApp() {
 
   const loadView = useCallback(async () => {
     if (!connection?.connected) return;
-    const admin = connection.workspace?.role === 'admin';
+    const admin = connection.workspace?.roleId === 'admin';
     const needsData =
       view === 'home' ||
       view === 'integrations' ||
@@ -1135,7 +1135,7 @@ function OptionsApp() {
     if (!connection?.connected || view !== 'settings' || settingsTab !== 'workspace') return;
     if (
       workspaceCan(connection.workspace, 'settings.read') &&
-      (!['people', 'roles'].includes(settingsPage) || connection.workspace?.role === 'admin')
+      (!['people', 'roles'].includes(settingsPage) || connection.workspace?.roleId === 'admin')
     )
       return;
     const hash = VIEW_HASHES.settings;
@@ -1296,7 +1296,7 @@ function OptionsApp() {
       if (dialog.type === 'member') {
         await sendRemoteMessage('member-update', {
           userId: dialog.member.id,
-          payload: { role: values.role, roleId: values.roleId, accountIds: values.accountIds }
+          payload: { roleId: values.roleId, accountIds: values.accountIds }
         });
       } else {
         const response = await sendRemoteMessage('invitation-create', { payload: values });
@@ -1509,7 +1509,7 @@ function OptionsApp() {
       setView('settings');
     }
   };
-  const admin = workspace.role === 'admin';
+  const admin = workspace.roleId === 'admin';
   const canSettingsRead = workspaceCan(workspace, 'settings.read');
   const canSettingsWrite = workspaceCan(workspace, 'settings.write');
   const canAccountsWrite = workspaceCan(workspace, 'accounts.write');

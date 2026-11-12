@@ -25,7 +25,12 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
 
   function openEditor(role = null) {
     setError('');
-    setDraft({ id: role?.id || null, name: role?.name || '', permissions: role?.permissions || [] });
+    setDraft({
+      id: role?.id || null,
+      name: role?.name || '',
+      isDefault: role?.isDefault || false,
+      permissions: role?.permissions || []
+    });
   }
 
   function togglePermission(resource, action, checked) {
@@ -113,16 +118,18 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
             description={permissionSummary(role)}
             meta={role.system ? <Badge tone="neutral">Padrão</Badge> : undefined}
             trailing={
-              role.system ? null : (
+              role.editable ? (
                 <div className="onframe-actions">
                   <Button kind="secondary" size="sm" onClick={() => openEditor(role)}>
                     Editar
                   </Button>
-                  <Button kind="ghost" size="sm" onClick={() => setRemoval(role)}>
-                    Excluir
-                  </Button>
+                  {role.deletable && (
+                    <Button kind="ghost" size="sm" onClick={() => setRemoval(role)}>
+                      Excluir
+                    </Button>
+                  )}
                 </div>
-              )
+              ) : null
             }
           />
         ))}
@@ -154,6 +161,7 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
               label="Nome do perfil"
               value={draft.name}
               maxLength={60}
+              disabled={draft.isDefault}
               onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
             />
             <div className="onframe-role-permissions" aria-label="Permissões do perfil">

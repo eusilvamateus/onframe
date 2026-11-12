@@ -8,7 +8,7 @@ import { listWorkspaceAccounts, updateWorkspaceAccount } from '../src/index.ts';
 const admin = {
   userId: 'user-1',
   workspaceId: 'workspace-1',
-  workspaceRole: 'admin',
+  roleId: 'admin',
   subject: 'subject-1',
   authSessionId: 'session-1',
   identityVersion: 1,
@@ -50,7 +50,7 @@ test('nome de exibicao e estado da conta sao independentes do nome do Mercado Li
         "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-1', 'Principal', 'user-1', 1, 1)"
       ),
       db.prepare(
-        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1)"
       ),
       db.prepare(
         "INSERT INTO seller_accounts (id, workspace_id, meli_user_id, nickname, enabled, created_at, updated_at) VALUES ('account-1', 'workspace-1', '123', 'Nome original', 1, 1, 1)"
@@ -70,7 +70,7 @@ test('nome de exibicao e estado da conta sao independentes do nome do Mercado Li
     await assert.rejects(update({ displayName: 'x'.repeat(81) }), { code: 'invalid_account_name' });
     await assert.rejects(update({ enabled: true, displayName: 'Outro' }), { code: 'invalid_account_update' });
     await assert.rejects(
-      update({ displayName: 'Outro' }, { ...admin, userId: 'user-2', workspaceRole: 'collaborator' }),
+      update({ displayName: 'Outro' }, { ...admin, userId: 'user-2', roleId: 'collaborator:workspace-1' }),
       { code: 'workspace_account_access_forbidden' }
     );
 
