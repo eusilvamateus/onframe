@@ -853,7 +853,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       {pagination.totalPages > 1 && (
         <div className="onframe-products-pagination">
           <span>{pagination.total} produtos</span>
-          <Pagination page={pagination.page} total={pagination.totalPages} onChange={(page) => void load(page)} />
+          <Pagination size="sm" page={pagination.page} total={pagination.totalPages} onChange={(page) => void load(page)} />
         </div>
       )}
       {dialog?.type === 'product' && (
