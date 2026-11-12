@@ -1,9 +1,12 @@
+import { hasPermission, type Permission } from './permissions';
+
 type MarginConfigurationEnv = { ONFRAME_DB: D1Database };
 
 export type MarginConfigurationActor = {
   userId: string;
   workspaceId: string;
   workspaceRole: 'admin' | 'collaborator';
+  permissions?: string[];
 };
 
 export class MarginConfigurationError extends Error {
@@ -29,17 +32,22 @@ function minimumMarginBps(value: unknown): number | null {
   return basisPoints;
 }
 
-async function assertAdmin(env: MarginConfigurationEnv, actor: MarginConfigurationActor): Promise<void> {
+async function assertAdmin(
+  env: MarginConfigurationEnv,
+  actor: MarginConfigurationActor,
+  permission: Permission
+): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
     'SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?'
   )
     .bind(actor.workspaceId, actor.userId)
     .first<{ role: string }>();
-  if (membership?.role !== 'admin') throw new MarginConfigurationError('margin_configuration_forbidden', 403);
+  if (!membership || !hasPermission(actor, permission))
+    throw new MarginConfigurationError('margin_configuration_forbidden', 403);
 }
 
 export async function getMarginConfiguration(env: MarginConfigurationEnv, actor: MarginConfigurationActor) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'settings.read');
   const row = await env.ONFRAME_DB.prepare(
     'SELECT minimum_contribution_margin_bps FROM workspace_margin_settings WHERE workspace_id = ?'
   )
@@ -56,7 +64,7 @@ export async function updateMarginConfiguration(
   actor: MarginConfigurationActor,
   requestId: string
 ) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'settings.write');
   let body: Record<string, unknown>;
   try {
     const parsed: unknown = await request.json();

@@ -270,6 +270,7 @@ test('resumo do workspace respeita atribuicoes e considera apenas pendencias e e
       ...actor,
       userId: 'collab-1',
       workspaceRole: 'collaborator',
+      permissions: ['accounts.read', 'history.read'],
       workspaceName: 'Principal'
     })) as any;
     assert.deepEqual(

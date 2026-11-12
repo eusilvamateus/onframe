@@ -45,6 +45,7 @@ export function normalizeInviteDraft(value) {
     kind: draft.kind === 'link' ? 'link' : 'email',
     email: text(draft.email),
     role: draft.role === 'admin' ? 'admin' : 'collaborator',
+    roleId: text(draft.roleId) || (draft.role === 'admin' ? 'admin' : 'collaborator'),
     accountIds: stringList(draft.accountIds)
   };
 }

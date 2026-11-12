@@ -58,12 +58,13 @@ As telas da extensão usam:
 - `PATCH /v1/accounts/:meliUserId` para habilitar ou desabilitar uma conta;
 - `DELETE /v1/accounts/:meliUserId` para desvincular uma conta.
 
-Essas operações exigem uma sessão de extensão vinculada e permissão de
-administração do workspace.
+Essas operações exigem uma sessão de extensão vinculada e, respectivamente,
+`accounts.read`, `accounts.write` e `accounts.delete`. Iniciar OAuth tambem
+exige `accounts.write`.
 
-Para chamadas `/v1/api/*`, o Worker aplica a mesma regra: um administrador
-enxerga as contas do workspace, enquanto um colaborador só pode operar contas
-atribuídas explicitamente.
+Para chamadas `/v1/api/*`, o Worker exige `accounts.read` e a permissao da
+operacao solicitada. Administradores enxergam todas as contas do workspace;
+outras pessoas so operam contas atribuidas explicitamente.
 
 ## Segredos e armazenamento
 

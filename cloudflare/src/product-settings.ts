@@ -1,9 +1,12 @@
+import { hasPermission, type Permission } from './permissions';
+
 type ProductSettingsEnv = { ONFRAME_DB: D1Database };
 
 export type ProductSettingsActor = {
   userId: string;
   workspaceId: string;
   workspaceRole: 'admin' | 'collaborator';
+  permissions?: string[];
 };
 
 export class ProductSettingsError extends Error {
@@ -15,13 +18,18 @@ export class ProductSettingsError extends Error {
   }
 }
 
-async function assertAdmin(env: ProductSettingsEnv, actor: ProductSettingsActor): Promise<void> {
+async function assertAdmin(
+  env: ProductSettingsEnv,
+  actor: ProductSettingsActor,
+  permission: Permission
+): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
     'SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?'
   )
     .bind(actor.workspaceId, actor.userId)
     .first<{ role: string }>();
-  if (membership?.role !== 'admin') throw new ProductSettingsError('product_settings_forbidden', 403);
+  if (!membership || !hasPermission(actor, permission))
+    throw new ProductSettingsError('product_settings_forbidden', 403);
 }
 
 async function requestBody(request: Request): Promise<Record<string, unknown>> {
@@ -43,7 +51,7 @@ function costDecimalPlaces(value: unknown): number {
 }
 
 export async function getProductSettings(env: ProductSettingsEnv, actor: ProductSettingsActor) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'settings.read');
   const workspace = await env.ONFRAME_DB.prepare('SELECT cost_display_decimal_places FROM workspaces WHERE id = ?')
     .bind(actor.workspaceId)
     .first<{ cost_display_decimal_places: number }>();
@@ -56,7 +64,7 @@ export async function updateProductSettings(
   actor: ProductSettingsActor,
   requestId: string
 ) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'settings.write');
   const body = await requestBody(request);
   const displayDecimalPlaces = costDecimalPlaces(body.costDecimalPlaces);
   const timestamp = Date.now();

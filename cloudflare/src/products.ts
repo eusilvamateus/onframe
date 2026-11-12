@@ -1,7 +1,10 @@
+import { hasPermission, type Permission } from './permissions';
+
 export type ProductActor = {
   userId: string;
   workspaceId: string;
   workspaceRole: 'admin' | 'collaborator';
+  permissions?: string[];
 };
 
 type ProductEnv = { ONFRAME_DB: D1Database };
@@ -423,7 +426,11 @@ function accountTaxRateStatements(
   ];
 }
 
-async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> {
+async function assertAdmin(
+  env: ProductEnv,
+  actor: ProductActor,
+  permission: Permission = 'products.write'
+): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
     `
     SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?
@@ -431,7 +438,7 @@ async function assertAdmin(env: ProductEnv, actor: ProductActor): Promise<void> 
   )
     .bind(actor.workspaceId, actor.userId)
     .first<{ role: string }>();
-  if (membership?.role !== 'admin') throw new ProductRequestError('product_access_forbidden', 403);
+  if (!membership || !hasPermission(actor, permission)) throw new ProductRequestError('product_access_forbidden', 403);
 }
 
 async function assertProduct(env: ProductEnv, actor: ProductActor, productId: string): Promise<ProductRow> {
@@ -1105,7 +1112,7 @@ export async function updateProductFinancials(
 }
 
 export async function archiveProduct(env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'products.delete');
   await assertProduct(env, actor, productId);
   const timestamp = Date.now();
   await env.ONFRAME_DB.prepare(

@@ -113,6 +113,14 @@ async function handleRemoteMessage(message) {
       method: 'DELETE'
     });
   if (action === 'members') return requestPlatform('/v1/members');
+  if (action === 'roles') return requestPlatform('/v1/roles');
+  if (action === 'role-save')
+    return requestPlatform(message.roleId ? `/v1/roles/${encodeURIComponent(String(message.roleId))}` : '/v1/roles', {
+      method: message.roleId ? 'PUT' : 'POST',
+      body: JSON.stringify(message.payload || {})
+    });
+  if (action === 'role-delete')
+    return requestPlatform(`/v1/roles/${encodeURIComponent(String(message.roleId || ''))}`, { method: 'DELETE' });
   if (action === 'member-update')
     return requestPlatform(`/v1/members/${encodeURIComponent(String(message.userId || ''))}`, {
       method: 'PATCH',
@@ -527,7 +535,9 @@ function serializeRemoteConnection(session, context) {
     workspace: {
       id: String(workspace.id || ''),
       name: String(workspace.name),
-      role: workspace.role === 'admin' ? 'admin' : 'collaborator'
+      role: workspace.role === 'admin' ? 'admin' : 'collaborator',
+      roleId: String(workspace.roleId || (workspace.role === 'admin' ? 'admin' : 'collaborator')),
+      permissions: Array.isArray(workspace.permissions) ? workspace.permissions.filter((value) => typeof value === 'string') : []
     }
   };
 }

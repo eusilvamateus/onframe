@@ -47,7 +47,13 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     avatar_too_large: 'Escolha uma imagem de até 2 MB.',
     invalid_avatar: 'Escolha uma imagem PNG, JPEG ou WebP válida.',
     workspace_invitation_delivery_failed: 'Não foi possível enviar o convite agora. Tente novamente.',
-    product_access_forbidden: 'Somente administradores podem alterar o catálogo de produtos.',
+    workspace_permission_denied: 'Seu perfil não permite esta ação.',
+    workspace_role_not_found: 'Este perfil não está mais disponível.',
+    workspace_role_not_editable: 'Este perfil padrão não pode ser alterado.',
+    workspace_role_invalid_payload: 'Revise o nome e as permissões do perfil.',
+    workspace_role_name_taken: 'Já existe um perfil com este nome.',
+    workspace_role_in_use: 'Este perfil ainda está atribuído a pessoas ou convites pendentes.',
+    product_access_forbidden: 'Seu perfil não permite alterar o catálogo de produtos.',
     product_invalid_payload: 'Revise os dados do produto e tente novamente.',
     product_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',
     product_sku_conflict: 'Já existe um produto ativo com este SKU.',
@@ -55,7 +61,10 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     product_import_invalid_payload: 'A planilha deve conter entre 1 e 2.000 produtos.',
     tax_configuration_invalid_payload: 'Revise as alíquotas informadas e tente novamente.',
     tax_configuration_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',
-    tax_configuration_forbidden: 'Somente administradores podem alterar as configurações de imposto.',
+    tax_configuration_forbidden: 'Seu perfil não permite acessar as configurações de imposto.',
+    margin_configuration_forbidden: 'Seu perfil não permite acessar as configurações de margem.',
+    product_settings_forbidden: 'Seu perfil não permite acessar as configurações de produtos.',
+    workspace_account_access_forbidden: 'Seu perfil não permite gerenciar esta conta.',
     extension_session_unauthorized: 'Sua sessão expirou. Entre novamente para continuar.'
   };
   return messages[code] || String(error?.message || fallback);

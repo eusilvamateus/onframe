@@ -14,6 +14,7 @@ export function WorkspacePeople({
   currentUserId,
   loading,
   onInvite,
+  onOpenRoles,
   onEdit,
   onRemove,
   onRevoke,
@@ -43,7 +44,7 @@ export function WorkspacePeople({
       label: 'Permissão',
       render: (_, member) => (
         <Badge tone={member.role === 'admin' ? 'primary' : 'neutral'}>
-          {member.role === 'admin' ? 'Administrador' : 'Colaborador'}
+          {member.roleName || (member.role === 'admin' ? 'Administrador' : 'Colaborador')}
         </Badge>
       )
     },
@@ -72,9 +73,14 @@ export function WorkspacePeople({
           title="Acesso ao workspace"
           copy="Gerencie quem participa do workspace e quais contas cada pessoa pode acessar."
           actions={
-            <Button disabled={loading} onClick={onInvite} icon={<Ph n="user-plus" size={17} />}>
-              Convidar pessoa
-            </Button>
+            <div className="onframe-actions">
+              <Button kind="secondary" onClick={onOpenRoles} icon={<Ph n="shield-check" size={17} />}>
+                Perfis de usuários
+              </Button>
+              <Button disabled={loading} onClick={onInvite} icon={<Ph n="user-plus" size={17} />}>
+                Convidar pessoa
+              </Button>
+            </div>
           }
         />
         <Table columns={columns} rows={members} loading={loading} emptyState="Ainda não há pessoas neste workspace." />
@@ -93,7 +99,7 @@ export function WorkspacePeople({
                     {invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
                   </p>
                   <p className="onframe-list-meta">
-                    {invitation.role === 'admin' ? 'Administrador' : 'Colaborador'} · expira{' '}
+                    {invitation.roleName || (invitation.role === 'admin' ? 'Administrador' : 'Colaborador')} · expira{' '}
                     {formatDate(invitation.expiresAt)}
                   </p>
                 </div>

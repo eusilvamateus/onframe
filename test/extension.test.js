@@ -507,6 +507,8 @@ test('integracoes alternam visualizacao e permitem renomear sem perder controles
       React.createElement(Integrations, {
         accounts: [account],
         admin: true,
+        canWrite: true,
+        canDelete: true,
         loading: false,
         onConnect: () => {},
         onUpdate: (_account, enabled) => updated.push(enabled),

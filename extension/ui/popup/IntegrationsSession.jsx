@@ -22,6 +22,8 @@ function LoadingAccounts() {
 
 export function IntegrationsSession({ connection, initialState, onStateChange, onBack, footer, header }) {
   const admin = connection.workspace.role === 'admin';
+  const canWrite = admin || connection.workspace.permissions?.includes('accounts.write') === true;
+  const canDelete = admin || connection.workspace.permissions?.includes('accounts.delete') === true;
   const [accounts, setAccounts] = useState([]);
   const [mode, setMode] = useState(initialState?.mode === 'cards' ? 'cards' : 'list');
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
                 {accounts.length} {accounts.length === 1 ? 'conta' : 'contas'} do Mercado Livre
               </p>
             </div>
-            {admin && (
+            {canWrite && (
               <Button
                 kind="quiet"
                 tone="primary"
@@ -184,7 +186,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
                       : 'Um administrador precisa atribuir uma conta ao seu acesso.'}
                   </p>
                 </div>
-                {admin && (
+                {canWrite && (
                   <Button
                     size="sm"
                     disabled={busy}
@@ -203,6 +205,8 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
                   key={account.id || account.user_id}
                   account={account}
                   admin={admin}
+                  canWrite={canWrite}
+                  canDelete={canDelete}
                   mode={mode}
                   compact
                   loading={unavailable}

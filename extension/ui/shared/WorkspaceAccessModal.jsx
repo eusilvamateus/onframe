@@ -10,9 +10,24 @@ function accountName(account) {
   );
 }
 
-export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, onDraftChange, onClose, onConfirm }) {
+export function WorkspaceAccessModal({
+  dialog,
+  accounts,
+  roles = [],
+  busy,
+  initialValues,
+  onDraftChange,
+  onClose,
+  onConfirm
+}) {
   const member = dialog?.member;
-  const [values, setValues] = useState({ kind: 'email', email: '', role: 'collaborator', accountIds: [] });
+  const [values, setValues] = useState({
+    kind: 'email',
+    email: '',
+    role: 'collaborator',
+    roleId: 'collaborator',
+    accountIds: []
+  });
 
   useEffect(() => {
     setValues(
@@ -21,12 +36,14 @@ export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, on
             kind: initialValues?.kind === 'link' ? 'link' : 'email',
             email: initialValues?.email || '',
             role: initialValues?.role === 'admin' ? 'admin' : 'collaborator',
+            roleId: initialValues?.roleId || (initialValues?.role === 'admin' ? 'admin' : 'collaborator'),
             accountIds: Array.isArray(initialValues?.accountIds) ? initialValues.accountIds : []
           }
         : {
             kind: 'email',
             email: '',
             role: member?.role || 'collaborator',
+            roleId: member?.roleId || member?.role || 'collaborator',
             accountIds: (member?.accounts || []).map((account) => account.id || account.accountId).filter(Boolean)
           }
     );
@@ -34,8 +51,16 @@ export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, on
 
   if (!dialog || !['invite', 'member'].includes(dialog.type)) return null;
   const isInvite = dialog.type === 'invite';
-  const { kind, email, role, accountIds } = values;
-  const administrator = role === 'admin';
+  const { kind, email, role, roleId, accountIds } = values;
+  const availableRoles =
+    roles.length > 0
+      ? roles
+      : [
+          { id: 'admin', name: 'Administrador' },
+          { id: 'collaborator', name: 'Colaborador' }
+        ];
+  const selectedRole = availableRoles.find((option) => option.id === roleId);
+  const administrator = roleId === 'admin';
   const demotingAdmin = !isInvite && member.role === 'admin' && !administrator;
 
   function update(patch) {
@@ -57,7 +82,7 @@ export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, on
           <Button
             kind={demotingAdmin ? 'danger' : 'primary'}
             disabled={busy || (isInvite && kind === 'email' && !email.trim())}
-            onClick={() => onConfirm({ kind, email: email.trim(), role, accountIds })}
+            onClick={() => onConfirm({ kind, email: email.trim(), role, roleId, accountIds })}
           >
             {isInvite ? 'Enviar convite' : demotingAdmin ? 'Rebaixar administrador' : 'Salvar acesso'}
           </Button>
@@ -92,10 +117,13 @@ export function WorkspaceAccessModal({ dialog, accounts, busy, initialValues, on
           />
         )}
         <Select
-          label="Permissão"
-          options={['Colaborador', 'Administrador']}
-          value={administrator ? 'Administrador' : 'Colaborador'}
-          onChange={(value) => update({ role: value === 'Administrador' ? 'admin' : 'collaborator' })}
+          label="Perfil de usuário"
+          options={availableRoles.map((option) => option.name)}
+          value={selectedRole?.name || 'Colaborador'}
+          onChange={(value) => {
+            const nextRole = availableRoles.find((option) => option.name === value);
+            if (nextRole) update({ role: nextRole.id === 'admin' ? 'admin' : 'collaborator', roleId: nextRole.id });
+          }}
         />
         {administrator && (
           <p className="onframe-muted">Administradores acessam todas as contas e podem gerenciar pessoas e convites.</p>

@@ -8,7 +8,7 @@ const DECIMAL_PLACE_OPTIONS = Array.from({ length: 9 }, (_, value) => ({
   value
 }));
 
-export function ProductSettings({ workspaceId }) {
+export function ProductSettings({ workspaceId, canWrite = true }) {
   const [value, setValue] = useState(2);
   const [savedValue, setSavedValue] = useState(2);
   const [loading, setLoading] = useState(true);
@@ -29,11 +29,11 @@ export function ProductSettings({ workspaceId }) {
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
+  }, []);
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, workspaceId]);
 
   async function save() {
     setSaving(true);
@@ -71,7 +71,7 @@ export function ProductSettings({ workspaceId }) {
         options={DECIMAL_PLACE_OPTIONS}
         value={String(value)}
         width={240}
-        disabled={saving}
+        disabled={saving || !canWrite}
         onChange={(label) => {
           const option = DECIMAL_PLACE_OPTIONS.find((candidate) => candidate.label === label);
           if (!option) return;
@@ -80,38 +80,40 @@ export function ProductSettings({ workspaceId }) {
           setValue(option.value);
         }}
       />
-      <footer className="onframe-settings-action-bar" aria-label="Ações das preferências de produtos">
-        <div className="onframe-settings-action-bar-content">
-          <Divider decorative />
-          <div className="onframe-settings-action-bar-controls">
-            {value !== savedValue && (
-              <p className="onframe-settings-action-status" role="status">
-                Alterações não salvas
-              </p>
-            )}
-            <div className="onframe-settings-action-buttons">
-              <ButtonGroup attached={false} justify="end" ariaLabel="Ações das preferências de produtos">
-                {value !== savedValue && (
-                  <Button
-                    kind="ghost"
-                    disabled={saving}
-                    onClick={() => {
-                      setValue(savedValue);
-                      setSaved(false);
-                      setError('');
-                    }}
-                  >
-                    Descartar
+      {canWrite && (
+        <footer className="onframe-settings-action-bar" aria-label="Ações das preferências de produtos">
+          <div className="onframe-settings-action-bar-content">
+            <Divider decorative />
+            <div className="onframe-settings-action-bar-controls">
+              {value !== savedValue && (
+                <p className="onframe-settings-action-status" role="status">
+                  Alterações não salvas
+                </p>
+              )}
+              <div className="onframe-settings-action-buttons">
+                <ButtonGroup attached={false} justify="end" ariaLabel="Ações das preferências de produtos">
+                  {value !== savedValue && (
+                    <Button
+                      kind="ghost"
+                      disabled={saving}
+                      onClick={() => {
+                        setValue(savedValue);
+                        setSaved(false);
+                        setError('');
+                      }}
+                    >
+                      Descartar
+                    </Button>
+                  )}
+                  <Button disabled={saving || value === savedValue} onClick={() => void save()}>
+                    {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
                   </Button>
-                )}
-                <Button disabled={saving || value === savedValue} onClick={() => void save()}>
-                  {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
-                </Button>
-              </ButtonGroup>
+                </ButtonGroup>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

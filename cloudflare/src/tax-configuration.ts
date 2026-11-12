@@ -1,3 +1,5 @@
+import { hasPermission, type Permission } from './permissions';
+
 export type TaxRateSource = 'product_account' | 'product' | 'account' | 'workspace';
 
 export type TaxRateResolution = {
@@ -15,6 +17,7 @@ export type TaxConfigurationActor = {
   userId: string;
   workspaceId: string;
   workspaceRole: 'admin' | 'collaborator';
+  permissions?: string[];
 };
 
 export class TaxConfigurationError extends Error {
@@ -64,7 +67,11 @@ function optionalRateBps(value: unknown): number | null {
   return rateBps;
 }
 
-async function assertAdmin(env: TaxConfigurationEnv, actor: TaxConfigurationActor): Promise<void> {
+async function assertAdmin(
+  env: TaxConfigurationEnv,
+  actor: TaxConfigurationActor,
+  permission: Permission
+): Promise<void> {
   const membership = await env.ONFRAME_DB.prepare(
     `
     SELECT role FROM workspace_members WHERE workspace_id = ? AND user_id = ?
@@ -72,7 +79,8 @@ async function assertAdmin(env: TaxConfigurationEnv, actor: TaxConfigurationActo
   )
     .bind(actor.workspaceId, actor.userId)
     .first<{ role: string }>();
-  if (membership?.role !== 'admin') throw new TaxConfigurationError('tax_configuration_forbidden', 403);
+  if (!membership || !hasPermission(actor, permission))
+    throw new TaxConfigurationError('tax_configuration_forbidden', 403);
 }
 
 async function requestBody(request: Request): Promise<Record<string, unknown>> {
@@ -86,7 +94,7 @@ async function requestBody(request: Request): Promise<Record<string, unknown>> {
 }
 
 export async function getTaxConfiguration(env: TaxConfigurationEnv, actor: TaxConfigurationActor) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'settings.read');
   const [workspaceRate, accounts] = await Promise.all([
     env.ONFRAME_DB.prepare(
       `
@@ -133,7 +141,7 @@ export async function updateTaxConfiguration(
   actor: TaxConfigurationActor,
   requestId: string
 ) {
-  await assertAdmin(env, actor);
+  await assertAdmin(env, actor, 'settings.write');
   const body = await requestBody(request);
   if (!Array.isArray(body.accounts)) throw new TaxConfigurationError('tax_configuration_invalid_payload', 400);
   const workspaceTaxRateBps = optionalRateBps(body.workspaceTaxRate);

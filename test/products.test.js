@@ -167,7 +167,7 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(options, /actions=\{pageHeaderActions\}/u);
   assert.match(
     options,
-    /<Products accounts=\{accounts\} admin=\{admin\} onHeaderActionsChange=\{setProductHeaderActions\}/u
+    /<Products[^]*accounts=\{accounts\}[^]*admin=\{canProductsWrite\}[^]*canDelete=\{canProductsDelete\}[^]*onHeaderActionsChange=\{setProductHeaderActions\}/u
   );
   assert.match(sharedStyles, /\.onframe-products-header-actions\s*\{[^}]*justify-content: flex-end;/u);
   assert.match(sharedStyles, /\.onframe-products-search\s*\{[^}]*width: 50%;/u);

@@ -8,7 +8,7 @@ import { PopupSessionHeader } from './PopupSessionHeader';
 function memberAccess(member) {
   if (member.role === 'admin') return 'Administrador · Todas as contas';
   const count = (member.accounts || []).length;
-  return `Colaborador · ${count === 0 ? 'Nenhuma conta' : `${count} ${count === 1 ? 'conta' : 'contas'}`}`;
+  return `${member.roleName || 'Colaborador'} · ${count === 0 ? 'Nenhuma conta' : `${count} ${count === 1 ? 'conta' : 'contas'}`}`;
 }
 
 function PopupIcon({ name, tone = 'primary' }) {
@@ -47,6 +47,7 @@ export function WorkspaceSession({
   const admin = connection.workspace.role === 'admin';
   const restoredInviteDraft = normalizeInviteDraft(initialState?.inviteDraft);
   const [members, setMembers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(admin);
@@ -57,14 +58,16 @@ export function WorkspaceSession({
 
   const loadWorkspace = useCallback(async () => {
     if (!admin) return;
-    const [memberResult, invitationResult, accountResult] = await Promise.all([
+    const [memberResult, invitationResult, accountResult, roleResult] = await Promise.all([
       sendRemoteMessage('members'),
       sendRemoteMessage('invitations'),
-      sendRemoteMessage('accounts')
+      sendRemoteMessage('accounts'),
+      sendRemoteMessage('roles')
     ]);
     setMembers(memberResult.members || []);
     setInvitations(invitationResult.invitations || []);
     setAccounts(accountResult.accounts || []);
+    setRoles(roleResult.roles || []);
   }, [admin]);
 
   useEffect(() => {
@@ -126,7 +129,7 @@ export function WorkspaceSession({
       if (currentDialog.type === 'member') {
         await sendRemoteMessage('member-update', {
           userId: currentDialog.member.id,
-          payload: { role: values.role, accountIds: values.accountIds }
+          payload: { role: values.role, roleId: values.roleId, accountIds: values.accountIds }
         });
         await loadWorkspace();
         return { updated: true };
@@ -311,7 +314,7 @@ export function WorkspaceSession({
                         className="onframe-popup-card-row"
                         leading={<PopupIcon name="envelope-simple" tone="warning" />}
                         title={invitation.kind === 'email' ? invitation.email : 'Link compartilhável'}
-                        description={`${invitation.role === 'admin' ? 'Administrador' : 'Colaborador'} · expira ${formatDate(invitation.expiresAt)}`}
+                        description={`${invitation.roleName || (invitation.role === 'admin' ? 'Administrador' : 'Colaborador')} · expira ${formatDate(invitation.expiresAt)}`}
                         wrap
                         strong
                         trailing={
@@ -360,6 +363,7 @@ export function WorkspaceSession({
       <WorkspaceAccessModal
         dialog={dialog}
         accounts={accounts}
+        roles={roles}
         busy={busy}
         initialValues={inviteDraft}
         onDraftChange={updateInviteDraft}

@@ -35,6 +35,7 @@ import { PasskeySettings, TwoFactorSettings } from './TwoFactorSettings';
 import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
+import { WorkspaceRoles } from './WorkspaceRoles';
 import { SectionHeader } from '../shared/SectionHeader';
 import { ThemeCycleButton, useThemeSubmenuItem } from '../shared/ThemeControl';
 import { AppearanceSettings } from './AppearanceSettings';
@@ -103,6 +104,15 @@ const SETTINGS_OPTIONS = [
   },
   {
     tab: 'workspace',
+    page: 'roles',
+    category: 'Workspace',
+    label: 'Perfis de usuários',
+    description: 'Permissões de acesso para as pessoas do workspace.',
+    icon: 'shield-check',
+    keywords: 'perfis roles permissões acesso leitura edição exclusão'
+  },
+  {
+    tab: 'workspace',
     page: 'products',
     category: 'Workspace',
     label: 'Produtos',
@@ -158,6 +168,7 @@ const SETTINGS_PAGE_META = {
   workspace: {
     general: { title: 'Geral', icon: 'buildings' },
     people: { title: 'Pessoas', icon: 'users-three' },
+    roles: { title: 'Perfis de usuários', icon: 'shield-check' },
     products: { title: 'Configurações de produtos', icon: 'package' },
     margin: { title: 'Margem de contribuição', icon: 'percent' }
   },
@@ -166,6 +177,10 @@ const SETTINGS_PAGE_META = {
     updates: { title: 'Atualizações', icon: 'arrow-clockwise' }
   }
 };
+
+function workspaceCan(workspace, permission) {
+  return workspace?.role === 'admin' || workspace?.permissions?.includes(permission) === true;
+}
 
 function routeFromHash(hash) {
   if (HASH_VIEWS[hash]) return { view: HASH_VIEWS[hash], tab: 'account', page: 'index' };
@@ -238,6 +253,11 @@ function Home({
   accounts,
   invitations,
   admin,
+  canAccountsRead,
+  canAccountsWrite,
+  canProductsRead,
+  canSettingsRead,
+  canHistoryRead,
   loading,
   onConnect,
   onOpenIntegrations,
@@ -249,7 +269,8 @@ function Home({
   const pendingInvitations = invitations.length;
   const disabledAccounts = accounts.filter((account) => account.enabled === false).length;
   const emptyAccounts = accounts.length === 0;
-  const hasAttention = emptyAccounts || disabledAccounts > 0 || (admin && pendingInvitations > 0);
+  const hasAttention =
+    (canAccountsRead && (emptyAccounts || disabledAccounts > 0)) || (admin && pendingInvitations > 0);
   const navigation = (href, onClick) => ({
     href,
     onClick: (event) => {
@@ -268,17 +289,17 @@ function Home({
         <section className="onframe-stack onframe-home-section" aria-label="Precisa de atenção">
           <SectionHeader title="Precisa de atenção" />
           <List dividers ariaLabel="Pendências do workspace">
-            {emptyAccounts && (
+            {canAccountsRead && emptyAccounts && (
               <ListItem
                 leading={<Ph n="storefront" size={20} />}
-                title={admin ? 'Conecte uma conta do Mercado Livre' : 'Nenhuma conta atribuída'}
+                title={canAccountsWrite ? 'Conecte uma conta do Mercado Livre' : 'Nenhuma conta atribuída'}
                 description={
-                  admin
+                  canAccountsWrite
                     ? 'A conexão é necessária para editar anúncios e analisar promoções.'
                     : 'Um administrador precisa atribuir uma conta ao seu acesso.'
                 }
                 trailing={
-                  admin ? (
+                  canAccountsWrite ? (
                     <Button size="sm" disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={16} />}>
                       Conectar conta
                     </Button>
@@ -286,7 +307,7 @@ function Home({
                 }
               />
             )}
-            {disabledAccounts > 0 && (
+            {canAccountsRead && disabledAccounts > 0 && (
               <ListItem
                 leading={<Ph n="warning-circle" size={20} />}
                 title={`${disabledAccounts} ${disabledAccounts === 1 ? 'conta desativada' : 'contas desativadas'}`}
@@ -310,14 +331,16 @@ function Home({
       <section className="onframe-stack onframe-home-section" aria-label="Acessos rápidos">
         <SectionHeader title="Acessos rápidos" copy="Continue pelos fluxos centrais do OnFrame." />
         <List as="nav" dividers ariaLabel="Acessos rápidos">
-          <ListItem
-            leading={<Ph n="package" size={20} />}
-            title="Produtos"
-            description="Cadastre custos e prepare os dados usados na análise de margem."
-            trailing={<Ph n="caret-right" size={16} />}
-            {...navigation('#products', onOpenProducts)}
-          />
-          {admin && (
+          {canProductsRead && (
+            <ListItem
+              leading={<Ph n="package" size={20} />}
+              title="Produtos"
+              description="Cadastre custos e prepare os dados usados na análise de margem."
+              trailing={<Ph n="caret-right" size={16} />}
+              {...navigation('#products', onOpenProducts)}
+            />
+          )}
+          {canSettingsRead && (
             <ListItem
               leading={<Ph n="percent" size={20} />}
               title="Margem de contribuição"
@@ -326,13 +349,15 @@ function Home({
               {...navigation('#settings-workspace-margin', onOpenMargin)}
             />
           )}
-          <ListItem
-            leading={<Ph n="clock-counter-clockwise" size={20} />}
-            title="Histórico"
-            description="Consulte as alterações confirmadas nos anúncios."
-            trailing={<Ph n="caret-right" size={16} />}
-            {...navigation('#history', onOpenHistory)}
-          />
+          {canHistoryRead && (
+            <ListItem
+              leading={<Ph n="clock-counter-clockwise" size={20} />}
+              title="Histórico"
+              description="Consulte as alterações confirmadas nos anúncios."
+              trailing={<Ph n="caret-right" size={16} />}
+              {...navigation('#history', onOpenHistory)}
+            />
+          )}
         </List>
       </section>
     </div>
@@ -342,6 +367,8 @@ function Home({
 function Integrations({
   accounts,
   admin,
+  canWrite,
+  canDelete,
   feedback,
   onDismissFeedback,
   onConnect,
@@ -363,7 +390,7 @@ function Integrations({
               : 'Contas atribuídas ao seu acesso neste workspace.'
           }
           actions={
-            admin && (
+            canWrite && (
               <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>
                 Conectar conta
               </Button>
@@ -387,7 +414,7 @@ function Integrations({
                 : 'Um administrador precisa atribuir uma conta para que você possa usá-la.'
             }
             actions={
-              admin ? (
+              canWrite ? (
                 <Button disabled={loading} onClick={onConnect} icon={<Ph n="plus-circle" size={17} />}>
                   Conectar conta
                 </Button>
@@ -419,6 +446,8 @@ function Integrations({
                 key={account.id || account.user_id}
                 account={account}
                 admin={admin}
+                canWrite={canWrite}
+                canDelete={canDelete}
                 mode={mode}
                 loading={loading}
                 onUpdate={onUpdate}
@@ -705,7 +734,7 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
   );
 }
 
-function WorkspaceGeneralSettings({ workspace, loading, onSaveWorkspace }) {
+function WorkspaceGeneralSettings({ workspace, loading, canWrite, onSaveWorkspace }) {
   const savedName = workspace?.name || '';
   const [name, setName] = useState(savedName);
   useEffect(() => setName(savedName), [savedName]);
@@ -716,34 +745,36 @@ function WorkspaceGeneralSettings({ workspace, loading, onSaveWorkspace }) {
       <Input
         label="Nome"
         value={name}
-        disabled={loading}
+        disabled={loading || !canWrite}
         maxLength={120}
         onChange={(event) => setName(event.target.value)}
       />
-      <footer className="onframe-settings-action-bar" aria-label="Ações do workspace">
-        <div className="onframe-settings-action-bar-content">
-          <Divider decorative />
-          <div className="onframe-settings-action-bar-controls">
-            {changed && (
-              <p className="onframe-settings-action-status" role="status">
-                Alterações não salvas
-              </p>
-            )}
-            <div className="onframe-settings-action-buttons">
-              <ButtonGroup attached={false} justify="end" ariaLabel="Ações do workspace">
-                {changed && (
-                  <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>
-                    Descartar
+      {canWrite && (
+        <footer className="onframe-settings-action-bar" aria-label="Ações do workspace">
+          <div className="onframe-settings-action-bar-content">
+            <Divider decorative />
+            <div className="onframe-settings-action-bar-controls">
+              {changed && (
+                <p className="onframe-settings-action-status" role="status">
+                  Alterações não salvas
+                </p>
+              )}
+              <div className="onframe-settings-action-buttons">
+                <ButtonGroup attached={false} justify="end" ariaLabel="Ações do workspace">
+                  {changed && (
+                    <Button kind="ghost" disabled={loading} onClick={() => setName(savedName)}>
+                      Descartar
+                    </Button>
+                  )}
+                  <Button disabled={loading || !changed} onClick={() => void onSaveWorkspace(name)}>
+                    Salvar alterações
                   </Button>
-                )}
-                <Button disabled={loading || !changed} onClick={() => void onSaveWorkspace(name)}>
-                  Salvar alterações
-                </Button>
-              </ButtonGroup>
+                </ButtonGroup>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </section>
   );
 }
@@ -775,7 +806,11 @@ function Settings({
   securityOverview,
   members,
   invitations,
+  roles,
+  onRolesChanged,
   admin,
+  canSettingsRead,
+  canSettingsWrite,
   loading,
   onSaveProfile,
   onAvatar,
@@ -786,13 +821,16 @@ function Settings({
   onDisconnect,
   onSaveWorkspace,
   onInvite,
+  onOpenRoles,
   onEdit,
   onRemove,
   onRevoke,
   onLeave
 }) {
   const [query, setQuery] = useState('');
-  const availableOptions = SETTINGS_OPTIONS.filter((option) => option.tab !== 'workspace' || admin);
+  const availableOptions = SETTINGS_OPTIONS.filter(
+    (option) => option.tab !== 'workspace' || (['people', 'roles'].includes(option.page) ? admin : canSettingsRead)
+  );
   const isIndex = settingsPage === 'index';
   const normalizedQuery = searchValue(query).trim();
   const matches = normalizedQuery
@@ -887,27 +925,37 @@ function Settings({
       {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && (
         <PasskeySettings profile={profile} securityOverview={securityOverview} />
       )}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'general' && (
-        <WorkspaceGeneralSettings workspace={workspace} loading={loading} onSaveWorkspace={onSaveWorkspace} />
+      {!isIndex && activeSection === 'workspace' && canSettingsRead && settingsPage === 'general' && (
+        <WorkspaceGeneralSettings
+          workspace={workspace}
+          loading={loading}
+          canWrite={canSettingsWrite}
+          onSaveWorkspace={onSaveWorkspace}
+        />
       )}
       {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'people' && (
         <WorkspacePeople
           members={members}
           invitations={invitations}
+          roles={roles}
           currentUserId={profile?.user?.id}
           loading={loading}
           onInvite={onInvite}
+          onOpenRoles={onOpenRoles}
           onEdit={onEdit}
           onRemove={onRemove}
           onRevoke={onRevoke}
           onLeave={onLeave}
         />
       )}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'products' && (
-        <ProductSettings workspaceId={workspace.id} />
+      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'roles' && (
+        <WorkspaceRoles roles={roles} onChanged={onRolesChanged} />
       )}
-      {!isIndex && activeSection === 'workspace' && admin && settingsPage === 'margin' && (
-        <TaxSettings key={workspace.id} accounts={accounts} />
+      {!isIndex && activeSection === 'workspace' && canSettingsRead && settingsPage === 'products' && (
+        <ProductSettings workspaceId={workspace.id} canWrite={canSettingsWrite} />
+      )}
+      {!isIndex && activeSection === 'workspace' && canSettingsRead && settingsPage === 'margin' && (
+        <TaxSettings key={workspace.id} accounts={accounts} canWrite={canSettingsWrite} />
       )}
       {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
@@ -924,6 +972,7 @@ function OptionsApp() {
   const [accounts, setAccounts] = useState([]);
   const [members, setMembers] = useState([]);
   const [invitations, setInvitations] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [view, setView] = useState(initialRoute.view);
   const [settingsTab, setSettingsTab] = useState(initialRoute.tab);
   const [settingsPage, setSettingsPage] = useState(initialRoute.page);
@@ -959,6 +1008,7 @@ function OptionsApp() {
         setAccounts([]);
         setMembers([]);
         setInvitations([]);
+        setRoles([]);
         return;
       }
       const [workspaceResult, profileResult] = await Promise.all([
@@ -989,7 +1039,9 @@ function OptionsApp() {
       view === 'integrations' ||
       view === 'products' ||
       view === 'history' ||
-      (view === 'settings' && (settingsTab === 'account' || (settingsTab === 'workspace' && admin)));
+      (view === 'settings' &&
+        (settingsTab === 'account' ||
+          (settingsTab === 'workspace' && workspaceCan(connection.workspace, 'settings.read'))));
     if (!needsData) return;
     const needsSecurity =
       view === 'settings' &&
@@ -998,15 +1050,15 @@ function OptionsApp() {
     setLoading(true);
     try {
       if (view === 'home') {
-        const requests = [loadAccounts()];
+        const requests = [workspaceCan(connection.workspace, 'accounts.read') ? loadAccounts() : Promise.resolve([])];
         if (admin) requests.push(sendRemoteMessage('invitations'));
         const [, invitationResult] = await Promise.all(requests);
         setInvitations(invitationResult?.invitations || []);
       }
-      if (view === 'integrations') await loadAccounts();
+      if (view === 'integrations' && workspaceCan(connection.workspace, 'accounts.read')) await loadAccounts();
       if (view === 'history') {
         const [, memberResult] = await Promise.all([
-          loadAccounts(),
+          workspaceCan(connection.workspace, 'accounts.read') ? loadAccounts() : Promise.resolve([]),
           admin ? sendRemoteMessage('members') : Promise.resolve(null)
         ]);
         if (admin) setMembers(memberResult?.members || []);
@@ -1019,14 +1071,18 @@ function OptionsApp() {
         setProfile(nextProfile);
         if (needsSecurity) setSecurityOverview(nextSecurity);
       }
-      if (view === 'settings' && settingsTab === 'workspace' && admin) {
-        const [memberResult, invitationResult] = await Promise.all([
-          sendRemoteMessage('members'),
-          sendRemoteMessage('invitations'),
-          loadAccounts()
-        ]);
-        setMembers(memberResult.members || []);
-        setInvitations(invitationResult.invitations || []);
+      if (view === 'settings' && settingsTab === 'workspace') {
+        if (workspaceCan(connection.workspace, 'accounts.read')) await loadAccounts();
+        if (admin) {
+          const [memberResult, invitationResult, roleResult] = await Promise.all([
+            sendRemoteMessage('members'),
+            sendRemoteMessage('invitations'),
+            sendRemoteMessage('roles')
+          ]);
+          setMembers(memberResult.members || []);
+          setInvitations(invitationResult.invitations || []);
+          setRoles(roleResult.roles || []);
+        }
       }
     } catch (error) {
       if (needsSecurity) setSecurityOverview(null);
@@ -1040,15 +1096,7 @@ function OptionsApp() {
     } finally {
       setLoading(false);
     }
-  }, [
-    connection?.connected,
-    connection?.workspace?.id,
-    connection?.workspace?.role,
-    loadAccounts,
-    settingsTab,
-    settingsPage,
-    view
-  ]);
+  }, [connection?.connected, connection?.workspace, loadAccounts, settingsTab, settingsPage, view]);
 
   useEffect(() => {
     void reload();
@@ -1085,12 +1133,21 @@ function OptionsApp() {
   }, []);
   useEffect(() => {
     if (!connection?.connected || view !== 'settings' || settingsTab !== 'workspace') return;
-    if (connection.workspace?.role === 'admin') return;
+    if (
+      workspaceCan(connection.workspace, 'settings.read') &&
+      (!['people', 'roles'].includes(settingsPage) || connection.workspace?.role === 'admin')
+    )
+      return;
     const hash = VIEW_HASHES.settings;
     window.history.replaceState(null, document.title, `${window.location.pathname}${window.location.search}${hash}`);
     setSettingsTab('account');
     setSettingsPage('index');
-  }, [connection?.connected, connection?.workspace?.role, view, settingsTab]);
+  }, [connection?.connected, connection?.workspace, view, settingsTab, settingsPage]);
+  useEffect(() => {
+    if (!connection?.connected) return;
+    const permission = { integrations: 'accounts.read', products: 'products.read', history: 'history.read' }[view];
+    if (permission && !workspaceCan(connection.workspace, permission)) setView('home');
+  }, [connection?.connected, connection?.workspace, view]);
   useEffect(() => {
     const refreshOnFocus = () => {
       void reload().then(loadView);
@@ -1239,7 +1296,7 @@ function OptionsApp() {
       if (dialog.type === 'member') {
         await sendRemoteMessage('member-update', {
           userId: dialog.member.id,
-          payload: { role: values.role, accountIds: values.accountIds }
+          payload: { role: values.role, roleId: values.roleId, accountIds: values.accountIds }
         });
       } else {
         const response = await sendRemoteMessage('invitation-create', { payload: values });
@@ -1453,11 +1510,24 @@ function OptionsApp() {
     }
   };
   const admin = workspace.role === 'admin';
+  const canSettingsRead = workspaceCan(workspace, 'settings.read');
+  const canSettingsWrite = workspaceCan(workspace, 'settings.write');
+  const canAccountsWrite = workspaceCan(workspace, 'accounts.write');
+  const canAccountsDelete = workspaceCan(workspace, 'accounts.delete');
+  const canAccountsRead = workspaceCan(workspace, 'accounts.read');
+  const canProductsRead = workspaceCan(workspace, 'products.read');
+  const canProductsWrite = workspaceCan(workspace, 'products.write');
+  const canProductsDelete = workspaceCan(workspace, 'products.delete');
+  const canHistoryRead = workspaceCan(workspace, 'history.read');
   const navigation = [
     { id: 'home', label: 'Início', icon: 'house', href: VIEW_HASHES.home },
-    { id: 'integrations', label: 'Integrações', icon: 'storefront', href: VIEW_HASHES.integrations },
-    { id: 'products', label: 'Produtos', icon: 'package', href: VIEW_HASHES.products },
-    { id: 'history', label: 'Histórico', icon: 'clock-counter-clockwise', href: VIEW_HASHES.history },
+    ...(canAccountsRead
+      ? [{ id: 'integrations', label: 'Integrações', icon: 'storefront', href: VIEW_HASHES.integrations }]
+      : []),
+    ...(canProductsRead ? [{ id: 'products', label: 'Produtos', icon: 'package', href: VIEW_HASHES.products }] : []),
+    ...(canHistoryRead
+      ? [{ id: 'history', label: 'Histórico', icon: 'clock-counter-clockwise', href: VIEW_HASHES.history }]
+      : []),
     { id: 'settings', label: 'Configurações', icon: 'gear-six', href: VIEW_HASHES.settings }
   ];
   const personName = connection.user.name || connection.user.email;
@@ -1478,7 +1548,7 @@ function OptionsApp() {
         setView('settings');
       }
     },
-    ...(admin
+    ...(canSettingsRead
       ? [
           {
             label: 'Workspace',
@@ -1625,6 +1695,11 @@ function OptionsApp() {
                   accounts={accounts}
                   invitations={admin ? invitations : []}
                   admin={admin}
+                  canAccountsRead={canAccountsRead}
+                  canAccountsWrite={canAccountsWrite}
+                  canProductsRead={canProductsRead}
+                  canSettingsRead={canSettingsRead}
+                  canHistoryRead={canHistoryRead}
                   loading={loading}
                   onConnect={() => void connectAccount()}
                   onOpenIntegrations={() => setView('integrations')}
@@ -1638,6 +1713,8 @@ function OptionsApp() {
                 <Integrations
                   accounts={accounts}
                   admin={admin}
+                  canWrite={canAccountsWrite}
+                  canDelete={canAccountsDelete}
                   feedback={integrationFeedback}
                   onDismissFeedback={() => setIntegrationFeedback(null)}
                   loading={loading}
@@ -1648,7 +1725,12 @@ function OptionsApp() {
                 />
               )}
               {view === 'products' && (
-                <Products accounts={accounts} admin={admin} onHeaderActionsChange={setProductHeaderActions} />
+                <Products
+                  accounts={accounts}
+                  admin={canProductsWrite}
+                  canDelete={canProductsDelete}
+                  onHeaderActionsChange={setProductHeaderActions}
+                />
               )}
               {view === 'history' && (
                 <ItemEditHistory
@@ -1656,6 +1738,8 @@ function OptionsApp() {
                   members={members}
                   currentUser={connection.user}
                   admin={admin}
+                  canSettingsRead={canSettingsRead}
+                  canSettingsWrite={canSettingsWrite}
                   onOpenActor={admin ? () => openSettings('workspace', 'people') : undefined}
                 />
               )}
@@ -1671,6 +1755,8 @@ function OptionsApp() {
                   securityOverview={securityOverview}
                   members={members}
                   invitations={invitations}
+                  roles={roles}
+                  onRolesChanged={setRoles}
                   admin={admin}
                   loading={loading}
                   onSaveProfile={saveProfile}
@@ -1687,6 +1773,7 @@ function OptionsApp() {
                   onDisconnect={() => void disconnect()}
                   onSaveWorkspace={(name) => void saveWorkspace(name)}
                   onInvite={() => setDialog({ type: 'invite' })}
+                  onOpenRoles={() => openSettings('workspace', 'roles')}
                   onEdit={(member) => setDialog({ type: 'member', member })}
                   onRemove={(member) => setDialog({ type: 'member-delete', member })}
                   onRevoke={(invitation) => void revokeInvitation(invitation)}
@@ -1699,6 +1786,7 @@ function OptionsApp() {
         <WorkspaceAccessModal
           dialog={dialog}
           accounts={accounts}
+          roles={roles}
           busy={loading}
           onClose={() => setDialog(null)}
           onConfirm={(values) => void submitMember(values)}

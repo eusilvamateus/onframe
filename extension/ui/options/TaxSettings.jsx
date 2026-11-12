@@ -12,7 +12,7 @@ function configurationSignature(values) {
   return JSON.stringify(values);
 }
 
-export function TaxSettings({ accounts = [] }) {
+export function TaxSettings({ accounts = [], canWrite = true }) {
   const [configuration, setConfiguration] = useState(null);
   const [values, setValues] = useState({ workspaceTaxRate: null, accounts: [] });
   const [loading, setLoading] = useState(true);
@@ -174,7 +174,7 @@ export function TaxSettings({ accounts = [] }) {
           controls="none"
           endAddon="%"
           width={240}
-          disabled={saving}
+          disabled={saving || !canWrite}
           onChange={(value) => {
             setMinimumMargin(value);
             setSaved(false);
@@ -202,7 +202,7 @@ export function TaxSettings({ accounts = [] }) {
           controls="none"
           endAddon="%"
           width={240}
-          disabled={saving}
+          disabled={saving || !canWrite}
           onChange={(workspaceTaxRate) => {
             setSaved(false);
             setError('');
@@ -247,7 +247,7 @@ export function TaxSettings({ accounts = [] }) {
                       className="onframe-tax-account-controls"
                       ref={isEditing && !hasOwnRate ? editingAccountControl : null}
                     >
-                      {hasOwnRate || isEditing ? (
+                      {hasOwnRate || (canWrite && isEditing) ? (
                         <>
                           <div className="onframe-tax-account-field">
                             <NumberField
@@ -260,36 +260,40 @@ export function TaxSettings({ accounts = [] }) {
                               step={0.01}
                               controls="none"
                               endAddon="%"
-                              disabled={saving}
+                              disabled={saving || !canWrite}
                               onChange={(taxRate) => {
                                 if (taxRate === null) setEditingAccountId(account.id);
                                 setAccountRate(account.id, taxRate);
                               }}
                             />
                           </div>
-                          <Tooltip label={hasOwnRate ? 'Usar alíquota padrão' : 'Cancelar'}>
-                            <Button
-                              kind="quiet"
-                              iconOnly
-                              aria-label={hasOwnRate ? `Usar alíquota padrão em ${accountName(account)}` : 'Cancelar'}
-                              disabled={saving}
-                              icon={<Ph n={hasOwnRate ? 'arrow-counter-clockwise' : 'x'} size={16} />}
-                              onClick={() => {
-                                setAccountRate(account.id, null);
-                                setEditingAccountId(null);
-                              }}
-                            />
-                          </Tooltip>
+                          {canWrite && (
+                            <Tooltip label={hasOwnRate ? 'Usar alíquota padrão' : 'Cancelar'}>
+                              <Button
+                                kind="quiet"
+                                iconOnly
+                                aria-label={hasOwnRate ? `Usar alíquota padrão em ${accountName(account)}` : 'Cancelar'}
+                                disabled={saving}
+                                icon={<Ph n={hasOwnRate ? 'arrow-counter-clockwise' : 'x'} size={16} />}
+                                onClick={() => {
+                                  setAccountRate(account.id, null);
+                                  setEditingAccountId(null);
+                                }}
+                              />
+                            </Tooltip>
+                          )}
                         </>
                       ) : (
-                        <Button
-                          kind="secondary"
-                          disabled={saving}
-                          icon={<Ph n="plus" size={15} />}
-                          onClick={() => setEditingAccountId(account.id)}
-                        >
-                          Definir própria
-                        </Button>
+                        canWrite && (
+                          <Button
+                            kind="secondary"
+                            disabled={saving}
+                            icon={<Ph n="plus" size={15} />}
+                            onClick={() => setEditingAccountId(account.id)}
+                          >
+                            Definir própria
+                          </Button>
+                        )
                       )}
                     </div>
                   </div>
@@ -299,36 +303,38 @@ export function TaxSettings({ accounts = [] }) {
           </div>
         )}
       </section>
-      <footer className="onframe-settings-action-bar" aria-label="Ações da margem de contribuição">
-        <div className="onframe-settings-action-bar-content">
-          <Divider decorative />
-          <div className="onframe-settings-action-bar-controls">
-            {dirty && (
-              <p className="onframe-settings-action-status" role="status">
-                Alterações não salvas
-              </p>
-            )}
-            <div className="onframe-settings-action-buttons">
-              <ButtonGroup attached={false} justify="end" ariaLabel="Ações da margem de contribuição">
-                {(dirty || editingAccountId !== null) && (
-                  <Button kind="ghost" disabled={saving} onClick={discard}>
-                    Descartar
+      {canWrite && (
+        <footer className="onframe-settings-action-bar" aria-label="Ações da margem de contribuição">
+          <div className="onframe-settings-action-bar-content">
+            <Divider decorative />
+            <div className="onframe-settings-action-bar-controls">
+              {dirty && (
+                <p className="onframe-settings-action-status" role="status">
+                  Alterações não salvas
+                </p>
+              )}
+              <div className="onframe-settings-action-buttons">
+                <ButtonGroup attached={false} justify="end" ariaLabel="Ações da margem de contribuição">
+                  {(dirty || editingAccountId !== null) && (
+                    <Button kind="ghost" disabled={saving} onClick={discard}>
+                      Descartar
+                    </Button>
+                  )}
+                  <Button
+                    disabled={saving || (!dirty && editingAccountId === null)}
+                    icon={
+                      saving ? <Spinner size="xs" label="Salvando" /> : saved ? <Ph n="check-circle" size={17} /> : null
+                    }
+                    onClick={() => void save()}
+                  >
+                    {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
                   </Button>
-                )}
-                <Button
-                  disabled={saving || (!dirty && editingAccountId === null)}
-                  icon={
-                    saving ? <Spinner size="xs" label="Salvando" /> : saved ? <Ph n="check-circle" size={17} /> : null
-                  }
-                  onClick={() => void save()}
-                >
-                  {saving ? 'Salvando...' : saved ? 'Salvo' : 'Salvar alterações'}
-                </Button>
-              </ButtonGroup>
+                </ButtonGroup>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

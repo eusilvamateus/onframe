@@ -23,7 +23,18 @@ export function trustedLogo(value) {
   return /^https:\/\/(?:[a-z0-9-]+\.)*mlstatic\.com\//iu.test(logo) ? logo : '';
 }
 
-export function IntegrationAccount({ account, admin, mode, loading, onUpdate, onRename, onRemove, compact = false }) {
+export function IntegrationAccount({
+  account,
+  admin,
+  canWrite = admin,
+  canDelete = admin,
+  mode,
+  loading,
+  onUpdate,
+  onRename,
+  onRemove,
+  compact = false
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(accountName(account));
   const savingName = useRef(false);
@@ -65,7 +76,7 @@ export function IntegrationAccount({ account, admin, mode, loading, onUpdate, on
           />
         </Tooltip>
       )}
-      {admin && (
+      {canWrite && (
         <>
           <Tooltip label={account.enabled === false ? 'Ativar conta' : 'Desativar conta'}>
             <span role="group" aria-label={`Status de ${label}`}>
@@ -77,19 +88,21 @@ export function IntegrationAccount({ account, admin, mode, loading, onUpdate, on
               />
             </span>
           </Tooltip>
-          <Tooltip label="Remover conta">
-            <Button
-              kind="quiet"
-              tone="danger"
-              size="sm"
-              iconOnly
-              aria-label={`Remover ${label}`}
-              disabled={loading}
-              icon={<Ph n="trash" size={18} />}
-              onClick={() => onRemove(account)}
-            />
-          </Tooltip>
         </>
+      )}
+      {canDelete && (
+        <Tooltip label="Remover conta">
+          <Button
+            kind="quiet"
+            tone="danger"
+            size="sm"
+            iconOnly
+            aria-label={`Remover ${label}`}
+            disabled={loading}
+            icon={<Ph n="trash" size={18} />}
+            onClick={() => onRemove(account)}
+          />
+        </Tooltip>
       )}
     </div>
   );
@@ -149,7 +162,7 @@ export function IntegrationAccount({ account, admin, mode, loading, onUpdate, on
         ) : (
           <div className="onframe-integration-name">
             <p className="onframe-card-title">{label}</p>
-            {admin && (
+            {canWrite && (
               <Tooltip label="Renomear conta">
                 <Button
                   kind="quiet"

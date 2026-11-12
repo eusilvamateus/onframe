@@ -591,7 +591,7 @@ function ProductForm({ product, accounts, admin, busy, costDecimalPlaces, onClos
   );
 }
 
-export function Products({ accounts = [], admin, onHeaderActionsChange }) {
+export function Products({ accounts = [], admin, canDelete = admin, onHeaderActionsChange }) {
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [query, setQuery] = useState('');
@@ -770,7 +770,7 @@ export function Products({ accounts = [], admin, onHeaderActionsChange }) {
                     disabled: loading,
                     onSelect: () => setDialog({ type: 'product', product })
                   },
-                  ...(admin
+                  ...(canDelete
                     ? [
                         { type: 'separator' },
                         {

@@ -3,6 +3,7 @@ import { recordConfirmedItemEdits } from './item-edit-history';
 import { matchProductForPromotionItem, updateProductFinancials } from './products';
 import { enrichPriceSummaryWithProduct, enrichPromotionEstimateWithProduct } from './product-margin';
 import { resolveProductTaxRate } from './tax-configuration';
+import { hasPermission, type Permission } from './permissions';
 import {
   handleResolve,
   handleResolveQuick,
@@ -45,6 +46,39 @@ const TOKEN_REFRESH_WAIT_MS = 100;
 const RECONCILIATION_RETENTION_MS = 24 * 60 * 60 * 1000;
 const quickCache = createItemRouteCache();
 
+export function remotePermission(method: string, path: string, bulkAction?: string): Permission[] {
+  if (path.endsWith('/bulk/commit')) {
+    if (bulkAction === 'pricing.standard.update') return ['listings.write'];
+    if (bulkAction === 'promotion.offer.delete') return ['promotions.delete'];
+    if (bulkAction === 'promotion.offer.create' || bulkAction === 'promotion.offer.update') return ['promotions.write'];
+    return ['listings.read'];
+  }
+  if (path === '/promotions/campaigns' || path.includes('/promotions/')) {
+    const action =
+      method === 'DELETE'
+        ? 'delete'
+        : method === 'PUT' ||
+            (path.endsWith('/offers') && method === 'POST') ||
+            (path === '/promotions/campaigns' && method === 'POST')
+          ? 'write'
+          : 'read';
+    return [`promotions.${action}`];
+  }
+  if (path.endsWith('/product-financials')) return ['products.write'];
+  if (
+    path.startsWith('/items/') &&
+    (method === 'PUT' ||
+      method === 'PATCH' ||
+      method === 'DELETE' ||
+      path.endsWith('/description/bulk') ||
+      path.endsWith('/characteristics/bulk') ||
+      path.includes('/pictures/'))
+  ) {
+    return [`listings.${method === 'DELETE' ? 'delete' : path.endsWith('/pictures/quality') ? 'read' : 'write'}`];
+  }
+  return ['listings.read'];
+}
+
 export type PromotionReconciliationParams = {
   reconciliationId: string;
 };
@@ -62,6 +96,7 @@ export type RemoteApiActor = {
   userId: string;
   workspaceId: string;
   workspaceRole: 'admin' | 'collaborator';
+  permissions?: string[];
   displayName?: string;
   email?: string;
 };
@@ -169,8 +204,23 @@ export async function handleRemoteApiRequest(input: {
   requestId: string;
   url: URL;
 }): Promise<unknown> {
-  const context = await createRemoteApiContext(input.env, input.actor);
   const apiPath = input.url.pathname.slice('/v1/api'.length) || '/';
+  const bulkPayload: unknown = apiPath.endsWith('/bulk/commit')
+    ? await input.request
+        .clone()
+        .json()
+        .catch(() => null)
+    : null;
+  const bulkAction =
+    bulkPayload && typeof bulkPayload === 'object' && 'action' in bulkPayload ? String(bulkPayload.action) : undefined;
+  for (const permission of [
+    'accounts.read',
+    ...remotePermission(input.request.method, apiPath, bulkAction)
+  ] as Permission[]) {
+    if (!hasPermission(input.actor, permission))
+      throw new RemoteApiError('workspace_permission_denied', 403, 'Você não tem permissão para esta ação.');
+  }
+  const context = await createRemoteApiContext(input.env, input.actor);
   const route = `${input.request.method} ${apiPath}`;
   let requestPayload: Record<string, unknown> | null = null;
   const readJson = async (_request: Request, options: { maxBytes?: number } = {}) => {
@@ -198,14 +248,14 @@ export async function handleRemoteApiRequest(input: {
         input.url.searchParams.get('variation_id')
       );
       if (productMatch.status !== 'matched' || !productMatch.product?.id) {
-        return { ...productMatch, canEdit: input.actor.workspaceRole === 'admin' };
+        return { ...productMatch, canEdit: hasPermission(input.actor, 'products.write') };
       }
       const tax = await resolveProductTaxRate(input.env, {
         workspaceId: input.actor.workspaceId,
         sellerAccountId: client.historyAccount().id,
         productId: productMatch.product.id
       });
-      return { ...productMatch, tax, canEdit: input.actor.workspaceRole === 'admin' };
+      return { ...productMatch, tax, canEdit: hasPermission(input.actor, 'products.write') };
     } catch (error) {
       console.error(
         JSON.stringify({

@@ -959,6 +959,33 @@ input {
 .onframe-page-heading > h1 {
   min-width: 0;
 }
+.onframe-role-permissions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 56px);
+  align-items: center;
+  gap: var(--ob-space-8);
+}
+.onframe-role-permissions > strong {
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-12);
+  text-align: center;
+}
+.onframe-role-permissions-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 56px);
+  align-items: center;
+  gap: var(--ob-space-8);
+  padding: var(--ob-space-8) 0;
+  border-top: 1px solid var(--ob-border);
+}
+.onframe-role-permissions-row > span {
+  min-width: 0;
+}
+.onframe-role-permissions-row > div {
+  display: flex;
+  justify-content: center;
+}
 .onframe-page-title {
   margin: var(--ob-space-2) 0 0;
   color: var(--ob-fg-strong);

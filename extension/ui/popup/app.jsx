@@ -309,32 +309,36 @@ function Popup() {
           onClick={() => openView('workspace')}
           trailing={<Ph n="caret-right" size={16} />}
         />
-        <ListItem
-          className="onframe-popup-card-row onframe-popup-home-row"
-          leading={
-            <span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning">
-              <Ph n="storefront" size={18} />
-            </span>
-          }
-          title="Integrações"
-          description={integrationsSummary(overview)}
-          strong
-          onClick={() => openView('integrations')}
-          trailing={<Ph n="caret-right" size={16} />}
-        />
-        <ListItem
-          className="onframe-popup-card-row onframe-popup-home-row"
-          leading={
-            <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success">
-              <Ph n="clock-counter-clockwise" size={18} />
-            </span>
-          }
-          title="Histórico"
-          description={historySummary(overview)}
-          strong
-          onClick={() => openView('history')}
-          trailing={<Ph n="caret-right" size={16} />}
-        />
+        {(connection.workspace.role === 'admin' || connection.workspace.permissions?.includes('accounts.read')) && (
+          <ListItem
+            className="onframe-popup-card-row onframe-popup-home-row"
+            leading={
+              <span className="onframe-popup-icon-tile onframe-popup-icon-tile--warning">
+                <Ph n="storefront" size={18} />
+              </span>
+            }
+            title="Integrações"
+            description={integrationsSummary(overview)}
+            strong
+            onClick={() => openView('integrations')}
+            trailing={<Ph n="caret-right" size={16} />}
+          />
+        )}
+        {(connection.workspace.role === 'admin' || connection.workspace.permissions?.includes('history.read')) && (
+          <ListItem
+            className="onframe-popup-card-row onframe-popup-home-row"
+            leading={
+              <span className="onframe-popup-icon-tile onframe-popup-icon-tile--success">
+                <Ph n="clock-counter-clockwise" size={18} />
+              </span>
+            }
+            title="Histórico"
+            description={historySummary(overview)}
+            strong
+            onClick={() => openView('history')}
+            trailing={<Ph n="caret-right" size={16} />}
+          />
+        )}
       </List>
       {footer}
     </main>
