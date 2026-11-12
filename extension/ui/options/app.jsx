@@ -330,7 +330,7 @@ function Home({
       )}
       <section className="onframe-stack onframe-home-section" aria-label="Acessos rápidos">
         <SectionHeader title="Acessos rápidos" copy="Continue pelos fluxos centrais do OnFrame." />
-        <List as="nav" dividers ariaLabel="Acessos rápidos">
+        <List as="nav" size="sm" dividers ariaLabel="Acessos rápidos">
           {canProductsRead && (
             <ListItem
               leading={<Ph n="package" size={20} />}
@@ -481,7 +481,7 @@ function settingsOptionItems(options, onNavigate, showCategory = false) {
 
 function SettingsOptionList({ options, ariaLabel, onNavigate, showCategory = false }) {
   return (
-    <List as="nav" ariaLabel={ariaLabel}>
+    <List as="nav" size="sm" ariaLabel={ariaLabel}>
       {settingsOptionItems(options, onNavigate, showCategory)}
     </List>
   );
@@ -497,7 +497,7 @@ function SettingsDirectory({ options, onNavigate }) {
       {sections.map((section) => (
         <section className="onframe-settings-directory-section" key={section.id}>
           <h2 className="onframe-section-title">{section.label}</h2>
-          <List as="nav" ariaLabel={section.label}>
+          <List as="nav" size="sm" ariaLabel={section.label}>
             {settingsOptionItems(section.options, onNavigate)}
           </List>
         </section>

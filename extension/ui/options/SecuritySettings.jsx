@@ -26,7 +26,7 @@ export function SecuritySettings({
     <div className="onframe-stack">
       <section className="onframe-stack" aria-label="Formas de entrar">
         <SectionHeader title="Formas de entrar" copy="Controle as credenciais usadas para acessar sua conta." />
-        <List ariaLabel="Formas de entrar">
+        <List size="sm" ariaLabel="Formas de entrar">
           <ListItem
             leading={<Ph n="key" size={20} />}
             title="Chaves de acesso"
@@ -50,7 +50,7 @@ export function SecuritySettings({
       </section>
       <section className="onframe-stack" aria-label="Proteção da conta">
         <SectionHeader title="Proteção da conta" />
-        <List as="nav" ariaLabel="Proteção da conta">
+        <List as="nav" size="sm" ariaLabel="Proteção da conta">
           <ListItem
             leading={<Ph n="shield-check" size={20} />}
             title="Verificação em duas etapas"
@@ -70,7 +70,7 @@ export function SecuritySettings({
       </section>
       <section className="onframe-stack" aria-label="Sessões">
         <SectionHeader title="Sessões ativas" copy="Revogue sessões que você não reconhece." />
-        <List as="nav" ariaLabel="Sessões ativas">
+        <List as="nav" size="sm" ariaLabel="Sessões ativas">
           <ListItem
             leading={<Ph n="browser" size={18} />}
             title="Gerenciar sessões"
