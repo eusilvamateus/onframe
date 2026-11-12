@@ -100,7 +100,10 @@ recurso oficial e confiável de um provedor, use exclusivamente essa fonte para
 pesquisa e decisões sobre o respectivo provedor. Se ela não estiver disponível,
 informe expressamente o bloqueio e não use busca externa sem autorização
 explícita do usuário. Use o conector `$mercado-livre` para informações do
-Mercado Livre.
+Mercado Livre. Para validar documentação, comportamento ou estado do Supabase,
+use exclusivamente a skill `$supabase`, o conector Supabase e o CLI autenticado;
+não use busca web genérica. Para descrever a arquitetura e as permissões do
+OnFrame, confirme também no código e nas migrações deste repositório.
 
 ## Controle do Navegador e do Computador
 
