@@ -82,6 +82,7 @@ type ExtensionSessionActor = {
   displayName: string;
   avatarUrl: string | null;
   workspaceName: string;
+  workspaceLogoUrl: string | null;
   roleId: string;
   permissions: string[];
   label: string | null;
@@ -763,6 +764,7 @@ async function authenticateExtensionSession(request: Request, env: RuntimeEnv): 
       users.display_name,
       users.avatar_url,
       workspaces.name AS workspace_name,
+      workspaces.logo_url AS workspace_logo_url,
       workspace_members.role_id,
       (SELECT group_concat(permission) FROM workspace_role_permissions
        WHERE role_id = workspace_members.role_id) AS permissions_csv
@@ -790,6 +792,7 @@ async function authenticateExtensionSession(request: Request, env: RuntimeEnv): 
       display_name: string | null;
       avatar_url: string | null;
       workspace_name: string;
+      workspace_logo_url: string | null;
       role_id: string;
       permissions_csv: string | null;
     }>();
@@ -823,6 +826,7 @@ async function authenticateExtensionSession(request: Request, env: RuntimeEnv): 
     displayName: record.display_name || record.email,
     avatarUrl: record.avatar_url,
     workspaceName: record.workspace_name,
+    workspaceLogoUrl: record.workspace_logo_url,
     roleId: record.role_id,
     permissions: record.permissions_csv?.split(',') || [],
     label: record.label,
@@ -849,6 +853,7 @@ function extensionSessionPayload(actor: ExtensionSessionActor): Record<string, u
     workspace: {
       id: actor.workspaceId,
       name: actor.workspaceName,
+      logoUrl: actor.workspaceLogoUrl,
       roleId: actor.roleId,
       permissions: isWorkspaceAdmin(actor) ? ALL_PERMISSIONS : actor.permissions
     }
@@ -1462,8 +1467,10 @@ async function listWorkspaces(env: RuntimeEnv, actor: ExtensionSessionActor): Pr
     SELECT
       workspaces.id,
       workspaces.name,
+      workspaces.logo_url,
       workspace_members.role_id,
       (SELECT COUNT(*) FROM workspace_members members WHERE members.workspace_id = workspaces.id) AS member_count,
+      (SELECT COUNT(*) FROM workspace_members admins WHERE admins.workspace_id = workspaces.id AND admins.role_id = 'admin') AS admin_count,
       (SELECT COUNT(*) FROM seller_accounts accounts WHERE accounts.workspace_id = workspaces.id) AS account_count
     FROM workspace_members
     INNER JOIN workspaces ON workspaces.id = workspace_members.workspace_id
@@ -1475,15 +1482,19 @@ async function listWorkspaces(env: RuntimeEnv, actor: ExtensionSessionActor): Pr
     .all<{
       id: string;
       name: string;
+      logo_url: string | null;
       role_id: string;
       member_count: number;
+      admin_count: number;
       account_count: number;
     }>();
   return result.results.map((workspace) => ({
     id: workspace.id,
     name: workspace.name,
+    logoUrl: workspace.logo_url,
     roleId: workspace.role_id,
     memberCount: Number(workspace.member_count),
+    adminCount: Number(workspace.admin_count),
     accountCount: Number(workspace.account_count)
   }));
 }
@@ -1821,7 +1832,6 @@ export async function removeWorkspaceMember(
 }
 
 export async function leaveWorkspace(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Response> {
-  await assertWorkspaceAdministrator(actor);
   const nextMembership = await env.ONFRAME_DB.prepare(
     `
     SELECT workspace_id FROM workspace_members WHERE user_id = ? AND workspace_id <> ? ORDER BY created_at LIMIT 1
@@ -1831,8 +1841,9 @@ export async function leaveWorkspace(env: RuntimeEnv, actor: ExtensionSessionAct
     .first<{ workspace_id: string }>();
   const removed = await env.ONFRAME_DB.prepare(
     `
-    DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ? AND role_id = 'admin'
-      AND (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role_id = 'admin') > 1
+    DELETE FROM workspace_members WHERE workspace_id = ? AND user_id = ?
+      AND (role_id <> 'admin'
+        OR (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ? AND role_id = 'admin') > 1)
   `
   )
     .bind(actor.workspaceId, actor.userId, actor.workspaceId)
@@ -1854,6 +1865,34 @@ export async function leaveWorkspace(env: RuntimeEnv, actor: ExtensionSessionAct
     actor.label || 'Extensão OnFrame'
   );
   return json({ left: true, ...createdExtensionSessionPayload(session) });
+}
+
+export async function deleteWorkspace(env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Response> {
+  await assertWorkspaceAdministrator(actor);
+  const workspace = await env.ONFRAME_DB.prepare('SELECT logo_url FROM workspaces WHERE id = ?')
+    .bind(actor.workspaceId)
+    .first<{ logo_url: string | null }>();
+  const nextMembership = await env.ONFRAME_DB.prepare(
+    'SELECT workspace_id FROM workspace_members WHERE user_id = ? AND workspace_id <> ? ORDER BY created_at LIMIT 1'
+  )
+    .bind(actor.userId, actor.workspaceId)
+    .first<{ workspace_id: string }>();
+  const removed = await env.ONFRAME_DB.prepare(
+    `DELETE FROM workspaces WHERE id = ?
+       AND (SELECT COUNT(*) FROM workspace_members WHERE workspace_id = ?) = 1
+     RETURNING id`
+  )
+    .bind(actor.workspaceId, actor.workspaceId)
+    .first<{ id: string }>();
+  if (!removed) throw new RequestError('workspace_delete_requires_single_member', 409);
+  if (workspace?.logo_url) await removeWorkspaceLogoObject(env, actor.workspaceId, workspace.logo_url);
+  if (!nextMembership) return json({ deleted: true });
+  const session = await createExtensionSession(
+    env,
+    { ...actor, workspaceId: nextMembership.workspace_id },
+    actor.label || 'Extensão OnFrame'
+  );
+  return json({ deleted: true, ...createdExtensionSessionPayload(session) });
 }
 
 async function auditPlatformEvent(
@@ -1887,6 +1926,61 @@ async function auditPlatformEvent(
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const WORKSPACE_LOGO_BUCKET = 'onframe-avatars';
+
+async function removeWorkspaceLogoObject(env: RuntimeEnv, workspaceId: string, logoUrl: string): Promise<void> {
+  const origin = String(env.SUPABASE_URL || '').trim();
+  const key = String(env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  const path = storagePublicObjectPath(origin, WORKSPACE_LOGO_BUCKET, logoUrl);
+  if (!path?.startsWith(`workspaces/${workspaceId}/`) || !key) return;
+  const response = await fetch(storageObjectUrl(origin, WORKSPACE_LOGO_BUCKET, path), {
+    method: 'DELETE',
+    headers: { apikey: key, authorization: `Bearer ${key}` }
+  }).catch(() => null);
+  if (response && !response.ok && response.status !== 404)
+    console.error(JSON.stringify({ event: 'workspace_logo_remove_failed', status: response.status }));
+}
+
+async function updateWorkspaceLogo(request: Request, env: RuntimeEnv, actor: ExtensionSessionActor): Promise<Response> {
+  requirePermission(actor, 'settings.write');
+  const oldUrl = actor.workspaceLogoUrl;
+  if (request.method === 'DELETE') {
+    await env.ONFRAME_DB.prepare('UPDATE workspaces SET logo_url = NULL, updated_at = ? WHERE id = ?')
+      .bind(now(), actor.workspaceId)
+      .run();
+    if (oldUrl) await removeWorkspaceLogoObject(env, actor.workspaceId, oldUrl);
+    return json({ logoUrl: null });
+  }
+  const data = parseAvatarDataUrl((await readRequestObject(request)).dataUrl);
+  const origin = configuredRuntimeText(env.SUPABASE_URL, 'avatar_storage_unconfigured');
+  const key = configuredRuntimeText(env.SUPABASE_SERVICE_ROLE_KEY, 'avatar_storage_unconfigured');
+  const path = `workspaces/${actor.workspaceId}/${crypto.randomUUID()}.${data.extension}`;
+  const uploaded = await fetch(storageObjectUrl(origin, WORKSPACE_LOGO_BUCKET, path), {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      authorization: `Bearer ${key}`,
+      'content-type': data.contentType,
+      'x-upsert': 'false'
+    },
+    body: data.bytes
+  });
+  if (!uploaded.ok) {
+    const code = storageUploadFailureCode(uploaded.status, await readMeliResponse(uploaded));
+    throw new RequestError(code, 503);
+  }
+  const logoUrl = storageObjectUrl(origin, WORKSPACE_LOGO_BUCKET, path, true);
+  try {
+    await env.ONFRAME_DB.prepare('UPDATE workspaces SET logo_url = ?, updated_at = ? WHERE id = ?')
+      .bind(logoUrl, now(), actor.workspaceId)
+      .run();
+  } catch (error) {
+    await removeWorkspaceLogoObject(env, actor.workspaceId, logoUrl);
+    throw error;
+  }
+  if (oldUrl) await removeWorkspaceLogoObject(env, actor.workspaceId, oldUrl);
+  return json({ logoUrl });
+}
 
 function invitationUrl(token: string): string {
   return `https://onframe.onblide.com/invite?token=${encodeURIComponent(token)}`;
@@ -2523,6 +2617,16 @@ export default {
       if (url.pathname === '/v1/app/workspaces/current/membership' && request.method === 'DELETE') {
         const actor = await authenticateExtensionSession(request, env);
         return await leaveWorkspace(env, actor);
+      }
+
+      if (url.pathname === '/v1/app/workspaces/current' && request.method === 'DELETE') {
+        const actor = await authenticateExtensionSession(request, env);
+        return await deleteWorkspace(env, actor);
+      }
+
+      if (url.pathname === '/v1/app/workspaces/current/logo' && ['POST', 'DELETE'].includes(request.method)) {
+        const actor = await authenticateExtensionSession(request, env);
+        return await updateWorkspaceLogo(request, env, actor);
       }
 
       const workspaceActivation = /^\/v1\/app\/workspaces\/([^/]+)\/activate$/u.exec(url.pathname);

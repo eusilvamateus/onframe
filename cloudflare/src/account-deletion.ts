@@ -159,19 +159,21 @@ export async function deleteAccount(env: DeletionEnv, actor: DeletionActor, proo
     auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false }
   });
   const avatars = client.storage.from('onframe-avatars');
-  let empty = false;
-  for (let page = 0; page < 100; page += 1) {
-    const listed = await avatars.list(actor.userId, { limit: 100, offset: 0 });
-    if (listed.error) throw new AccountDeletionError('account_deletion_unavailable', 503);
-    const paths = (listed.data || []).filter((item) => item.id !== null).map((item) => `${actor.userId}/${item.name}`);
-    if (paths.length === 0) {
-      empty = true;
-      break;
+  for (const prefix of [actor.userId, ...impact.removedWorkspaces.map((workspace) => `workspaces/${workspace.id}`)]) {
+    let empty = false;
+    for (let page = 0; page < 100; page += 1) {
+      const listed = await avatars.list(prefix, { limit: 100, offset: 0 });
+      if (listed.error) throw new AccountDeletionError('account_deletion_unavailable', 503);
+      const paths = (listed.data || []).filter((item) => item.id !== null).map((item) => `${prefix}/${item.name}`);
+      if (paths.length === 0) {
+        empty = true;
+        break;
+      }
+      const removed = await avatars.remove(paths);
+      if (removed.error) throw new AccountDeletionError('account_deletion_unavailable', 503);
     }
-    const removed = await avatars.remove(paths);
-    if (removed.error) throw new AccountDeletionError('account_deletion_unavailable', 503);
+    if (!empty) throw new AccountDeletionError('account_deletion_unavailable', 503);
   }
-  if (!empty) throw new AccountDeletionError('account_deletion_unavailable', 503);
   const deleted = await client.auth.admin.deleteUser(actor.subject);
   if (deleted.error) throw new AccountDeletionError('account_deletion_unavailable', 503);
   await purgeAccountData(env, actor, impact);

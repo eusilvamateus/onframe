@@ -160,9 +160,10 @@ test('exclusao distingue workspace individual, compartilhado e sem outro adminis
     } finally {
       globalThis.fetch = originalFetch;
     }
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
     assert.ok(requests[0].endsWith('/storage/v1/object/list/onframe-avatars'));
-    assert.ok(requests[1].endsWith(`/auth/v1/admin/users/${actor.subject}`));
+    assert.ok(requests[1].endsWith('/storage/v1/object/list/onframe-avatars'));
+    assert.ok(requests[2].endsWith(`/auth/v1/admin/users/${actor.subject}`));
     assert.equal(await db.prepare("SELECT id FROM workspaces WHERE id = 'solo'").first(), null);
     assert.ok(await db.prepare("SELECT id FROM workspaces WHERE id = 'shared'").first());
     assert.equal(await db.prepare("SELECT user_id FROM workspace_members WHERE user_id = 'user-1'").first(), null);

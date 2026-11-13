@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertDialog, Avatar, Badge, Button, Divider, List, ListItem, Ph, SearchInput, Select } from '@onblide/ui';
-import { SectionHeader } from '../shared/SectionHeader';
+import { AlertDialog, Avatar, Badge, Button, List, ListItem, Ph, SearchInput, Select } from '@onblide/ui';
 import { formatDate } from '../shared/runtime';
 
 function accountAssignments(member) {
@@ -19,13 +18,11 @@ export function WorkspacePeople({
   currentUserId,
   loading,
   onEdit,
-  onRevoke,
-  onLeave
+  onRevoke
 }) {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('Todos os perfis');
   const [revocation, setRevocation] = useState(null);
-  const canLeave = members.filter((member) => member.roleId === 'admin').length > 1;
   const roleOptions = ['Todos os perfis', ...roles.map((role) => role.name)];
   const visible = useMemo(() => {
     const search = query.trim().toLocaleLowerCase('pt-BR');
@@ -174,27 +171,6 @@ export function WorkspacePeople({
       >
         O convite deixará de funcionar. Você poderá convidar esta pessoa novamente depois.
       </AlertDialog>
-      <Divider decorative />
-      <section className="onframe-stack" aria-label="Sair do workspace">
-        <SectionHeader
-          title="Sair do workspace"
-          copy={
-            canLeave
-              ? 'Seu acesso a este workspace será encerrado. As outras pessoas continuarão com acesso.'
-              : 'Para sair, outra pessoa precisa ser administradora deste workspace.'
-          }
-          actions={
-            <Button
-              kind="danger"
-              disabled={loading || !canLeave}
-              icon={<Ph n="sign-out" size={17} />}
-              onClick={onLeave}
-            >
-              Sair do workspace
-            </Button>
-          }
-        />
-      </section>
     </div>
   );
 }

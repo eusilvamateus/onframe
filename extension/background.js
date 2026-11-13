@@ -88,6 +88,14 @@ async function handleRemoteMessage(message) {
   if (action === 'workspaces') return requestPlatform('/v1/app/workspaces');
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'workspace-leave') return leaveWorkspace();
+  if (action === 'workspace-delete') return deleteWorkspace();
+  if (action === 'workspace-logo-upload')
+    return requestPlatform('/v1/app/workspaces/current/logo', {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl: message.dataUrl })
+    });
+  if (action === 'workspace-logo-remove')
+    return requestPlatform('/v1/app/workspaces/current/logo', { method: 'DELETE' });
   if (action === 'profile') return requestPlatform('/v1/profile');
   if (action === 'account-deletion-preview') return requestPlatform('/v1/account/deletion');
   if (action === 'account-delete-self') return deleteOwnAccount(message.proof);
@@ -395,6 +403,13 @@ async function activateWorkspace(workspaceId) {
 
 async function leaveWorkspace() {
   const result = await requestPlatform('/v1/app/workspaces/current/membership', { method: 'DELETE' });
+  if (result.token) await writeRemoteSession(normalizeRemoteSession(result));
+  else await removeRemoteSession();
+  return getRemoteConnection();
+}
+
+async function deleteWorkspace() {
+  const result = await requestPlatform('/v1/app/workspaces/current', { method: 'DELETE' });
   if (result.token) await writeRemoteSession(normalizeRemoteSession(result));
   else await removeRemoteSession();
   return getRemoteConnection();

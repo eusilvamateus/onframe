@@ -729,21 +729,96 @@ function SessionsSettings({ securityOverview, loading, onRemoveSession, onRemove
   );
 }
 
-function WorkspaceGeneralSettings({ workspace, loading, canWrite, onSaveWorkspace }) {
+function WorkspaceGeneralSettings({ workspace, details, loading, canWrite, onSaveWorkspace, onUploadLogo, onRemoveLogo, onLeave, onDelete }) {
   const savedName = workspace?.name || '';
   const [name, setName] = useState(savedName);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoKey, setLogoKey] = useState(0);
   useEffect(() => setName(savedName), [savedName]);
   const changed = name !== savedName;
+  const canLeave = details?.roleId !== 'admin' || details?.adminCount > 1;
+  const canDelete = details?.roleId === 'admin' && details?.memberCount === 1;
+  const logoFiles = details?.logoUrl
+    ? [{ id: 'workspace-logo', name: 'Logo do workspace', size: 0, type: 'image/*', url: details.logoUrl }]
+    : [];
+  async function uploadLogo(file, onProgress) {
+    setLogoBusy(true);
+    onProgress(5);
+    try {
+      await onUploadLogo(file);
+      onProgress(100);
+    } finally {
+      setLogoBusy(false);
+    }
+  }
   return (
     <section className="onframe-stack onframe-settings-form" aria-label="Informações gerais">
-      <SectionHeader title="Informações gerais" />
-      <Input
-        label="Nome"
-        value={name}
-        disabled={loading || !canWrite}
-        maxLength={120}
-        onChange={(event) => setName(event.target.value)}
+      <SectionHeader title="Identidade do workspace" copy="Nome e imagem que identificam este espaço para as pessoas convidadas." />
+      <div className="onframe-workspace-identity">
+        {canWrite ? (
+          <FileUpload
+            key={`${details?.logoUrl || 'empty'}-${logoKey}`}
+            variant="image"
+            shape="square"
+            size={128}
+            multiple={false}
+            label="Logo do workspace"
+            hint="PNG, JPEG ou WebP. Até 2 MB."
+            accept="image/png,image/jpeg,image/webp"
+            acceptLabel="PNG, JPEG ou WebP"
+            maxSize={2 * 1024 * 1024}
+            defaultFiles={logoFiles}
+            disabled={loading || logoBusy}
+            upload={uploadLogo}
+            onChange={(files) => {
+              if (files.length === 0 && details?.logoUrl) {
+                setLogoBusy(true);
+                void onRemoveLogo()
+                  .catch(() => undefined)
+                  .finally(() => {
+                    setLogoBusy(false);
+                    setLogoKey((current) => current + 1);
+                  });
+              }
+            }}
+          />
+        ) : (
+          <Avatar name={workspace.name} src={details?.logoUrl} alt="" size={80} />
+        )}
+        <Input
+          label="Nome do workspace"
+          value={name}
+          disabled={loading || !canWrite}
+          maxLength={120}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </div>
+      <Divider decorative />
+      <SectionHeader title="Neste workspace" />
+      <div className="onframe-workspace-summary">
+        <span><Ph n="users-three" size={18} /> <strong>{details?.memberCount ?? 1}</strong> pessoas</span>
+        <span><Ph n="storefront" size={18} /> <strong>{details?.accountCount ?? 0}</strong> contas Mercado Livre</span>
+      </div>
+      <Divider decorative />
+      <SectionHeader
+        title="Acesso ao workspace"
+        copy={canLeave ? 'Ao sair, você perde o acesso a este workspace.' : 'Para sair, defina outra pessoa administradora primeiro.'}
+        actions={
+          <Button kind="secondary" size="sm" icon={<Ph n="sign-out" size={17} />} disabled={loading || !canLeave} onClick={onLeave}>
+            Sair do workspace
+          </Button>
+        }
       />
+      {canDelete && (
+        <>
+          <Divider decorative />
+          <SectionHeader
+            title="Excluir workspace"
+            copy="Disponível porque só você participa. Contas conectadas, produtos e histórico serão removidos."
+            actions={<Button kind="danger" size="sm" icon={<Ph n="trash" size={17} />} disabled={loading} onClick={onDelete}>Excluir workspace</Button>}
+          />
+        </>
+      )}
       {canWrite && (
         <footer className="onframe-settings-action-bar" aria-label="Ações do workspace">
           <div className="onframe-settings-action-bar-content">
@@ -816,6 +891,10 @@ function Settings({
   onRemoveAllSessions,
   onDisconnect,
   onSaveWorkspace,
+  workspaceDetails,
+  onUploadWorkspaceLogo,
+  onRemoveWorkspaceLogo,
+  onDeleteWorkspace,
   onEdit,
   onRevoke,
   onLeave,
@@ -928,9 +1007,14 @@ function Settings({
       {!isIndex && activeSection === 'workspace' && settingsPage === 'general' && (
         <WorkspaceGeneralSettings
           workspace={workspace}
+          details={workspaceDetails}
           loading={loading}
           canWrite={canSettingsWrite}
           onSaveWorkspace={onSaveWorkspace}
+          onUploadLogo={onUploadWorkspaceLogo}
+          onRemoveLogo={onRemoveWorkspaceLogo}
+          onLeave={onLeave}
+          onDelete={onDeleteWorkspace}
         />
       )}
       {!isIndex && activeSection === 'workspace' && admin && ['people', 'roles'].includes(settingsPage) && (
@@ -953,7 +1037,6 @@ function Settings({
               loading={loading}
               onEdit={onEdit}
               onRevoke={onRevoke}
-              onLeave={onLeave}
             />
           ) : (
             <WorkspaceRoles
@@ -1273,9 +1356,9 @@ function OptionsApp() {
 
   async function confirmDialog() {
     if (!dialog) return;
-    if (dialog.type === 'workspace-leave') {
+    if (dialog.type === 'workspace-leave' || dialog.type === 'workspace-delete') {
       const result = await run(async () => {
-        await sendRemoteMessage('workspace-leave');
+        await sendRemoteMessage(dialog.type === 'workspace-delete' ? 'workspace-delete' : 'workspace-leave');
         setView('home');
         setSettingsPage('index');
         await reload();
@@ -1392,6 +1475,27 @@ function OptionsApp() {
       setProfile(result);
       await reload();
     });
+  }
+
+  async function uploadWorkspaceLogo(file) {
+    if (!(file instanceof File)) throw new Error('Não foi possível ler a imagem.');
+    try {
+      await sendRemoteMessage('workspace-logo-upload', { dataUrl: await readDataUrl(file) });
+      await reload();
+    } catch (error) {
+      setNotice({ tone: 'danger', message: userError(error, 'Não foi possível atualizar a logo.') });
+      throw error;
+    }
+  }
+
+  async function removeWorkspaceLogo() {
+    try {
+      await sendRemoteMessage('workspace-logo-remove');
+      await reload();
+    } catch (error) {
+      setNotice({ tone: 'danger', message: userError(error, 'Não foi possível remover a logo.') });
+      throw error;
+    }
   }
 
   async function removeSession(session) {
@@ -1818,6 +1922,7 @@ function OptionsApp() {
                   settingsPage={settingsPage}
                   onSettingsPageChange={setSettingsPage}
                   workspace={workspace}
+                  workspaceDetails={workspaces.find((item) => item.id === workspace.id)}
                   accounts={accounts}
                   profile={profile}
                   securityOverview={securityOverview}
@@ -1850,6 +1955,9 @@ function OptionsApp() {
                   onRemoveAllSessions={removeAllSessions}
                   onDisconnect={() => void disconnect()}
                   onSaveWorkspace={(name) => void saveWorkspace(name)}
+                  onUploadWorkspaceLogo={uploadWorkspaceLogo}
+                  onRemoveWorkspaceLogo={removeWorkspaceLogo}
+                  onDeleteWorkspace={() => setDialog({ type: 'workspace-delete' })}
                   onEdit={(member) => setDialog({ type: 'member', member })}
                   onRevoke={(invitation) => void revokeInvitation(invitation)}
                   onLeave={() => setDialog({ type: 'workspace-leave' })}
@@ -1871,11 +1979,13 @@ function OptionsApp() {
           onConfirm={(values) => void submitMember(values)}
         />
         <Modal
-          open={dialog?.type === 'account-delete' || dialog?.type === 'workspace-leave'}
+          open={dialog?.type === 'account-delete' || dialog?.type === 'workspace-leave' || dialog?.type === 'workspace-delete'}
           onClose={() => setDialog(null)}
           title={
             dialog?.type === 'workspace-leave'
               ? 'Sair do workspace'
+              : dialog?.type === 'workspace-delete'
+                ? 'Excluir workspace'
               : 'Remover conta'
           }
           footer={
@@ -1884,7 +1994,7 @@ function OptionsApp() {
                 Cancelar
               </Button>
               <Button kind="danger" disabled={loading} onClick={() => void confirmDialog()}>
-                {dialog?.type === 'workspace-leave' ? 'Sair do workspace' : 'Remover'}
+                {dialog?.type === 'workspace-leave' ? 'Sair do workspace' : dialog?.type === 'workspace-delete' ? 'Excluir definitivamente' : 'Remover'}
               </Button>
             </>
           }
@@ -1898,6 +2008,8 @@ function OptionsApp() {
             <p>
               {dialog?.type === 'workspace-leave'
                 ? `Sair de ${workspace.name}? Você perderá acesso às contas e às pessoas deste workspace. Os demais administradores continuarão com acesso.`
+                : dialog?.type === 'workspace-delete'
+                  ? `Excluir ${workspace.name}? Todas as contas conectadas, produtos, configurações e histórico deste workspace serão removidos permanentemente. Esta ação não pode ser desfeita.`
                 : dialog?.type === 'account-delete'
                   ? `Remover ${accountName(dialog.account)} deste workspace? Esta ação não revoga a autorização no Mercado Livre.`
                   : ''}

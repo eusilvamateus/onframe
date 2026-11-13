@@ -5,6 +5,7 @@ import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
 import {
   acceptWorkspaceInvitation,
+  deleteWorkspace,
   leaveWorkspace,
   provisionActor,
   removeWorkspaceMember,
@@ -133,6 +134,29 @@ test('saida do ultimo administrador e bloqueada sem revogar sessoes', async () =
   );
 });
 
+test('participante pode sair sem precisar ser administrador', async () => {
+  const { env, queries } = database(() => null);
+  const response = await leaveWorkspace(env, { ...actor, roleId: 'role-member' });
+  assert.deepEqual(await response.json(), { left: true });
+  assert.ok(queries.some((query) => query.sql.includes("role_id <> 'admin'")));
+});
+
+test('exclusao do workspace exige administrador e apenas um membro', async () => {
+  const { env, queries } = database(
+    () => null,
+    (sql) => (sql.includes('DELETE FROM workspaces') ? 0 : 1)
+  );
+  await assert.rejects(deleteWorkspace(env, { ...actor, roleId: 'role-member' }), {
+    code: 'workspace_admin_required'
+  });
+  await assert.rejects(deleteWorkspace(env, actor), { code: 'workspace_delete_requires_single_member' });
+  assert.ok(queries.some((query) => sqlIncludesMemberGuard(query.sql)));
+});
+
+function sqlIncludesMemberGuard(sql: string): boolean {
+  return sql.includes('DELETE FROM workspaces') && sql.includes('COUNT(*) FROM workspace_members');
+}
+
 test('saida com outro workspace encerra sessoes antigas e entrega nova sessao', async () => {
   const { env, queries } = database((sql) =>
     sql.includes('SELECT workspace_id FROM workspace_members') ? { workspace_id: 'workspace-2' } : null
@@ -256,7 +280,6 @@ test('resumo do workspace respeita atribuicoes e considera apenas pendencias e e
         )
         .bind(timestamp, timestamp, timestamp, timestamp - 25 * 60 * 60 * 1000)
     ]);
-
     const adminOverview = (await workspaceOverview({ ONFRAME_DB: db } as any, {
       ...actor,
       userId: 'admin-1',
@@ -409,6 +432,22 @@ test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login'
       )?.role_id,
       'admin'
     );
+    await db.batch([
+      db.prepare(
+        "INSERT INTO workspaces (id, name, created_by_user_id, created_at, updated_at) VALUES ('workspace-3', 'Individual', 'user-1', 4, 4)"
+      ),
+      db.prepare(
+        "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-3', 'user-1', 'admin', 4, 4)"
+      )
+    ]);
+    assert.equal(
+      (await db.prepare("SELECT COUNT(*) AS count FROM workspace_members WHERE workspace_id = 'workspace-3'").first<{ count: number }>())?.count,
+      1
+    );
+    const deleted = await deleteWorkspace({ ONFRAME_DB: db } as any, { ...actor, workspaceId: 'workspace-3' });
+    assert.equal((await deleted.json() as { deleted: boolean }).deleted, true);
+    assert.equal(await db.prepare("SELECT id FROM workspaces WHERE id = 'workspace-3'").first(), null);
+    assert.ok(await db.prepare("SELECT id FROM workspaces WHERE id = 'workspace-2'").first());
   } finally {
     await simulator.dispose();
   }
