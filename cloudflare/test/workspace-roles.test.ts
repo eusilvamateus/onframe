@@ -7,6 +7,7 @@ import {
   deleteWorkspaceRole,
   listWorkspaceRoles,
   provisionActor,
+  roleIdFromPath,
   saveWorkspaceRole,
   updateWorkspaceMember
 } from '../src/index.ts';
@@ -46,6 +47,15 @@ test('permissoes exigem leitura e rejeitam acoes desconhecidas', () => {
     'promotions.delete'
   ]);
   assert.deepEqual(remotePermission('POST', '/items/MLB123456/promotions/estimate'), ['promotions.read']);
+});
+
+test('rota de perfil decodifica IDs migrados antes de consultar o workspace', () => {
+  const id = 'collaborator:workspace-1';
+  const pathname = new URL(`/v1/roles/${encodeURIComponent(id)}`, 'https://onframe.test').pathname;
+  assert.equal(roleIdFromPath(pathname), id);
+  assert.equal(roleIdFromPath('/v1/roles/role-123'), 'role-123');
+  assert.equal(roleIdFromPath('/v1/roles'), null);
+  assert.throws(() => roleIdFromPath('/v1/roles/%ZZ'), { code: 'workspace_role_not_found' });
 });
 
 test('rotas comerciais recusam leitura e escrita sem permissao', async () => {

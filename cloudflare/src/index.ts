@@ -2313,6 +2313,16 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
   }
 }
 
+export function roleIdFromPath(pathname: string): string | null {
+  const match = /^\/v1\/roles\/([^/]+)$/u.exec(pathname);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    throw new RequestError('workspace_role_not_found', 404);
+  }
+}
+
 export default {
   async fetch(request, env: RuntimeEnv, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
@@ -2628,11 +2638,11 @@ export default {
         if (request.method === 'POST') return json(await saveWorkspaceRole(request, env, actor), 201);
       }
 
-      const rolePath = /^\/v1\/roles\/([^/]+)$/u.exec(url.pathname);
-      if (rolePath) {
+      const roleId = roleIdFromPath(url.pathname);
+      if (roleId) {
         const actor = await authenticateExtensionSession(request, env);
-        if (request.method === 'PUT') return json(await saveWorkspaceRole(request, env, actor, rolePath[1]));
-        if (request.method === 'DELETE') return json(await deleteWorkspaceRole(env, actor, rolePath[1]));
+        if (request.method === 'PUT') return json(await saveWorkspaceRole(request, env, actor, roleId));
+        if (request.method === 'DELETE') return json(await deleteWorkspaceRole(env, actor, roleId));
       }
 
       const memberPath = /^\/v1\/members\/([^/]+)$/u.exec(url.pathname);
