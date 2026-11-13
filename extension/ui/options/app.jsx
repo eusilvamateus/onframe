@@ -21,13 +21,13 @@ import {
   Navbar,
   Ph,
   SearchInput,
-  Select,
   Sidebar,
   Skeleton,
   Tabs,
   ToastStack,
   ToggleButton,
   Tooltip,
+  useBreakpoint,
   toast
 } from '@onblide/ui';
 import '../shared/app.css';
@@ -91,7 +91,7 @@ const SETTINGS_OPTIONS = [
     page: 'general',
     category: 'Workspace',
     label: 'Geral',
-    description: 'Nome e informações do workspace.',
+    description: 'Nome do workspace.',
     icon: 'buildings',
     keywords: 'nome informacoes empresa'
   },
@@ -824,7 +824,10 @@ function Settings({
 }) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter(
-    (option) => option.tab !== 'workspace' || (['people', 'roles'].includes(option.page) ? admin : canSettingsRead)
+    (option) =>
+      option.tab !== 'workspace' ||
+      option.page === 'general' ||
+      (['people', 'roles'].includes(option.page) ? admin : canSettingsRead)
   );
   const isIndex = settingsPage === 'index';
   const normalizedQuery = searchValue(query).trim();
@@ -922,7 +925,7 @@ function Settings({
       {!isIndex && activeSection === 'account' && settingsPage === 'passkeys' && profile && securityOverview && (
         <PasskeySettings profile={profile} securityOverview={securityOverview} />
       )}
-      {!isIndex && activeSection === 'workspace' && canSettingsRead && settingsPage === 'general' && (
+      {!isIndex && activeSection === 'workspace' && settingsPage === 'general' && (
         <WorkspaceGeneralSettings
           workspace={workspace}
           loading={loading}
@@ -998,6 +1001,7 @@ function OptionsApp() {
   const [productHeaderActions, setProductHeaderActions] = useState(null);
   const acceptingInvitation = useRef(false);
   const appearanceMenuItem = useThemeSubmenuItem();
+  const { atLeast } = useBreakpoint();
 
   function showFeedback({ tone, message, visible = false, needsAttention = false, action, onAction }) {
     const surface = feedbackSurface({ tone, visible, needsAttention });
@@ -1146,8 +1150,9 @@ function OptionsApp() {
   useEffect(() => {
     if (!connection?.connected || view !== 'settings' || settingsTab !== 'workspace') return;
     if (
-      workspaceCan(connection.workspace, 'settings.read') &&
-      (!['people', 'roles'].includes(settingsPage) || connection.workspace?.roleId === 'admin')
+      settingsPage === 'general' ||
+      (workspaceCan(connection.workspace, 'settings.read') &&
+        (!['people', 'roles'].includes(settingsPage) || connection.workspace?.roleId === 'admin'))
     )
       return;
     const hash = VIEW_HASHES.settings;
@@ -1560,19 +1565,6 @@ function OptionsApp() {
         setView('settings');
       }
     },
-    ...(canSettingsRead
-      ? [
-          {
-            label: 'Workspace',
-            icon: 'gear-six',
-            onSelect: () => {
-              setSettingsTab('workspace');
-              setSettingsPage('general');
-              setView('settings');
-            }
-          }
-        ]
-      : []),
     appearanceMenuItem,
     { type: 'separator' },
     { label: 'Sair', icon: 'sign-out', tone: 'danger', onSelect: () => void disconnect() }
@@ -1591,18 +1583,24 @@ function OptionsApp() {
     setView('settings');
     setMobileNavigationOpen(false);
   };
-  const activeWorkspace = workspaces.find((item) => item.id === workspace.id);
-  const workspaceOptions = workspaces.map((item) => ({ label: item.name, id: item.id }));
-  const workspaceControl =
-    workspaceOptions.length > 1 ? (
-      <Select
-        label="Workspace ativo"
-        options={workspaceOptions}
-        value={activeWorkspace?.name || null}
-        onChange={(name) => activateWorkspace(workspaces.find((item) => item.name === name)?.id)}
-        width={220}
-      />
-    ) : null;
+  const workspaceMenu = [
+    { type: 'label', label: connection.user.email },
+    ...workspaces.map((item) => ({
+      type: 'account',
+      name: item.name,
+      email: item.roleId === 'admin' ? 'Administrador' : 'Participante',
+      current: item.id === workspace.id,
+      onSelect: () => {
+        if (item.id !== workspace.id) void activateWorkspace(item.id);
+      }
+    })),
+    { type: 'separator' },
+    {
+      label: 'Informações do workspace',
+      icon: 'gear-six',
+      onSelect: () => openSettings('workspace', 'general')
+    }
+  ];
   const pageContext = (
     <div className="onframe-options-context-crumbs">
       <Breadcrumbs items={breadcrumbs} size="sm" maxItems={3} onNavigate={navigateBreadcrumb} />
@@ -1632,9 +1630,8 @@ function OptionsApp() {
       </>
     ) : null;
   const pageHeaderActions =
-    workspaceControl || (view === 'products' && productHeaderActions) || accessPageActions ? (
+    (view === 'products' && productHeaderActions) || accessPageActions ? (
       <>
-        {workspaceControl}
         {view === 'products' && productHeaderActions}
         {accessPageActions}
       </>
@@ -1651,36 +1648,70 @@ function OptionsApp() {
             ariaLabel="Navegação do workspace"
             header={<img className="onframe-sidebar-brand" src="../../assets/icons/icon-32.png" alt="OnFrame" />}
             footer={({ collapsed }) => (
-              <Menu
-                block
-                placement={collapsed ? 'right-end' : 'top'}
-                ariaLabel="Conta"
-                items={accountMenu}
-                trigger={
-                  <Button
-                    kind="quiet"
-                    iconOnly={collapsed}
-                    aria-label={`Conta de ${personName}`}
-                    icon={<Avatar name={personName} src={connection.user.avatarUrl} alt="" size={28} />}
-                    style={
-                      collapsed
-                        ? undefined
-                        : {
-                            width: '100%',
-                            justifyContent: 'flex-start',
-                            paddingLeft: 'var(--ob-space-8)'
-                          }
-                    }
-                  >
-                    {!collapsed && (
-                      <span className="onframe-sidebar-account-trigger">
-                        <span className="onframe-sidebar-account-name">{personName}</span>
-                        <span className="onframe-sidebar-account-email">{connection.user.email}</span>
-                      </span>
-                    )}
-                  </Button>
-                }
-              />
+              <div className="onframe-sidebar-footer">
+                <Menu
+                  block
+                  placement={atLeast('sm') ? 'right-end' : 'top'}
+                  ariaLabel="Workspaces"
+                  items={workspaceMenu}
+                  trigger={
+                    <Button
+                      kind="quiet"
+                      iconOnly={collapsed}
+                      disabled={loading}
+                      aria-label={`Workspace ativo: ${workspace.name}`}
+                      aria-haspopup="menu"
+                      icon={<Avatar name={workspace.name} alt="" size={28} />}
+                      style={
+                        collapsed
+                          ? undefined
+                          : {
+                              width: '100%',
+                              justifyContent: 'flex-start',
+                              paddingLeft: 'var(--ob-space-8)'
+                            }
+                      }
+                    >
+                      {!collapsed && (
+                        <span className="onframe-sidebar-workspace-trigger">
+                          <span className="onframe-sidebar-workspace-name">{workspace.name}</span>
+                          <Ph n="caret-right" size={14} />
+                        </span>
+                      )}
+                    </Button>
+                  }
+                />
+                <Menu
+                  block
+                  placement={collapsed ? 'right-end' : 'top'}
+                  ariaLabel="Conta"
+                  items={accountMenu}
+                  trigger={
+                    <Button
+                      kind="quiet"
+                      iconOnly={collapsed}
+                      aria-label={`Conta de ${personName}`}
+                      icon={<Avatar name={personName} src={connection.user.avatarUrl} alt="" size={28} />}
+                      style={
+                        collapsed
+                          ? undefined
+                          : {
+                              width: '100%',
+                              justifyContent: 'flex-start',
+                              paddingLeft: 'var(--ob-space-8)'
+                            }
+                      }
+                    >
+                      {!collapsed && (
+                        <span className="onframe-sidebar-account-trigger">
+                          <span className="onframe-sidebar-account-name">{personName}</span>
+                          <span className="onframe-sidebar-account-email">{connection.user.email}</span>
+                        </span>
+                      )}
+                    </Button>
+                  }
+                />
+              </div>
             )}
             collapsible
             toggleShortcut="b"
