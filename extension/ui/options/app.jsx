@@ -782,7 +782,7 @@ function WorkspaceGeneralSettings({ workspace, details, loading, canWrite, onSav
             }}
           />
         ) : (
-          <Avatar name={workspace.name} src={details?.logoUrl} alt="" size={80} />
+          <Avatar name={workspace.name} src={details?.logoUrl} alt="" size={80} color="var(--ob-bg-alt)" textColor="var(--ob-fg-strong)" />
         )}
         <Input
           label="Nome do workspace"
@@ -1681,6 +1681,8 @@ function OptionsApp() {
       name: item.name,
       email: item.roleId === 'admin' ? 'Administrador' : 'Participante',
       src: item.logoUrl || undefined,
+      avatarColor: 'var(--ob-bg-alt)',
+      avatarTextColor: 'var(--ob-fg-strong)',
       current: item.id === workspace.id,
       onSelect: () => {
         if (item.id !== workspace.id) void activateWorkspace(item.id);
