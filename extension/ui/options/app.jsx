@@ -934,7 +934,7 @@ function Settings({
     setQuery('');
   };
   return (
-    <div className={`onframe-stack${['people', 'roles', 'sessions'].includes(settingsPage) ? '' : ' onframe-settings-page--reading'}`}>
+    <div className="onframe-stack">
       {isIndex && (
         <>
           <SearchInput
@@ -1632,6 +1632,9 @@ function OptionsApp() {
           (view === 'settings' && ['profile', 'margin', 'sessions', 'people', 'roles'].includes(settingsPage))
         ? 'medium'
         : 'compact';
+  const expandablePage =
+    ['products', 'integrations', 'history'].includes(view) ||
+    (view === 'settings' && ['sessions', 'people', 'roles'].includes(settingsPage));
   const breadcrumbs = settingsDetail
     ? [
         { label: 'Início', icon: 'house', href: '#inicio' },
@@ -1846,7 +1849,7 @@ function OptionsApp() {
           </div>
           <section className="onframe-options-main">
             <div
-              className={`onframe-options-content onframe-options-content--${contentWidth}${fullWidthPages ? ' onframe-options-content--full' : ''}${settingsDetail ? '' : ' onframe-options-content--root'}`}
+              className={`onframe-options-content onframe-options-content--${contentWidth}${fullWidthPages && expandablePage ? ' onframe-options-content--full' : ''}${settingsDetail ? '' : ' onframe-options-content--root'}`}
             >
               <PageHeader
                 meta={meta}

@@ -961,17 +961,6 @@ input {
     width: 100%;
     max-width: none;
   }
-  .onframe-options-content--full .onframe-settings-page--reading {
-    width: 100%;
-    max-width: 720px;
-  }
-  .onframe-options-content--full.onframe-options-content--medium .onframe-settings-page--reading {
-    max-width: 880px;
-  }
-  .onframe-options-content--full .onframe-settings-action-bar-content {
-    width: 100%;
-    max-width: none;
-  }
 }
 .onframe-sidebar-brand {
   display: block;

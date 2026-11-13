@@ -392,7 +392,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   }
 });
 
-test('preferência de largura total é persistida e preserva a largura de leitura', () => {
+test('preferência de largura total é persistida e aplicada apenas a páginas expansíveis', () => {
   const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const styles = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
   const values = new Map();
@@ -408,9 +408,18 @@ test('preferência de largura total é persistida e preserva a largura de leitur
   assert.equal(storedFullWidthPages(), true);
   assert.match(options, /localStorage\.setItem\(FULL_WIDTH_PAGES_STORAGE_KEY, String\(checked\)\)/);
   assert.match(options, /addEventListener\('storage', syncFullWidthPages\)/);
-  assert.match(options, /onframe-options-content--full/);
+  const expandableSource = options.slice(options.indexOf('const expandablePage ='), options.indexOf('const breadcrumbs ='));
+  const isExpandable = (view, settingsPage) => vm.runInNewContext(`${expandableSource}\nexpandablePage`, { view, settingsPage });
+  for (const view of ['products', 'integrations', 'history']) assert.equal(isExpandable(view, 'index'), true);
+  for (const page of ['sessions', 'people', 'roles']) assert.equal(isExpandable('settings', page), true);
+  for (const page of ['index', 'profile', 'security', 'general', 'margin', 'appearance', 'updates']) {
+    assert.equal(isExpandable('settings', page), false);
+  }
+  assert.equal(isExpandable('home', 'index'), false);
+  assert.match(options, /fullWidthPages && expandablePage \? ' onframe-options-content--full'/);
   assert.match(styles, /\.onframe-options-content--full\s*\{[^}]*max-width: none;/);
-  assert.match(styles, /\.onframe-options-content--full \.onframe-settings-page--reading\s*\{[^}]*max-width: 720px;/);
+  assert.match(styles, /\.onframe-options-content--compact\s*\{[^}]*max-width: 720px;/);
+  assert.match(styles, /\.onframe-options-content--medium\s*\{[^}]*max-width: 880px;/);
 });
 
 test('tema do content script acompanha a preferência compartilhada e o sistema', () => {
