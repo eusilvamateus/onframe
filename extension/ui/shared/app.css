@@ -868,33 +868,6 @@ input {
   overflow: visible;
   background: var(--ob-surface);
 }
-.onframe-sidebar-footer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ob-space-8);
-  width: 100%;
-  min-width: 0;
-}
-.onframe-sidebar-workspace-trigger {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  gap: var(--ob-space-8);
-  text-align: left;
-}
-.onframe-sidebar-workspace-name {
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  color: var(--ob-fg-strong);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.onframe-sidebar-workspace-trigger > svg {
-  flex: none;
-  color: var(--ob-fg-mute);
-}
 .onframe-sidebar-account-trigger {
   display: flex;
   min-width: 0;

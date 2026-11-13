@@ -1652,27 +1652,6 @@ function OptionsApp() {
     { id: 'settings', label: 'Configurações', icon: 'gear-six', href: VIEW_HASHES.settings }
   ];
   const personName = connection.user.name || connection.user.email;
-  const accountMenu = [
-    {
-      type: 'account',
-      name: personName,
-      email: connection.user.email,
-      src: connection.user.avatarUrl
-    },
-    { type: 'separator' },
-    {
-      label: 'Perfil',
-      icon: 'user-circle',
-      onSelect: () => {
-        setSettingsTab('account');
-        setSettingsPage('profile');
-        setView('settings');
-      }
-    },
-    appearanceMenuItem,
-    { type: 'separator' },
-    { label: 'Sair', icon: 'sign-out', tone: 'danger', onSelect: () => void disconnect() }
-  ];
   const navigate = (next) => {
     if (next === 'settings') {
       setSettingsTab('account');
@@ -1688,11 +1667,11 @@ function OptionsApp() {
     setMobileNavigationOpen(false);
   };
   const workspaceMenu = [
-    { type: 'label', label: connection.user.email },
     ...workspaces.map((item) => ({
       type: 'account',
       name: item.name,
       email: item.roleId === 'admin' ? 'Administrador' : 'Participante',
+      src: item.logoUrl || undefined,
       current: item.id === workspace.id,
       onSelect: () => {
         if (item.id !== workspace.id) void activateWorkspace(item.id);
@@ -1704,6 +1683,24 @@ function OptionsApp() {
       icon: 'gear-six',
       onSelect: () => openSettings('workspace', 'general')
     }
+  ];
+  const accountMenu = [
+    {
+      type: 'account',
+      name: personName,
+      email: connection.user.email,
+      src: connection.user.avatarUrl,
+      onSelect: () => openSettings('account', 'profile')
+    },
+    { type: 'separator' },
+    ...(atLeast('sm')
+      ? [{ type: 'submenu', label: workspace.name, icon: 'buildings', items: workspaceMenu }]
+      : [{ type: 'label', label: 'Workspaces' }, ...workspaceMenu]),
+    { type: 'separator' },
+    { label: 'Perfil', icon: 'user-circle', onSelect: () => openSettings('account', 'profile') },
+    appearanceMenuItem,
+    { type: 'separator' },
+    { label: 'Sair', icon: 'sign-out', tone: 'danger', onSelect: () => void disconnect() }
   ];
   const pageContext = (
     <div className="onframe-options-context-crumbs">
@@ -1752,39 +1749,6 @@ function OptionsApp() {
             ariaLabel="Navegação do workspace"
             header={<img className="onframe-sidebar-brand" src="../../assets/icons/icon-32.png" alt="OnFrame" />}
             footer={({ collapsed }) => (
-              <div className="onframe-sidebar-footer">
-                <Menu
-                  block
-                  placement={atLeast('sm') ? 'right-end' : 'top'}
-                  ariaLabel="Workspaces"
-                  items={workspaceMenu}
-                  trigger={
-                    <Button
-                      kind="quiet"
-                      iconOnly={collapsed}
-                      disabled={loading}
-                      aria-label={`Workspace ativo: ${workspace.name}`}
-                      aria-haspopup="menu"
-                      icon={<Avatar name={workspace.name} alt="" size={28} />}
-                      style={
-                        collapsed
-                          ? undefined
-                          : {
-                              width: '100%',
-                              justifyContent: 'flex-start',
-                              paddingLeft: 'var(--ob-space-8)'
-                            }
-                      }
-                    >
-                      {!collapsed && (
-                        <span className="onframe-sidebar-workspace-trigger">
-                          <span className="onframe-sidebar-workspace-name">{workspace.name}</span>
-                          <Ph n="caret-right" size={14} />
-                        </span>
-                      )}
-                    </Button>
-                  }
-                />
                 <Menu
                   block
                   placement={collapsed ? 'right-end' : 'top'}
@@ -1815,7 +1779,6 @@ function OptionsApp() {
                     </Button>
                   }
                 />
-              </div>
             )}
             collapsible
             toggleShortcut="b"
