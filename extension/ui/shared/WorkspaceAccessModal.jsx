@@ -191,7 +191,18 @@ export function WorkspaceAccessModal({
                       leading={<Ph n={resource.icon} size={16} />}
                       title={resource.label}
                       trailing={
-                        <Badge size="sm" tone={actions.length ? 'primary' : 'neutral'} appearance="ghost">
+                        <Badge
+                          size="sm"
+                          tone={
+                            actions.length === 0
+                              ? 'neutral'
+                              : actions.includes('write') || actions.includes('delete')
+                                ? 'success'
+                                : 'primary'
+                          }
+                          appearance="plain"
+                          dot
+                        >
                           {label}
                         </Badge>
                       }

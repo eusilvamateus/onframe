@@ -97,7 +97,7 @@ export function WorkspacePeople({
                     title={
                       <span className="onframe-access-name">
                         {name}
-                        <Badge size="sm" tone="warning" appearance="ghost" dot>
+                        <Badge size="sm" tone="warning" appearance="plain" dot>
                           Convite pendente
                         </Badge>
                       </span>
@@ -127,7 +127,7 @@ export function WorkspacePeople({
                     <span className="onframe-access-name">
                       {member.name || member.email}
                       {self && (
-                        <Badge size="sm" appearance="ghost">
+                        <Badge size="sm" tone="neutral" appearance="plain" dot>
                           Você
                         </Badge>
                       )}
