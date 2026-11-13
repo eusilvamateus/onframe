@@ -49,6 +49,16 @@ import { ProductSettings } from './ProductSettings';
 import { TaxSettings } from './TaxSettings';
 import { formatDate, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
+const FULL_WIDTH_PAGES_STORAGE_KEY = 'onframeFullWidthPages';
+
+function storedFullWidthPages() {
+  try {
+    return window.localStorage.getItem(FULL_WIDTH_PAGES_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 const VIEW_META = {
   home: { title: 'Início', icon: 'house' },
   integrations: { title: 'Integrações', icon: 'storefront' },
@@ -880,6 +890,8 @@ function Settings({
   admin,
   canSettingsRead,
   canSettingsWrite,
+  fullWidthPages,
+  onFullWidthPagesChange,
   loading,
   onSaveProfile,
   onAvatar,
@@ -922,7 +934,7 @@ function Settings({
     setQuery('');
   };
   return (
-    <div className="onframe-stack">
+    <div className={`onframe-stack${['people', 'roles', 'sessions'].includes(settingsPage) ? '' : ' onframe-settings-page--reading'}`}>
       {isIndex && (
         <>
           <SearchInput
@@ -1053,7 +1065,9 @@ function Settings({
       {!isIndex && activeSection === 'workspace' && canSettingsRead && settingsPage === 'margin' && (
         <TaxSettings key={workspace.id} accounts={accounts} canWrite={canSettingsWrite} />
       )}
-      {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && <AppearanceSettings />}
+      {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && (
+        <AppearanceSettings fullWidthPages={fullWidthPages} onFullWidthPagesChange={onFullWidthPagesChange} />
+      )}
       {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
     </div>
   );
@@ -1072,6 +1086,7 @@ function OptionsApp() {
   const [view, setView] = useState(initialRoute.view);
   const [settingsTab, setSettingsTab] = useState(initialRoute.tab);
   const [settingsPage, setSettingsPage] = useState(initialRoute.page);
+  const [fullWidthPages, setFullWidthPages] = useState(storedFullWidthPages);
   const routeInitialized = useRef(false);
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
@@ -1084,6 +1099,23 @@ function OptionsApp() {
   const acceptingInvitation = useRef(false);
   const appearanceMenuItem = useThemeSubmenuItem();
   const { atLeast } = useBreakpoint();
+
+  useEffect(() => {
+    const syncFullWidthPages = (event) => {
+      if (event.key === FULL_WIDTH_PAGES_STORAGE_KEY) setFullWidthPages(event.newValue === 'true');
+    };
+    window.addEventListener('storage', syncFullWidthPages);
+    return () => window.removeEventListener('storage', syncFullWidthPages);
+  }, []);
+
+  const changeFullWidthPages = (checked) => {
+    setFullWidthPages(checked);
+    try {
+      window.localStorage.setItem(FULL_WIDTH_PAGES_STORAGE_KEY, String(checked));
+    } catch {
+      // The current tab keeps the preference even when storage is unavailable.
+    }
+  };
 
   function showFeedback({ tone, message, visible = false, needsAttention = false, action, onAction }) {
     const surface = feedbackSurface({ tone, visible, needsAttention });
@@ -1814,7 +1846,7 @@ function OptionsApp() {
           </div>
           <section className="onframe-options-main">
             <div
-              className={`onframe-options-content onframe-options-content--${contentWidth}${settingsDetail ? '' : ' onframe-options-content--root'}`}
+              className={`onframe-options-content onframe-options-content--${contentWidth}${fullWidthPages ? ' onframe-options-content--full' : ''}${settingsDetail ? '' : ' onframe-options-content--root'}`}
             >
               <PageHeader
                 meta={meta}
@@ -1907,6 +1939,8 @@ function OptionsApp() {
                   admin={admin}
                   canSettingsRead={canSettingsRead}
                   canSettingsWrite={canSettingsWrite}
+                  fullWidthPages={fullWidthPages}
+                  onFullWidthPagesChange={changeFullWidthPages}
                   loading={loading}
                   onSaveProfile={saveProfile}
                   onAvatar={uploadAvatar}

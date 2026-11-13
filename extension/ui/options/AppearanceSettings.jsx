@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Radio } from '@onblide/ui';
+import { Button, Card, Radio, Switch } from '@onblide/ui';
 import { THEME_OPTIONS, useSharedTheme } from '../shared/ThemeControl';
 
 const APPEARANCE_OPTIONS = ['light', 'dark', 'system'].map((value) =>
@@ -59,7 +59,7 @@ function ThemePreview({ option }) {
   );
 }
 
-export function AppearanceSettings() {
+export function AppearanceSettings({ fullWidthPages, onFullWidthPagesChange }) {
   const { preference, resolved, setTheme } = useSharedTheme();
   const systemTheme = useSystemTheme();
   const explanation =
@@ -118,6 +118,14 @@ export function AppearanceSettings() {
         </div>
         <p className="onframe-appearance-explanation">{explanation}</p>
         <p className="onframe-appearance-scope">Esta escolha vale neste navegador.</p>
+      </div>
+      <div className="onframe-appearance-section">
+        <h2 className="onframe-section-title">Avançado</h2>
+        <Switch
+          checked={fullWidthPages}
+          onChange={onFullWidthPagesChange}
+          label="Páginas com largura total"
+        />
       </div>
     </section>
   );
