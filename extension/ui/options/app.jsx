@@ -741,12 +741,10 @@ function WorkspaceGeneralSettings({ workspace, details, loading, canWrite, onSav
   const logoFiles = details?.logoUrl
     ? [{ id: 'workspace-logo', name: 'Logo do workspace', size: 0, type: 'image/*', url: details.logoUrl }]
     : [];
-  async function uploadLogo(file, onProgress) {
+  async function uploadLogo(file) {
     setLogoBusy(true);
-    onProgress(5);
     try {
       await onUploadLogo(file);
-      onProgress(100);
     } finally {
       setLogoBusy(false);
     }
@@ -768,7 +766,8 @@ function WorkspaceGeneralSettings({ workspace, details, loading, canWrite, onSav
             acceptLabel="PNG, JPEG ou WebP"
             maxSize={2 * 1024 * 1024}
             defaultFiles={logoFiles}
-            disabled={loading || logoBusy}
+            disabled={logoBusy}
+            indeterminate
             upload={uploadLogo}
             onChange={(files) => {
               if (files.length === 0 && details?.logoUrl) {
@@ -1480,8 +1479,13 @@ function OptionsApp() {
   async function uploadWorkspaceLogo(file) {
     if (!(file instanceof File)) throw new Error('Não foi possível ler a imagem.');
     try {
-      await sendRemoteMessage('workspace-logo-upload', { dataUrl: await readDataUrl(file) });
-      await reload();
+      const result = await sendRemoteMessage('workspace-logo-upload', { dataUrl: await readDataUrl(file) });
+      setWorkspaces((current) => current.map((entry) =>
+        entry.id === workspace.id ? { ...entry, logoUrl: result.logoUrl } : entry
+      ));
+      setConnection((current) => current?.workspace?.id === workspace.id
+        ? { ...current, workspace: { ...current.workspace, logoUrl: result.logoUrl } }
+        : current);
     } catch (error) {
       setNotice({ tone: 'danger', message: userError(error, 'Não foi possível atualizar a logo.') });
       throw error;
@@ -1491,7 +1495,12 @@ function OptionsApp() {
   async function removeWorkspaceLogo() {
     try {
       await sendRemoteMessage('workspace-logo-remove');
-      await reload();
+      setWorkspaces((current) => current.map((entry) =>
+        entry.id === workspace.id ? { ...entry, logoUrl: null } : entry
+      ));
+      setConnection((current) => current?.workspace?.id === workspace.id
+        ? { ...current, workspace: { ...current.workspace, logoUrl: null } }
+        : current);
     } catch (error) {
       setNotice({ tone: 'danger', message: userError(error, 'Não foi possível remover a logo.') });
       throw error;

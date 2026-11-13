@@ -737,6 +737,65 @@ test('upload de foto estima progresso sem concluir antes da resposta e libera o 
   await act(async () => renderer.unmount());
 });
 
+test('logo do workspace mostra o envio e nao depende do carregamento da pagina', async () => {
+  const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const component = source.slice(
+    source.indexOf('function WorkspaceGeneralSettings('),
+    source.indexOf('function ApplicationUpdatesSettings(')
+  );
+  const compiled = transformSync(`${component}\nWorkspaceGeneralSettings`, {
+    loader: 'jsx',
+    jsx: 'transform',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment'
+  }).code;
+  const WorkspaceGeneralSettings = vm.runInNewContext(compiled, {
+    React,
+    useState: React.useState,
+    useEffect: React.useEffect,
+    SectionHeader: 'section-header',
+    FileUpload: 'file-upload',
+    Avatar: 'avatar',
+    Input: 'input-control',
+    Divider: 'divider-control',
+    Button: 'button-control',
+    ButtonGroup: 'button-group',
+    Ph: 'icon'
+  });
+  let finishUpload;
+  let failUpload;
+  let renderer;
+  const props = {
+    workspace: { id: 'workspace-1', name: 'Mateus' },
+    details: { roleId: 'admin', adminCount: 1, memberCount: 2, accountCount: 2, logoUrl: null },
+    loading: true,
+    canWrite: true,
+    onSaveWorkspace: async () => {},
+    onUploadLogo: () => new Promise((resolve, reject) => {
+      finishUpload = resolve;
+      failUpload = reject;
+    }),
+    onRemoveLogo: async () => {},
+    onLeave: () => {},
+    onDelete: () => {}
+  };
+  await act(async () => { renderer = create(React.createElement(WorkspaceGeneralSettings, props)); });
+  const upload = () => renderer.root.findByType('file-upload');
+  assert.equal(upload().props.disabled, false);
+  assert.equal(upload().props.indeterminate, true);
+
+  let uploadResult;
+  await act(async () => { uploadResult = upload().props.upload({ name: 'logo.png' }); });
+  assert.equal(upload().props.disabled, true);
+  await act(async () => { finishUpload(); await uploadResult; });
+  assert.equal(upload().props.disabled, false);
+
+  await act(async () => { uploadResult = upload().props.upload({ name: 'falha.png' }); });
+  await act(async () => { failUpload(new Error('Falha no envio')); await assert.rejects(uploadResult, /Falha no envio/); });
+  assert.equal(upload().props.disabled, false);
+  await act(async () => renderer.unmount());
+});
+
 test('manifest declara somente os hosts públicos indispensáveis', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
   assert.deepEqual(manifest.host_permissions, [

@@ -892,8 +892,8 @@ input {
 }
 .onframe-workspace-identity {
   display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  align-items: start;
   gap: var(--ob-space-24);
   max-width: 640px;
 }
