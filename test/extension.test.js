@@ -855,6 +855,14 @@ test('rotas internas de configurações sobrevivem ao reload e têm hash própri
   assert.match(options, /routeInitialized\.current \? 'pushState' : 'replaceState'/);
 });
 
+test('opções repassam permissões de leitura e escrita para as configurações do workspace', () => {
+  const options = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
+  const settingsProps = options.match(/<Settings\s+([\s\S]*?)\n\s*\/>/)?.[1];
+  assert.ok(settingsProps);
+  assert.match(settingsProps, /canSettingsRead=\{canSettingsRead\}/);
+  assert.match(settingsProps, /canSettingsWrite=\{canSettingsWrite\}/);
+});
+
 test('verificacao hospedada de chaves reutiliza a interface de codigo do login', () => {
   const passkeys = fs.readFileSync(path.join(extensionRoot, 'ui', 'passkeys', 'app.jsx'), 'utf8');
   const sharedCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');

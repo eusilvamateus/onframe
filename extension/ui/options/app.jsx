@@ -1894,6 +1894,8 @@ function OptionsApp() {
                   roles={roles}
                   onRolesChanged={setRoles}
                   admin={admin}
+                  canSettingsRead={canSettingsRead}
+                  canSettingsWrite={canSettingsWrite}
                   loading={loading}
                   onSaveProfile={saveProfile}
                   onAvatar={uploadAvatar}
