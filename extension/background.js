@@ -89,6 +89,8 @@ async function handleRemoteMessage(message) {
   if (action === 'workspace-activate') return activateWorkspace(message.workspaceId);
   if (action === 'workspace-leave') return leaveWorkspace();
   if (action === 'profile') return requestPlatform('/v1/profile');
+  if (action === 'account-deletion-preview') return requestPlatform('/v1/account/deletion');
+  if (action === 'account-delete-self') return deleteOwnAccount(message.proof);
   if (action === 'security') return loadAccountSecurity();
   if (action === 'security-session-remove')
     return requestPlatform(`/v1/security/sessions/${encodeURIComponent(String(message.sessionId || ''))}`, {
@@ -344,6 +346,22 @@ async function removeRemoteAccount(userId) {
     headers: { authorization: `Bearer ${session.token}` }
   });
   return { accounts: normalizeRemoteAccounts(result && result.accounts) };
+}
+
+async function deleteOwnAccount(proof) {
+  try {
+    const result = await requestPlatform('/v1/account/deletion', {
+      method: 'POST',
+      body: JSON.stringify({ proof })
+    });
+    await Promise.allSettled([removeRemoteSession(), removePendingAuthFlow()]);
+    return result;
+  } catch (error) {
+    if (error?.code === 'account_deletion_cleanup_failed') {
+      await Promise.allSettled([removeRemoteSession(), removePendingAuthFlow()]);
+    }
+    throw error;
+  }
 }
 
 async function requestPlatform(path, options = {}) {

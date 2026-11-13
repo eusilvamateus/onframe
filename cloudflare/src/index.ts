@@ -19,6 +19,7 @@ import {
 import { handleRemoteApiRequest, remoteApiErrorPayload } from './remote-api';
 import { IdentitySecurityError, requireIdentitySession } from './identity-security';
 import { accountSecurity, revokeProviderSessions } from './account-security';
+import { AccountDeletionError, accountDeletionImpact, deleteAccount } from './account-deletion';
 import { listItemEditHistory } from './item-edit-history';
 import { latestOnFrameRelease } from './releases';
 import {
@@ -2495,6 +2496,16 @@ export default {
         }
       }
 
+      if (url.pathname === '/v1/account/deletion') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'GET') return json(await accountDeletionImpact(env, actor));
+        if (request.method === 'POST') {
+          const body = await readRequestObject(request);
+          await deleteAccount(env, actor, body.proof);
+          return json({ deleted: true });
+        }
+      }
+
       if (request.method === 'GET' && url.pathname === '/invite') {
         const token = url.searchParams.get('token') || '';
         const safeToken = parseExtensionAuthFlowToken(token);
@@ -2756,8 +2767,12 @@ export default {
         error instanceof TaxConfigurationError ||
         error instanceof MarginConfigurationError ||
         error instanceof SupabaseAuthError ||
-        error instanceof IdentitySecurityError
+        error instanceof IdentitySecurityError ||
+        error instanceof AccountDeletionError
       ) {
+        if (error instanceof AccountDeletionError && error.code === 'account_deletion_cleanup_failed') {
+          console.error(JSON.stringify({ event: error.code, requestId, causeType: error.cause?.constructor?.name }));
+        }
         return json({ error: error.code, requestId }, error.status);
       }
 

@@ -70,10 +70,10 @@ export function EmailVerification({
         const result = await sendRemoteMessage('security-flow-consume', { flow: passkeyFlow.flow });
         if (active && result.status === 'authenticated') {
           setPasskeyFlow(null);
-          await onVerifiedRef.current(null);
+          await onVerifiedRef.current(null, { verificationFlow: passkeyFlow.flow });
         } else if (active && result.status === 'verified') {
           setPasskeyFlow(null);
-          await onVerifiedRef.current(null);
+          await onVerifiedRef.current(null, { verificationFlow: passkeyFlow.flow });
         } else if (active && result.status === 'identity_mismatch') {
           setFeedback('A chave de acesso pertence a outra conta.');
           setPasskeyFlow(null);

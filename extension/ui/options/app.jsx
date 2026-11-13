@@ -37,6 +37,7 @@ import { CredentialSettings } from './CredentialSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { WorkspacePeople } from './WorkspacePeople';
 import { WorkspaceRoles } from './WorkspaceRoles';
+import { AccountDeletionSettings } from './AccountDeletionSettings';
 import { SectionHeader } from '../shared/SectionHeader';
 import { ThemeCycleButton, useThemeSubmenuItem } from '../shared/ThemeControl';
 import { AppearanceSettings } from './AppearanceSettings';
@@ -498,7 +499,7 @@ function SettingsDirectory({ options, onNavigate }) {
   );
 }
 
-function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, onOpenSecuritySettings }) {
+function ProfileSettings({ profile, securityOverview, loading, onSave, onAvatar, onRemoveAvatar, onOpenSecuritySettings, onAccountDeleted }) {
   const savedName = profile?.user?.name || '';
   const [name, setName] = useState(savedName);
   const [avatarControlKey, setAvatarControlKey] = useState(0);
@@ -597,6 +598,8 @@ function ProfileSettings({ profile, loading, onSave, onAvatar, onRemoveAvatar, o
           />
         </div>
       </div>
+      <Divider decorative />
+      <AccountDeletionSettings profile={profile} securityOverview={securityOverview} onDeleted={onAccountDeleted} />
       <footer className="onframe-settings-action-bar" aria-label="Ações do perfil">
         <div className="onframe-settings-action-bar-content">
           <Divider decorative />
@@ -807,6 +810,7 @@ function Settings({
   onSaveProfile,
   onAvatar,
   onRemoveAvatar,
+  onAccountDeleted,
   onCredentialChanged,
   onRemoveSession,
   onRemoveAllSessions,
@@ -863,11 +867,13 @@ function Settings({
       {!isIndex && activeSection === 'account' && settingsPage === 'profile' && (
         <ProfileSettings
           profile={profile}
+          securityOverview={securityOverview}
           loading={loading}
           onSave={onSaveProfile}
           onAvatar={onAvatar}
           onRemoveAvatar={onRemoveAvatar}
           onOpenSecuritySettings={() => onSettingsPageChange('security')}
+          onAccountDeleted={onAccountDeleted}
         />
       )}
       {!isIndex && activeSection === 'account' && settingsPage === 'security' && (
@@ -1793,6 +1799,16 @@ function OptionsApp() {
                   onSaveProfile={saveProfile}
                   onAvatar={uploadAvatar}
                   onRemoveAvatar={removeAvatar}
+                  onAccountDeleted={(cleanupPending = false) => {
+                    setConnection({ connected: false, reason: 'deleted' });
+                    setProfile(null);
+                    setSecurityOverview(null);
+                    setNotice(
+                      cleanupPending
+                        ? { tone: 'danger', message: 'Sua identidade foi removida, mas a limpeza dos dados não terminou. Entre em contato com o suporte.' }
+                        : { tone: 'success', message: 'Sua conta foi excluída.' }
+                    );
+                  }}
                   onCredentialChanged={(message) => {
                     setConnection({ connected: false });
                     setProfile(null);
