@@ -115,6 +115,8 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
     'product-create',
     'product-update',
     'product-archive',
+    'product-restore',
+    'product-delete-permanent',
     'product-import-preview',
     'product-import-commit',
     'product-settings',
@@ -150,13 +152,15 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(background, /\['q', 'status', 'sort', 'page', 'limit'\]/u);
   assert.match(
     products,
-    /<Popover[^]*align="end"[^]*dots-three-vertical[^]*<MenuPanel[^]*Editar produto[^]*Arquivar produto/u
+    /<Popover[^]*align="end"[^]*dots-three-vertical[^]*<MenuPanel[^]*Editar produto[^]*Restaurar produto[^]*Excluir definitivamente[^]*Excluir produto/u
   );
+  assert.match(products, /value: 'deleted', label: 'Excluídos'/u);
+  assert.match(products, /product\.status === 'deleted'/u);
   assert.doesNotMatch(products, /className="onframe-actions"/u);
   assert.doesNotMatch(products, /key: 'status', label: 'Status'/u);
   assert.match(
     products,
-    /function ProductSku[^]*navigator\.clipboard\.writeText\(sku\)[^]*label="Copiar SKU"[^]*onframe-product-sku-value[^]*<Ph n="copy"/u
+    /function ProductSku[^]*navigator\.clipboard\.writeText\(sku\)[^]*label="Copiar SKU"[^]*onframe-product-sku-value[^]*<Ph n=\{copied \? 'check' : 'copy'\}/u
   );
   assert.match(products, /fontFamily: 'var\(--ob-font-mono\)',\s*fontSize: 'var\(--ob-fs-12\)'/u);
   assert.match(products, /key: 'sku', label: 'SKU', width: 220/u);

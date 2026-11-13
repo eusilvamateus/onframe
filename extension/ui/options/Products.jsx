@@ -30,7 +30,8 @@ const PAGE_SIZE = 25;
 const STATUS_FILTERS = [
   { value: 'all', label: 'Todos' },
   { value: 'active', label: 'Ativos' },
-  { value: 'inactive', label: 'Inativos' }
+  { value: 'inactive', label: 'Inativos' },
+  { value: 'deleted', label: 'Excluídos' }
 ];
 const SORT_FILTERS = [
   { value: 'sku', label: 'Código SKU' },
@@ -588,10 +589,10 @@ function ProductForm({ product, accounts, admin, busy, costDecimalPlaces, onClos
         <section className="onframe-product-form-section">
           <h3>Situação</h3>
           <div className="onframe-product-status-row">
-            <strong>Produto ativo</strong>
+            <strong>{values.status === 'deleted' ? 'Produto excluído' : 'Produto ativo'}</strong>
             <Switch
               checked={values.status === 'active'}
-              label={values.status === 'active' ? 'Ativo' : 'Inativo'}
+              label={values.status === 'active' ? 'Ativo' : values.status === 'deleted' ? 'Excluído' : 'Inativo'}
               disabled={!admin || locked}
               onChange={(checked) => setField('status', checked ? 'active' : 'inactive')}
             />
@@ -663,6 +664,33 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       await load(Math.min(pagination.page, Math.max(1, pagination.totalPages)));
     } catch (failure) {
       setDialog((current) => (current?.type === 'archive' ? { ...current, error: userError(failure) } : current));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function restore(product) {
+    setLoading(true);
+    setError('');
+    try {
+      await sendRemoteMessage('product-restore', { productId: product.id });
+      await load(pagination.page);
+    } catch (failure) {
+      setError(userError(failure));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function permanentlyDelete(product) {
+    setLoading(true);
+    setDialog((current) => (current?.type === 'permanent' ? { ...current, error: '' } : current));
+    try {
+      await sendRemoteMessage('product-delete-permanent', { productId: product.id });
+      setDialog(null);
+      await load(pagination.page);
+    } catch (failure) {
+      setDialog((current) => (current?.type === 'permanent' ? { ...current, error: userError(failure) } : current));
     } finally {
       setLoading(false);
     }
@@ -776,21 +804,39 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
                 onCloseTree={close}
                 items={[
                   {
-                    label: admin ? 'Editar produto' : 'Ver detalhes',
-                    icon: admin ? 'pencil-simple' : 'eye',
+                    label: admin && product.status !== 'deleted' ? 'Editar produto' : 'Ver detalhes',
+                    icon: admin && product.status !== 'deleted' ? 'pencil-simple' : 'eye',
                     disabled: loading,
                     onSelect: () => setDialog({ type: 'product', product })
                   },
                   ...(canDelete
                     ? [
                         { type: 'separator' },
-                        {
-                          label: 'Arquivar produto',
-                          icon: 'archive',
-                          tone: 'danger',
-                          disabled: loading,
-                          onSelect: () => setDialog({ type: 'archive', product })
-                        }
+                        ...(product.status === 'deleted'
+                          ? [
+                              {
+                                label: 'Restaurar produto',
+                                icon: 'arrow-counter-clockwise',
+                                disabled: loading,
+                                onSelect: () => void restore(product)
+                              },
+                              {
+                                label: 'Excluir definitivamente',
+                                icon: 'trash',
+                                tone: 'danger',
+                                disabled: loading,
+                                onSelect: () => setDialog({ type: 'permanent', product })
+                              }
+                            ]
+                          : [
+                              {
+                                label: 'Excluir produto',
+                                icon: 'trash',
+                                tone: 'danger',
+                                disabled: loading,
+                                onSelect: () => setDialog({ type: 'archive', product })
+                              }
+                            ])
                       ]
                     : [])
                 ]}
@@ -851,11 +897,19 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
             <EmptyState
               icon="package"
               size="sm"
-              title={debouncedQuery ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado'}
+              title={
+                debouncedQuery
+                  ? 'Nenhum produto encontrado'
+                  : status === 'deleted'
+                    ? 'Nenhum produto excluído'
+                    : 'Nenhum produto cadastrado'
+              }
               description={
                 debouncedQuery
                   ? 'Revise a busca ou os filtros aplicados.'
-                  : 'Cadastre o primeiro produto para organizar custos e anúncios.'
+                  : status === 'deleted'
+                    ? 'Os produtos excluídos aparecerão aqui.'
+                    : 'Cadastre o primeiro produto para organizar custos e anúncios.'
               }
             />
           }
@@ -872,7 +926,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
           key={dialog.product?.id || 'new'}
           product={dialog.product}
           accounts={accounts}
-          admin={admin}
+          admin={admin && dialog.product?.status !== 'deleted'}
           busy={loading}
           costDecimalPlaces={costDecimalPlaces}
           onClose={() => setDialog(null)}
@@ -883,7 +937,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       <Modal
         open={dialog?.type === 'archive'}
         onClose={loading ? undefined : () => setDialog(null)}
-        title="Arquivar produto"
+        title="Excluir produto"
         role="alertdialog"
         size="sm"
         footer={
@@ -892,7 +946,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
               Cancelar
             </Button>
             <Button kind="danger" disabled={loading} onClick={() => void archive(dialog.product)}>
-              Arquivar
+              Excluir
             </Button>
           </>
         }
@@ -904,8 +958,36 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
             </Alert>
           )}
           <p>
-            O produto <strong>{dialog?.product?.name}</strong> deixará de aparecer no catálogo. Seu histórico de custos
-            será preservado.
+            O produto <strong>{dialog?.product?.name}</strong> irá para Excluídos. Você poderá restaurá-lo depois.
+          </p>
+        </div>
+      </Modal>
+      <Modal
+        open={dialog?.type === 'permanent'}
+        onClose={loading ? undefined : () => setDialog(null)}
+        title="Excluir definitivamente"
+        role="alertdialog"
+        size="sm"
+        footer={
+          <>
+            <Button kind="secondary" disabled={loading} onClick={() => setDialog(null)}>
+              Cancelar
+            </Button>
+            <Button kind="danger" disabled={loading} onClick={() => void permanentlyDelete(dialog.product)}>
+              Excluir definitivamente
+            </Button>
+          </>
+        }
+      >
+        <div className="onframe-stack">
+          {dialog?.error && (
+            <Alert appearance="soft" tone="danger">
+              {dialog.error}
+            </Alert>
+          )}
+          <p>
+            O produto <strong>{dialog?.product?.name}</strong> e seu histórico de custos serão removidos
+            permanentemente. Esta ação não pode ser desfeita.
           </p>
         </div>
       </Modal>

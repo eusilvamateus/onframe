@@ -9,7 +9,9 @@ import {
   createProduct,
   listProducts,
   matchProductForPromotionItem,
+  permanentlyDeleteProduct,
   previewProductImport,
+  restoreProduct,
   updateProduct,
   updateProductFinancials
 } from '../src/products.ts';
@@ -398,6 +400,12 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(inactiveMatch.status, 'unmatched');
     assert.equal(inactiveMatch.reason, 'product_not_found');
 
+    const costHistoryBeforeArchive = (
+      await db
+        .prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?')
+        .bind(created.id)
+        .first<{ total: number }>()
+    )?.total;
     await archiveProduct(env, admin, created.id, 'request-archive');
     const afterArchive = await listProducts(
       env,
@@ -408,8 +416,48 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
       afterArchive.products.some((entry) => entry.id === created.id),
       false
     );
+    const deleted = await listProducts(
+      env,
+      admin,
+      new URL('https://onframe.onblide.com/v1/app/products?status=deleted')
+    );
+    assert.equal(deleted.products.find((entry) => entry.id === created.id)?.status, 'deleted');
+    await assert.rejects(restoreProduct(env, collaborator, created.id, 'request-restore-forbidden'), {
+      code: 'product_access_forbidden'
+    });
     const reused = await createProduct(productRequest({ ...payload, sku: 'mesa-180' }), env, admin, 'request-reuse');
     assert.equal(reused.sku, 'mesa-180');
+    await assert.rejects(restoreProduct(env, admin, created.id, 'request-restore-conflict'), {
+      code: 'product_restore_sku_conflict'
+    });
+    await assert.rejects(permanentlyDeleteProduct(env, admin, reused.id, 'request-permanent-active'), {
+      code: 'product_not_deleted'
+    });
+    await archiveProduct(env, admin, reused.id, 'request-archive-reused');
+    await permanentlyDeleteProduct(env, admin, reused.id, 'request-permanent-reused');
+    const restored = await restoreProduct(env, admin, created.id, 'request-restore');
+    assert.equal(restored.status, 'active');
+    assert.equal(restored.id, created.id);
+    assert.equal(
+      (
+        await db
+          .prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?')
+          .bind(created.id)
+          .first<{ total: number }>()
+      )?.total,
+      costHistoryBeforeArchive
+    );
+    await archiveProduct(env, admin, created.id, 'request-archive-again');
+    await permanentlyDeleteProduct(env, admin, created.id, 'request-permanent');
+    assert.equal(
+      (
+        await db
+          .prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?')
+          .bind(created.id)
+          .first<{ total: number }>()
+      )?.total,
+      0
+    );
 
     const inheritedTax = await createProduct(
       productRequest({
@@ -453,6 +501,14 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     );
     assert.equal(inheritedPreview.rows[0].action, 'create');
     assert.equal(inheritedPreview.rows[0].values?.taxRate, null);
+    const inactive = await createProduct(
+      productRequest({ ...payload, sku: 'INATIVO-01', status: 'inactive' }),
+      env,
+      admin,
+      'request-create-inactive'
+    );
+    await archiveProduct(env, admin, inactive.id, 'request-archive-inactive');
+    assert.equal((await restoreProduct(env, admin, inactive.id, 'request-restore-inactive')).status, 'inactive');
   } finally {
     await simulator.dispose();
   }

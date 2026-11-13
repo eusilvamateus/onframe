@@ -31,10 +31,12 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     identity_session_invalid: 'Sua sessão foi encerrada após uma alteração de segurança. Entre novamente.',
     identity_security_unconfigured: 'A verificação de segurança do acesso ainda não foi configurada.',
     identity_security_unavailable: 'Não foi possível verificar seu acesso agora. Tente novamente em instantes.',
-    account_deletion_blocked: 'Defina outra pessoa administradora nos workspaces compartilhados antes de excluir sua conta.',
+    account_deletion_blocked:
+      'Defina outra pessoa administradora nos workspaces compartilhados antes de excluir sua conta.',
     account_deletion_verification_required: 'A verificação expirou. Confirme sua identidade novamente.',
     account_deletion_unavailable: 'Não foi possível excluir sua conta agora. Tente novamente mais tarde.',
-    account_deletion_cleanup_failed: 'A identidade foi removida, mas a limpeza dos dados do OnFrame não terminou. Entre em contato com o suporte.',
+    account_deletion_cleanup_failed:
+      'A identidade foi removida, mas a limpeza dos dados do OnFrame não terminou. Entre em contato com o suporte.',
     workspace_admin_required: 'Esta ação exige uma pessoa administradora.',
     workspace_last_admin_required: 'O workspace precisa manter uma pessoa administradora.',
     workspace_self_management_forbidden: 'Use a ação Sair do workspace para encerrar sua participação.',
@@ -62,6 +64,8 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     product_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',
     product_sku_conflict: 'Já existe um produto ativo com este SKU.',
     product_not_found: 'Este produto não está mais disponível.',
+    product_not_deleted: 'Este produto não está em Excluídos.',
+    product_restore_sku_conflict: 'Outro produto já usa este SKU. Altere o SKU do produto atual antes de restaurar.',
     product_import_invalid_payload: 'A planilha deve conter entre 1 e 2.000 produtos.',
     tax_configuration_invalid_payload: 'Revise as alíquotas informadas e tente novamente.',
     tax_configuration_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',

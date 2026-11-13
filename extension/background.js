@@ -78,6 +78,14 @@ async function handleRemoteMessage(message) {
     return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}`, {
       method: 'DELETE'
     });
+  if (action === 'product-restore')
+    return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}/restore`, {
+      method: 'POST'
+    });
+  if (action === 'product-delete-permanent')
+    return requestPlatform(`/v1/app/products/${encodeURIComponent(String(message.productId || ''))}/permanent`, {
+      method: 'DELETE'
+    });
   if (action === 'product-import-preview')
     return requestPlatform('/v1/app/products/import/preview', {
       method: 'POST',

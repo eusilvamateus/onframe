@@ -18,6 +18,7 @@ type ProductRow = {
   minimum_contribution_margin_bps: number | null;
   custom_costs_json: string;
   status: 'active' | 'inactive';
+  archived_at?: number | null;
   created_at: number;
   updated_at: number;
   cost_display_decimal_places?: number;
@@ -326,7 +327,7 @@ function productPayload(row: ProductRow, accountTaxRates: ProductAccountTaxRate[
       accountUserId: rate.accountUserId,
       taxRate: rate.taxRateBps / 100
     })),
-    status: row.status,
+    status: row.archived_at == null ? row.status : 'deleted',
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString()
   };
@@ -493,7 +494,7 @@ function escapedLike(value: string): string {
 export async function listProducts(env: ProductEnv, actor: ProductActor, url: URL) {
   const query = String(url.searchParams.get('q') || '').trim();
   const requestedStatus = String(url.searchParams.get('status') || 'all');
-  const status = ['active', 'inactive', 'all'].includes(requestedStatus) ? requestedStatus : 'all';
+  const status = ['active', 'inactive', 'deleted', 'all'].includes(requestedStatus) ? requestedStatus : 'all';
   const requestedSort = String(url.searchParams.get('sort') || 'updated');
   const orderBy =
     {
@@ -504,9 +505,9 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
     }[requestedSort] || 'updated_at DESC, id DESC';
   const requestedPage = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '25', 10) || 25));
-  const where = ['workspace_id = ?', 'archived_at IS NULL'];
+  const where = ['workspace_id = ?', status === 'deleted' ? 'archived_at IS NOT NULL' : 'archived_at IS NULL'];
   const bindings: unknown[] = [actor.workspaceId];
-  if (status !== 'all') {
+  if (status !== 'all' && status !== 'deleted') {
     where.push('status = ?');
     bindings.push(status);
   }
@@ -530,7 +531,7 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
   const rows = await env.ONFRAME_DB.prepare(
     `
     SELECT id, sku, name, current_cost_decimal, tax_rate_bps, minimum_contribution_margin_bps,
-      custom_costs_json, status, created_at, updated_at
+      custom_costs_json, status, archived_at, created_at, updated_at
     FROM products WHERE ${clause}
     ORDER BY ${orderBy} LIMIT ? OFFSET ?
   `
@@ -1117,7 +1118,7 @@ export async function archiveProduct(env: ProductEnv, actor: ProductActor, produ
   const timestamp = Date.now();
   await env.ONFRAME_DB.prepare(
     `
-    UPDATE products SET status = 'inactive', archived_at = ?, updated_by_user_id = ?, updated_at = ?
+    UPDATE products SET archived_at = ?, updated_by_user_id = ?, updated_at = ?
     WHERE id = ? AND workspace_id = ? AND archived_at IS NULL
   `
   )
@@ -1125,4 +1126,59 @@ export async function archiveProduct(env: ProductEnv, actor: ProductActor, produ
     .run();
   await audit(env, actor, requestId, 'product_archived', 'product', productId, 200);
   return { archived: true };
+}
+
+async function assertDeletedProduct(env: ProductEnv, actor: ProductActor, productId: string) {
+  const product = await env.ONFRAME_DB.prepare(
+    'SELECT id, normalized_sku FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NOT NULL'
+  )
+    .bind(productId, actor.workspaceId)
+    .first<{ id: string; normalized_sku: string }>();
+  if (!product) throw new ProductRequestError('product_not_deleted', 409);
+  return product;
+}
+
+export async function restoreProduct(env: ProductEnv, actor: ProductActor, productId: string, requestId: string) {
+  await assertAdmin(env, actor, 'products.delete');
+  const product = await assertDeletedProduct(env, actor, productId);
+  const conflict = await env.ONFRAME_DB.prepare(
+    'SELECT id FROM products WHERE workspace_id = ? AND normalized_sku = ? AND archived_at IS NULL'
+  )
+    .bind(actor.workspaceId, product.normalized_sku)
+    .first<{ id: string }>();
+  if (conflict) throw new ProductRequestError('product_restore_sku_conflict', 409);
+  try {
+    const result = await env.ONFRAME_DB.prepare(
+      'UPDATE products SET archived_at = NULL, updated_by_user_id = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND archived_at IS NOT NULL'
+    )
+      .bind(actor.userId, Date.now(), productId, actor.workspaceId)
+      .run();
+    if (!result.meta.changes) throw new ProductRequestError('product_not_deleted', 409);
+  } catch (error) {
+    if (String(error).includes('UNIQUE constraint failed')) {
+      throw new ProductRequestError('product_restore_sku_conflict', 409);
+    }
+    throw error;
+  }
+  await audit(env, actor, requestId, 'product_restored', 'product', productId, 200);
+  const accountRates = await productAccountTaxRates(env, actor);
+  return productPayload(await assertProduct(env, actor, productId), accountRates.get(productId));
+}
+
+export async function permanentlyDeleteProduct(
+  env: ProductEnv,
+  actor: ProductActor,
+  productId: string,
+  requestId: string
+) {
+  await assertAdmin(env, actor, 'products.delete');
+  await assertDeletedProduct(env, actor, productId);
+  const result = await env.ONFRAME_DB.prepare(
+    'DELETE FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NOT NULL'
+  )
+    .bind(productId, actor.workspaceId)
+    .run();
+  if (!result.meta.changes) throw new ProductRequestError('product_not_deleted', 409);
+  await audit(env, actor, requestId, 'product_permanently_deleted', 'product', productId, 200);
+  return { deleted: true };
 }

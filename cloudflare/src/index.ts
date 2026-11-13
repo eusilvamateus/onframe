@@ -28,7 +28,9 @@ import {
   commitProductImport,
   createProduct,
   listProducts,
+  permanentlyDeleteProduct,
   previewProductImport,
+  restoreProduct,
   updateProduct
 } from './products';
 import { ProductSettingsError, getProductSettings, updateProductSettings } from './product-settings';
@@ -2688,6 +2690,15 @@ export default {
         const actor = await authenticateExtensionSession(request, env);
         requirePermission(actor, 'products.write');
         return json(await commitProductImport(request, env, actor, requestId));
+      }
+
+      const deletedProductPath = /^\/v1\/app\/products\/([^/]+)\/(restore|permanent)$/u.exec(url.pathname);
+      if (deletedProductPath) {
+        const actor = await authenticateExtensionSession(request, env);
+        if (deletedProductPath[2] === 'restore' && request.method === 'POST')
+          return json(await restoreProduct(env, actor, deletedProductPath[1], requestId));
+        if (deletedProductPath[2] === 'permanent' && request.method === 'DELETE')
+          return json(await permanentlyDeleteProduct(env, actor, deletedProductPath[1], requestId));
       }
 
       const productPath = /^\/v1\/app\/products\/([^/]+)$/u.exec(url.pathname);
