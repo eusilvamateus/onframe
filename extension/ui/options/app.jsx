@@ -1607,8 +1607,7 @@ function OptionsApp() {
       <>
         <Button
           kind="secondary"
-          size="sm"
-          icon={<Ph n="plus" size={16} />}
+          icon={<Ph n="plus-circle" size={17} />}
           disabled={loading}
           onClick={() => {
             setSettingsPage('roles');
@@ -1618,8 +1617,7 @@ function OptionsApp() {
           Novo perfil
         </Button>
         <Button
-          size="sm"
-          icon={<Ph n="user-plus" size={16} />}
+          icon={<Ph n="user-plus" size={17} />}
           disabled={loading}
           onClick={() => setDialog({ type: 'invite' })}
         >
