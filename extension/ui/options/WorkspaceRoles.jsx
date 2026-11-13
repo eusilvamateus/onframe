@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, AlertDialog, Badge, Button, Checkbox, Drawer, Input, List, ListItem, Menu, Ph } from '@onblide/ui';
+import { Alert, AlertDialog, Button, Checkbox, Drawer, Input, List, ListItem, Menu, Ph } from '@onblide/ui';
 import { SectionHeader } from '../shared/SectionHeader';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { WORKSPACE_PERMISSION_ACTIONS, WORKSPACE_PERMISSION_RESOURCES } from '../shared/workspace-permissions';
 
 function permissionSummary(role) {
-  if (role.id === 'admin') return 'Acesso total às contas e à gestão do workspace.';
   const count = role.permissions?.length || 0;
   return `${count} ${count === 1 ? 'permissão' : 'permissões'} · ${role.memberCount || 0} ${role.memberCount === 1 ? 'pessoa' : 'pessoas'}`;
 }
@@ -93,32 +92,39 @@ export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreat
     }
   }
 
-  const systemRole = draft?.id === 'admin';
+  const administrator = roles.find((role) => role.id === 'admin');
+  const accessRoles = roles.filter((role) => role.id !== 'admin');
   return (
     <div className="onframe-stack" aria-label="Perfis de usuários">
-      <p className="onframe-muted">Mudar um perfil altera o acesso de todas as pessoas que o usam.</p>
       {error && !draft && (
         <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
           {error}
         </Alert>
       )}
-      <List ariaLabel="Perfis do workspace">
-        {roles.map((role) => {
+      {administrator && (
+        <section className="onframe-stack" aria-label="Administração do workspace">
+          <SectionHeader title="Administração do workspace" />
+          <div className="onframe-list-row">
+            <Ph n="shield-check" size={20} />
+            <div>
+              <p className="onframe-list-title">Administrador</p>
+              <p className="onframe-list-meta">
+                {administrator.memberCount || 0} {administrator.memberCount === 1 ? 'pessoa' : 'pessoas'}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+      <SectionHeader title="Perfis de acesso" />
+      <p className="onframe-muted">Mudar um perfil altera o acesso de todas as pessoas que o usam.</p>
+      <List ariaLabel="Perfis de acesso">
+        {accessRoles.map((role) => {
           const inUse = (role.memberCount || 0) + (role.invitationCount || 0) > 0;
           return (
             <ListItem
               key={role.id}
-              leading={<Ph n={role.id === 'admin' ? 'shield-check' : 'users'} size={20} />}
-              title={
-                <span className="onframe-access-name">
-                  {role.name}
-                  {role.id === 'admin' && (
-                    <Badge size="sm" appearance="ghost">
-                      Do sistema
-                    </Badge>
-                  )}
-                </span>
-              }
+              leading={<Ph n="users" size={20} />}
+              title={role.name}
               description={permissionSummary(role)}
               meta={
                 role.invitationCount
@@ -132,8 +138,8 @@ export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreat
                   ariaLabel={`Ações de ${role.name}`}
                   items={[
                     {
-                      label: role.id === 'admin' ? 'Ver permissões' : 'Editar',
-                      icon: role.id === 'admin' ? 'eye' : 'pencil-simple',
+                      label: 'Editar',
+                      icon: 'pencil-simple',
                       onSelect: () => openEditor(role)
                     },
                     { label: 'Duplicar', icon: 'copy', onSelect: () => duplicate(role) },
@@ -142,7 +148,7 @@ export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreat
                       label: 'Excluir',
                       icon: 'trash',
                       tone: 'danger',
-                      disabled: role.id === 'admin' || inUse,
+                      disabled: inUse,
                       description: inUse ? 'Remova as pessoas e os convites deste perfil antes.' : undefined,
                       onSelect: () => setRemoval(role)
                     }
@@ -166,28 +172,17 @@ export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreat
         <Drawer
           open={Boolean(draft)}
           onClose={busy ? () => {} : () => setDraft(null)}
-          title={systemRole ? 'Administrador' : draft?.id ? 'Editar perfil' : 'Novo perfil'}
+          title={draft?.id ? 'Editar perfil' : 'Novo perfil'}
           width="min(640px, 100vw)"
           footer={
-            systemRole ? (
-              <>
-                <Button kind="secondary" onClick={() => setDraft(null)}>
-                  Fechar
-                </Button>
-                <Button icon={<Ph n="copy" size={16} />} onClick={() => duplicate(draft)}>
-                  Duplicar perfil
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button kind="secondary" disabled={busy} onClick={() => setDraft(null)}>
-                  Cancelar
-                </Button>
-                <Button loading={busy} disabled={(draft?.name.trim().length || 0) < 2} onClick={() => void save()}>
-                  {draft?.id ? 'Salvar perfil' : 'Criar perfil'}
-                </Button>
-              </>
-            )
+            <>
+              <Button kind="secondary" disabled={busy} onClick={() => setDraft(null)}>
+                Cancelar
+              </Button>
+              <Button loading={busy} disabled={(draft?.name.trim().length || 0) < 2} onClick={() => void save()}>
+                {draft?.id ? 'Salvar perfil' : 'Criar perfil'}
+              </Button>
+            </>
           }
         >
           {draft && (
@@ -197,19 +192,13 @@ export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreat
                   {error}
                 </Alert>
               )}
-              {systemRole ? (
-                <Alert appearance="soft" tone="info">
-                  Administradores têm acesso total. Este perfil não pode ser alterado.
-                </Alert>
-              ) : (
-                <Input
-                  label="Nome do perfil"
-                  value={draft.name}
-                  maxLength={60}
-                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-                />
-              )}
-              {draft.id && !systemRole && roles.find((role) => role.id === draft.id)?.memberCount > 0 && (
+              <Input
+                label="Nome do perfil"
+                value={draft.name}
+                maxLength={60}
+                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+              />
+              {draft.id && roles.find((role) => role.id === draft.id)?.memberCount > 0 && (
                 <p className="onframe-muted">As mudanças passam a valer para quem usa este perfil ao salvar.</p>
               )}
               <SectionHeader
@@ -232,7 +221,6 @@ export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreat
                               key={action.id}
                               label={action.label}
                               size="sm"
-                              disabled={systemRole}
                               checked={draft.permissions.includes(`${resource.id}.${action.id}`)}
                               onChange={(checked) => togglePermission(resource.id, action.id, checked)}
                             />

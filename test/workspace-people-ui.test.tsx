@@ -58,7 +58,7 @@ test('saida exige outro administrador e permanece separada da remocao', () => {
   shared.renderer.unmount();
 });
 
-test('administrador e visivel, mas nao pode ser editado ou excluido', () => {
+test('administrador fica separado dos perfis editaveis', () => {
   const renderer = create(
     <WorkspaceRoles
       roles={[
@@ -68,12 +68,15 @@ test('administrador e visivel, mas nao pode ser editado ou excluido', () => {
       onChanged={() => {}}
     />
   );
+  const administration = renderer.root.findByProps({ 'aria-label': 'Administração do workspace' });
+  assert.equal(administration.findAllByType(Menu).length, 0);
+  assert.equal(administration.findAllByType(ListItem).length, 0);
   const items = renderer.root.findAllByType(ListItem);
-  assert.equal(items.length, 2);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].props.title, 'Financeiro');
   const menus = renderer.root.findAllByType(Menu);
-  assert.equal(menus[0].props.items[0].label, 'Ver permissões');
+  assert.equal(menus.length, 1);
+  assert.equal(menus[0].props.items[0].label, 'Editar');
   assert.equal(menus[0].props.items[3].disabled, true);
-  assert.equal(menus[1].props.items[0].label, 'Editar');
-  assert.equal(menus[1].props.items[3].disabled, true);
   renderer.unmount();
 });

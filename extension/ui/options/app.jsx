@@ -930,7 +930,7 @@ function Settings({
           <Tabs
             tabs={[
               { id: 'people', label: 'Pessoas', icon: 'users-three', badge: members.length + invitations.length },
-              { id: 'roles', label: 'Perfis', icon: 'identification-badge', badge: roles.length }
+              { id: 'roles', label: 'Perfis', icon: 'identification-badge', badge: roles.filter((role) => role.id !== 'admin').length }
             ]}
             active={settingsPage}
             onChange={onSettingsPageChange}
