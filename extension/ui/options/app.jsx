@@ -201,9 +201,9 @@ function feedbackSurface({ tone, visible = false, needsAttention = false }) {
   return visible ? 'none' : 'toast';
 }
 
-function PageHeader({ meta, actions, onBack, reserveContextSpace = false }) {
+function PageHeader({ meta, actions, onBack, reserveContextSpace = false, alignActionsWithTitle = false }) {
   return (
-    <header className="onframe-page-header">
+    <header className={`onframe-page-header${alignActionsWithTitle ? ' onframe-page-header--aligned-actions' : ''}`}>
       <div className="onframe-stack" style={{ gap: 'var(--ob-space-4)' }}>
         {reserveContextSpace && <div className="onframe-page-context-spacer" aria-hidden="true" />}
         <div>
@@ -812,10 +812,11 @@ function Settings({
   onRemoveAllSessions,
   onDisconnect,
   onSaveWorkspace,
-  onInvite,
   onEdit,
   onRevoke,
-  onLeave
+  onLeave,
+  createRoleRequested,
+  onRoleCreateHandled
 }) {
   const [query, setQuery] = useState('');
   const availableOptions = SETTINGS_OPTIONS.filter(
@@ -941,13 +942,17 @@ function Settings({
               roles={roles}
               currentUserId={profile?.user?.id}
               loading={loading}
-              onInvite={onInvite}
               onEdit={onEdit}
               onRevoke={onRevoke}
               onLeave={onLeave}
             />
           ) : (
-            <WorkspaceRoles roles={roles} onChanged={onRolesChanged} />
+            <WorkspaceRoles
+              roles={roles}
+              onChanged={onRolesChanged}
+              createRequested={createRoleRequested}
+              onCreateHandled={onRoleCreateHandled}
+            />
           )}
         </div>
       )}
@@ -983,6 +988,7 @@ function OptionsApp() {
   const [notice, setNotice] = useState(null);
   const [integrationFeedback, setIntegrationFeedback] = useState(null);
   const [dialog, setDialog] = useState(null);
+  const [createRoleRequested, setCreateRoleRequested] = useState(false);
   const [productHeaderActions, setProductHeaderActions] = useState(null);
   const acceptingInvitation = useRef(false);
   const appearanceMenuItem = useThemeSubmenuItem();
@@ -1596,11 +1602,37 @@ function OptionsApp() {
       <Breadcrumbs items={breadcrumbs} size="sm" maxItems={3} onNavigate={navigateBreadcrumb} />
     </div>
   );
+  const accessPageActions =
+    view === 'settings' && settingsTab === 'workspace' && admin && ['people', 'roles'].includes(settingsPage) ? (
+      <>
+        <Button
+          kind="secondary"
+          size="sm"
+          icon={<Ph n="plus" size={16} />}
+          disabled={loading}
+          onClick={() => {
+            setSettingsPage('roles');
+            setCreateRoleRequested(true);
+          }}
+        >
+          Novo perfil
+        </Button>
+        <Button
+          size="sm"
+          icon={<Ph n="user-plus" size={16} />}
+          disabled={loading}
+          onClick={() => setDialog({ type: 'invite' })}
+        >
+          Convidar pessoa
+        </Button>
+      </>
+    ) : null;
   const pageHeaderActions =
-    workspaceControl || (view === 'products' && productHeaderActions) ? (
+    workspaceControl || (view === 'products' && productHeaderActions) || accessPageActions ? (
       <>
         {workspaceControl}
         {view === 'products' && productHeaderActions}
+        {accessPageActions}
       </>
     ) : undefined;
 
@@ -1676,6 +1708,7 @@ function OptionsApp() {
                 actions={pageHeaderActions}
                 onBack={goBackFromSettingsDetail}
                 reserveContextSpace
+                alignActionsWithTitle={Boolean(accessPageActions)}
               />
               {notice && (
                 <Alert
@@ -1772,10 +1805,11 @@ function OptionsApp() {
                   onRemoveAllSessions={removeAllSessions}
                   onDisconnect={() => void disconnect()}
                   onSaveWorkspace={(name) => void saveWorkspace(name)}
-                  onInvite={() => setDialog({ type: 'invite' })}
                   onEdit={(member) => setDialog({ type: 'member', member })}
                   onRevoke={(invitation) => void revokeInvitation(invitation)}
                   onLeave={() => setDialog({ type: 'workspace-leave' })}
+                  createRoleRequested={createRoleRequested}
+                  onRoleCreateHandled={() => setCreateRoleRequested(false)}
                 />
               )}
             </div>

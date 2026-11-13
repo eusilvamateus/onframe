@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, AlertDialog, Badge, Button, Checkbox, Drawer, Input, List, ListItem, Menu, Ph } from '@onblide/ui';
 import { SectionHeader } from '../shared/SectionHeader';
 import { sendRemoteMessage, userError } from '../shared/runtime';
@@ -10,11 +10,18 @@ function permissionSummary(role) {
   return `${count} ${count === 1 ? 'permissão' : 'permissões'} · ${role.memberCount || 0} ${role.memberCount === 1 ? 'pessoa' : 'pessoas'}`;
 }
 
-export function WorkspaceRoles({ roles = [], onChanged }) {
+export function WorkspaceRoles({ roles = [], onChanged, createRequested, onCreateHandled }) {
   const [draft, setDraft] = useState(null);
   const [removal, setRemoval] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!createRequested) return;
+    setError('');
+    setDraft({ id: null, name: '', permissions: [] });
+    onCreateHandled();
+  }, [createRequested, onCreateHandled]);
 
   function openEditor(role = null) {
     setError('');
@@ -89,15 +96,7 @@ export function WorkspaceRoles({ roles = [], onChanged }) {
   const systemRole = draft?.id === 'admin';
   return (
     <div className="onframe-stack" aria-label="Perfis de usuários">
-      <SectionHeader
-        title="Perfis"
-        copy="Mudar um perfil altera o acesso de todas as pessoas que o usam."
-        actions={
-          <Button icon={<Ph n="plus" size={17} />} onClick={() => openEditor()}>
-            Novo perfil
-          </Button>
-        }
-      />
+      <p className="onframe-muted">Mudar um perfil altera o acesso de todas as pessoas que o usam.</p>
       {error && !draft && (
         <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
           {error}

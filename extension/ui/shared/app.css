@@ -940,6 +940,11 @@ input {
   justify-content: space-between;
   gap: var(--ob-space-16);
 }
+@media (min-width: 768px) {
+  .onframe-page-header--aligned-actions > .onframe-actions {
+    margin-top: 30px;
+  }
+}
 .onframe-page-context-spacer {
   height: 30px;
 }

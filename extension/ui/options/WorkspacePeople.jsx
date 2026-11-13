@@ -18,7 +18,6 @@ export function WorkspacePeople({
   roles,
   currentUserId,
   loading,
-  onInvite,
   onEdit,
   onRevoke,
   onLeave
@@ -49,14 +48,6 @@ export function WorkspacePeople({
   return (
     <div className="onframe-stack">
       <section className="onframe-stack" aria-label="Pessoas do workspace">
-        <SectionHeader
-          title="Pessoas"
-          actions={
-            <Button disabled={loading} onClick={onInvite} icon={<Ph n="user-plus" size={17} />}>
-              Convidar pessoa
-            </Button>
-          }
-        />
         <div className="onframe-access-filters">
           <SearchInput
             value={query}
