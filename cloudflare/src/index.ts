@@ -25,6 +25,7 @@ import { latestOnFrameRelease } from './releases';
 import {
   ProductRequestError,
   archiveProduct,
+  changeProductsInBulk,
   commitProductImport,
   createProduct,
   listProducts,
@@ -2690,6 +2691,11 @@ export default {
         const actor = await authenticateExtensionSession(request, env);
         requirePermission(actor, 'products.write');
         return json(await commitProductImport(request, env, actor, requestId));
+      }
+
+      if (url.pathname === '/v1/app/products/bulk' && request.method === 'POST') {
+        const actor = await authenticateExtensionSession(request, env);
+        return json(await changeProductsInBulk(request, env, actor, requestId));
       }
 
       const deletedProductPath = /^\/v1\/app\/products\/([^/]+)\/(restore|permanent)$/u.exec(url.pathname);

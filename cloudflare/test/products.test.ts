@@ -5,6 +5,7 @@ import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
 import {
   archiveProduct,
+  changeProductsInBulk,
   commitProductImport,
   createProduct,
   listProducts,
@@ -509,6 +510,84 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     );
     await archiveProduct(env, admin, inactive.id, 'request-archive-inactive');
     assert.equal((await restoreProduct(env, admin, inactive.id, 'request-restore-inactive')).status, 'inactive');
+
+    const firstBulk = await createProduct(
+      productRequest({ ...payload, sku: 'LOTE-01' }),
+      env,
+      admin,
+      'request-create-bulk-first'
+    );
+    const secondBulk = await createProduct(
+      productRequest({ ...payload, sku: 'LOTE-02', status: 'inactive' }),
+      env,
+      admin,
+      'request-create-bulk-second'
+    );
+    const bulkIds = [firstBulk.id, secondBulk.id];
+    const bulkUpdate = productRequest({
+      ids: bulkIds,
+      action: 'update',
+      changes: { status: 'inactive', cost: 81.123, taxRate: null, minimumContributionMargin: 16.5 }
+    });
+    await assert.rejects(changeProductsInBulk(bulkUpdate.clone(), env, collaborator, 'request-bulk-forbidden'), {
+      code: 'product_access_forbidden'
+    });
+    assert.equal((await changeProductsInBulk(bulkUpdate, env, admin, 'request-bulk-update')).count, 2);
+    const bulkList = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?q=LOTE'));
+    assert.equal(bulkList.products.length, 2);
+    for (const product of bulkList.products) {
+      assert.equal(product.status, 'inactive');
+      assert.equal(product.cost, 81.123);
+      assert.equal(product.taxRate, null);
+      assert.equal(product.minimumContributionMargin, 16.5);
+      assert.deepEqual(product.customCosts, firstBulk.customCosts);
+      assert.deepEqual(product.accountTaxRates, firstBulk.accountTaxRates);
+      assert.equal(
+        (
+          await db
+            .prepare('SELECT COUNT(*) AS total FROM product_cost_history WHERE product_id = ?')
+            .bind(product.id)
+            .first<{ total: number }>()
+        )?.total,
+        2
+      );
+    }
+    await assert.rejects(
+      changeProductsInBulk(productRequest({ ids: bulkIds, action: 'permanent' }), env, admin, 'request-bulk-premature'),
+      { code: 'product_bulk_state_conflict' }
+    );
+    await changeProductsInBulk(productRequest({ ids: bulkIds, action: 'delete' }), env, admin, 'request-bulk-delete');
+    const deletedBulk = await listProducts(
+      env,
+      admin,
+      new URL('https://onframe.onblide.com/v1/app/products?status=deleted&q=LOTE')
+    );
+    assert.equal(deletedBulk.products.length, 2);
+    await changeProductsInBulk(productRequest({ ids: bulkIds, action: 'restore' }), env, admin, 'request-bulk-restore');
+    const restoredBulk = await listProducts(env, admin, new URL('https://onframe.onblide.com/v1/app/products?q=LOTE'));
+    assert.equal(restoredBulk.products.length, 2);
+    assert.ok(restoredBulk.products.every((product) => product.status === 'inactive'));
+    await changeProductsInBulk(
+      productRequest({ ids: bulkIds, action: 'delete' }),
+      env,
+      admin,
+      'request-bulk-delete-again'
+    );
+    await changeProductsInBulk(
+      productRequest({ ids: bulkIds, action: 'permanent' }),
+      env,
+      admin,
+      'request-bulk-permanent'
+    );
+    assert.equal(
+      (
+        await db
+          .prepare('SELECT COUNT(*) AS total FROM products WHERE id IN (?, ?)')
+          .bind(...bulkIds)
+          .first<{ total: number }>()
+      )?.total,
+      0
+    );
   } finally {
     await simulator.dispose();
   }

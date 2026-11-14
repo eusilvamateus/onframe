@@ -2212,6 +2212,174 @@ input {
   color: var(--ob-fg-soft);
   font-size: var(--ob-fs-14);
 }
+.onframe-products--selection-active {
+  padding-bottom: 96px;
+}
+.onframe-product-bulk-dock {
+  position: fixed;
+  z-index: var(--ob-z-raised);
+  left: 0;
+  right: 0;
+  bottom: var(--ob-space-16);
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--ob-space-12);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(calc(100% + var(--ob-space-24)));
+  transition:
+    opacity var(--ob-dur-base) var(--ob-ease),
+    transform var(--ob-dur-base) var(--ob-ease);
+}
+.onframe-product-bulk-dock--open {
+  opacity: 1;
+  transform: translateY(0);
+}
+.onframe-product-bulk-dock--open > div {
+  pointer-events: auto;
+}
+.onframe-product-bulk-dock > div {
+  max-width: 100%;
+  border: 1px solid var(--ob-border);
+  box-shadow: var(--ob-shadow-lg);
+}
+.onframe-product-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ob-space-8);
+  white-space: nowrap;
+}
+.onframe-product-bulk-bar > strong {
+  min-width: 0;
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-14);
+}
+.onframe-product-bulk-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-12);
+}
+.onframe-product-bulk-editor > .onframe-product-bulk-picker-label {
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-13);
+}
+.onframe-product-bulk-picker {
+  --onframe-bulk-toggle-gap: var(--ob-space-4);
+  --onframe-bulk-toggle-px: var(--ob-space-4);
+  width: 100%;
+}
+.onframe-product-bulk-editor > .onframe-product-bulk-hint {
+  margin: 0;
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-13);
+}
+.onframe-product-bulk-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-12);
+  padding: var(--ob-space-16) 0;
+  border-top: 1px solid var(--ob-line-soft);
+}
+.onframe-product-bulk-field-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ob-space-12);
+}
+.onframe-product-bulk-field-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ob-space-4);
+  min-width: 0;
+}
+.onframe-product-bulk-field-heading strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ob-space-8);
+  color: var(--ob-fg-strong);
+  font-size: var(--ob-fs-15);
+}
+.onframe-product-bulk-field-heading strong svg {
+  color: var(--ob-fg-soft);
+}
+.onframe-product-bulk-field-heading span {
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-13);
+}
+.onframe-product-bulk-field-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--ob-space-12);
+  padding-left: var(--ob-space-32);
+  box-sizing: border-box;
+  width: 100%;
+}
+.onframe-product-bulk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ob-space-12);
+  width: 100%;
+}
+.onframe-product-bulk-footer > span {
+  color: var(--ob-fg-soft);
+  font-size: var(--ob-fs-13);
+}
+.onframe-product-bulk-footer > div {
+  display: flex;
+  gap: var(--ob-space-8);
+  flex: none;
+}
+@media (max-width: 575px) {
+  .onframe-product-bulk-dock > div {
+    width: 100%;
+  }
+  .onframe-product-bulk-bar > strong {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .onframe-product-bulk-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .onframe-product-bulk-footer > div > button {
+    flex: 1;
+  }
+}
+@media (max-width: 480px) {
+  .onframe-product-bulk-picker {
+    --onframe-bulk-toggle-gap: var(--ob-space-2);
+    --onframe-bulk-toggle-px: var(--ob-space-2);
+  }
+  .onframe-product-bulk-margin-suffix {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+@media (max-width: 360px) {
+  .onframe-product-bulk-picker button:last-child svg {
+    display: none;
+  }
+}
+@media (min-width: 768px) {
+  .onframe-product-bulk-dock {
+    left: 240px;
+    bottom: var(--ob-space-40);
+    padding: 0 var(--ob-space-32);
+  }
+  .onframe-options--collapsed .onframe-product-bulk-dock {
+    left: 72px;
+  }
+}
 .onframe-product-drawer {
   display: flex;
   flex-direction: column;

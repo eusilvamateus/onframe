@@ -66,6 +66,8 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     product_not_found: 'Este produto não está mais disponível.',
     product_not_deleted: 'Este produto não está em Excluídos.',
     product_restore_sku_conflict: 'Outro produto já usa este SKU. Altere o SKU do produto atual antes de restaurar.',
+    product_bulk_state_conflict:
+      'A seleção contém produtos que mudaram de situação. Atualize a lista e selecione novamente.',
     product_import_invalid_payload: 'A planilha deve conter entre 1 e 2.000 produtos.',
     tax_configuration_invalid_payload: 'Revise as alíquotas informadas e tente novamente.',
     tax_configuration_account_not_found: 'Uma das contas selecionadas não pertence mais a este workspace.',

@@ -1182,3 +1182,138 @@ export async function permanentlyDeleteProduct(
   await audit(env, actor, requestId, 'product_permanently_deleted', 'product', productId, 200);
   return { deleted: true };
 }
+
+type BulkProductRow = Pick<
+  ProductRow,
+  'id' | 'status' | 'current_cost_decimal' | 'tax_rate_bps' | 'minimum_contribution_margin_bps'
+> & { normalized_sku: string; archived_at: number | null };
+
+export async function changeProductsInBulk(request: Request, env: ProductEnv, actor: ProductActor, requestId: string) {
+  const body = await requestBody(request);
+  const ids = body.ids;
+  const action = body.action;
+  if (
+    !Array.isArray(ids) ||
+    ids.length === 0 ||
+    ids.length > 100 ||
+    ids.some((id) => typeof id !== 'string' || !id.trim() || id.length > 80) ||
+    new Set(ids).size !== ids.length ||
+    !['update', 'delete', 'restore', 'permanent'].includes(String(action))
+  ) {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  const permission = action === 'update' ? 'products.write' : 'products.delete';
+  await assertAdmin(env, actor, permission);
+
+  const changes = action === 'update' ? recordValue(body.changes) : null;
+  const fields = changes ? Object.keys(changes) : [];
+  if (
+    (action === 'update' &&
+      (!fields.length ||
+        fields.some((field) => !['status', 'cost', 'taxRate', 'minimumContributionMargin'].includes(field)))) ||
+    (action !== 'update' && body.changes !== undefined)
+  ) {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  if (changes && 'status' in changes && changes.status !== 'active' && changes.status !== 'inactive') {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  if (changes && 'cost' in changes && (changes.cost === null || changes.cost === '')) {
+    throw new ProductRequestError('product_invalid_payload', 400);
+  }
+  const cost = changes && 'cost' in changes ? decimalAmount(changes.cost, 99_999_999.99).decimal : undefined;
+  const taxRate = changes && 'taxRate' in changes ? optionalDecimalToInteger(changes.taxRate, 100, 10_000) : undefined;
+  const minimumMargin =
+    changes && 'minimumContributionMargin' in changes
+      ? optionalDecimalToInteger(changes.minimumContributionMargin, 100, 10_000)
+      : undefined;
+
+  const placeholders = ids.map(() => '?').join(', ');
+  const rows = await env.ONFRAME_DB.prepare(
+    `SELECT id, normalized_sku, status, archived_at, current_cost_decimal, tax_rate_bps, minimum_contribution_margin_bps
+     FROM products WHERE workspace_id = ? AND id IN (${placeholders})`
+  )
+    .bind(actor.workspaceId, ...ids)
+    .all<BulkProductRow>();
+  if (rows.results.length !== ids.length) throw new ProductRequestError('product_not_found', 404);
+  const deleted = action === 'restore' || action === 'permanent';
+  if (rows.results.some((row) => (row.archived_at !== null) !== deleted)) {
+    throw new ProductRequestError('product_bulk_state_conflict', 409);
+  }
+  if (action === 'restore') {
+    const skus = rows.results.map((row) => row.normalized_sku);
+    if (new Set(skus).size !== skus.length) throw new ProductRequestError('product_restore_sku_conflict', 409);
+    const conflicts = await env.ONFRAME_DB.prepare(
+      `SELECT id FROM products WHERE workspace_id = ? AND normalized_sku IN (${placeholders}) AND archived_at IS NULL LIMIT 1`
+    )
+      .bind(actor.workspaceId, ...skus)
+      .first<{ id: string }>();
+    if (conflicts) throw new ProductRequestError('product_restore_sku_conflict', 409);
+  }
+
+  const timestamp = Date.now();
+  const statements: D1PreparedStatement[] = [];
+  for (const row of rows.results) {
+    if (action === 'update' && changes) {
+      const nextStatus = 'status' in changes ? changes.status : row.status;
+      const nextCost = cost ?? row.current_cost_decimal;
+      const nextTax = taxRate === undefined ? row.tax_rate_bps : taxRate;
+      const nextMargin = minimumMargin === undefined ? row.minimum_contribution_margin_bps : minimumMargin;
+      if (
+        nextStatus === row.status &&
+        nextCost === row.current_cost_decimal &&
+        nextTax === row.tax_rate_bps &&
+        nextMargin === row.minimum_contribution_margin_bps
+      )
+        continue;
+      statements.push(
+        env.ONFRAME_DB.prepare(
+          `UPDATE products SET status = ?, current_cost_decimal = ?, tax_rate_bps = ?,
+             minimum_contribution_margin_bps = ?, updated_by_user_id = ?, updated_at = ?
+           WHERE id = ? AND workspace_id = ? AND archived_at IS NULL`
+        ).bind(nextStatus, nextCost, nextTax, nextMargin, actor.userId, timestamp, row.id, actor.workspaceId)
+      );
+      if (nextCost !== row.current_cost_decimal) {
+        statements.push(
+          env.ONFRAME_DB.prepare(
+            `INSERT INTO product_cost_history (id, product_id, cost_decimal, effective_at, created_by_user_id, created_at)
+             VALUES (?, ?, ?, ?, ?, ?)`
+          ).bind(crypto.randomUUID(), row.id, nextCost, timestamp, actor.userId, timestamp)
+        );
+      }
+    } else if (action === 'delete') {
+      statements.push(
+        env.ONFRAME_DB.prepare(
+          `UPDATE products SET archived_at = ?, updated_by_user_id = ?, updated_at = ?
+           WHERE id = ? AND workspace_id = ? AND archived_at IS NULL`
+        ).bind(timestamp, actor.userId, timestamp, row.id, actor.workspaceId)
+      );
+    } else if (action === 'restore') {
+      statements.push(
+        env.ONFRAME_DB.prepare(
+          `UPDATE products SET archived_at = NULL, updated_by_user_id = ?, updated_at = ?
+           WHERE id = ? AND workspace_id = ? AND archived_at IS NOT NULL`
+        ).bind(actor.userId, timestamp, row.id, actor.workspaceId)
+      );
+    } else {
+      statements.push(
+        env.ONFRAME_DB.prepare(
+          'DELETE FROM products WHERE id = ? AND workspace_id = ? AND archived_at IS NOT NULL'
+        ).bind(row.id, actor.workspaceId)
+      );
+    }
+  }
+  try {
+    if (statements.length) await env.ONFRAME_DB.batch(statements);
+  } catch (error) {
+    if (action === 'restore' && String(error).includes('UNIQUE constraint failed')) {
+      throw new ProductRequestError('product_restore_sku_conflict', 409);
+    }
+    throw error;
+  }
+  await audit(env, actor, requestId, `products_bulk_${action}`, 'workspace', actor.workspaceId, 200, {
+    ids,
+    fields: action === 'update' ? fields : undefined
+  });
+  return { count: ids.length };
+}

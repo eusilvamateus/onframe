@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  AlertDialog,
   Button,
   ButtonGroup,
+  Card,
+  Divider,
   Chip,
   Drawer,
   EmptyState,
   Input,
+  Menu,
   MenuPanel,
   Modal,
   NumberField,
@@ -20,7 +24,8 @@ import {
   Table,
   Tooltip,
   ToggleButton,
-  toast
+  toast,
+  useBreakpoint
 } from '@onblide/ui';
 import { sendRemoteMessage, userError } from '../shared/runtime';
 import { ProductSpreadsheetModal } from './ProductSpreadsheetModal';
@@ -603,7 +608,285 @@ function ProductForm({ product, accounts, admin, busy, costDecimalPlaces, onClos
   );
 }
 
+const BULK_FIELDS = [
+  { name: 'status', label: 'Situação', icon: 'toggle-right' },
+  { name: 'cost', label: 'Custo', icon: 'currency-circle-dollar' },
+  { name: 'taxRate', label: 'Imposto', icon: 'percent' },
+  { name: 'minimumContributionMargin', label: 'Margem mínima', icon: 'chart-line-up' }
+];
+
+function ProductBulkEditor({ products, costDecimalPlaces, initialField, busy, error, onClose, onApply }) {
+  const [fields, setFields] = useState(initialField ? [initialField] : []);
+  const [status, setStatus] = useState(null);
+  const [cost, setCost] = useState(null);
+  const [taxMode, setTaxMode] = useState('define');
+  const [taxRate, setTaxRate] = useState(null);
+  const [marginMode, setMarginMode] = useState('define');
+  const [minimumMargin, setMinimumMargin] = useState(null);
+
+  useEffect(() => {
+    if (!initialField) return undefined;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`bulk-field-${initialField}`)?.querySelector('input')?.focus({ preventScroll: true });
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [initialField]);
+
+  const enabled = BULK_FIELDS.filter((field) => fields.includes(field.name));
+  const canApply =
+    enabled.length > 0 &&
+    (!fields.includes('status') || status !== null) &&
+    (!fields.includes('cost') || cost !== null) &&
+    (!fields.includes('taxRate') || taxMode === 'inherit' || taxRate !== null) &&
+    (!fields.includes('minimumContributionMargin') || marginMode === 'inherit' || minimumMargin !== null);
+  const costs = products.map((product) => product.cost);
+  const costSummary =
+    Math.min(...costs) === Math.max(...costs)
+      ? `Hoje: ${money(costs[0], costDecimalPlaces)}`
+      : `Hoje: de ${money(Math.min(...costs), costDecimalPlaces)} a ${money(Math.max(...costs), costDecimalPlaces)}`;
+
+  function apply() {
+    const changes = {};
+    if (fields.includes('status')) changes.status = status;
+    if (fields.includes('cost')) changes.cost = cost;
+    if (fields.includes('taxRate')) changes.taxRate = taxMode === 'inherit' ? null : taxRate;
+    if (fields.includes('minimumContributionMargin')) {
+      changes.minimumContributionMargin = marginMode === 'inherit' ? null : minimumMargin;
+    }
+    onApply(changes);
+  }
+
+  function field(name, description, children) {
+    const definition = BULK_FIELDS.find((item) => item.name === name);
+    return (
+      <section className="onframe-product-bulk-field" id={`bulk-field-${name}`} key={name}>
+        <div className="onframe-product-bulk-field-heading">
+          <div>
+            <strong>
+              <Ph n={definition.icon} size={18} />
+              {definition.label}
+            </strong>
+            <span>{description}</span>
+          </div>
+          <Button
+            kind="quiet"
+            size="sm"
+            iconOnly
+            aria-label={`Não mudar ${definition.label.toLowerCase()}`}
+            icon={<Ph n="x" size={16} />}
+            disabled={busy}
+            onClick={() => setFields((current) => current.filter((item) => item !== name))}
+          />
+        </div>
+        <div className="onframe-product-bulk-field-controls">{children}</div>
+      </section>
+    );
+  }
+
+  return (
+    <Drawer
+      open
+      onClose={busy ? () => {} : onClose}
+      title={`Editar ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`}
+      side="right"
+      width={520}
+      footer={
+        <div className="onframe-product-bulk-footer">
+          <span>
+            {enabled.length
+              ? `Mudar ${enabled.map((field) => field.label.toLowerCase()).join(', ')} em ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}.`
+              : 'Escolha o que você quer mudar.'}
+          </span>
+          <div>
+            <Button kind="secondary" disabled={busy} onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button loading={busy} disabled={!canApply} onClick={apply}>
+              Aplicar
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      <div className="onframe-product-bulk-editor">
+        {error && (
+          <Alert appearance="soft" tone="danger">
+            {error}
+          </Alert>
+        )}
+        <strong className="onframe-product-bulk-picker-label">O que mudar</strong>
+        <div className="onframe-product-bulk-picker">
+          <ButtonGroup
+            selection="multiple"
+            attached={false}
+            fullWidth
+            size="sm"
+            value={fields}
+            disabled={busy}
+            onChange={(value) =>
+              setFields(BULK_FIELDS.map((item) => item.name).filter((name) => (value || []).includes(name)))
+            }
+            ariaLabel="O que mudar"
+            style={{ gap: 'var(--ob-space-4)' }}
+          >
+            {BULK_FIELDS.map((item) => (
+              <ToggleButton
+                key={item.name}
+                value={item.name}
+                icon={item.name === 'status' ? 'toggle-left' : item.icon}
+                pressedIcon={item.name === 'status' ? 'toggle-right' : undefined}
+                appearance="ghost"
+                tone="neutral"
+                fillWhenPressed
+                style={{
+                  gap: 'var(--onframe-bulk-toggle-gap)',
+                  paddingInline: 'var(--onframe-bulk-toggle-px)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {item.name === 'minimumContributionMargin' ? (
+                  <>
+                    Margem<span className="onframe-product-bulk-margin-suffix"> mínima</span>
+                  </>
+                ) : (
+                  item.label
+                )}
+              </ToggleButton>
+            ))}
+          </ButtonGroup>
+        </div>
+        <p className="onframe-product-bulk-hint">O resto de cada produto fica como está.</p>
+        {fields.includes('status') &&
+          field(
+            'status',
+            `Hoje: ${products.filter((product) => product.status === 'active').length} ativos e ${products.filter((product) => product.status === 'inactive').length} inativos`,
+            <ButtonGroup
+              selection="single"
+              fullWidth
+              value={status}
+              disabled={busy}
+              onChange={(value) => value && setStatus(value)}
+              ariaLabel="Nova situação"
+            >
+              <ToggleButton value="active" icon="play-circle" appearance="ghost" tone="success" fillWhenPressed>
+                Ativo
+              </ToggleButton>
+              <ToggleButton value="inactive" icon="pause-circle" appearance="ghost" tone="warning" fillWhenPressed>
+                Inativo
+              </ToggleButton>
+            </ButtonGroup>
+          )}
+        {fields.includes('cost') &&
+          field(
+            'cost',
+            costSummary,
+            <NumberField
+              label="Novo custo"
+              value={cost}
+              disabled={busy}
+              min={0}
+              decimals={8}
+              controls="none"
+              startAddon="R$"
+              align="right"
+              width="min(100%, 328px)"
+              onChange={setCost}
+            />
+          )}
+        {fields.includes('taxRate') &&
+          field(
+            'taxRate',
+            'Exceções por conta permanecem inalteradas.',
+            <>
+              <ButtonGroup
+                selection="single"
+                fullWidth
+                value={taxMode}
+                disabled={busy}
+                onChange={(value) => value && setTaxMode(value)}
+                ariaLabel="Como definir o imposto"
+              >
+                <ToggleButton value="define" appearance="ghost" tone="primary" icon="equals" fillWhenPressed>
+                  Definir
+                </ToggleButton>
+                <ToggleButton
+                  value="inherit"
+                  appearance="ghost"
+                  tone="neutral"
+                  icon="arrow-counter-clockwise"
+                  fillWhenPressed
+                >
+                  Herdar
+                </ToggleButton>
+              </ButtonGroup>
+              {taxMode === 'define' && (
+                <NumberField
+                  label="Alíquota"
+                  value={taxRate}
+                  disabled={busy}
+                  min={0}
+                  max={100}
+                  decimals={2}
+                  controls="none"
+                  endAddon="%"
+                  align="right"
+                  width="min(100%, 328px)"
+                  onChange={setTaxRate}
+                />
+              )}
+            </>
+          )}
+        {fields.includes('minimumContributionMargin') &&
+          field(
+            'minimumContributionMargin',
+            'Cada produto pode usar um limite próprio ou o padrão do workspace.',
+            <>
+              <ButtonGroup
+                selection="single"
+                fullWidth
+                value={marginMode}
+                disabled={busy}
+                onChange={(value) => value && setMarginMode(value)}
+                ariaLabel="Como definir a margem mínima"
+              >
+                <ToggleButton value="define" appearance="ghost" tone="primary" icon="equals" fillWhenPressed>
+                  Definir
+                </ToggleButton>
+                <ToggleButton
+                  value="inherit"
+                  appearance="ghost"
+                  tone="neutral"
+                  icon="arrow-counter-clockwise"
+                  fillWhenPressed
+                >
+                  Usar padrão
+                </ToggleButton>
+              </ButtonGroup>
+              {marginMode === 'define' && (
+                <NumberField
+                  label="Margem mínima"
+                  value={minimumMargin}
+                  disabled={busy}
+                  min={0}
+                  max={100}
+                  decimals={2}
+                  controls="none"
+                  endAddon="%"
+                  align="right"
+                  width="min(100%, 328px)"
+                  onChange={setMinimumMargin}
+                />
+              )}
+            </>
+          )}
+      </div>
+    </Drawer>
+  );
+}
+
 export function Products({ accounts = [], admin, canDelete = admin, onHeaderActionsChange }) {
+  const { atLeast } = useBreakpoint();
+  const wideBar = atLeast('lg');
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [query, setQuery] = useState('');
@@ -615,6 +898,11 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
   const [dialog, setDialog] = useState(null);
   const [error, setError] = useState('');
   const [costDecimalPlaces, setCostDecimalPlaces] = useState(2);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
+  const [bulkConfirmation, setBulkConfirmation] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState('');
   const requestSequence = useRef(0);
 
   useEffect(() => {
@@ -646,8 +934,51 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
   );
 
   useEffect(() => {
+    setSelectedIds([]);
     void load(1);
   }, [load]);
+
+  const selectedProducts = products.filter((product) => selectedIds.includes(product.id));
+  const selectionOpen = selectedProducts.length > 0;
+
+  useEffect(() => {
+    if (!selectionOpen || bulkEditorOpen || bulkConfirmation || dialog) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setSelectedIds([]);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [selectionOpen, bulkEditorOpen, bulkConfirmation, dialog]);
+
+  async function applyBulk(action, changes) {
+    setBulkBusy(true);
+    setBulkError('');
+    setError('');
+    try {
+      await sendRemoteMessage('products-bulk', {
+        payload: { ids: selectedIds, action, ...(changes ? { changes } : {}) }
+      });
+      setBulkEditorOpen(false);
+      setBulkConfirmation(null);
+      setSelectedIds([]);
+      await load(pagination.page);
+    } catch (failure) {
+      const message = userError(failure);
+      setBulkError(message);
+      if (!bulkEditorOpen && !bulkConfirmation) setError(message);
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  function exportSelected() {
+    downloadProductExport(selectedProducts);
+  }
+
+  function openBulkEditor(field = true) {
+    setBulkError('');
+    setBulkEditorOpen(field);
+  }
 
   function reflectProduct(product) {
     setProducts((items) => items.map((item) => (item.id === product.id ? product : item)));
@@ -849,8 +1180,84 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
     }
   ];
 
+  const statusActions =
+    admin && status !== 'deleted'
+      ? [
+          ...(selectedProducts.some((product) => product.status === 'inactive')
+            ? [{ label: 'Ativar', icon: 'play-circle', tone: 'success', value: 'active' }]
+            : []),
+          ...(selectedProducts.some((product) => product.status === 'active')
+            ? [{ label: 'Inativar', icon: 'pause-circle', tone: 'warning', value: 'inactive' }]
+            : [])
+        ]
+      : [];
+  const canSelectPage = selectedProducts.length < products.length;
+  const selectPageAction =
+    canSelectPage && !wideBar
+      ? [
+          {
+            label: `Selecionar os ${products.length} da página`,
+            icon: 'checks',
+            onSelect: () => setSelectedIds(products.map((product) => product.id))
+          }
+        ]
+      : [];
+  const bulkMenuItems =
+    status === 'deleted'
+      ? [
+          ...selectPageAction,
+          ...(canDelete
+            ? [
+                ...(selectPageAction.length ? [{ type: 'separator' }] : []),
+                {
+                  label: 'Excluir definitivamente',
+                  icon: 'trash',
+                  tone: 'danger',
+                  onSelect: () => setBulkConfirmation('permanent')
+                }
+              ]
+            : [])
+        ]
+      : [
+          ...selectPageAction,
+          ...(!wideBar
+            ? statusActions.map((action) => ({
+                label: action.label,
+                icon: action.icon,
+                tone: action.tone,
+                onSelect: () => void applyBulk('update', { status: action.value })
+              }))
+            : []),
+          ...(admin
+            ? [
+                ...(!wideBar
+                  ? [
+                      {
+                        label: 'Alterar custo',
+                        icon: 'currency-circle-dollar',
+                        onSelect: () => openBulkEditor('cost')
+                      },
+                      { label: 'Definir imposto', icon: 'percent', onSelect: () => openBulkEditor('taxRate') }
+                    ]
+                  : []),
+                {
+                  label: 'Margem mínima',
+                  icon: 'chart-line-up',
+                  onSelect: () => openBulkEditor('minimumContributionMargin')
+                }
+              ]
+            : []),
+          ...(admin ? [{ label: 'Exportar planilha', icon: 'download-simple', onSelect: exportSelected }] : []),
+          ...(canDelete
+            ? [
+                { type: 'separator' },
+                { label: 'Excluir', icon: 'trash', tone: 'danger', onSelect: () => setBulkConfirmation('delete') }
+              ]
+            : [])
+        ];
+
   return (
-    <div className="onframe-products onframe-stack">
+    <div className={`onframe-products onframe-stack${selectionOpen ? ' onframe-products--selection-active' : ''}`}>
       {error && (
         <Alert appearance="soft" tone="danger" dismissible onClose={() => setError('')}>
           {error}
@@ -890,8 +1297,13 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       </div>
       <div className="onframe-products-table">
         <Table
+          ariaLabel="Produtos"
           columns={columns}
           rows={products}
+          rowKey="id"
+          selectable={status !== 'deleted' || canDelete}
+          selectedKeys={selectedIds}
+          onSelect={(_, keys) => setSelectedIds(keys)}
           loading={loading}
           emptyState={
             <EmptyState
@@ -918,9 +1330,159 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       {pagination.totalPages > 1 && (
         <div className="onframe-products-pagination">
           <span>{pagination.total} produtos</span>
-          <Pagination page={pagination.page} total={pagination.totalPages} onChange={(page) => void load(page)} />
+          <Pagination
+            page={pagination.page}
+            total={pagination.totalPages}
+            onChange={(page) => {
+              setSelectedIds([]);
+              void load(page);
+            }}
+          />
         </div>
       )}
+      <div
+        className={`onframe-product-bulk-dock${selectionOpen && !bulkEditorOpen && !bulkConfirmation && !dialog ? ' onframe-product-bulk-dock--open' : ''}`}
+      >
+        <Card elevation="shadow" padding="var(--ob-space-8)">
+          <div className="onframe-product-bulk-bar" role="toolbar" aria-label="Ações em massa">
+            <Tooltip label="Limpar seleção">
+              <Button
+                kind="quiet"
+                size="sm"
+                iconOnly
+                aria-label="Limpar seleção"
+                icon={<Ph n="x" size={16} />}
+                disabled={bulkBusy}
+                onClick={() => setSelectedIds([])}
+              />
+            </Tooltip>
+            <strong>
+              {selectedProducts.length} {selectedProducts.length === 1 ? 'selecionado' : 'selecionados'}
+            </strong>
+            {wideBar && canSelectPage && (
+              <Button
+                kind="quiet"
+                size="sm"
+                disabled={bulkBusy}
+                onClick={() => setSelectedIds(products.map((product) => product.id))}
+              >
+                Selecionar os {products.length} da página
+              </Button>
+            )}
+            {wideBar && status !== 'deleted' && admin && (
+              <>
+                <Divider orientation="vertical" decorative style={{ height: 20, alignSelf: 'center' }} />
+                {statusActions.map((action) => (
+                  <Button
+                    key={action.value}
+                    kind="quiet"
+                    size="sm"
+                    tone={action.tone}
+                    icon={<Ph n={action.icon} size={16} />}
+                    disabled={bulkBusy}
+                    onClick={() => void applyBulk('update', { status: action.value })}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
+                <Button
+                  kind="quiet"
+                  size="sm"
+                  icon={<Ph n="currency-circle-dollar" size={16} />}
+                  disabled={bulkBusy}
+                  onClick={() => openBulkEditor('cost')}
+                >
+                  Alterar custo
+                </Button>
+                <Button
+                  kind="quiet"
+                  size="sm"
+                  icon={<Ph n="percent" size={16} />}
+                  disabled={bulkBusy}
+                  onClick={() => openBulkEditor('taxRate')}
+                >
+                  Definir imposto
+                </Button>
+              </>
+            )}
+            {bulkMenuItems.length > 0 && (
+              <Menu
+                placement="top"
+                align="right"
+                size="sm"
+                ariaLabel="Mais ações em massa"
+                items={bulkMenuItems}
+                trigger={
+                  <Button
+                    kind="quiet"
+                    size="sm"
+                    iconOnly
+                    aria-label="Mais ações em massa"
+                    icon={<Ph n="dots-three" size={18} />}
+                    disabled={bulkBusy}
+                  />
+                }
+              />
+            )}
+            {status === 'deleted' ? (
+              <Button
+                size="sm"
+                icon={<Ph n="arrow-counter-clockwise" size={16} />}
+                disabled={bulkBusy || !canDelete}
+                onClick={() => void applyBulk('restore')}
+              >
+                Restaurar
+              </Button>
+            ) : admin ? (
+              <Button
+                size="sm"
+                icon={<Ph n="pencil-simple" size={16} />}
+                disabled={bulkBusy}
+                onClick={() => openBulkEditor()}
+              >
+                Editar {selectedProducts.length > 1 ? `${selectedProducts.length} produtos` : 'produto'}
+              </Button>
+            ) : (
+              <Button size="sm" icon={<Ph n="download-simple" size={16} />} onClick={exportSelected}>
+                Exportar
+              </Button>
+            )}
+          </div>
+        </Card>
+      </div>
+      {bulkEditorOpen && (
+        <ProductBulkEditor
+          products={selectedProducts}
+          costDecimalPlaces={costDecimalPlaces}
+          initialField={typeof bulkEditorOpen === 'string' ? bulkEditorOpen : null}
+          busy={bulkBusy}
+          error={bulkError}
+          onClose={() => setBulkEditorOpen(false)}
+          onApply={(changes) => void applyBulk('update', changes)}
+        />
+      )}
+      <AlertDialog
+        open={Boolean(bulkConfirmation)}
+        onClose={() => setBulkConfirmation(null)}
+        title={
+          bulkConfirmation === 'permanent'
+            ? 'Excluir definitivamente os produtos?'
+            : 'Excluir os produtos selecionados?'
+        }
+        confirmLabel={bulkConfirmation === 'permanent' ? 'Excluir definitivamente' : 'Mover para Excluídos'}
+        tone="danger"
+        loading={bulkBusy}
+        onConfirm={() => void applyBulk(bulkConfirmation)}
+      >
+        {bulkError && (
+          <Alert appearance="soft" tone="danger">
+            {bulkError}
+          </Alert>
+        )}
+        {bulkConfirmation === 'permanent'
+          ? `${selectedProducts.length} produtos e seus históricos de custos serão removidos sem possibilidade de recuperação.`
+          : `${selectedProducts.length} produtos sairão do catálogo e poderão ser restaurados em Excluídos.`}
+      </AlertDialog>
       {dialog?.type === 'product' && (
         <ProductForm
           key={dialog.product?.id || 'new'}

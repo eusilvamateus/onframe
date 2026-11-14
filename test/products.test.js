@@ -68,7 +68,7 @@ test('catalogo de produtos usa apenas componentes do design system', () => {
     /selectedCustomCost &&[^]*Descrição do custo[^]*selection="single"[^>]*>[^]*value="fixed" appearance="ghost" tone="primary">\s*R\$[^]*value="percentage" appearance="ghost" tone="primary">\s*%/u
   );
   assert.match(products, /const key = customCostKey\(\)[^]*setSelectedCustomCostKey\(key\)/u);
-  assert.doesNotMatch(products, /<ButtonGroup[^>]*(?:appearance|tone|attached=\{false\})/u);
+  assert.doesNotMatch(products, /<ButtonGroup[^>]*(?:appearance|tone)=/u);
   assert.doesNotMatch(products, /aria-label=\{`Remover custo/u);
   assert.match(products, /kind="quiet"\s*tone="primary"[^]*n="plus-circle"[^]*Adicionar custo/u);
   assert.match(products, /n="plus-circle" size=\{17\}[^]*Criar produto/u);
@@ -117,6 +117,7 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
     'product-archive',
     'product-restore',
     'product-delete-permanent',
+    'products-bulk',
     'product-import-preview',
     'product-import-commit',
     'product-settings',
@@ -156,6 +157,31 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   );
   assert.match(products, /value: 'deleted', label: 'Excluídos'/u);
   assert.match(products, /product\.status === 'deleted'/u);
+  assert.match(
+    products,
+    /<Table[^]*rowKey="id"[^]*selectable=\{status !== 'deleted' \|\| canDelete\}[^]*selectedKeys=\{selectedIds\}[^]*onSelect=\{\(_, keys\) => setSelectedIds\(keys\)\}/u
+  );
+  assert.match(products, /onframe-product-bulk-dock[^]*<Menu[^]*Mais ações em massa[^]*<ProductBulkEditor/u);
+  assert.match(products, /const BULK_FIELDS = \[[^]*'status'[^]*'cost'[^]*'taxRate'[^]*'minimumContributionMargin'/u);
+  assert.match(products, /selection="multiple"[^]*fullWidth[^]*value=\{fields\}[^]*ariaLabel="O que mudar"/u);
+  assert.match(
+    products,
+    /icon=\{item\.name === 'status' \? 'toggle-left' : item\.icon\}[^]*pressedIcon=\{item\.name === 'status' \? 'toggle-right' : undefined\}/u
+  );
+  for (const value of ['status', 'taxMode', 'marginMode']) {
+    assert.match(products, new RegExp(`<ButtonGroup\\s+selection="single"\\s+fullWidth\\s+value=\\{${value}\\}`, 'u'));
+  }
+  assert.doesNotMatch(products, /selection="single"\s+attached=\{false\}/u);
+  assert.doesNotMatch(sharedStyles, /\.onframe-product-bulk-picker[^}]*overflow-x: auto/u);
+  assert.doesNotMatch(sharedStyles, /\.onframe-product-bulk-picker > div[^}]*min-width: max-content/u);
+  assert.doesNotMatch(products, /products\.map\(\(product\) => product\.name\)\.join\(' e '\)/u);
+  assert.match(products, /initialField=\{typeof bulkEditorOpen === 'string' \? bulkEditorOpen : null\}/u);
+  assert.match(products, /onClick=\{\(\) => openBulkEditor\('cost'\)\}/u);
+  assert.match(products, /onClick=\{\(\) => openBulkEditor\('taxRate'\)\}/u);
+  assert.match(products, /tone: 'success'[^]*tone: 'warning'/u);
+  assert.match(products, /selectedProducts\.some\(\(product\) => product\.status === 'inactive'\)/u);
+  assert.match(products, /selectedProducts\.some\(\(product\) => product\.status === 'active'\)/u);
+  assert.match(sharedStyles, /\.onframe-product-bulk-dock--open\s*\{[^}]*opacity: 1;/u);
   assert.doesNotMatch(products, /className="onframe-actions"/u);
   assert.doesNotMatch(products, /key: 'status', label: 'Status'/u);
   assert.match(
