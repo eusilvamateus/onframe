@@ -1331,6 +1331,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
         <div className="onframe-products-pagination">
           <span>{pagination.total} produtos</span>
           <Pagination
+            size="sm"
             page={pagination.page}
             total={pagination.totalPages}
             onChange={(page) => {
