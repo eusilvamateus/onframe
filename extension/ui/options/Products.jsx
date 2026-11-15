@@ -796,18 +796,20 @@ function ProductBulkEditor({
           field(
             'cost',
             costSummary,
-            <NumberField
-              label="Novo custo"
-              value={cost}
-              disabled={busy}
-              min={0}
-              decimals={8}
-              controls="none"
-              startAddon="R$"
-              align="right"
-              width="min(100%, 328px)"
-              onChange={setCost}
-            />
+            <div className="onframe-product-bulk-input">
+              <NumberField
+                ariaLabel="Novo custo"
+                value={cost}
+                disabled={busy}
+                min={0}
+                decimals={8}
+                controls="none"
+                startAddon="R$"
+                align="right"
+                width="100%"
+                onChange={setCost}
+              />
+            </div>
           )}
         {fields.includes('taxRate') &&
           field(
@@ -836,19 +838,21 @@ function ProductBulkEditor({
                 </ToggleButton>
               </ButtonGroup>
               {taxMode === 'define' && (
-                <NumberField
-                  label="Alíquota"
-                  value={taxRate}
-                  disabled={busy}
-                  min={0}
-                  max={100}
-                  decimals={2}
-                  controls="none"
-                  endAddon="%"
-                  align="right"
-                  width="min(100%, 328px)"
-                  onChange={setTaxRate}
-                />
+                <div className="onframe-product-bulk-input">
+                  <NumberField
+                    ariaLabel="Alíquota"
+                    value={taxRate}
+                    disabled={busy}
+                    min={0}
+                    max={100}
+                    decimals={2}
+                    controls="none"
+                    endAddon="%"
+                    align="right"
+                    width="100%"
+                    onChange={setTaxRate}
+                  />
+                </div>
               )}
             </>
           )}
@@ -879,19 +883,21 @@ function ProductBulkEditor({
                 </ToggleButton>
               </ButtonGroup>
               {marginMode === 'define' && (
-                <NumberField
-                  label="Margem mínima"
-                  value={minimumMargin}
-                  disabled={busy}
-                  min={0}
-                  max={100}
-                  decimals={2}
-                  controls="none"
-                  endAddon="%"
-                  align="right"
-                  width="min(100%, 328px)"
-                  onChange={setMinimumMargin}
-                />
+                <div className="onframe-product-bulk-input">
+                  <NumberField
+                    ariaLabel="Margem mínima"
+                    value={minimumMargin}
+                    disabled={busy}
+                    min={0}
+                    max={100}
+                    decimals={2}
+                    controls="none"
+                    endAddon="%"
+                    align="right"
+                    width="100%"
+                    onChange={setMinimumMargin}
+                  />
+                </div>
               )}
             </>
           )}

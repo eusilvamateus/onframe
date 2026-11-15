@@ -2326,6 +2326,10 @@ input {
   box-sizing: border-box;
   width: 100%;
 }
+.onframe-product-bulk-input {
+  align-self: center;
+  width: min(100%, 328px);
+}
 .onframe-product-bulk-footer {
   display: flex;
   align-items: center;
