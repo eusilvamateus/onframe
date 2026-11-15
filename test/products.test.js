@@ -149,8 +149,11 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   );
   assert.match(products, /options\.map\([^]*<Chip[^]*selected=\{value === option\.value\}/u);
   assert.match(products, /SORT_FILTERS[^]*Código SKU[^]*Nome[^]*Mais recentes[^]*Data de atualização/u);
-  assert.match(products, /query: \{ q: debouncedQuery, status, sort, page, limit: PAGE_SIZE \}/u);
-  assert.match(background, /\['q', 'status', 'sort', 'page', 'limit'\]/u);
+  assert.match(
+    products,
+    /query: \{ q: debouncedQuery, status, sort, page, limit: PAGE_SIZE, selectionId: globalSelection\?\.id \}/u
+  );
+  assert.match(background, /\['q', 'status', 'sort', 'page', 'limit', 'selectionId'\]/u);
   assert.match(
     products,
     /<Popover[^]*align="end"[^]*dots-three-vertical[^]*<MenuPanel[^]*Editar produto[^]*Restaurar produto[^]*Excluir definitivamente[^]*Excluir produto/u
@@ -159,7 +162,7 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(products, /product\.status === 'deleted'/u);
   assert.match(
     products,
-    /<Table[^]*rowKey="id"[^]*selectable=\{status !== 'deleted' \|\| canDelete\}[^]*selectedKeys=\{selectedIds\}[^]*onSelect=\{\(_, keys\) => setSelectedIds\(keys\)\}/u
+    /<Table[^]*rowKey="id"[^]*selectable=\{!jobRunning && \(status !== 'deleted' \|\| canDelete\)\}[^]*selectedKeys=\{globalSelection \? products\.map\(\(product\) => product\.id\) : selectedIds\}[^]*onSelect=\{\(_, keys\) => \{[^]*setGlobalSelection\(null\);[^]*setSelectedIds\(keys\);/u
   );
   assert.match(products, /onframe-product-bulk-dock[^]*<Menu[^]*Mais ações em massa[^]*<ProductBulkEditor/u);
   assert.match(products, /const BULK_FIELDS = \[[^]*'status'[^]*'cost'[^]*'taxRate'[^]*'minimumContributionMargin'/u);
@@ -179,8 +182,19 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(products, /onClick=\{\(\) => openBulkEditor\('cost'\)\}/u);
   assert.match(products, /onClick=\{\(\) => openBulkEditor\('taxRate'\)\}/u);
   assert.match(products, /tone: 'success'[^]*tone: 'warning'/u);
-  assert.match(products, /selectedProducts\.some\(\(product\) => product\.status === 'inactive'\)/u);
-  assert.match(products, /selectedProducts\.some\(\(product\) => product\.status === 'active'\)/u);
+  assert.match(
+    products,
+    /globalSelection \? status !== 'active' : selectedProducts\.some\(\(product\) => product\.status === 'inactive'\)/u
+  );
+  assert.match(
+    products,
+    /globalSelection \? status !== 'inactive' : selectedProducts\.some\(\(product\) => product\.status === 'active'\)/u
+  );
+  assert.match(products, /Selecionar todos da página/u);
+  assert.match(products, /Selecionar todos os \$\{pagination\.total\} produtos/u);
+  assert.match(products, /products-bulk-selection[^]*products-bulk-start[^]*products-bulk-retry/u);
+  assert.match(products, /<ProgressBar\s+value=\{Math\.round/u);
+  assert.match(products, /Produtos não alterados[^]*Tentar novamente os/u);
   assert.match(sharedStyles, /\.onframe-product-bulk-dock--open\s*\{[^}]*opacity: 1;/u);
   assert.doesNotMatch(products, /className="onframe-actions"/u);
   assert.doesNotMatch(products, /key: 'status', label: 'Status'/u);

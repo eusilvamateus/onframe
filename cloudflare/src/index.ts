@@ -21,6 +21,13 @@ import { IdentitySecurityError, requireIdentitySession } from './identity-securi
 import { accountSecurity, revokeProviderSessions } from './account-security';
 import { AccountDeletionError, accountDeletionImpact, deleteAccount } from './account-deletion';
 import { listItemEditHistory } from './item-edit-history';
+import {
+  createProductBulkSelection,
+  getProductBulkJob,
+  latestProductBulkJob,
+  retryProductBulkJob,
+  startProductBulkJob
+} from './product-bulk-jobs';
 import { latestOnFrameRelease } from './releases';
 import {
   ProductRequestError,
@@ -2696,6 +2703,33 @@ export default {
       if (url.pathname === '/v1/app/products/bulk' && request.method === 'POST') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await changeProductsInBulk(request, env, actor, requestId));
+      }
+
+      if (url.pathname === '/v1/app/products/bulk-jobs') {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'POST') return json(await createProductBulkSelection(request, env, actor), 201);
+        if (request.method === 'GET') return json(await latestProductBulkJob(env, actor));
+      }
+
+      const bulkJobPath = /^\/v1\/app\/products\/bulk-jobs\/([^/]+)(?:\/(start|retry))?$/u.exec(url.pathname);
+      if (bulkJobPath) {
+        const actor = await authenticateExtensionSession(request, env);
+        if (request.method === 'GET' && !bulkJobPath[2]) {
+          return json(
+            await getProductBulkJob(
+              env,
+              actor,
+              bulkJobPath[1],
+              Number.parseInt(url.searchParams.get('failedPage') || '1', 10) || 1
+            )
+          );
+        }
+        if (request.method === 'POST' && bulkJobPath[2] === 'start') {
+          return json(await startProductBulkJob(request, env, actor, bulkJobPath[1]));
+        }
+        if (request.method === 'POST' && bulkJobPath[2] === 'retry') {
+          return json(await retryProductBulkJob(env, actor, bulkJobPath[1]));
+        }
       }
 
       const deletedProductPath = /^\/v1\/app\/products\/([^/]+)\/(restore|permanent)$/u.exec(url.pathname);

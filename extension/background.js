@@ -91,6 +91,27 @@ async function handleRemoteMessage(message) {
       method: 'POST',
       body: JSON.stringify(message.payload || {})
     });
+  if (action === 'products-bulk-selection')
+    return requestPlatform('/v1/app/products/bulk-jobs', {
+      method: 'POST',
+      body: JSON.stringify(message.payload || {})
+    });
+  if (action === 'products-bulk-latest') return requestPlatform('/v1/app/products/bulk-jobs');
+  if (action === 'products-bulk-job')
+    return requestPlatform(
+      `/v1/app/products/bulk-jobs/${encodeURIComponent(String(message.jobId || ''))}${
+        message.failedPage ? `?failedPage=${encodeURIComponent(String(message.failedPage))}` : ''
+      }`
+    );
+  if (action === 'products-bulk-start')
+    return requestPlatform(`/v1/app/products/bulk-jobs/${encodeURIComponent(String(message.jobId || ''))}/start`, {
+      method: 'POST',
+      body: JSON.stringify(message.payload || {})
+    });
+  if (action === 'products-bulk-retry')
+    return requestPlatform(`/v1/app/products/bulk-jobs/${encodeURIComponent(String(message.jobId || ''))}/retry`, {
+      method: 'POST'
+    });
   if (action === 'product-import-preview')
     return requestPlatform('/v1/app/products/import/preview', {
       method: 'POST',
@@ -178,7 +199,7 @@ function itemEditHistoryPath(query) {
 function productsPath(query) {
   const source = query && typeof query === 'object' ? query : {};
   const params = new URLSearchParams();
-  for (const key of ['q', 'status', 'sort', 'page', 'limit']) {
+  for (const key of ['q', 'status', 'sort', 'page', 'limit', 'selectionId']) {
     const value = String(source[key] === undefined || source[key] === null ? '' : source[key]).trim();
     if (value) params.set(key, value);
   }

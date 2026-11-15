@@ -492,6 +492,15 @@ function escapedLike(value: string): string {
 }
 
 export async function listProducts(env: ProductEnv, actor: ProductActor, url: URL) {
+  const selectionId = url.searchParams.get('selectionId');
+  if (selectionId) {
+    const selection = await env.ONFRAME_DB.prepare(
+      `SELECT id FROM product_bulk_jobs WHERE id = ? AND workspace_id = ? AND user_id = ?`
+    )
+      .bind(selectionId, actor.workspaceId, actor.userId)
+      .first();
+    if (!selection) throw new ProductRequestError('product_bulk_job_not_found', 404);
+  }
   const query = String(url.searchParams.get('q') || '').trim();
   const requestedStatus = String(url.searchParams.get('status') || 'all');
   const status = ['active', 'inactive', 'deleted', 'all'].includes(requestedStatus) ? requestedStatus : 'all';
@@ -505,13 +514,20 @@ export async function listProducts(env: ProductEnv, actor: ProductActor, url: UR
     }[requestedSort] || 'updated_at DESC, id DESC';
   const requestedPage = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '25', 10) || 25));
-  const where = ['workspace_id = ?', status === 'deleted' ? 'archived_at IS NOT NULL' : 'archived_at IS NULL'];
+  const where = [
+    'workspace_id = ?',
+    ...(selectionId ? [] : [status === 'deleted' ? 'archived_at IS NOT NULL' : 'archived_at IS NULL'])
+  ];
   const bindings: unknown[] = [actor.workspaceId];
-  if (status !== 'all' && status !== 'deleted') {
+  if (selectionId) {
+    where.push('id IN (SELECT product_id FROM product_bulk_job_items WHERE job_id = ?)');
+    bindings.push(selectionId);
+  }
+  if (!selectionId && status !== 'all' && status !== 'deleted') {
     where.push('status = ?');
     bindings.push(status);
   }
-  if (query) {
+  if (!selectionId && query) {
     where.push(`(sku LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\')`);
     const pattern = escapedLike(query);
     bindings.push(pattern, pattern);
@@ -1188,7 +1204,13 @@ type BulkProductRow = Pick<
   'id' | 'status' | 'current_cost_decimal' | 'tax_rate_bps' | 'minimum_contribution_margin_bps'
 > & { normalized_sku: string; archived_at: number | null };
 
-export async function changeProductsInBulk(request: Request, env: ProductEnv, actor: ProductActor, requestId: string) {
+export async function changeProductsInBulk(
+  request: Request,
+  env: ProductEnv,
+  actor: ProductActor,
+  requestId: string,
+  jobId: string | null = null
+) {
   const body = await requestBody(request);
   const ids = body.ids;
   const action = body.action;
@@ -1228,12 +1250,12 @@ export async function changeProductsInBulk(request: Request, env: ProductEnv, ac
       ? optionalDecimalToInteger(changes.minimumContributionMargin, 100, 10_000)
       : undefined;
 
-  const placeholders = ids.map(() => '?').join(', ');
+  const placeholders = 'SELECT value FROM json_each(?)';
   const rows = await env.ONFRAME_DB.prepare(
     `SELECT id, normalized_sku, status, archived_at, current_cost_decimal, tax_rate_bps, minimum_contribution_margin_bps
      FROM products WHERE workspace_id = ? AND id IN (${placeholders})`
   )
-    .bind(actor.workspaceId, ...ids)
+    .bind(actor.workspaceId, JSON.stringify(ids))
     .all<BulkProductRow>();
   if (rows.results.length !== ids.length) throw new ProductRequestError('product_not_found', 404);
   const deleted = action === 'restore' || action === 'permanent';
@@ -1246,7 +1268,7 @@ export async function changeProductsInBulk(request: Request, env: ProductEnv, ac
     const conflicts = await env.ONFRAME_DB.prepare(
       `SELECT id FROM products WHERE workspace_id = ? AND normalized_sku IN (${placeholders}) AND archived_at IS NULL LIMIT 1`
     )
-      .bind(actor.workspaceId, ...skus)
+      .bind(actor.workspaceId, JSON.stringify(skus))
       .first<{ id: string }>();
     if (conflicts) throw new ProductRequestError('product_restore_sku_conflict', 409);
   }
@@ -1303,17 +1325,38 @@ export async function changeProductsInBulk(request: Request, env: ProductEnv, ac
       );
     }
   }
+  if (jobId) {
+    statements.push(
+      env.ONFRAME_DB.prepare(
+        `UPDATE product_bulk_job_items SET status = 'succeeded', error_code = NULL
+         WHERE job_id = ? AND product_id IN (${placeholders}) AND status = 'pending'`
+      ).bind(jobId, JSON.stringify(ids))
+    );
+  }
+  statements.push(
+    env.ONFRAME_DB.prepare(
+      `INSERT INTO audit_events
+       (id, workspace_id, user_id, seller_account_id, request_id, operation, target_type, target_id,
+        outcome, status_code, metadata_json, created_at)
+       VALUES (?, ?, ?, NULL, ?, ?, 'workspace', ?, 'success', 200, ?, ?)`
+    ).bind(
+      crypto.randomUUID(),
+      actor.workspaceId,
+      actor.userId,
+      requestId,
+      `products_bulk_${action}`,
+      actor.workspaceId,
+      JSON.stringify({ ids, fields: action === 'update' ? fields : undefined, jobId }),
+      Date.now()
+    )
+  );
   try {
-    if (statements.length) await env.ONFRAME_DB.batch(statements);
+    await env.ONFRAME_DB.batch(statements);
   } catch (error) {
     if (action === 'restore' && String(error).includes('UNIQUE constraint failed')) {
       throw new ProductRequestError('product_restore_sku_conflict', 409);
     }
     throw error;
   }
-  await audit(env, actor, requestId, `products_bulk_${action}`, 'workspace', actor.workspaceId, 200, {
-    ids,
-    fields: action === 'update' ? fields : undefined
-  });
   return { count: ids.length };
 }

@@ -2215,6 +2215,17 @@ input {
 .onframe-products--selection-active {
   padding-bottom: 96px;
 }
+.onframe-product-bulk-job-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ob-space-8);
+}
+.onframe-product-bulk-job-status > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ob-space-8);
+}
 .onframe-product-bulk-dock {
   position: fixed;
   z-index: var(--ob-z-raised);

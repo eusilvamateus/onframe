@@ -38,13 +38,14 @@ test('promoções pendentes usam Workflow durável e reconciliação consultáve
     'utf8'
   );
 
-  assert.deepEqual(config.workflows, [
+  assert.deepEqual(
+    config.workflows.find((entry) => entry.binding === 'PROMOTION_RECONCILIATION'),
     {
       name: 'onframe-promotion-reconciliation',
       binding: 'PROMOTION_RECONCILIATION',
       class_name: 'PromotionReconciliationWorkflow'
     }
-  ]);
+  );
   assert.equal(config.main, 'src/worker.ts');
   assert.match(workflow, /class PromotionReconciliationWorkflow extends WorkflowEntrypoint/);
   assert.match(worker, /GET \/bulk\/reconciliations/);

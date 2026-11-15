@@ -16,6 +16,11 @@
       "name": "onframe-promotion-reconciliation",
       "binding": "PROMOTION_RECONCILIATION",
       "class_name": "PromotionReconciliationWorkflow"
+    },
+    {
+      "name": "onframe-product-bulk",
+      "binding": "PRODUCT_BULK",
+      "class_name": "ProductBulkWorkflow"
     }
   ],
   "vars": {

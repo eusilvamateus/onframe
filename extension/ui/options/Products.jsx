@@ -10,6 +10,8 @@ import {
   Drawer,
   EmptyState,
   Input,
+  List,
+  ListItem,
   Menu,
   MenuPanel,
   Modal,
@@ -17,6 +19,7 @@ import {
   Pagination,
   Ph,
   Popover,
+  ProgressBar,
   SearchInput,
   Select,
   Spinner,
@@ -615,7 +618,17 @@ const BULK_FIELDS = [
   { name: 'minimumContributionMargin', label: 'Margem mínima', icon: 'chart-line-up' }
 ];
 
-function ProductBulkEditor({ products, costDecimalPlaces, initialField, busy, error, onClose, onApply }) {
+function ProductBulkEditor({
+  products,
+  selectionCount,
+  globalSelection,
+  costDecimalPlaces,
+  initialField,
+  busy,
+  error,
+  onClose,
+  onApply
+}) {
   const [fields, setFields] = useState(initialField ? [initialField] : []);
   const [status, setStatus] = useState(null);
   const [cost, setCost] = useState(null);
@@ -640,8 +653,9 @@ function ProductBulkEditor({ products, costDecimalPlaces, initialField, busy, er
     (!fields.includes('taxRate') || taxMode === 'inherit' || taxRate !== null) &&
     (!fields.includes('minimumContributionMargin') || marginMode === 'inherit' || minimumMargin !== null);
   const costs = products.map((product) => product.cost);
-  const costSummary =
-    Math.min(...costs) === Math.max(...costs)
+  const costSummary = globalSelection
+    ? ''
+    : Math.min(...costs) === Math.max(...costs)
       ? `Hoje: ${money(costs[0], costDecimalPlaces)}`
       : `Hoje: de ${money(Math.min(...costs), costDecimalPlaces)} a ${money(Math.max(...costs), costDecimalPlaces)}`;
 
@@ -666,7 +680,7 @@ function ProductBulkEditor({ products, costDecimalPlaces, initialField, busy, er
               <Ph n={definition.icon} size={18} />
               {definition.label}
             </strong>
-            <span>{description}</span>
+            {description && <span>{description}</span>}
           </div>
           <Button
             kind="quiet"
@@ -687,14 +701,14 @@ function ProductBulkEditor({ products, costDecimalPlaces, initialField, busy, er
     <Drawer
       open
       onClose={busy ? () => {} : onClose}
-      title={`Editar ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}`}
+      title={`Editar ${selectionCount} ${selectionCount === 1 ? 'produto' : 'produtos'}`}
       side="right"
       width={520}
       footer={
         <div className="onframe-product-bulk-footer">
           <span>
             {enabled.length
-              ? `Mudar ${enabled.map((field) => field.label.toLowerCase()).join(', ')} em ${products.length} ${products.length === 1 ? 'produto' : 'produtos'}.`
+              ? `Mudar ${enabled.map((field) => field.label.toLowerCase()).join(', ')} em ${selectionCount} ${selectionCount === 1 ? 'produto' : 'produtos'}.`
               : 'Escolha o que você quer mudar.'}
           </span>
           <div>
@@ -759,7 +773,9 @@ function ProductBulkEditor({ products, costDecimalPlaces, initialField, busy, er
         {fields.includes('status') &&
           field(
             'status',
-            `Hoje: ${products.filter((product) => product.status === 'active').length} ativos e ${products.filter((product) => product.status === 'inactive').length} inativos`,
+            globalSelection
+              ? ''
+              : `Hoje: ${products.filter((product) => product.status === 'active').length} ativos e ${products.filter((product) => product.status === 'inactive').length} inativos`,
             <ButtonGroup
               selection="single"
               fullWidth
@@ -899,6 +915,10 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
   const [error, setError] = useState('');
   const [costDecimalPlaces, setCostDecimalPlaces] = useState(2);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [globalSelection, setGlobalSelection] = useState(null);
+  const [pendingSelection, setPendingSelection] = useState(null);
+  const [activeJob, setActiveJob] = useState(null);
+  const [failureDrawerOpen, setFailureDrawerOpen] = useState(false);
   const [bulkEditorOpen, setBulkEditorOpen] = useState(false);
   const [bulkConfirmation, setBulkConfirmation] = useState(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -917,7 +937,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       setError('');
       try {
         const result = await sendRemoteMessage('products', {
-          query: { q: debouncedQuery, status, sort, page, limit: PAGE_SIZE }
+          query: { q: debouncedQuery, status, sort, page, limit: PAGE_SIZE, selectionId: globalSelection?.id }
         });
         if (sequence !== requestSequence.current) return;
         setProducts(result.products || []);
@@ -930,21 +950,76 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
         if (sequence === requestSequence.current) setLoading(false);
       }
     },
-    [debouncedQuery, sort, status]
+    [debouncedQuery, sort, status, globalSelection?.id]
   );
 
   useEffect(() => {
     setSelectedIds([]);
+    setGlobalSelection(null);
+    setPendingSelection(null);
+  }, [debouncedQuery, status]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+    setPendingSelection(null);
+  }, [sort]);
+
+  useEffect(() => {
     void load(1);
   }, [load]);
 
-  const selectedProducts = products.filter((product) => selectedIds.includes(product.id));
-  const selectionOpen = selectedProducts.length > 0;
+  useEffect(() => {
+    let mounted = true;
+    void sendRemoteMessage('products-bulk-latest')
+      .then((job) => {
+        if (mounted && job.id) setActiveJob(job);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const selectedProducts = products.filter((product) => globalSelection || selectedIds.includes(product.id));
+  const selectionCount = globalSelection?.total || selectedProducts.length;
+  const selectionOpen = selectionCount > 0;
+  const jobRunning = activeJob && ['queued', 'running'].includes(activeJob.status);
+
+  function clearSelection() {
+    setSelectedIds([]);
+    setGlobalSelection(null);
+    setPendingSelection(null);
+  }
+
+  useEffect(() => {
+    if (!jobRunning) return undefined;
+    let mounted = true;
+    let polling = false;
+    const poll = async () => {
+      if (polling) return;
+      polling = true;
+      try {
+        const job = await sendRemoteMessage('products-bulk-job', { jobId: activeJob.id });
+        if (!mounted) return;
+        setActiveJob(job);
+        if (!['queued', 'running'].includes(job.status)) void load(pagination.page);
+      } catch (failure) {
+        if (mounted) setError(userError(failure, 'Não foi possível consultar o andamento da edição.'));
+      } finally {
+        polling = false;
+      }
+    };
+    const timer = window.setInterval(() => void poll(), 1500);
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+    };
+  }, [activeJob?.id, jobRunning, load, pagination.page]);
 
   useEffect(() => {
     if (!selectionOpen || bulkEditorOpen || bulkConfirmation || dialog) return undefined;
     const onKeyDown = (event) => {
-      if (event.key === 'Escape') setSelectedIds([]);
+      if (event.key === 'Escape') clearSelection();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -954,15 +1029,38 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
     setBulkBusy(true);
     setBulkError('');
     setError('');
-    try {
-      await sendRemoteMessage('products-bulk', {
-        payload: { ids: selectedIds, action, ...(changes ? { changes } : {}) }
-      });
+    const key = globalSelection?.id || [...selectedIds].sort().join('|');
+    let selection = globalSelection || (pendingSelection?.key === key ? pendingSelection : null);
+    const showStartedJob = (job) => {
+      setActiveJob(job);
       setBulkEditorOpen(false);
       setBulkConfirmation(null);
-      setSelectedIds([]);
-      await load(pagination.page);
+      clearSelection();
+    };
+    try {
+      if (!selection) {
+        selection = await sendRemoteMessage('products-bulk-selection', {
+          payload: { ids: selectedIds }
+        });
+        setPendingSelection({ ...selection, key });
+      }
+      const job = await sendRemoteMessage('products-bulk-start', {
+        jobId: selection.id,
+        payload: { action, ...(changes ? { changes } : {}) }
+      });
+      showStartedJob(job);
     } catch (failure) {
+      if (selection) {
+        try {
+          const job = await sendRemoteMessage('products-bulk-job', { jobId: selection.id });
+          if (job.status !== 'selected') {
+            showStartedJob(job);
+            return;
+          }
+        } catch {
+          // Keep the selection ID so a retry cannot create a duplicate job.
+        }
+      }
       const message = userError(failure);
       setBulkError(message);
       if (!bulkEditorOpen && !bulkConfirmation) setError(message);
@@ -971,8 +1069,65 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
     }
   }
 
-  function exportSelected() {
-    downloadProductExport(selectedProducts);
+  async function exportSelected() {
+    if (!globalSelection) return downloadProductExport(selectedProducts);
+    setExportBusy(true);
+    try {
+      const catalog = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const result = await sendRemoteMessage('products', {
+          query: { selectionId: globalSelection.id, page, limit: 100 }
+        });
+        catalog.push(...(result.products || []));
+        totalPages = result.pagination?.totalPages || 1;
+        page += 1;
+      } while (page <= totalPages);
+      downloadProductExport(catalog);
+    } catch (failure) {
+      setError(userError(failure, 'Não foi possível exportar os produtos selecionados.'));
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  async function selectAllFiltered() {
+    setBulkBusy(true);
+    setError('');
+    try {
+      const selection = await sendRemoteMessage('products-bulk-selection', {
+        payload: { filter: { q: debouncedQuery, status } }
+      });
+      setPendingSelection(null);
+      setGlobalSelection(selection);
+    } catch (failure) {
+      setError(userError(failure, 'Não foi possível selecionar todos os produtos.'));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function retryBulkFailures() {
+    setBulkBusy(true);
+    try {
+      const job = await sendRemoteMessage('products-bulk-retry', { jobId: activeJob.id });
+      setActiveJob(job);
+      setFailureDrawerOpen(false);
+    } catch (failure) {
+      setError(userError(failure, 'Não foi possível tentar novamente.'));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function failurePage(page) {
+    try {
+      const job = await sendRemoteMessage('products-bulk-job', { jobId: activeJob.id, failedPage: page });
+      setActiveJob(job);
+    } catch (failure) {
+      setError(userError(failure, 'Não foi possível carregar as falhas.'));
+    }
   }
 
   function openBulkEditor(field = true) {
@@ -1183,22 +1338,37 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
   const statusActions =
     admin && status !== 'deleted'
       ? [
-          ...(selectedProducts.some((product) => product.status === 'inactive')
+          ...((
+            globalSelection ? status !== 'active' : selectedProducts.some((product) => product.status === 'inactive')
+          )
             ? [{ label: 'Ativar', icon: 'play-circle', tone: 'success', value: 'active' }]
             : []),
-          ...(selectedProducts.some((product) => product.status === 'active')
+          ...((
+            globalSelection ? status !== 'inactive' : selectedProducts.some((product) => product.status === 'active')
+          )
             ? [{ label: 'Inativar', icon: 'pause-circle', tone: 'warning', value: 'inactive' }]
             : [])
         ]
       : [];
-  const canSelectPage = selectedProducts.length < products.length;
+  const canSelectPage = !globalSelection && selectedProducts.length < products.length;
+  const canSelectFiltered = !globalSelection && !canSelectPage && pagination.total > products.length;
   const selectPageAction =
     canSelectPage && !wideBar
       ? [
           {
-            label: `Selecionar os ${products.length} da página`,
+            label: 'Selecionar todos da página',
             icon: 'checks',
             onSelect: () => setSelectedIds(products.map((product) => product.id))
+          }
+        ]
+      : [];
+  const selectFilteredAction =
+    canSelectFiltered && !wideBar
+      ? [
+          {
+            label: `Selecionar todos os ${pagination.total} produtos`,
+            icon: 'checks',
+            onSelect: () => void selectAllFiltered()
           }
         ]
       : [];
@@ -1206,6 +1376,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
     status === 'deleted'
       ? [
           ...selectPageAction,
+          ...selectFilteredAction,
           ...(canDelete
             ? [
                 ...(selectPageAction.length ? [{ type: 'separator' }] : []),
@@ -1220,6 +1391,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
         ]
       : [
           ...selectPageAction,
+          ...selectFilteredAction,
           ...(!wideBar
             ? statusActions.map((action) => ({
                 label: action.label,
@@ -1263,11 +1435,47 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
           {error}
         </Alert>
       )}
+      {activeJob && (
+        <Alert
+          appearance="soft"
+          tone={activeJob.failed ? 'warning' : activeJob.status === 'completed' ? 'success' : 'info'}
+        >
+          <div className="onframe-product-bulk-job-status">
+            <div>
+              <strong>
+                {jobRunning
+                  ? 'Processando produtos'
+                  : activeJob.failed
+                    ? 'Ação concluída com falhas'
+                    : 'Ação concluída'}
+              </strong>
+              <span>
+                {activeJob.succeeded} de {activeJob.total} concluídos
+                {activeJob.failed ? ` · ${activeJob.failed} com falha` : ''}
+              </span>
+            </div>
+            {activeJob.total > 0 && (
+              <ProgressBar
+                value={Math.round(((activeJob.succeeded + activeJob.failed) * 100) / activeJob.total)}
+                size="sm"
+              />
+            )}
+            {activeJob.failed > 0 && !jobRunning && (
+              <Button kind="quiet" size="sm" onClick={() => setFailureDrawerOpen(true)}>
+                Ver falhas
+              </Button>
+            )}
+          </div>
+        </Alert>
+      )}
       <div className="onframe-products-toolbar">
         <div className="onframe-products-search">
           <SearchInput
             value={query}
-            onChange={setQuery}
+            onChange={(value) => {
+              clearSelection();
+              setQuery(value);
+            }}
             loading={loading && query !== debouncedQuery}
             placeholder="Buscar por SKU ou nome"
             ariaLabel="Buscar produtos"
@@ -1282,7 +1490,10 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
             value={status}
             selected={status !== 'all'}
             width={240}
-            onChange={setStatus}
+            onChange={(value) => {
+              clearSelection();
+              setStatus(value);
+            }}
           />
           <ProductChipFilter
             ariaLabel="Ordenar produtos"
@@ -1301,9 +1512,13 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
           columns={columns}
           rows={products}
           rowKey="id"
-          selectable={status !== 'deleted' || canDelete}
-          selectedKeys={selectedIds}
-          onSelect={(_, keys) => setSelectedIds(keys)}
+          selectable={!jobRunning && (status !== 'deleted' || canDelete)}
+          selectedKeys={globalSelection ? products.map((product) => product.id) : selectedIds}
+          onSelect={(_, keys) => {
+            setGlobalSelection(null);
+            setSelectedIds(keys);
+            setPendingSelection(null);
+          }}
           loading={loading}
           emptyState={
             <EmptyState
@@ -1335,7 +1550,10 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
             page={pagination.page}
             total={pagination.totalPages}
             onChange={(page) => {
-              setSelectedIds([]);
+              if (!globalSelection) {
+                setSelectedIds([]);
+                setPendingSelection(null);
+              }
               void load(page);
             }}
           />
@@ -1354,11 +1572,11 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
                 aria-label="Limpar seleção"
                 icon={<Ph n="x" size={16} />}
                 disabled={bulkBusy}
-                onClick={() => setSelectedIds([])}
+                onClick={clearSelection}
               />
             </Tooltip>
             <strong>
-              {selectedProducts.length} {selectedProducts.length === 1 ? 'selecionado' : 'selecionados'}
+              {selectionCount} {selectionCount === 1 ? 'selecionado' : 'selecionados'}
             </strong>
             {wideBar && canSelectPage && (
               <Button
@@ -1367,7 +1585,12 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
                 disabled={bulkBusy}
                 onClick={() => setSelectedIds(products.map((product) => product.id))}
               >
-                Selecionar os {products.length} da página
+                Selecionar todos da página
+              </Button>
+            )}
+            {wideBar && canSelectFiltered && (
+              <Button kind="quiet" size="sm" disabled={bulkBusy} onClick={() => void selectAllFiltered()}>
+                Selecionar todos os {pagination.total} produtos
               </Button>
             )}
             {wideBar && status !== 'deleted' && admin && (
@@ -1429,7 +1652,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
               <Button
                 size="sm"
                 icon={<Ph n="arrow-counter-clockwise" size={16} />}
-                disabled={bulkBusy || !canDelete}
+                disabled={bulkBusy || jobRunning || !canDelete}
                 onClick={() => void applyBulk('restore')}
               >
                 Restaurar
@@ -1438,13 +1661,18 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
               <Button
                 size="sm"
                 icon={<Ph n="pencil-simple" size={16} />}
-                disabled={bulkBusy}
+                disabled={bulkBusy || jobRunning}
                 onClick={() => openBulkEditor()}
               >
-                Editar {selectedProducts.length > 1 ? `${selectedProducts.length} produtos` : 'produto'}
+                Editar {selectionCount > 1 ? `${selectionCount} produtos` : 'produto'}
               </Button>
             ) : (
-              <Button size="sm" icon={<Ph n="download-simple" size={16} />} onClick={exportSelected}>
+              <Button
+                size="sm"
+                icon={<Ph n="download-simple" size={16} />}
+                disabled={exportBusy}
+                onClick={() => void exportSelected()}
+              >
                 Exportar
               </Button>
             )}
@@ -1454,6 +1682,8 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
       {bulkEditorOpen && (
         <ProductBulkEditor
           products={selectedProducts}
+          selectionCount={selectionCount}
+          globalSelection={Boolean(globalSelection)}
           costDecimalPlaces={costDecimalPlaces}
           initialField={typeof bulkEditorOpen === 'string' ? bulkEditorOpen : null}
           busy={bulkBusy}
@@ -1481,9 +1711,48 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
           </Alert>
         )}
         {bulkConfirmation === 'permanent'
-          ? `${selectedProducts.length} produtos e seus históricos de custos serão removidos sem possibilidade de recuperação.`
-          : `${selectedProducts.length} produtos sairão do catálogo e poderão ser restaurados em Excluídos.`}
+          ? `${selectionCount} produtos e seus históricos de custos serão removidos sem possibilidade de recuperação.`
+          : `${selectionCount} produtos sairão do catálogo e poderão ser restaurados em Excluídos.`}
       </AlertDialog>
+      <Drawer
+        open={failureDrawerOpen}
+        onClose={() => setFailureDrawerOpen(false)}
+        title="Produtos não alterados"
+        side="right"
+        width={520}
+        footer={
+          <Button disabled={bulkBusy || !activeJob?.failed} loading={bulkBusy} onClick={() => void retryBulkFailures()}>
+            Tentar novamente os {activeJob?.failed || 0} produtos
+          </Button>
+        }
+      >
+        {activeJob?.failed > 0 && (
+          <div className="onframe-stack">
+            <Alert appearance="soft" tone="warning">
+              {activeJob.failed} {activeJob.failed === 1 ? 'produto não foi alterado' : 'produtos não foram alterados'}.
+            </Alert>
+            <List ariaLabel="Produtos não alterados">
+              {(activeJob.failures || []).map((failure) => (
+                <ListItem
+                  key={failure.productId}
+                  title={failure.name}
+                  strong
+                  wrap
+                  description={`${failure.sku} · ${userError({ code: failure.errorCode }, 'Não foi possível alterar.')}`}
+                />
+              ))}
+            </List>
+            {activeJob.failed > 25 && (
+              <Pagination
+                size="sm"
+                page={activeJob.failedPage || 1}
+                total={Math.ceil(activeJob.failed / 25)}
+                onChange={(page) => void failurePage(page)}
+              />
+            )}
+          </div>
+        )}
+      </Drawer>
       {dialog?.type === 'product' && (
         <ProductForm
           key={dialog.product?.id || 'new'}

@@ -4,6 +4,14 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Miniflare } from 'miniflare';
 import { unstable_splitSqlQuery } from 'wrangler';
 import {
+  createProductBulkSelection,
+  finishProductBulkJob,
+  getProductBulkJob,
+  processProductBulkJobBatch,
+  retryProductBulkJob,
+  startProductBulkJob
+} from '../src/product-bulk-jobs.ts';
+import {
   archiveProduct,
   changeProductsInBulk,
   commitProductImport,
@@ -587,6 +595,77 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
           .first<{ total: number }>()
       )?.total,
       0
+    );
+
+    const statements = Array.from({ length: 125 }, (_, index) => {
+      const sku = `TEST-GLOBAL-${String(index).padStart(3, '0')}`;
+      return db
+        .prepare(
+          `INSERT INTO products (id, workspace_id, sku, normalized_sku, name, status, created_at, updated_at)
+         VALUES (?, 'workspace-1', ?, ?, ?, 'active', 1, 1)`
+        )
+        .bind(sku, sku, sku, `Produto ${index}`);
+    });
+    await db.batch(statements);
+    const jobEnv = {
+      ONFRAME_DB: db,
+      PRODUCT_BULK: {
+        create: async ({ id }: { id: string }) => ({ id }),
+        get: async () => ({ status: async () => ({ status: 'queued' }) })
+      }
+    };
+    const selection = await createProductBulkSelection(
+      productRequest({ filter: { q: 'TEST-GLOBAL-', status: 'active' } }),
+      jobEnv,
+      admin
+    );
+    assert.equal(selection.total, 125);
+    await db
+      .prepare(
+        `INSERT INTO products (id, workspace_id, sku, normalized_sku, name, status, created_at, updated_at)
+       VALUES ('TEST-GLOBAL-NEW', 'workspace-1', 'TEST-GLOBAL-NEW', 'TEST-GLOBAL-NEW', 'Novo', 'active', 1, 1)`
+      )
+      .run();
+    const snapshot = await listProducts(
+      env,
+      admin,
+      new URL(`https://onframe.onblide.com/v1/app/products?selectionId=${selection.id}&limit=100`)
+    );
+    assert.equal(snapshot.pagination.total, 125);
+    assert.equal(snapshot.products.length, 100);
+    await assert.rejects(getProductBulkJob(jobEnv, { ...collaborator, permissions: ['products.read'] }, selection.id), {
+      code: 'product_bulk_job_not_found'
+    });
+    await startProductBulkJob(
+      productRequest({ action: 'update', changes: { status: 'inactive' } }),
+      jobEnv,
+      admin,
+      selection.id
+    );
+    await db.prepare("UPDATE products SET archived_at = 2 WHERE id = 'TEST-GLOBAL-124'").run();
+    assert.equal(await processProductBulkJobBatch(jobEnv, selection.id), true);
+    assert.equal(await processProductBulkJobBatch(jobEnv, selection.id), true);
+    assert.equal(await processProductBulkJobBatch(jobEnv, selection.id), false);
+    const progress = await getProductBulkJob(jobEnv, admin, selection.id);
+    assert.equal(progress.total, 125);
+    assert.equal(progress.succeeded, 124);
+    assert.equal(progress.failed, 1);
+    assert.equal(progress.failures[0].productId, 'TEST-GLOBAL-124');
+    await finishProductBulkJob(jobEnv, selection.id);
+    assert.equal((await getProductBulkJob(jobEnv, admin, selection.id)).status, 'partial');
+    await db.prepare("UPDATE products SET archived_at = NULL WHERE id = 'TEST-GLOBAL-124'").run();
+    await retryProductBulkJob(jobEnv, admin, selection.id);
+    assert.equal(await processProductBulkJobBatch(jobEnv, selection.id), true);
+    assert.equal(await processProductBulkJobBatch(jobEnv, selection.id), false);
+    await finishProductBulkJob(jobEnv, selection.id);
+    const completed = await getProductBulkJob(jobEnv, admin, selection.id);
+    assert.equal(completed.status, 'completed');
+    assert.equal(completed.succeeded, 125);
+    assert.equal(completed.failed, 0);
+    assert.equal(
+      (await db.prepare("SELECT status FROM products WHERE id = 'TEST-GLOBAL-NEW'").first<{ status: string }>())
+        ?.status,
+      'active'
     );
   } finally {
     await simulator.dispose();
