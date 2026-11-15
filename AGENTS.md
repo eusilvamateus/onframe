@@ -104,6 +104,11 @@ Mercado Livre. Para validar documentação, comportamento ou estado do Supabase,
 use exclusivamente a skill `$supabase`, o conector Supabase e o CLI autenticado;
 não use busca web genérica. Para descrever a arquitetura e as permissões do
 OnFrame, confirme também no código e nas migrações deste repositório.
+Para pesquisar documentação, limites, comportamento ou estado da Cloudflare,
+use exclusivamente a skill `$cloudflare` e o conector Cloudflare. Nunca use
+busca web (`web.run`), navegador ou outra fonte externa como alternativa.
+Se essas fontes não responderem, informe a limitação ao usuário. Para o
+comportamento do OnFrame, confira também o código deste repositório.
 
 ## Controle do Navegador e do Computador
 
