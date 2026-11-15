@@ -272,12 +272,12 @@ export async function getProductBulkJob(env: ProductBulkJobEnv, actor: ProductAc
 export async function latestProductBulkJob(env: ProductBulkJobEnv, actor: ProductActor) {
   if (!hasPermission(actor, 'products.read')) jobError('product_access_forbidden', 403);
   const job = await env.ONFRAME_DB.prepare(
-    `SELECT id FROM product_bulk_jobs WHERE workspace_id = ? AND user_id = ? AND status != 'selected'
+    `SELECT id, status FROM product_bulk_jobs WHERE workspace_id = ? AND user_id = ? AND status != 'selected'
      ORDER BY created_at DESC LIMIT 1`
   )
     .bind(actor.workspaceId, actor.userId)
-    .first<{ id: string }>();
-  return job ? getProductBulkJob(env, actor, job.id) : null;
+    .first<{ id: string; status: JobRow['status'] }>();
+  return job && job.status !== 'completed' ? getProductBulkJob(env, actor, job.id) : null;
 }
 
 async function jobActor(env: ProductBulkJobEnv, job: JobRow): Promise<ProductActor> {

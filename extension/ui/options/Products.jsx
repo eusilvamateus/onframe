@@ -978,7 +978,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
     let mounted = true;
     void sendRemoteMessage('products-bulk-latest')
       .then((job) => {
-        if (mounted && job.id) setActiveJob(job);
+        if (mounted && job?.id) setActiveJob(job);
       })
       .catch(() => {});
     return () => {
@@ -990,6 +990,15 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
   const selectionCount = globalSelection?.total || selectedProducts.length;
   const selectionOpen = selectionCount > 0;
   const jobRunning = activeJob && ['queued', 'running'].includes(activeJob.status);
+
+  useEffect(() => {
+    if (activeJob?.status !== 'completed') return undefined;
+    const id = activeJob.id;
+    const timer = window.setTimeout(() => {
+      setActiveJob((current) => (current?.id === id ? null : current));
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [activeJob?.id, activeJob?.status]);
 
   function clearSelection() {
     setSelectedIds([]);

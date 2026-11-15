@@ -7,6 +7,7 @@ import {
   createProductBulkSelection,
   finishProductBulkJob,
   getProductBulkJob,
+  latestProductBulkJob,
   processProductBulkJobBatch,
   retryProductBulkJob,
   startProductBulkJob
@@ -653,6 +654,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(progress.failures[0].productId, 'TEST-GLOBAL-124');
     await finishProductBulkJob(jobEnv, selection.id);
     assert.equal((await getProductBulkJob(jobEnv, admin, selection.id)).status, 'partial');
+    assert.equal((await latestProductBulkJob(jobEnv, admin))?.id, selection.id);
     await db.prepare("UPDATE products SET archived_at = NULL WHERE id = 'TEST-GLOBAL-124'").run();
     await retryProductBulkJob(jobEnv, admin, selection.id);
     assert.equal(await processProductBulkJobBatch(jobEnv, selection.id), true);
@@ -662,6 +664,7 @@ test('catalogo de produtos preserva os invariantes financeiros e de acesso', asy
     assert.equal(completed.status, 'completed');
     assert.equal(completed.succeeded, 125);
     assert.equal(completed.failed, 0);
+    assert.equal(await latestProductBulkJob(jobEnv, admin), null);
     assert.equal(
       (await db.prepare("SELECT status FROM products WHERE id = 'TEST-GLOBAL-NEW'").first<{ status: string }>())
         ?.status,
