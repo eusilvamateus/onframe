@@ -1500,7 +1500,7 @@ export function Products({ accounts = [], admin, canDelete = admin, onHeaderActi
         <div className="onframe-products-filters">
           <ProductChipFilter
             ariaLabel="Filtrar produtos por status"
-            icon="funnel-simple"
+            icon="sliders-horizontal"
             options={STATUS_FILTERS}
             value={status}
             selected={status !== 'all'}

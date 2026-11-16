@@ -732,7 +732,7 @@ function PromotionManager({ model, actions }) {
                   trigger={
                     <Button
                       kind="secondary"
-                      icon={icon('funnel', 18)}
+                      icon={icon('sliders-horizontal', 18)}
                       count={filterCount || undefined}
                       countTone="primary"
                     >

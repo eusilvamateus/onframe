@@ -591,8 +591,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     view,
     /onframe-promotion-manager-toolbar-line[\s\S]*<Tabs[\s\S]*onframe-promotion-manager-toolbar-actions[\s\S]*onframe-promotion-manager-search-line[\s\S]*onframe-promotion-manager-filter-controls[\s\S]*<Popover/s
   );
-  assert.match(view, /icon=\{icon\('funnel', 18\)\}/);
-  assert.doesNotMatch(view, /icon=\{icon\('sliders-horizontal', 18\)\}/);
+  assert.match(view, /icon=\{icon\('sliders-horizontal', 18\)\}/);
+  assert.doesNotMatch(view, /icon=\{icon\('funnel', 18\)\}/);
   assert.match(view, /kind="neutral"\s+size="sm"\s+iconOnly\s+aria-label="Atualizar promoções"/s);
   assert.match(view, /kind="primary"\s+size="sm"\s+icon=\{icon\('tag', 18\)\}/s);
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);

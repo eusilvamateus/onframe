@@ -200,7 +200,7 @@ function HistoryFilters({ accountOptions, peopleOptions, admin, accountId, userI
           size="md"
           count={activeCount || undefined}
           countTone="primary"
-          icon={<Ph n="funnel-simple" size={17} />}
+          icon={<Ph n="sliders-horizontal" size={17} />}
         >
           Filtros
         </Button>
