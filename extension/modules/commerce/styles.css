@@ -842,8 +842,8 @@
   .onframe-commerce-modal-root,
   .onframe-commerce-direct-discount-modal-root
 ),
-body:has(:is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog'])
-  > [data-ob-popover-id],
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root))
+  > :is([data-ob-popover-id], [data-ob-camada]),
 body:has(
     :is(
         .onframe-commerce-inline,
@@ -921,8 +921,8 @@ body:has(
     time,
     output
   ),
-body:has(:is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog'])
-  > [data-ob-popover-id]
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root))
+  > :is([data-ob-popover-id], [data-ob-camada])
   :where(
     div,
     section,
@@ -996,8 +996,8 @@ body:has(
     .onframe-commerce-direct-discount-modal-root
   )
   :where(kbd, [style*='--ob-font-mono']),
-body:has(:is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) [role='dialog'])
-  > [data-ob-popover-id]
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root))
+  > :is([data-ob-popover-id], [data-ob-camada])
   :where(kbd, [style*='--ob-font-mono']),
 body:has(
     :is(

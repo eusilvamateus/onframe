@@ -678,7 +678,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   );
   assert.match(
     styles,
-    /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*\[data-ob-popover-id\],[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s
+    /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*:is\(\[data-ob-popover-id\], \[data-ob-camada\]\),[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s
+  );
+  assert.match(
+    styles,
+    /body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\)\s*> :is\(\[data-ob-popover-id\], \[data-ob-camada\]\)/
   );
   assert.match(
     styles,
@@ -688,7 +692,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     styles,
     /:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
   );
-  assert.match(styles, />\s*\[data-ob-popover-id\]\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/);
+  assert.match(
+    styles,
+    />\s*:is\(\[data-ob-popover-id\], \[data-ob-camada\]\)\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/
+  );
   assert.match(styles, />\s*\[role='tooltip'\]\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/);
   assert.match(
     styles,

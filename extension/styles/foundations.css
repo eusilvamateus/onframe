@@ -172,7 +172,8 @@
   [class*=' onblide-ml-'],
   [class^='onframe-'],
   [class*=' onframe-'],
-  [data-ob-popover-id]
+  [data-ob-popover-id],
+  [data-ob-camada]
 ) {
   color: var(--ob-fg);
   font-family: var(--ob-font);
@@ -187,7 +188,8 @@
   [class*=' onblide-ml-'],
   [class^='onframe-'],
   [class*=' onframe-'],
-  [data-ob-popover-id]
+  [data-ob-popover-id],
+  [data-ob-camada]
 ),
 :where(
     #onblide-ml-root,
@@ -195,7 +197,8 @@
     [class*=' onblide-ml-'],
     [class^='onframe-'],
     [class*=' onframe-'],
-    [data-ob-popover-id]
+    [data-ob-popover-id],
+    [data-ob-camada]
   )
   *,
 :where(
@@ -204,7 +207,8 @@
     [class*=' onblide-ml-'],
     [class^='onframe-'],
     [class*=' onframe-'],
-    [data-ob-popover-id]
+    [data-ob-popover-id],
+    [data-ob-camada]
   )
   *::before,
 :where(
@@ -213,7 +217,8 @@
     [class*=' onblide-ml-'],
     [class^='onframe-'],
     [class*=' onframe-'],
-    [data-ob-popover-id]
+    [data-ob-popover-id],
+    [data-ob-camada]
   )
   *::after {
   box-sizing: border-box;
@@ -222,6 +227,14 @@
 :is(.onblide-ml-dialog-root, .onframe-commerce-modal-root) {
   --ob-z-overlay: var(--ob-z-extension-overlay);
   --ob-z-modal: var(--ob-z-extension-modal);
+}
+
+body:has(> .onframe-commerce-modal-root) > .ob-modal-fundo {
+  --ob-z-modal: var(--ob-z-extension-modal);
+}
+
+body:has(> .onframe-commerce-modal-root) > [data-ob-camada] {
+  --ob-z-dropdown: var(--ob-z-extension-toast);
 }
 
 body:has(
@@ -249,7 +262,7 @@ body:has(
     :is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root)
       [role='dialog']
   )
-  > [data-ob-popover-id] {
+  > :is([data-ob-popover-id], [data-ob-camada]) {
   --ob-z-dropdown: var(--ob-z-extension-modal);
 }
 
@@ -261,6 +274,7 @@ body:has(
     [class^='onframe-'],
     [class*=' onframe-'],
     [data-ob-popover-id],
+    [data-ob-camada],
     body:has(
         :is(
             .onblide-ml-tray,
@@ -343,7 +357,8 @@ body:has(
   [class*=' onblide-ml-'],
   [class^='onframe-'],
   [class*=' onframe-'],
-  [data-ob-popover-id]
+  [data-ob-popover-id],
+  [data-ob-camada]
 )::selection,
 :is(
     #onblide-ml-root,
@@ -351,7 +366,8 @@ body:has(
     [class*=' onblide-ml-'],
     [class^='onframe-'],
     [class*=' onframe-'],
-    [data-ob-popover-id]
+    [data-ob-popover-id],
+    [data-ob-camada]
   )
   *::selection,
 body:has(

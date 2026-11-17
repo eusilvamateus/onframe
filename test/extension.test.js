@@ -369,7 +369,15 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   );
   assert.match(
     foundations,
-    /body:has\(\s*:is\([^)]*\.onframe-commerce-modal-root[^)]*\)\s*\[role='dialog'\]\s*\)\s*>\s*\[data-ob-popover-id\]\s*\{[\s\S]*--ob-z-dropdown: var\(--ob-z-extension-modal\);/s
+    /body:has\(\s*:is\([^)]*\.onframe-commerce-modal-root[^)]*\)\s*\[role='dialog'\]\s*\)\s*>\s*:is\(\[data-ob-popover-id\], \[data-ob-camada\]\)\s*\{[\s\S]*--ob-z-dropdown: var\(--ob-z-extension-modal\);/s
+  );
+  assert.match(
+    foundations,
+    /body:has\(> \.onframe-commerce-modal-root\) > \.ob-modal-fundo \{\s*--ob-z-modal: var\(--ob-z-extension-modal\);/
+  );
+  assert.match(
+    foundations,
+    /body:has\(> \.onframe-commerce-modal-root\) > \[data-ob-camada\] \{\s*--ob-z-dropdown: var\(--ob-z-extension-toast\);/
   );
   assert.match(foundations, /--ob-selection-bg: var\(--ob-blue-100\)/);
   assert.match(foundations, /--ob-selection-bg: #3a6ee0/);
