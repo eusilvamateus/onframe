@@ -582,6 +582,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     'utf8'
   );
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const bundle = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'core', 'commerce-promotion-manager-view.js'),
+    'utf8'
+  );
 
   assert.match(view, /Modal,[\s\S]*Popover,[\s\S]*SearchInput,[\s\S]*Tabs/s);
   assert.doesNotMatch(view, /<ScrollArea/, 'o Modal já fornece a única região rolável desta tela');
@@ -596,10 +600,13 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /kind="neutral"\s+size="sm"\s+iconOnly\s+aria-label="Atualizar promoções"/s);
   assert.match(view, /kind="primary"\s+size="sm"\s+icon=\{icon\('tag', 18\)\}/s);
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
-  assert.match(styles, /\.onframe-promotion-manager-financial-margin small\s*\{\s*margin-top: var\(--ob-space-4\);/);
-  assert.match(view, /<Accordion\s+items=\{\[\{[\s\S]*title: 'Como o valor é calculado'/);
-  assert.match(view, /appearance="ghost"\s+size="sm"\s+ariaLabel="Detalhamento da promoção"/);
-  assert.match(styles, /\.onframe-promotion-manager-financial-overview\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(view, /function FinancialCalculation\(\{ items \}\)/);
+  assert.match(view, /<FinancialCalculation items=\{calculation\} \/>/);
+  assert.doesNotMatch(view, /<Accordion/);
+  assert.match(bundle, /onframe-promotion-manager-financial-calculation/);
+  assert.doesNotMatch(bundle, /Resumo financeiro|Detalhamento da promoção/);
+  assert.match(styles, /\.onframe-promotion-manager-financial-calculation\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /\.onframe-promotion-manager-financial-calculation\s*\{\s*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
   assert.match(styles, /\.onframe-promotion-manager-editor\.has-financials\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);

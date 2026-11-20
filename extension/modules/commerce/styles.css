@@ -1364,12 +1364,7 @@ body:has(
 }
 
 .onframe-promotion-manager-editor.has-financials {
-  gap: var(--ob-space-12);
-}
-
-.onframe-promotion-manager-editor.has-financials > div:last-child {
-  padding-top: var(--ob-space-8);
-  border-top: 1px solid var(--ob-line-soft);
+  gap: var(--ob-space-4);
 }
 
 .onframe-promotion-manager-editor > div {
@@ -1387,24 +1382,18 @@ body:has(
   gap: var(--ob-space-16);
 }
 
-.onframe-promotion-manager-financial {
-  flex: 1;
-}
-
 .onframe-promotion-manager-financial-edit {
   display: flex;
-  min-height: 100%;
   flex-direction: column;
 }
 
 .onframe-promotion-manager-financial-heading {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ob-space-16);
 }
 
-.onframe-promotion-manager-financial-heading > div,
 .onframe-promotion-manager-financial-edit > div:first-child {
   display: grid;
   gap: var(--ob-space-4);
@@ -1416,50 +1405,44 @@ body:has(
   color: var(--ob-fg-strong);
 }
 
-.onframe-promotion-manager-financial-overview {
+.onframe-promotion-manager-financial-calculation {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ob-space-16);
-  margin-top: var(--ob-space-12);
+  column-gap: var(--ob-space-16);
 }
 
-.onframe-promotion-manager-financial-values {
-  display: contents;
-}
-
-.onframe-promotion-manager-financial-values .onframe-promotion-manager-metric {
-  display: grid;
-  gap: var(--ob-space-4);
-}
-
-.onframe-promotion-manager-financial-margin {
+.onframe-promotion-manager-financial-calculation > div {
   display: grid;
   align-content: start;
-  gap: 0;
+  gap: var(--ob-space-4);
+  min-width: 0;
+  padding: var(--ob-space-8) 0;
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.onframe-promotion-manager-financial-calculation span {
+  font-size: var(--ob-fs-12);
+  color: var(--ob-fg-soft);
+}
+
+.onframe-promotion-manager-financial-calculation strong {
+  font-size: var(--ob-fs-14);
+  color: var(--ob-fg-strong);
+}
+
+.onframe-promotion-manager-financial-calculation small {
+  font-size: var(--ob-fs-11);
+  color: var(--ob-fg-mute);
+}
+
+.onframe-promotion-manager-financial-calculation .success strong,
+.onframe-promotion-manager-financial-calculation .success small.amount,
+.onframe-promotion-manager-financial-calculation small.fee-reduction {
   color: var(--ob-green);
 }
 
-.onframe-promotion-manager-financial-margin > span {
-  margin-bottom: var(--ob-space-4);
-  font-family: var(--ob-font-mono) !important;
-  font-size: var(--ob-fs-11);
-  font-weight: var(--ob-w-medium) !important;
-  text-transform: uppercase;
-}
-
-.onframe-promotion-manager-financial-margin strong {
-  font-size: var(--ob-fs-18);
-  line-height: var(--ob-lh-tight);
-}
-
-.onframe-promotion-manager-financial-margin small {
-  margin-top: var(--ob-space-4);
-  font-size: var(--ob-fs-13);
-  font-weight: var(--ob-w-semibold);
-  line-height: var(--ob-lh-tight);
-}
-
-.onframe-promotion-manager-financial-margin.danger {
+.onframe-promotion-manager-financial-calculation .danger strong,
+.onframe-promotion-manager-financial-calculation .danger small.amount {
   color: var(--ob-danger);
 }
 
@@ -1612,7 +1595,7 @@ body:has(
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .onframe-promotion-manager-financial-overview {
+  .onframe-promotion-manager-financial-calculation {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 

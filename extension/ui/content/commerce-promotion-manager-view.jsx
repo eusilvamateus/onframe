@@ -2,7 +2,6 @@ import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
-  Accordion,
   Alert,
   AlertDialog,
   Badge,
@@ -120,11 +119,11 @@ function MarginSummary({ row }) {
   );
 }
 
-function Calculation({ row, items = row.calculation, showHeading = true }) {
+function Calculation({ row, items = row.calculation }) {
   if (!items?.length) return null;
   return (
     <div>
-      {showHeading && <div className="onframe-promotion-manager-kicker">Como o valor é calculado</div>}
+      <div className="onframe-promotion-manager-kicker">Como o valor é calculado</div>
       <div className="onframe-promotion-manager-calculation">
         {items.map((item, index) => (
           <div key={`${item.label}-${index}`} className={item.tone || ''}>
@@ -137,6 +136,29 @@ function Calculation({ row, items = row.calculation, showHeading = true }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function FinancialCalculation({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div className="onframe-promotion-manager-financial-calculation">
+      {items.map((item, index) => {
+        const isMargin = item.label === 'Margem de contribuição';
+        return (
+          <div key={`${item.label}-${index}`} className={item.tone || ''}>
+            <span>{item.label}</span>
+            <strong>{isMargin ? item.description : item.value}</strong>
+            {isMargin ? (
+              <small className="amount">{item.value}</small>
+            ) : (
+              item.description && <small>{item.description}</small>
+            )}
+            {item.benefit && <small className="fee-reduction">{item.benefit}</small>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -377,10 +399,7 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
             ) : (
               <div className="onframe-promotion-manager-financial-summary">
                 <div className="onframe-promotion-manager-financial-heading">
-                  <div>
-                    <span className="onframe-promotion-manager-kicker">Resultado</span>
-                    <strong>Resumo financeiro</strong>
-                  </div>
+                  <strong>Como o valor é calculado</strong>
                   {financials.canEdit && (
                     <Tooltip label="Editar dados do cálculo" placement="left">
                       <Button
@@ -393,20 +412,6 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
                       />
                     </Tooltip>
                   )}
-                </div>
-                <div className="onframe-promotion-manager-financial-overview">
-                  <div className="onframe-promotion-manager-financial-values">
-                    <Metric label="Você recebe" value={formatFinancialMoney(financials.youReceive, financials)} />
-                    <Metric label="Custo do produto" value={formatFinancialMoney(snapshot.productCost, financials)} />
-                    <Metric label="Impostos" value={formatFinancialMoney(snapshot.taxAmount, financials)} />
-                  </div>
-                  <div
-                    className={`onframe-promotion-manager-financial-margin ${snapshot.amount < 0 ? 'danger' : ''}`}
-                  >
-                    <span>Margem de contribuição</span>
-                    <strong>{formatFinancialPercent(snapshot.percentage)}</strong>
-                    <small>{formatFinancialMoney(snapshot.amount, financials)}</small>
-                  </div>
                 </div>
               </div>
             )}
@@ -430,16 +435,7 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
       </div>
       <div>
         {financials && snapshot ? (
-          <Accordion
-            items={[{
-              id: 'calculation',
-              title: 'Como o valor é calculado',
-              content: <Calculation row={row} items={calculation} showHeading={false} />
-            }]}
-            appearance="ghost"
-            size="sm"
-            ariaLabel="Detalhamento da promoção"
-          />
+          <FinancialCalculation items={calculation} />
         ) : (
           <Calculation row={row} items={calculation} />
         )}
