@@ -1225,11 +1225,22 @@
       const percentageValidation = directDiscountPercentageValidation(draft.discount_percentage);
       const startDate = parseIsoDate(draft.start_date);
       const endDate = parseIsoDate(draft.finish_date);
+      const item = state.context && state.context.item ? state.context.item : {};
+      const picture = Array.isArray(item.pictures) ? item.pictures[0] : null;
+      const promotionalPrice = CommerceModel.parseMoneyInput(draft.deal_price);
+      const discountAmount =
+        promotionalPrice && promotionalPrice < entry.original_price ? entry.original_price - promotionalPrice : null;
       return {
         key,
         busy: state.busy,
         error: shortMessage(state.actionError),
+        item: {
+          title: item.title || 'Anúncio',
+          id: item.id || '',
+          image: picture && (picture.secure_url || picture.url || picture.previewUrl || '')
+        },
         basePrice: CommerceModel.formatMoney(entry.original_price, itemCurrency()),
+        discountAmount: discountAmount === null ? '' : `−${CommerceModel.formatMoney(discountAmount, itemCurrency())}`,
         percentage: draft.discount_percentage || '',
         price: draft.deal_price || '',
         percentageError: (percentageValidation && percentageValidation.message) || '',

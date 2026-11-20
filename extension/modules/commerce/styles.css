@@ -652,21 +652,54 @@
   font: var(--ob-w-medium) var(--ob-fs-11) / var(--ob-lh-normal) var(--ob-font);
 }
 
-.onframe-commerce-direct-discount-title {
-  display: grid;
-  gap: var(--ob-space-4);
-}
-
-.onframe-commerce-direct-discount-title > small {
-  color: var(--ob-fg-soft);
-  font-size: var(--ob-fs-11);
-  font-weight: var(--ob-w-regular);
-  line-height: var(--ob-lh-normal);
-}
-
 .onframe-commerce-direct-discount {
   display: grid;
+  gap: var(--ob-space-16);
+}
+
+.onframe-commerce-direct-discount-item {
+  display: flex;
+  align-items: center;
   gap: var(--ob-space-12);
+  min-width: 0;
+  padding: var(--ob-space-10);
+  border-radius: var(--ob-r-sm);
+  background: var(--ob-surface-2);
+}
+
+.onframe-commerce-direct-discount-item-image {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: var(--ob-r-xs);
+  background: var(--ob-surface);
+  color: var(--ob-fg-soft);
+}
+
+.onframe-commerce-direct-discount-item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.onframe-commerce-direct-discount-item-copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--ob-space-2);
+}
+
+.onframe-commerce-direct-discount-item-copy strong {
+  color: var(--ob-fg-strong);
+  font: var(--ob-w-semibold) var(--ob-fs-13) / var(--ob-lh-normal) var(--ob-font);
+  overflow-wrap: anywhere;
+}
+
+.onframe-commerce-direct-discount-item-copy small {
+  color: var(--ob-fg-mute);
+  font: var(--ob-w-regular) var(--ob-fs-11) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onframe-commerce-direct-discount-calculation,
@@ -677,7 +710,7 @@
 
 .onframe-commerce-direct-discount-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 150px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
   align-items: center;
   gap: var(--ob-space-12);
   min-width: 0;
@@ -708,66 +741,31 @@
 }
 
 .onframe-commerce-direct-discount-field {
-  align-items: start;
-}
-
-.onframe-commerce-direct-discount-field > span {
-  padding-top: var(--ob-space-12);
+  align-items: center;
 }
 
 .onframe-commerce-direct-discount-field > div {
-  width: 150px;
+  width: 160px;
   min-width: 0;
   justify-self: end;
 }
 
-.onframe-commerce-direct-discount-field input,
-.onframe-commerce-direct-discount-field input:focus,
-.onframe-commerce-direct-discount-field input:focus-visible {
-  min-height: 0;
-  margin: 0;
-  border: 0 !important;
-  border-radius: 0 !important;
-  outline: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  appearance: none !important;
-}
-
 .onframe-commerce-direct-discount-date-range {
-  position: relative;
-  margin-bottom: var(--ob-space-4);
-  padding-bottom: var(--ob-space-12);
-  border-bottom: 1px dashed var(--ob-line-soft);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+  align-items: center;
+  gap: var(--ob-space-12);
+  color: var(--ob-fg-soft);
+  font: var(--ob-w-regular) var(--ob-fs-13) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onframe-commerce-direct-discount-date-range > div {
-  display: grid !important;
-  grid-template-columns: 72px minmax(0, 1fr);
-  align-items: start;
-  gap: var(--ob-space-12) !important;
-}
-
-.onframe-commerce-direct-discount-date-range > div > span:first-child {
-  padding-top: var(--ob-space-12);
-  color: var(--ob-fg-soft) !important;
-  font: var(--ob-w-regular) var(--ob-fs-13) / var(--ob-lh-normal) var(--ob-font) !important;
-}
-
-.onframe-commerce-direct-discount-date-range > div > div {
-  width: 100%;
   min-width: 0;
 }
 
-.onframe-commerce-direct-discount-date-range input[type='text'],
-.onframe-commerce-direct-discount-date-range input[type='text']:focus,
-.onframe-commerce-direct-discount-date-range input[type='text']:focus-visible {
-  border: 0 !important;
-  border-radius: 0 !important;
-  outline: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  appearance: none;
+.onframe-commerce-direct-discount-calculation {
+  padding-top: var(--ob-space-12);
+  border-top: 1px solid var(--ob-line-soft);
 }
 
 .onframe-commerce-direct-discount-line.is-separated {
@@ -799,6 +797,21 @@
 
 .onframe-commerce-direct-discount-results > [role='alert'] {
   margin: var(--ob-space-6) 0;
+}
+
+@media (max-width: 540px) {
+  .onframe-commerce-direct-discount-date-range {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ob-space-6);
+  }
+
+  .onframe-commerce-direct-discount-line {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 140px);
+  }
+
+  .onframe-commerce-direct-discount-field > div {
+    width: 140px;
+  }
 }
 
 @keyframes onframe-commerce-skeleton {
@@ -1656,22 +1669,6 @@ body:has(
     flex: 1 1 533px;
     width: 533px;
     max-width: 533px;
-  }
-
-  .onframe-commerce-direct-discount-line {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
-  }
-
-  .onframe-commerce-direct-discount-field > div {
-    width: 160px;
-  }
-
-  .onframe-commerce-direct-discount-date-range > div {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
-  }
-
-  .onframe-commerce-direct-discount-date-range > div > div {
-    width: 290px;
   }
 }
 

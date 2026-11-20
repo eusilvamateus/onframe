@@ -886,10 +886,20 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   assert.match(view, /import \{ Alert, Button, Datepicker, Input, Modal, Ph, Skeleton, Spinner \} from '@onblide\/ui'/);
   assert.match(view, /<Modal[\s\S]*size="md"[\s\S]*footer=\{footer\}/s);
   assert.match(view, /Confirme os detalhes da promoção/);
-  assert.match(view, /<Datepicker[\s\S]*label="Data"[\s\S]*mode="range"/s);
+  assert.match(view, /model\.item\.image \? <img src=\{model\.item\.image\} alt=""/);
+  assert.match(view, /\{model\.item\.title\}/);
+  assert.match(view, /<ResultRow label="Preço original" value=\{model\.basePrice\}/);
+  assert.match(view, /<Datepicker[\s\S]*mode="range"/s);
   assert.doesNotMatch(view, /Vigência/);
   assert.match(view, /<Input[\s\S]*aria-label="Desconto em porcentagem"[\s\S]*endAddon="%"/s);
   assert.match(view, /<Input[\s\S]*aria-label="Preço promocional"[\s\S]*startAddon="R\$"/s);
+  assert.match(view, /<ResultRow[\s\S]*label="Por sua conta"[\s\S]*value=\{model\.discountAmount\}/s);
+  assert.ok(view.indexOf('onframe-commerce-direct-discount-item') < view.indexOf('label="Preço original"'));
+  assert.ok(view.indexOf('label="Preço original"') < view.indexOf('className="onframe-commerce-direct-discount-date-range"'));
+  assert.ok(view.indexOf('className="onframe-commerce-direct-discount-date-range"') < view.indexOf('aria-label="Cálculo do desconto"'));
+  assert.doesNotMatch(view, /Exclusivo|Depósito|Meli\+/);
+  assert.match(source, /const promotionalPrice = CommerceModel\.parseMoneyInput\(draft\.deal_price\)/);
+  assert.match(source, /discountAmount: discountAmount === null \? '' : `−\$\{CommerceModel\.formatMoney\(discountAmount, itemCurrency\(\)\)\}`/);
   assert.match(priceView, /<Input[\s\S]*label="Novo preço base"[\s\S]*startAddon="R\$"/s);
   assert.match(view, /<Button kind="secondary" size="sm"/);
   assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*size="sm"/s);
@@ -932,19 +942,10 @@ test('modal de desconto direto usa somente componentes oficiais do design system
     styles,
     /\.onframe-commerce-direct-discount-calculation,[\s\S]*\.onframe-commerce-direct-discount-results\s*{\s*display: grid/s
   );
-  assert.match(
-    styles,
-    /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 150px\)/s
-  );
-  assert.match(styles, /\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 150px;/s);
-  assert.match(
-    styles,
-    /@media \(min-width: 768px\)[\s\S]*\.onframe-commerce-direct-discount-line\s*{[\s\S]*minmax\(0, 160px\)[\s\S]*\.onframe-commerce-direct-discount-field > div\s*{[\s\S]*width: 160px;/s
-  );
-  assert.match(
-    styles,
-    /\.onframe-commerce-direct-discount-date-range input\[type=['"]text['"]\]:focus-visible\s*{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s
-  );
+  assert.match(styles, /\.onframe-commerce-direct-discount-item\s*{[\s\S]*display: flex;/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s);
+  assert.match(styles, /@media \(max-width: 540px\)\s*{[\s\S]*\.onframe-commerce-direct-discount-date-range\s*{\s*grid-template-columns: minmax\(0, 1fr\)/s);
+  assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount-field input[\s\S]*!important/s);
   assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount[^}]*\.ob-field-(?:shell|prefix|suffix)/s);
   assert.match(source, /description: saleFeeDescription\(commission, currency\)/);
   assert.match(source, /`Tarifa de venda · \$\{formatPercent\(commissionPercentage\)\}`/);

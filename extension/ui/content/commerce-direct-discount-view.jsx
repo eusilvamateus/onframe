@@ -25,15 +25,6 @@ class DirectDiscountBoundary extends Component {
   }
 }
 
-function ModalTitle({ basePrice }) {
-  return (
-    <span className="onframe-commerce-direct-discount-title">
-      <span>Confirme os detalhes da promoção</span>
-      <small>Preço base {basePrice}</small>
-    </span>
-  );
-}
-
 function ResultValue({ loading, value }) {
   if (loading) return <Skeleton width={72} height={16} radius="var(--ob-r-xs)" />;
   return <>{value || '—'}</>;
@@ -110,7 +101,7 @@ function DirectDiscountModal({ model, actions }) {
     <Modal
       open
       onClose={actions.onClose}
-      title={<ModalTitle basePrice={model.basePrice} />}
+      title="Confirme os detalhes da promoção"
       size="md"
       maxHeight="calc(100vh - 32px)"
       footer={footer}
@@ -121,18 +112,27 @@ function DirectDiscountModal({ model, actions }) {
             {model.error}
           </Alert>
         )}
+        <div className="onframe-commerce-direct-discount-item">
+          <span className="onframe-commerce-direct-discount-item-image">
+            {model.item.image ? <img src={model.item.image} alt="" /> : <Ph n="package" size={20} />}
+          </span>
+          <span className="onframe-commerce-direct-discount-item-copy">
+            <strong>{model.item.title}</strong>
+            {model.item.id && <small>{model.item.id}</small>}
+          </span>
+        </div>
+        <ResultRow label="Preço original" value={model.basePrice} />
+        <div className="onframe-commerce-direct-discount-date-range">
+          <span>Período</span>
+          <Datepicker
+            mode="range"
+            value={{ start: model.startDate, end: model.endDate }}
+            error={model.dateError || undefined}
+            disabled={model.busy}
+            onChange={actions.onDateChange}
+          />
+        </div>
         <div className="onframe-commerce-direct-discount-calculation" role="group" aria-label="Cálculo do desconto">
-          <div className="onframe-commerce-direct-discount-date-range">
-            <Datepicker
-              label="Data"
-              mode="range"
-              value={{ start: model.startDate, end: model.endDate }}
-              error={model.dateError || undefined}
-              disabled={model.busy}
-              onChange={actions.onDateChange}
-            />
-          </div>
-          <ResultRow label="Preço base" value={model.basePrice} />
           <div className="onframe-commerce-direct-discount-line onframe-commerce-direct-discount-field">
             <span>Desconto</span>
             <Input
@@ -148,6 +148,11 @@ function DirectDiscountModal({ model, actions }) {
               onKeyDown={submitOnEnter}
             />
           </div>
+          <ResultRow
+            label="Por sua conta"
+            value={model.discountAmount}
+            tone={model.discountAmount ? 'onframe-commerce-direct-discount-cost' : ''}
+          />
           <div className="onframe-commerce-direct-discount-line onframe-commerce-direct-discount-field">
             <span>Preço promocional</span>
             <Input
