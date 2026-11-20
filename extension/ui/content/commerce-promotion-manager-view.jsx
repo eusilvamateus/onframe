@@ -23,7 +23,6 @@ import {
 } from '@onblide/ui';
 
 const roots = new WeakMap();
-const PANEL_TRANSITION_MS = 200;
 
 class PromotionManagerBoundary extends Component {
   constructor(props) {
@@ -539,6 +538,7 @@ function PromotionCard({ row, actions }) {
   const [panelMounted, setPanelMounted] = useState(row.formOpen);
   const [panelExpanded, setPanelExpanded] = useState(row.formOpen);
   const lastOpenRow = useRef(row);
+  const panelShellRef = useRef(null);
   if (row.formOpen) lastOpenRow.current = row;
 
   useEffect(() => {
@@ -552,8 +552,14 @@ function PromotionCard({ row, actions }) {
       return () => cancelAnimationFrame(frame);
     }
     setPanelExpanded(false);
-    const timer = setTimeout(() => setPanelMounted(false), PANEL_TRANSITION_MS);
-    return () => clearTimeout(timer);
+    if (!panelExpanded || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setPanelMounted(false);
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      if (panelShellRef.current?.getBoundingClientRect().height === 0) setPanelMounted(false);
+    });
+    return () => cancelAnimationFrame(frame);
   }, [row.formOpen]);
 
   const expanded = row.formOpen || panelMounted;
@@ -564,11 +570,11 @@ function PromotionCard({ row, actions }) {
       padding={0}
       style={{
         overflow: expanded ? 'hidden' : 'visible',
-        borderColor: expanded ? 'var(--ob-blue)' : 'var(--ob-line-soft)',
-        transition: 'border-color var(--ob-dur-base) var(--ob-ease-out)'
+        borderColor: panelExpanded ? 'var(--ob-blue)' : 'var(--ob-line-soft)',
+        transition: 'border-color var(--ob-dur-base) var(--ob-ease)'
       }}
     >
-      <div className={`onframe-promotion-manager-card${expanded ? ' is-open' : ''}`}>
+      <div className={`onframe-promotion-manager-card${panelExpanded ? ' is-open' : ''}`}>
         <div className="onframe-promotion-manager-name">
           <span className={`onframe-commerce-promotion-type-icon ${row.type}`} aria-hidden="true">
             <Ph n={row.type === 'coupon' ? 'ticket' : row.type === 'payment' ? 'credit-card' : 'tag'} size={20} />
@@ -584,8 +590,8 @@ function PromotionCard({ row, actions }) {
             </div>
           </div>
         </div>
-        {!expanded && (
-          <>
+        <div className={`onframe-promotion-manager-summary-shell${panelExpanded ? ' is-collapsed' : ''}`} aria-hidden={row.formOpen}>
+          <div className="onframe-promotion-manager-summary-content">
             <div className="onframe-promotion-manager-condition">
               <span>{row.type === 'coupon' ? 'Desconto' : row.type === 'payment' ? 'Condição' : 'Preço'}</span>
               <strong>{row.condition.primary || '—'}</strong>
@@ -593,8 +599,8 @@ function PromotionCard({ row, actions }) {
             </div>
             <Result row={row} />
             <MarginSummary row={row} />
-          </>
-        )}
+          </div>
+        </div>
         <div className="onframe-promotion-manager-actions">
           <CardActions row={expanded ? panelRow : row} actions={actions} simulatingFinancials={simulatingFinancials} setSimulatingFinancials={setSimulatingFinancials} />
         </div>
@@ -603,7 +609,15 @@ function PromotionCard({ row, actions }) {
       <div
         className={`onframe-promotion-manager-panel-shell${panelExpanded ? ' is-expanded' : ''}`}
         aria-hidden={!row.formOpen}
-        ref={(element) => { if (element) element.inert = !row.formOpen; }}
+        ref={(element) => {
+          panelShellRef.current = element;
+          if (element) element.inert = !row.formOpen;
+        }}
+        onTransitionEnd={(event) => {
+          if (event.target === event.currentTarget && event.propertyName === 'grid-template-rows' && !row.formOpen) {
+            setPanelMounted(false);
+          }
+        }}
       >
         <div className="onframe-promotion-manager-panel-content">
           {panelMounted && (

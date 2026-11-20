@@ -1226,15 +1226,41 @@ body:has(
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--ob-space-16);
+  column-gap: var(--ob-space-16);
+  row-gap: var(--ob-space-16);
   min-height: 64px;
   padding: var(--ob-space-12) var(--ob-space-16) var(--ob-space-12) var(--ob-space-16);
+  transition: row-gap var(--ob-dur-base) var(--ob-ease), grid-template-columns var(--ob-dur-base) var(--ob-ease);
+}
+
+.onframe-promotion-manager-card.is-open {
+  row-gap: 0;
+}
+
+.onframe-promotion-manager-summary-shell {
+  display: grid;
+  grid-template-rows: 1fr;
+  grid-column: 1 / -1;
+  min-width: 0;
+  opacity: 1;
+  transition: grid-template-rows var(--ob-dur-base) var(--ob-ease), opacity var(--ob-dur-base) var(--ob-ease);
+}
+
+.onframe-promotion-manager-summary-shell.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+.onframe-promotion-manager-summary-content {
+  display: grid;
+  gap: var(--ob-space-16);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .onframe-promotion-manager-condition,
 .onframe-promotion-manager-result,
 .onframe-promotion-manager-margin-summary {
-  grid-column: 1 / -1;
   align-self: start;
 }
 
@@ -1350,15 +1376,11 @@ body:has(
   gap: var(--ob-space-4);
 }
 
-.onframe-promotion-manager-card.is-open {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
 .onframe-promotion-manager-panel-shell,
 .onframe-promotion-manager-footer-shell {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--ob-dur-base) var(--ob-ease-out);
+  transition: grid-template-rows var(--ob-dur-base) var(--ob-ease);
 }
 
 .onframe-promotion-manager-panel-shell.is-expanded,
@@ -1573,11 +1595,6 @@ body:has(
 }
 
 @media (max-width: 599px) {
-  .onframe-promotion-manager-card.is-open .onframe-promotion-manager-actions {
-    grid-column: 1 / -1;
-    grid-row: auto;
-  }
-
   .onframe-promotion-manager-note-row.is-editable {
     grid-template-columns: 20px minmax(0, 1fr);
   }
@@ -1602,6 +1619,8 @@ body:has(
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .onframe-promotion-manager-card,
+  .onframe-promotion-manager-summary-shell,
   .onframe-promotion-manager-panel-shell,
   .onframe-promotion-manager-footer-shell {
     transition: none;
@@ -1658,18 +1677,24 @@ body:has(
 
 @media (min-width: 1024px) {
   .onframe-promotion-manager-card {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 0.85fr) auto;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 2.55fr) auto;
   }
 
-  .onframe-promotion-manager-condition,
-  .onframe-promotion-manager-result,
-  .onframe-promotion-manager-margin-summary,
-  .onframe-promotion-manager-actions {
-    grid-column: auto;
-    grid-row: auto;
+  .onframe-promotion-manager-summary-shell {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .onframe-promotion-manager-summary-content {
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr) minmax(0, 0.85fr);
   }
 
   .onframe-promotion-manager-card.is-open {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0fr) auto;
+  }
+
+  .onframe-promotion-manager-actions {
+    grid-column: 3;
+    grid-row: 1;
   }
 }

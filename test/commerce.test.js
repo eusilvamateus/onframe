@@ -652,7 +652,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /Aplicadas ao anúncio/);
   assert.match(view, /Disponíveis para aplicar/);
   assert.match(view, /<Card[\s\S]*padding=\{0\}/);
-  assert.match(view, /borderColor: expanded \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
+  assert.match(view, /borderColor: panelExpanded \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
   assert.doesNotMatch(view, /Avatar/);
   assert.match(view, /onframe-commerce-promotion-type-icon \$\{row\.type\}/);
   assert.match(view, /row\.type === 'coupon' \? 'ticket' : row\.type === 'payment' \? 'credit-card' : 'tag'/);
@@ -736,8 +736,9 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.doesNotMatch(source, /promotionRemoved|promotionRemovalTimers|commitQueuedPromotionManagerRemoval/);
   assert.match(
     styles,
-    /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\) minmax\(0, 0\.7fr\) minmax\(0, 1fr\) minmax\(0, 0\.85fr\) auto;/s
+    /\.onframe-promotion-manager-card\s*\{[\s\S]*grid-template-columns: minmax\(0, 1\.6fr\) minmax\(0, 2\.55fr\) auto;/s
   );
+  assert.match(styles, /\.onframe-promotion-manager-summary-content\s*\{\s*grid-template-columns: minmax\(0, 0\.7fr\) minmax\(0, 1fr\) minmax\(0, 0\.85fr\);/);
   assert.match(
     styles,
     /:is\([\s\S]*\.onframe-commerce-modal-root,[\s\S]*\.onframe-commerce-direct-discount-modal-root[\s\S]*\),[\s\S]*:is\(\[data-ob-popover-id\], \[data-ob-camada\]\),[\s\S]*\[role='tooltip'\] \{[\s\S]*--ob-font: 'OnFrame Poppins', 'Poppins',[\s\S]*--ob-font-mono: 'JetBrains Mono',[\s\S]*font-family: var\(--ob-font\) !important;/s
@@ -818,8 +819,12 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   );
   assert.match(styles, /\.onframe-promotion-manager-editor\s*\{[\s\S]*background: var\(--ob-bg-alt\);/s);
   assert.match(styles, /\.onframe-promotion-manager-note\s*\{[\s\S]*border-block: 1px solid var\(--ob-line-soft\);/s);
-  assert.match(styles, /\.onframe-promotion-manager-card\.is-open\s*\{\s*grid-template-columns: minmax\(0, 1fr\) auto;/);
-  assert.match(styles, /\.onframe-promotion-manager-card\.is-open \.onframe-promotion-manager-actions\s*\{\s*grid-column: 1 \/ -1;/);
+  assert.match(styles, /\.onframe-promotion-manager-summary-shell\.is-collapsed\s*\{\s*grid-template-rows: 0fr;/);
+  assert.match(styles, /\.onframe-promotion-manager-card\.is-open\s*\{\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 0fr\) auto;/);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-card\.is-open \.onframe-promotion-manager-actions/);
+  assert.match(view, /onTransitionEnd=\{\(event\) => \{[\s\S]*event\.propertyName === 'grid-template-rows' && !row\.formOpen[\s\S]*setPanelMounted\(false\)/s);
+  assert.match(view, /panelShellRef\.current\?\.getBoundingClientRect\(\)\.height === 0/);
+  assert.doesNotMatch(view, /PANEL_TRANSITION_MS|setTimeout\(\(\) => setPanelMounted/);
   assert.match(view, /panelMounted && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
   assert.match(view, /function CardActions\(\{ row, actions, simulatingFinancials, setSimulatingFinancials \}\)[\s\S]*onSelect: \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/s);
   assert.match(view, /row\.formOpen && \(!row\.readOnly \|\| simulatingFinancials\) && \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
