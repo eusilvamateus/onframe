@@ -68,6 +68,14 @@ test('commerce model resume estado de preco e bloqueios', () => {
   assert.strictEqual(blocked.label, 'Automação ativa');
 });
 
+test('margem de contribuição exibe valores negativos e zero sem ocultá-los', () => {
+  assert.strictEqual(commerceModel.formatMoney(-0.03), 'R$ --');
+  assert.strictEqual(commerceModel.formatSignedMoney(-0.03), '-R$ 0,03');
+  assert.strictEqual(commerceModel.formatSignedMoney(0), 'R$ 0,00');
+  assert.strictEqual(commerceModel.formatSignedMoney(0.03), 'R$ 0,03');
+  assert.strictEqual(commerceModel.formatSignedMoney(null), 'R$ --');
+});
+
 test('commerce model conta promocoes ativas apenas quando aplicadas ao anuncio', () => {
   const state = commerceModel.getPromotionState({
     offers: {
@@ -451,7 +459,7 @@ test('popover de preco organiza resumo e edicao em conteudo progressivo', () => 
   assert.match(source, /label: 'Impostos'/);
   assert.match(source, /label: 'Margem de contribuição'/);
   assert.match(source, /value: formatContributionPercent\(margin\.percentage\)/);
-  assert.match(source, /secondaryValue: CommerceModel\.formatMoney\(margin\.amount/);
+  assert.match(source, /secondaryValue: CommerceModel\.formatSignedMoney\(margin\.amount/);
   assert.match(view, /field\.secondaryValue && <small>\{field\.secondaryValue\}<\/small>/);
   assert.match(source, /Com redução de tarifas/);
   assert.match(source, /Bônus do Mercado Livre/);
@@ -582,6 +590,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     'utf8'
   );
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
+  const bundle = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'core', 'commerce-promotion-manager-view.js'),
+    'utf8'
+  );
 
   assert.match(view, /Modal,[\s\S]*Popover,[\s\S]*SearchInput,[\s\S]*Tabs/s);
   assert.doesNotMatch(view, /<ScrollArea/, 'o Modal já fornece a única região rolável desta tela');
@@ -596,7 +608,14 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /kind="neutral"\s+size="sm"\s+iconOnly\s+aria-label="Atualizar promoções"/s);
   assert.match(view, /kind="primary"\s+size="sm"\s+icon=\{icon\('tag', 18\)\}/s);
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
-  assert.match(styles, /\.onframe-promotion-manager-financial-margin small\s*\{\s*margin-top: var\(--ob-space-4\);/);
+  assert.match(view, /function NoteRow\(\{ item, row, actions, productEditor, confirm \}\)/);
+  assert.match(view, /String\(item\.description \|\| ''\)\.split\(' · '\)\[0\]\.replace\(' sobre ', ' do '\)/);
+  assert.doesNotMatch(view, /<small>sobre o preço promocional\{description/);
+  assert.match(view, /const operator = margin \|\| subtotal \? '=' : item\.label === 'Crédito promocional' \? '\+' /);
+  assert.match(view, /<Calculation row=\{displayRow\} items=\{calculation\} actions=\{actions\} productEditor=\{productEditor\} confirm=\{confirm\} \/>/);
+  assert.match(view, /function CouponNote\(\{ row \}\)/);
+  assert.match(styles, /\.onframe-promotion-manager-note-row\s*\{[\s\S]*min-height: 48px;/s);
+  assert.match(styles, /\.onframe-promotion-manager-note-row\.total\s*\{[\s\S]*background: var\(--ob-bg-alt\);/s);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);
   assert.match(view, /label="Ativas"/);
@@ -608,7 +627,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /Aplicadas ao anúncio/);
   assert.match(view, /Disponíveis para aplicar/);
   assert.match(view, /<Card[\s\S]*padding=\{0\}/);
-  assert.match(view, /borderColor: row\.formOpen \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
+  assert.match(view, /borderColor: expanded \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
   assert.doesNotMatch(view, /Avatar/);
   assert.match(view, /onframe-commerce-promotion-type-icon \$\{row\.type\}/);
   assert.match(view, /row\.type === 'coupon' \? 'ticket' : row\.type === 'payment' \? 'credit-card' : 'tag'/);
@@ -628,17 +647,20 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /icon=\{icon\('dots-three-vertical', 18\)\}/);
   assert.doesNotMatch(view, /aria-label="Remover promoção"/);
   assert.match(view, /aria-hidden="true"/);
-  assert.match(view, /label="Preço promocional"/);
+  assert.match(view, /aria-label="Preço promocional"/);
   assert.match(view, /startAddon="R\$"/);
-  assert.match(view, /Como o valor é calculado/);
+  assert.match(view, /onframe-promotion-manager-note-row/);
+  assert.match(bundle, /onframe-promotion-manager-note-row/);
+  assert.doesNotMatch(bundle, /Resumo financeiro/);
   assert.doesNotMatch(view, /Estimativa calculada com o preço promocional/);
   assert.match(view, /item\.benefit && <small className="fee-reduction">\{item\.benefit\}<\/small>/);
   assert.match(view, /Tarifa reduzida \{row\.result\.feeReduction\}/);
   assert.match(view, /<span title="Margem de contribuição">M\. de contribuição<\/span>/);
   assert.match(view, /row\.marginSummary\.percentage \|\| '—'/);
-  assert.match(view, /row\.marginSummary\.amount && <small>\{row\.marginSummary\.amount\}<\/small>/);
+  assert.match(view, /row\.marginSummary\.amount && <small className=\{`amount \$\{row\.marginSummary\.tone\}`\}>\{row\.marginSummary\.amount\}<\/small>/);
   assert.match(view, /row\.marginSummary\.recommendation/);
   assert.match(source, /contributionMargin\.minimumStatus === 'below_minimum'/);
+  assert.match(source, /completeMargin && Number\.isFinite\(Number\(contributionMargin\.amount\)\)\s*\? CommerceModel\.formatSignedMoney\(/);
   assert.match(view, /onframe-promotion-manager-editor\$\{row\.readOnly \? ' is-readonly' : ''\}/);
   assert.match(view, /Kbd,[\s\S]*from '@onblide\/ui'/s);
   assert.match(view, /<Kbd size="sm">Esc<\/Kbd> cancela/);
@@ -652,8 +674,9 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /function buildPromotionManagerViewModel/);
   assert.match(
     source,
-    /label: 'Tarifa de venda',[\s\S]*description: saleFeeListingType\(estimate\.commission\),[\s\S]*benefit: saleFeeReductionLabel\(estimate\.commission, currency\)/s
+    /label: 'Tarifa de venda',[\s\S]*description: percentage === null \|\| !Number\.isFinite\(percentage\)[\s\S]*`\$\{formatPercent\(percentage\)\} do preço no anúncio`,[\s\S]*listingType: saleFeeListingType\(estimate\.commission\)/s
   );
+  assert.match(view, /item\.listingType && \([\s\S]*<Badge[\s\S]*appearance="plain"/s);
   assert.match(source, /`Redução aplicada: \$\{CommerceModel\.formatMoney\(/);
   assert.doesNotMatch(source, /buildPromotionRows\(\)\.filter\(\(row\) => row\.type !== 'payment'\)/);
   assert.match(source, /state\.promotionStatusFilters\.includes\(row\.status\.id\)/);
@@ -663,9 +686,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /function togglePromotionManagerType/);
   assert.match(source, /function togglePromotionManagerFinancial/);
   assert.match(source, /function clearPromotionManagerAdvancedFilters/);
+  assert.match(source, /onCancelChanges: cancelPromotionManagerChanges/);
+  assert.match(source, /function cancelPromotionManagerChanges\(\)[\s\S]*delete state\.promotionDraftValues\[key\];[\s\S]*state\.promotionFormAction = 'details';/s);
   assert.match(source, /if \(action === 'details'\) \{\s*schedulePromotionEstimate\(key, row\.entry, \{\}, true\);/s);
   assert.match(source, /function schedulePromotionEstimate\(key, entry, values, immediate = false\)/);
-  assert.match(view, /row\.result\.loading[\s\S]*<Skeleton key=\{item\} width="72%" height=\{38\}/s);
+  assert.match(view, /displayRow\.result\.loading && !calculation\.length[\s\S]*<Skeleton width="100%" height=\{48\}/s);
   assert.match(source, /if \(status === 'available'\) return 'Elegível';/);
   assert.doesNotMatch(source, /if \(status === 'available'\) return 'Disponível';/);
   assert.match(source, /function commitPromotionManagerAction/);
@@ -698,14 +723,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     />\s*:is\(\[data-ob-popover-id\], \[data-ob-camada\]\)\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/
   );
   assert.match(styles, />\s*\[role='tooltip'\]\s*:where\(kbd, \[style\*=['"]--ob-font-mono['"]\]\),/);
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
-  );
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-margin-summary > span,[\s\S]*\.onframe-promotion-manager-metric > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s
-  );
+  assert.match(styles, /\.onframe-promotion-manager-margin-summary > span\s*\{[\s\S]*font-family: var\(--ob-font-mono\) !important;/s);
   assert.match(
     styles,
     /\.onframe-promotion-manager \.onframe-commerce-promotion-type-icon\s*\{[\s\S]*width: 40px;[\s\S]*height: 40px;[\s\S]*border: 1px solid var\(--ob-line-soft\);[\s\S]*border-radius: var\(--ob-r-control\);[\s\S]*background: var\(--ob-bg-alt\);/s
@@ -728,18 +746,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     /\.onframe-promotion-manager-meta\s*\{[\s\S]*display: grid;[\s\S]*gap: var\(--ob-space-2\);[\s\S]*margin-top: var\(--ob-space-2\);/s
   );
   assert.match(styles, /\.onframe-promotion-manager-meta > small\s*\{[\s\S]*margin-top: 0;/s);
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-calculation span small\.fee-reduction\s*\{[\s\S]*color: var\(--ob-green\);[\s\S]*font-weight: var\(--ob-w-semibold\) !important;/s
-  );
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\)/s
-  );
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-condition strong,[\s\S]*\.onframe-promotion-manager-metric strong\s*\{[\s\S]*font-size: var\(--ob-fs-14\);/s
-  );
+  assert.match(styles, /\.onframe-promotion-manager-note-copy \.fee-reduction,[\s\S]*color: var\(--ob-green\);/s);
+  assert.match(styles, /\.onframe-promotion-manager-condition strong,[\s\S]*\.onframe-promotion-manager-margin-summary strong\s*\{[\s\S]*font-size: var\(--ob-fs-14\);/s);
   assert.match(
     styles,
     /\.onframe-promotion-manager-condition,[\s\S]*\.onframe-promotion-manager-margin-summary\s*\{[\s\S]*align-self: start;/s
@@ -749,12 +757,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     styles,
     /\.onframe-promotion-manager-condition > span,[\s\S]*font-weight: var\(--ob-w-regular\) !important;/s
   );
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-calculation strong\s*\{[\s\S]*font-family: var\(--ob-font\) !important;[\s\S]*font-weight: var\(--ob-w-bold\) !important;/s
-  );
-  assert.doesNotMatch(styles, /\.onframe-promotion-manager-calculation strong\s*\{[^}]*font-size:/s);
-  assert.match(styles, /\.onframe-promotion-manager-calculation span small\s*\{[\s\S]*font-size: var\(--ob-fs-11\);/s);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-value strong\s*\{[\s\S]*font-size: var\(--ob-fs-14\) !important;/s);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-copy small,[\s\S]*font-size: var\(--ob-fs-12\) !important;/s);
   assert.match(
     styles,
     /\.onframe-promotion-manager-toolbar\s*\{[\s\S]*position: sticky;[\s\S]*background: var\(--ob-surface\)/s
@@ -777,24 +781,31 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
     /\.onframe-promotion-manager input:focus-visible\s*\{[\s\S]*border: 0 !important;[\s\S]*outline: 0 !important;[\s\S]*box-shadow: none !important;/s
   );
   assert.match(styles, /\.onframe-promotion-manager-editor\s*\{[\s\S]*background: var\(--ob-bg-alt\);/s);
-  assert.doesNotMatch(styles, /\.onframe-promotion-manager-editor > div \+ div\s*\{/);
-  assert.match(styles, /\.onframe-promotion-manager-editor > div\s*\{[\s\S]*border-inline: 0 !important;/s);
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-editor \.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border-inline: 0;[\s\S]*border-radius: 0;/s
-  );
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-editor-metrics\s*\{[\s\S]*border: 1px solid var\(--ob-line-soft\);/s
-  );
-  assert.doesNotMatch(
-    styles,
-    /\.onframe-promotion-manager-editor-metrics \.onframe-promotion-manager-metric \+ \.onframe-promotion-manager-metric\s*\{/
-  );
-  assert.match(
-    styles,
-    /\.onframe-promotion-manager-calculation > div\s*\{[\s\S]*border-bottom: 1px solid var\(--ob-line-soft\);/s
-  );
+  assert.match(styles, /\.onframe-promotion-manager-note\s*\{[\s\S]*border-block: 1px solid var\(--ob-line-soft\);/s);
+  assert.match(styles, /\.onframe-promotion-manager-card\.is-open\s*\{\s*grid-template-columns: minmax\(0, 1fr\) auto;/);
+  assert.match(styles, /\.onframe-promotion-manager-card\.is-open \.onframe-promotion-manager-actions\s*\{\s*grid-column: 1 \/ -1;/);
+  assert.match(view, /panelMounted && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
+  assert.match(view, /function CardActions\(\{ row, actions, simulatingFinancials, setSimulatingFinancials \}\)[\s\S]*onClick=\{\(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)\}/s);
+  assert.match(view, /\(!row\.readOnly \|\| simulatingFinancials\) && \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
+  assert.doesNotMatch(styles, /\.onframe-promotion-manager-note-tools\s*\{/);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-label\s*\{\s*font-family: var\(--ob-font\) !important;/);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-value strong\s*\{\s*font-family: var\(--ob-font\) !important;/);
+  assert.match(view, /operator === '−' \? 'deduction' : operator === '\+' \? 'addition'/);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-row\.deduction \.onframe-promotion-manager-note-value strong\s*\{\s*color: var\(--ob-danger\);/);
+  assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-row\.addition \.onframe-promotion-manager-note-value strong\s*\{\s*color: var\(--ob-green\);/);
+  assert.match(styles, /\.onframe-promotion-manager-margin-summary small\.amount\.danger\s*\{\s*color: var\(--ob-danger\);/);
+  assert.match(styles, /\.onframe-promotion-manager-margin-summary small\.amount\.success\s*\{\s*color: var\(--ob-green\);/);
+  assert.match(source, /value: CommerceModel\.formatSignedMoney\(margin\.amount, currency, margin\.costDecimalPlaces\)/);
+  assert.match(view, /kind="quiet" tone="danger" size="sm" onClick=\{cancel\}/);
+  assert.doesNotMatch(view, /onSaveProductFinancials|Salvar no produto|discardFinancials/);
+  assert.match(view, /onframe-promotion-manager-editor-footer[\s\S]*onframe-promotion-manager-bulk[\s\S]*onframe-promotion-manager-shortcuts[\s\S]*onframe-promotion-manager-editor-actions/);
+  assert.match(styles, /\.onframe-promotion-manager-editor-footer\s*\{[\s\S]*display: flex;[\s\S]*align-items: center;/s);
+  assert.match(styles, /\.onframe-promotion-manager-panel-shell\.is-expanded,[\s\S]*grid-template-rows: 1fr;/s);
+  assert.match(styles, /\.onframe-promotion-manager-note-layout\.is-editing\s*\{[\s\S]*animation: onframe-promotion-note-edit/s);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(source, /const estimatePending = !estimateRecord && CommerceModel\.canEstimatePromotion\(entry\)/);
+  assert.match(source, /Boolean\(targetPrice\) && !promotionRangeWarning\(entry, targetPrice\)/);
+  assert.match(source, /loading: estimatePending \|\| Boolean\(estimateRecord && estimateRecord\.status === 'loading'\)/);
   assert.match(view, /onConfirm=\{\(\) => removalRow && actions\.onConfirmRemove\(removalRow\.key\)\}/);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-removed\b/);
 });
@@ -918,19 +929,18 @@ test('modal de promoções mantém filtros e revisão financeira na view React',
   assert.match(view, /label="Ativas"/);
   assert.match(view, /label="Programadas"/);
   assert.match(view, /label="Elegíveis"/);
-  assert.match(view, /Como o valor é calculado/);
-  assert.match(view, /row\.calculation\.map/);
-  assert.match(view, /aria-label="Editar dados do cálculo"/);
+  assert.match(view, /function Calculation\(\{ row, items = row\.calculation/);
+  assert.match(view, /lines\.map\(\(item, index\) =>/);
+  assert.match(view, /onClick=\{\(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)\}/);
   assert.match(view, /Margem de contribuição/);
-  assert.match(view, /Salvar no produto/);
-  assert.match(view, /actions\.onSaveProductFinancials\(row\.key, changes\)/);
+  assert.match(view, /const editing = !row\.readOnly \|\| simulatingFinancials/);
+  assert.doesNotMatch(view, /Salvar no produto|onSaveProductFinancials/);
   assert.match(source, /function buildPromotionManagerViewModel/);
   assert.match(source, /state\.promotionStatusFilters\.includes\(row\.status\.id\)/);
   assert.match(source, /state\.promotionTypeFilters\.includes\(row\.type\)/);
   assert.match(source, /state\.promotionFinancialFilters\.includes\('fee_reduction'\)/);
   assert.match(source, /function schedulePromotionManagerEstimates/);
-  assert.match(source, /onSaveProductFinancials: savePromotionProductFinancials/);
-  assert.match(source, /itemApiPath\('\/product-financials'\)/);
+  assert.doesNotMatch(source, /onSaveProductFinancials|savePromotionProductFinancials|itemApiPath\('\/product-financials'\)/);
   assert.match(source, /function commitPromotionManagerAction/);
   assert.doesNotMatch(source, /onframe-commerce-promotion-filter-wrap|bindModalEvents|reviewPromotionFieldDraft/);
 });
@@ -1213,8 +1223,8 @@ test('gerenciador de promoções usa cartões React e cálculo financeiro oficia
   assert.match(source, /Bônus do Mercado Livre/);
   assert.match(view, /<Card[\s\S]*padding=\{0\}/);
   assert.match(view, /onframe-promotion-manager-card/);
-  assert.match(view, /Como o valor é calculado/);
-  assert.match(view, /row\.calculation\.map/);
+  assert.match(view, /onframe-promotion-manager-note-row/);
+  assert.match(view, /lines\.map\(\(item, index\) =>/);
   assert.doesNotMatch(source, /renderPromotionListResult|renderPromotionResultPopover|data-onframe-button-root/);
   assert.doesNotMatch(source, /class="ob-table|innerHTML\s*=/);
 });

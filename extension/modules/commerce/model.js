@@ -200,6 +200,13 @@
   function formatMoney(value, currency = 'BRL', decimalPlaces = 2) {
     const amount = Number(value);
     if (!Number.isFinite(amount) || amount <= 0) return 'R$ --';
+    return formatSignedMoney(amount, currency, decimalPlaces);
+  }
+
+  function formatSignedMoney(value, currency = 'BRL', decimalPlaces = 2) {
+    if (value === null || value === undefined || value === '') return 'R$ --';
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return 'R$ --';
     try {
       return new Intl.NumberFormat('pt-BR', {
         style: 'currency',
@@ -210,7 +217,7 @@
         .format(amount)
         .replace(/\u00a0/g, ' ');
     } catch (e) {
-      return `R$ ${amount.toFixed(decimalPlaces).replace('.', ',')}`;
+      return `${amount < 0 ? '-' : ''}R$ ${Math.abs(amount).toFixed(decimalPlaces).replace('.', ',')}`;
     }
   }
 
@@ -443,6 +450,7 @@
     collectPromotionGroups,
     fieldLabel,
     formatMoney,
+    formatSignedMoney,
     friendlyError,
     getOfferCreateFields,
     getOfferDeleteFields,

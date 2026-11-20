@@ -1,4 +1,4 @@
-import { Component, useEffect, useState } from 'react';
+import { Component, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
@@ -23,6 +23,7 @@ import {
 } from '@onblide/ui';
 
 const roots = new WeakMap();
+const PANEL_TRANSITION_MS = 200;
 
 class PromotionManagerBoundary extends Component {
   constructor(props) {
@@ -64,16 +65,6 @@ function StatusBadge({ status }) {
   );
 }
 
-function Metric({ label, value, tone = '' }) {
-  if (!value) return null;
-  return (
-    <div className={`onframe-promotion-manager-metric ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
 function Result({ row }) {
   if (row.type === 'coupon') {
     return (
@@ -111,7 +102,7 @@ function MarginSummary({ row }) {
       ) : (
         <strong className={row.marginSummary.tone}>{row.marginSummary.percentage || '—'}</strong>
       )}
-      {row.marginSummary.amount && <small>{row.marginSummary.amount}</small>}
+      {row.marginSummary.amount && <small className={`amount ${row.marginSummary.tone}`}>{row.marginSummary.amount}</small>}
       {row.marginSummary.recommendation && (
         <small className={row.marginSummary.recommendationTone}>{row.marginSummary.recommendation}</small>
       )}
@@ -119,23 +110,132 @@ function MarginSummary({ row }) {
   );
 }
 
-function Calculation({ row, items = row.calculation }) {
-  if (!items?.length) return null;
+function NoteRow({ item, row, actions, productEditor, confirm }) {
+  const margin = item.label === 'Margem de contribuição';
+  const subtotal = item.label === 'Você recebe';
+  const priceField = row.showPriceField && item.label === 'Preço promocional';
+  const stockField = row.showStockField && item.label === 'Estoque reservado';
+  const costField = productEditor && item.label === 'Custo do produto';
+  const taxField = productEditor && item.label === 'Impostos';
+  const discount = item.label === 'Preço promocional' && row.condition.secondary;
+  const operator = margin || subtotal ? '=' : item.label === 'Crédito promocional' ? '+' : String(item.value).startsWith('-') ? '−' : '';
+  const description = item.label === 'Impostos'
+    ? String(item.description || '').split(' · ')[0].replace(' sobre ', ' do ')
+    : item.description;
+  const tone = margin && row.marginSummary.tone === 'danger'
+    ? 'danger'
+    : operator === '−' ? 'deduction' : operator === '+' ? 'addition' : item.tone || '';
+
   return (
-    <div>
-      <div className="onframe-promotion-manager-kicker">Como o valor é calculado</div>
-      <div className="onframe-promotion-manager-calculation">
-        {items.map((item, index) => (
-          <div key={`${item.label}-${index}`} className={item.tone || ''}>
-            <span>
-              {item.label}
-              {item.description && <small>{item.description}</small>}
-              {item.benefit && <small className="fee-reduction">{item.benefit}</small>}
+    <div className={`onframe-promotion-manager-note-row${subtotal ? ' subtotal' : ''}${margin ? ' total' : ''}${priceField || stockField || costField ? ' is-editable' : ''} ${tone}`}>
+      <span className="onframe-promotion-manager-note-operator" aria-hidden="true">{operator}</span>
+      <div className="onframe-promotion-manager-note-copy">
+        <span className="onframe-promotion-manager-note-label">{item.label}</span>
+        {margin && item.description && !row.result.loading && <span className="onframe-promotion-manager-note-percent">{item.description} do preço promocional</span>}
+        {productEditor && (costField || taxField) && <Badge size="sm" appearance="plain" tone="warning" icon="package">Produto</Badge>}
+        {discount && !priceField && <small className="discount">{discount}</small>}
+        {!margin && !taxField && !(priceField && row.priceHint) && description && <small>{description}</small>}
+        {item.listingType && (
+          <Badge
+            size="sm"
+            appearance="plain"
+            tone={item.listingType === 'Premium' ? 'warning' : item.listingType === 'Clássico' ? 'primary' : 'neutral'}
+            icon={item.listingType === 'Premium' ? 'crown-simple' : 'tag-simple'}
+          >
+            {item.listingType}
+          </Badge>
+        )}
+        {priceField && row.priceHint && <small className="discount">{row.priceHint}</small>}
+        {taxField && (
+          <span className="onframe-promotion-manager-note-tax">
+            <span className="onframe-promotion-manager-note-tax-field">
+              <Input
+                aria-label="Alíquota de imposto do produto"
+                size="md"
+                value={productEditor.taxDraft}
+                onChange={(event) => productEditor.onTaxChange(event.target.value)}
+                onKeyDown={productEditor.onKeyDown}
+                endAddon="%"
+                inputMode="decimal"
+                error={productEditor.taxError || undefined}
+                disabled={productEditor.saving}
+              />
             </span>
-            <strong>{item.value}</strong>
-          </div>
-        ))}
+            <small>sobre o preço promocional</small>
+          </span>
+        )}
+        {item.benefit && <small className="fee-reduction">{item.benefit}</small>}
+        {margin && row.marginSummary.recommendation && <small className="below-minimum">{row.marginSummary.recommendation}</small>}
       </div>
+      <div className="onframe-promotion-manager-note-value">
+        {priceField ? (
+          <Input
+            aria-label="Preço promocional"
+            size="md"
+            value={row.draftPrice}
+            onChange={(event) => actions.onDraftChange(row.key, 'deal_price', event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                confirm();
+              }
+            }}
+            startAddon="R$"
+            inputMode="decimal"
+            error={row.priceError || undefined}
+            disabled={row.busy}
+          />
+        ) : stockField ? (
+          <Input
+            aria-label="Estoque reservado"
+            size="md"
+            value={row.draftStock}
+            onChange={(event) => actions.onDraftChange(row.key, 'stock', event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                confirm();
+              }
+            }}
+            inputMode="numeric"
+            error={row.stockError || undefined}
+            disabled={row.busy}
+          />
+        ) : costField ? (
+          <Input
+            aria-label="Custo do produto"
+            size="md"
+            value={productEditor.costDraft}
+            onChange={(event) => productEditor.onCostChange(event.target.value)}
+            onKeyDown={productEditor.onKeyDown}
+            startAddon="R$"
+            inputMode="decimal"
+            error={productEditor.costError || undefined}
+            disabled={productEditor.saving}
+          />
+        ) : (
+          row.result.loading ? <Skeleton width={72} height={18} /> : <strong>{item.value}</strong>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Calculation({ row, items = row.calculation, actions, productEditor, confirm, includeOfferFields = true }) {
+  const lines = [...(items || [])];
+  if (includeOfferFields && row.showPriceField && !lines.some((item) => item.label === 'Preço promocional')) {
+    lines.unshift({ label: 'Preço promocional', value: row.condition.primary, description: '' });
+  }
+  if (includeOfferFields && row.showStockField) {
+    const priceIndex = lines.findIndex((item) => item.label === 'Preço promocional');
+    lines.splice(priceIndex + 1, 0, { label: 'Estoque reservado', value: row.draftStock, description: row.stockHint });
+  }
+  if (!lines.length) return null;
+  return (
+    <div className="onframe-promotion-manager-note">
+      {lines.map((item, index) => (
+        <NoteRow key={`${item.label}-${index}`} item={item} row={row} actions={actions} productEditor={productEditor} confirm={confirm} />
+      ))}
     </div>
   );
 }
@@ -222,228 +322,86 @@ function adjustedCalculation(row, snapshot) {
   });
 }
 
-function PromotionFinancialDetails({ row, actions, confirm }) {
-  const financials = row.productFinancials;
-  const [editingFinancials, setEditingFinancials] = useState(false);
+function PromotionFinancialDetails({ row, actions, confirm, editing, onCancel }) {
+  const lastReady = useRef(null);
+  if (row.productFinancials && row.calculation.length) {
+    lastReady.current = { productFinancials: row.productFinancials, calculation: row.calculation };
+  }
+  const displayRow = row.result.loading && lastReady.current ? { ...row, ...lastReady.current } : row;
+  const financials = displayRow.productFinancials;
+  const [draftProductId, setDraftProductId] = useState(financials?.productId || '');
   const [costDraft, setCostDraft] = useState(() => decimalInputValue(financials?.productCost));
   const [taxDraft, setTaxDraft] = useState(() => decimalInputValue(financials?.taxRate));
-  const [savingFinancials, setSavingFinancials] = useState(false);
-  const [financialError, setFinancialError] = useState('');
 
   useEffect(() => {
-    setCostDraft(decimalInputValue(financials?.productCost));
-    setTaxDraft(decimalInputValue(financials?.taxRate));
-    setFinancialError('');
-  }, [financials?.productId, financials?.productCost, financials?.taxRate]);
+    if (!financials || (editing && draftProductId === financials.productId)) return;
+    setDraftProductId(financials.productId);
+    setCostDraft(decimalInputValue(financials.productCost));
+    setTaxDraft(decimalInputValue(financials.taxRate));
+  }, [financials?.productId, financials?.productCost, financials?.taxRate, editing, draftProductId]);
 
   const productCost = parseDecimalValue(costDraft);
   const taxRate = parseDecimalValue(taxDraft);
-  const costError = productCost === null || productCost < 0 ? 'Informe um custo válido.' : '';
-  const taxError = taxRate === null || taxRate < 0 || taxRate > 100 ? 'Informe uma alíquota entre 0% e 100%.' : '';
   const snapshot = financialSnapshot(financials, productCost, taxRate);
-  const calculation = adjustedCalculation(row, snapshot);
-  const dirty = Boolean(
-    financials &&
-    snapshot &&
-    (snapshot.productCost !== financials.productCost || snapshot.taxRate !== financials.taxRate)
-  );
-  const canSaveFinancials = dirty && !costError && !taxError && !savingFinancials;
-
-  const discardFinancials = () => {
-    setCostDraft(decimalInputValue(financials?.productCost));
-    setTaxDraft(decimalInputValue(financials?.taxRate));
-    setFinancialError('');
-    setEditingFinancials(false);
-  };
-
-  const saveFinancials = async () => {
-    if (!canSaveFinancials || !financials) return;
-    const changes = {};
-    if (snapshot.productCost !== financials.productCost) changes.cost = snapshot.productCost;
-    if (snapshot.taxRate !== financials.taxRate) changes.taxRate = snapshot.taxRate;
-    setSavingFinancials(true);
-    setFinancialError('');
-    const result = await actions.onSaveProductFinancials(row.key, changes);
-    setSavingFinancials(false);
-    if (!result?.ok) {
-      setFinancialError(result?.error || 'Não foi possível salvar os dados do produto.');
-      return;
-    }
-    setEditingFinancials(false);
-  };
-
-  const handleFinancialKeyDown = (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      discardFinancials();
-    } else if (event.key === 'Enter' && canSaveFinancials) {
-      event.preventDefault();
-      event.stopPropagation();
-      void saveFinancials();
-    }
-  };
+  const calculation = adjustedCalculation(displayRow, snapshot);
+  const productEditor = editing && financials
+    ? {
+        costDraft,
+        taxDraft,
+        costError: productCost === null || productCost < 0 ? 'Informe um custo válido.' : '',
+        taxError: taxRate === null || taxRate < 0 || taxRate > 100 ? 'Informe uma alíquota entre 0% e 100%.' : '',
+        saving: row.busy,
+        onCostChange: setCostDraft,
+        onTaxChange: setTaxDraft,
+        onKeyDown: (event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            onCancel();
+          } else if (event.key === 'Enter') {
+            event.preventDefault();
+          }
+        }
+      }
+    : null;
 
   return (
-    <>
-      <div className="onframe-promotion-manager-financial-side">
-        {row.showPriceField && (
-          <Input
-            label="Preço promocional"
-            value={row.draftPrice}
-            onChange={(event) => actions.onDraftChange(row.key, 'deal_price', event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                confirm();
-              }
-            }}
-            startAddon="R$"
-            inputMode="decimal"
-            error={row.priceError || undefined}
-            hint={row.priceHint || undefined}
-            disabled={row.busy || row.readOnly}
-          />
-        )}
-        {row.showStockField && (
-          <Input
-            label="Estoque reservado"
-            value={row.draftStock}
-            onChange={(event) => actions.onDraftChange(row.key, 'stock', event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                confirm();
-              }
-            }}
-            inputMode="numeric"
-            error={row.stockError || undefined}
-            hint={row.stockHint || undefined}
-            disabled={row.busy || row.readOnly}
-          />
-        )}
-
-        {financials && snapshot ? (
-          <div className={`onframe-promotion-manager-financial${editingFinancials ? ' is-editing' : ''}`}>
-            {editingFinancials ? (
-              <div className="onframe-promotion-manager-financial-edit" onKeyDown={handleFinancialKeyDown}>
-                <div>
-                  <span className="onframe-promotion-manager-kicker">Dados do cálculo</span>
-                  <strong>Premissas do produto</strong>
-                </div>
-                <Input
-                  label="Custo do produto"
-                  value={costDraft}
-                  onChange={(event) => setCostDraft(event.target.value)}
-                  startAddon="R$"
-                  inputMode="decimal"
-                  error={costError || undefined}
-                  hint="Valor cadastrado no OnFrame"
-                  disabled={savingFinancials}
-                />
-                <Input
-                  label="Imposto"
-                  value={taxDraft}
-                  onChange={(event) => setTaxDraft(event.target.value)}
-                  endAddon="%"
-                  inputMode="decimal"
-                  error={taxError || undefined}
-                  hint="Calculado sobre o preço promocional"
-                  disabled={savingFinancials}
-                />
-                {financialError && (
-                  <Alert appearance="soft" tone="danger">
-                    {financialError}
-                  </Alert>
-                )}
-                <div className="onframe-promotion-manager-financial-actions">
-                  <span>{dirty ? 'Alterações não salvas' : 'Sem alterações'}</span>
-                  <div>
-                    <Button kind="neutral" size="sm" onClick={discardFinancials} disabled={savingFinancials}>
-                      Descartar
-                    </Button>
-                    <Button
-                      kind="primary"
-                      size="sm"
-                      onClick={() => void saveFinancials()}
-                      disabled={!canSaveFinancials}
-                    >
-                      {savingFinancials ? 'Salvando…' : 'Salvar no produto'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="onframe-promotion-manager-financial-summary">
-                <div className="onframe-promotion-manager-financial-heading">
-                  <div>
-                    <span className="onframe-promotion-manager-kicker">Resultado</span>
-                    <strong>Resumo financeiro</strong>
-                  </div>
-                  {financials.canEdit && (
-                    <Tooltip label="Editar dados do cálculo" placement="left">
-                      <Button
-                        kind="quiet"
-                        size="sm"
-                        iconOnly
-                        aria-label="Editar dados do cálculo"
-                        icon={icon('pencil-simple')}
-                        onClick={() => setEditingFinancials(true)}
-                      />
-                    </Tooltip>
-                  )}
-                </div>
-                <div className="onframe-promotion-manager-financial-values">
-                  <Metric label="Você recebe" value={formatFinancialMoney(financials.youReceive, financials)} />
-                  <Metric label="Custo do produto" value={formatFinancialMoney(snapshot.productCost, financials)} />
-                  <Metric label="Impostos" value={formatFinancialMoney(snapshot.taxAmount, financials)} />
-                </div>
-                <div className={`onframe-promotion-manager-financial-margin ${snapshot.amount < 0 ? 'danger' : ''}`}>
-                  <span>Margem de contribuição</span>
-                  <strong>{formatFinancialPercent(snapshot.percentage)}</strong>
-                  <small>{formatFinancialMoney(snapshot.amount, financials)}</small>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="onframe-promotion-manager-editor-metrics">
-              {row.result.loading
-                ? [0, 1, 2].map((item) => <Skeleton key={item} width="72%" height={38} radius="var(--ob-r-xs)" />)
-                : row.metrics.map((metric) => <Metric key={metric.label} {...metric} />)}
-            </div>
-            {row.margin && !row.margin.available && (
-              <div className="onframe-promotion-manager-margin-alert">
-                <Alert appearance="soft" tone="info">
-                  {row.margin.message}
-                </Alert>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      <div>
-        <Calculation row={row} items={calculation} />
-        {row.canBulk && !row.readOnly && (
-          <div className="onframe-promotion-manager-bulk">
-            <Checkbox
-              checked={row.bulkEnabled}
-              onChange={actions.onToggleBulk}
-              disabled={row.busy}
-              label="Aplicar a todas as variações"
-              description="Esta aplicação será enviada para as variações ativas e pausadas desta família."
-            />
-          </div>
-        )}
-      </div>
-    </>
+    <div className={`onframe-promotion-manager-note-layout ${editing ? 'is-editing' : 'is-reading'}`}>
+      {displayRow.result.loading && !calculation.length && (
+        <div className="onframe-promotion-manager-note-loading">
+          <Skeleton width="100%" height={48} radius="var(--ob-r-xs)" />
+          <Skeleton width="100%" height={48} radius="var(--ob-r-xs)" />
+        </div>
+      )}
+      {!displayRow.result.loading && !calculation.length && displayRow.result.secondary && (
+        <Alert appearance="soft" tone="warning">{displayRow.result.secondary}</Alert>
+      )}
+      <Calculation row={displayRow} items={calculation} actions={actions} productEditor={productEditor} confirm={confirm} />
+      {displayRow.margin && !displayRow.margin.available && (
+        <Alert appearance="soft" tone="info">{displayRow.margin.message}</Alert>
+      )}
+    </div>
   );
 }
 
-function EditPanel({ row, actions }) {
+function CouponNote({ row }) {
+  const items = [
+    { label: 'Desconto', value: row.condition.primary, description: 'sobre o total da compra' },
+    { label: 'Compra mínima', value: row.result.primary, description: '' },
+    ...(row.result.secondary ? [{ label: 'Reembolso máximo', value: row.result.secondary, description: '' }] : [])
+  ];
+  return <Calculation row={row} items={items} includeOfferFields={false} />;
+}
+
+function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials }) {
+  const editing = !row.readOnly || simulatingFinancials;
+  const cancel = () => {
+    if (row.formAction === 'update') actions.onCancelChanges();
+    else if (row.formAction === 'create') actions.onCancelEdit();
+    else setSimulatingFinancials(false);
+  };
   const confirm = () => {
-    if (!row.validationError && !row.busy) actions.onConfirm(row.key, row.formAction);
+    if (row.offerDirty && !row.validationError && !row.busy) actions.onConfirm(row.key, row.formAction);
   };
 
   return (
@@ -451,54 +409,93 @@ function EditPanel({ row, actions }) {
       <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-editor-feedback" />
       <div className={`onframe-promotion-manager-editor${row.readOnly ? ' is-readonly' : ''}`}>
         {row.type === 'coupon' ? (
-          <>
-            <div>
-              <div className="onframe-promotion-manager-editor-metrics">
-                <Metric label="Desconto" value={row.condition.primary} />
-                <Metric label="Compra mínima" value={row.result.primary} />
-                <Metric label="Reembolso máx." value={row.result.secondary} />
-              </div>
-            </div>
-            <div />
-          </>
+          <CouponNote row={row} />
         ) : (
-          <PromotionFinancialDetails row={row} actions={actions} confirm={confirm} />
+          <PromotionFinancialDetails
+            row={row}
+            actions={actions}
+            confirm={confirm}
+            editing={editing}
+            onCancel={cancel}
+          />
         )}
       </div>
-      <div className="onframe-promotion-manager-editor-footer">
-        {!row.readOnly && (
-          <div className="onframe-promotion-manager-shortcuts" aria-label="Atalhos de teclado">
-            <span>
-              <Kbd size="sm">Esc</Kbd> cancela
-            </span>
-            <span>
-              <Kbd size="sm">Enter</Kbd> confirma
-            </span>
+      <div className={`onframe-promotion-manager-footer-shell${editing ? ' is-visible' : ''}`} aria-hidden={!editing}>
+        <div className="onframe-promotion-manager-footer-content">
+          <div className="onframe-promotion-manager-editor-footer">
+            {!row.readOnly && row.type !== 'coupon' && row.canBulk && (
+              <div className="onframe-promotion-manager-bulk">
+                <Checkbox
+                  checked={row.bulkEnabled}
+                  onChange={actions.onToggleBulk}
+                  disabled={!editing || row.busy}
+                  label="Aplicar a todas as variações"
+                  description="A promoção será enviada às variações ativas e pausadas desta família."
+                />
+              </div>
+            )}
+            <div className="onframe-promotion-manager-shortcuts" aria-label="Atalhos de teclado">
+              <span>
+                <Kbd size="sm">Esc</Kbd> cancela
+              </span>
+              {!row.readOnly && <span><Kbd size="sm">Enter</Kbd> confirma a promoção</span>}
+            </div>
+            <div className="onframe-promotion-manager-editor-actions">
+              <Button kind="quiet" tone="danger" size="sm" onClick={cancel} disabled={!editing || row.busy}>
+                Cancelar
+              </Button>
+              {!row.readOnly && (
+                <Button
+                  kind="primary"
+                  size="sm"
+                  icon={icon('check-circle')}
+                  disabled={!editing || !row.offerDirty || Boolean(row.validationError) || row.busy}
+                  onClick={confirm}
+                >
+                  {row.formAction === 'update'
+                    ? row.bulkEnabled ? 'Alterar promoção em todas as variações' : 'Salvar promoção'
+                    : row.confirmLabel}
+                </Button>
+              )}
+            </div>
           </div>
-        )}
-        <div>
-          <Button kind="neutral" size="sm" onClick={actions.onCancelEdit} disabled={row.busy}>
-            {row.readOnly ? 'Fechar' : 'Cancelar'}
-          </Button>
-          {!row.readOnly && (
-            <Button
-              kind="primary"
-              size="sm"
-              icon={icon('check-circle')}
-              disabled={Boolean(row.validationError) || row.busy}
-              onClick={confirm}
-            >
-              {row.confirmLabel}
-            </Button>
-          )}
         </div>
       </div>
     </>
   );
 }
 
-function CardActions({ row, actions }) {
-  if (row.formOpen) return null;
+function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancials }) {
+  if (row.formOpen) {
+    return (
+      <>
+        {(!row.readOnly || simulatingFinancials) && (
+          <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
+        )}
+        {row.readOnly && !simulatingFinancials && (row.canUpdate || (row.type !== 'coupon' && row.productFinancials)) && (
+          <Button
+            kind="quiet"
+            tone="primary"
+            size="sm"
+            icon={icon('pencil-simple')}
+            onClick={() => row.canUpdate ? actions.onOpen(row.key, 'update') : setSimulatingFinancials(true)}
+            disabled={row.busy}
+          >
+            Editar
+          </Button>
+        )}
+        <Button
+          kind="neutral"
+          size="sm"
+          iconOnly
+          icon={icon('caret-up')}
+          aria-label="Recolher detalhes"
+          onClick={actions.onCancelEdit}
+          disabled={row.busy}
+        />
+      </>
+    );
+  }
   if (row.group === 'available') {
     const isCoupon = row.type === 'coupon';
     return (
@@ -566,15 +563,40 @@ function CardActions({ row, actions }) {
 }
 
 function PromotionCard({ row, actions }) {
+  const [simulatingFinancials, setSimulatingFinancials] = useState(false);
+  const [panelMounted, setPanelMounted] = useState(row.formOpen);
+  const [panelExpanded, setPanelExpanded] = useState(row.formOpen);
+  const lastOpenRow = useRef(row);
+  if (row.formOpen) lastOpenRow.current = row;
+
+  useEffect(() => {
+    setSimulatingFinancials(false);
+  }, [row.formOpen, row.formAction]);
+
+  useEffect(() => {
+    if (row.formOpen) {
+      setPanelMounted(true);
+      const frame = requestAnimationFrame(() => setPanelExpanded(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setPanelExpanded(false);
+    const timer = setTimeout(() => setPanelMounted(false), PANEL_TRANSITION_MS);
+    return () => clearTimeout(timer);
+  }, [row.formOpen]);
+
+  const expanded = row.formOpen || panelMounted;
+  const panelRow = row.formOpen ? row : lastOpenRow.current;
+
   return (
     <Card
       padding={0}
       style={{
-        overflow: row.formOpen ? 'hidden' : 'visible',
-        borderColor: row.formOpen ? 'var(--ob-blue)' : 'var(--ob-line-soft)'
+        overflow: expanded ? 'hidden' : 'visible',
+        borderColor: expanded ? 'var(--ob-blue)' : 'var(--ob-line-soft)',
+        transition: 'border-color var(--ob-dur-base) var(--ob-ease-out)'
       }}
     >
-      <div className="onframe-promotion-manager-card">
+      <div className={`onframe-promotion-manager-card${expanded ? ' is-open' : ''}`}>
         <div className="onframe-promotion-manager-name">
           <span className={`onframe-commerce-promotion-type-icon ${row.type}`} aria-hidden="true">
             <Ph n={row.type === 'coupon' ? 'ticket' : row.type === 'payment' ? 'credit-card' : 'tag'} size={20} />
@@ -590,19 +612,33 @@ function PromotionCard({ row, actions }) {
             </div>
           </div>
         </div>
-        <div className="onframe-promotion-manager-condition">
-          <span>{row.type === 'coupon' ? 'Desconto' : row.type === 'payment' ? 'Condição' : 'Preço'}</span>
-          <strong>{row.condition.primary || '—'}</strong>
-          {row.condition.secondary && <small>{row.condition.secondary}</small>}
-        </div>
-        <Result row={row} />
-        <MarginSummary row={row} />
+        {!expanded && (
+          <>
+            <div className="onframe-promotion-manager-condition">
+              <span>{row.type === 'coupon' ? 'Desconto' : row.type === 'payment' ? 'Condição' : 'Preço'}</span>
+              <strong>{row.condition.primary || '—'}</strong>
+              {row.condition.secondary && <small>{row.condition.secondary}</small>}
+            </div>
+            <Result row={row} />
+            <MarginSummary row={row} />
+          </>
+        )}
         <div className="onframe-promotion-manager-actions">
-          <CardActions row={row} actions={actions} />
+          <CardActions row={expanded ? panelRow : row} actions={actions} simulatingFinancials={simulatingFinancials} setSimulatingFinancials={setSimulatingFinancials} />
         </div>
       </div>
-      {!row.formOpen && <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-card-feedback" />}
-      {row.formOpen && <EditPanel row={row} actions={actions} />}
+      {!expanded && <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-card-feedback" />}
+      <div
+        className={`onframe-promotion-manager-panel-shell${panelExpanded ? ' is-expanded' : ''}`}
+        aria-hidden={!row.formOpen}
+        ref={(element) => { if (element) element.inert = !row.formOpen; }}
+      >
+        <div className="onframe-promotion-manager-panel-content">
+          {panelMounted && (
+            <EditPanel row={panelRow} actions={actions} simulatingFinancials={simulatingFinancials} setSimulatingFinancials={setSimulatingFinancials} />
+          )}
+        </div>
+      </div>
     </Card>
   );
 }

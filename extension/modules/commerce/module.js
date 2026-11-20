@@ -1173,8 +1173,8 @@
         onClearFilters: clearPromotionManagerFilters,
         onOpen: openPromotionManagerCard,
         onCancelEdit: cancelPromotionForm,
+        onCancelChanges: cancelPromotionManagerChanges,
         onDraftChange: updatePromotionManagerDraft,
-        onSaveProductFinancials: savePromotionProductFinancials,
         onToggleBulk: togglePromotionManagerBulk,
         onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
         onRemove: openPromotionManagerRemoval,
@@ -1328,6 +1328,9 @@
         canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry)
       );
       const draft = state.promotionDraftValues[key] || {};
+      const offerDirty = formAction === 'create' || (formAction === 'update' && fields.some((field) =>
+        Object.prototype.hasOwnProperty.call(draft, field) && String(draft[field]) !== String(defaultFieldValue(field, entry))
+      ));
       const showPriceField = fields.includes('deal_price') && !readOnly;
       const showStockField = fields.includes('stock') && !readOnly;
       const draftPrice = Object.prototype.hasOwnProperty.call(draft, 'deal_price')
@@ -1343,12 +1346,17 @@
       const originalPrice = promotionManagerOriginalPrice(entry);
       const discount = discountPercent(originalPrice, displayPrice);
       const estimateRecord = state.promotionEstimates[key] || entry._onframeEstimate || null;
+      const targetPrice = promotionTargetPrice(entry, draft);
+      const estimatePending = !estimateRecord && CommerceModel.canEstimatePromotion(entry) && (
+        formAction
+          ? Boolean(targetPrice) && !promotionDraftWarning(entry, draft)
+          : Boolean(targetPrice) && !promotionRangeWarning(entry, targetPrice)
+      );
       const estimate = estimateRecord && estimateRecord.status === 'ready' ? estimateRecord.data : null;
       const coupon = couponCampaignData(entry);
       const couponMinimum = couponAmount(coupon.min_purchase_amount);
       const couponMaximum =
         couponPresentation(entry).subtype === 'FIXED_PERCENTAGE' ? couponAmount(coupon.max_purchase_amount) : null;
-      const metrics = promotionManagerMetrics(estimate);
       const calculation = promotionManagerCalculation(entry, estimate);
       const margin = promotionContributionMargin(estimate);
       const productFinancials = promotionManagerProductFinancials(estimate);
@@ -1403,12 +1411,12 @@
                         (estimate && estimate.commission && estimate.commission.currency_id) || itemCurrency()
                       )
                     : '',
-                loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
+                loading: estimatePending || Boolean(estimateRecord && estimateRecord.status === 'loading')
               },
         marginSummary: {
           amount:
             completeMargin && Number.isFinite(Number(contributionMargin.amount))
-              ? CommerceModel.formatMoney(
+              ? CommerceModel.formatSignedMoney(
                   contributionMargin.amount,
                   (estimate && estimate.currency_id) || itemCurrency(),
                   contributionMargin.costDecimalPlaces
@@ -1428,9 +1436,8 @@
               ? `Abaixo da MC mínima de ${formatContributionPercent(contributionMargin.minimumPercentage)}`
               : '',
           recommendationTone: 'below-minimum',
-          loading: Boolean(estimateRecord && estimateRecord.status === 'loading')
+          loading: estimatePending || Boolean(estimateRecord && estimateRecord.status === 'loading')
         },
-        metrics,
         calculation,
         margin,
         productFinancials,
@@ -1449,6 +1456,7 @@
         priceError,
         stockError,
         validationError,
+        offerDirty,
         priceHint: promotionManagerPriceHint(originalPrice, draftPrice),
         stockHint: promotionManagerStockHint(entry),
         canBulk: canUseBulkActions(),
@@ -1517,27 +1525,6 @@
       return '';
     }
 
-    function promotionManagerMetrics(estimate) {
-      if (!estimate) return [];
-      const currency = estimate.currency_id || itemCurrency();
-      const metrics = promotionEstimateMetrics(estimate, currency)
-        .filter((metric) => ['Você recebe', 'Tarifa de venda', 'Crédito promocional', 'Frete'].includes(metric.label))
-        .map((metric) => ({
-          label: metric.label,
-          value: metric.value,
-          tone: metric.label === 'Você recebe' ? 'success' : ''
-        }));
-      const margin = estimate.contributionMargin;
-      if (margin && margin.complete && Number.isFinite(Number(margin.amount))) {
-        metrics.push({
-          label: 'Margem de contribuição',
-          value: `${CommerceModel.formatMoney(margin.amount, currency, margin.costDecimalPlaces)} · ${formatContributionPercent(margin.percentage)}`,
-          tone: margin.amount >= 0 ? 'success' : 'danger'
-        });
-      }
-      return metrics;
-    }
-
     function promotionManagerCalculation(entry, estimate) {
       if (!estimate) return [];
       const currency = estimate.currency_id || itemCurrency();
@@ -1545,6 +1532,7 @@
         label: item.label,
         value: item.value,
         description: item.description,
+        listingType: item.listingType,
         benefit: item.benefit,
         tone: item.tone === 'total' ? 'success' : ''
       }));
@@ -1575,7 +1563,7 @@
       );
       rows.push({
         label: 'Margem de contribuição',
-        value: CommerceModel.formatMoney(margin.amount, currency, margin.costDecimalPlaces),
+        value: CommerceModel.formatSignedMoney(margin.amount, currency, margin.costDecimalPlaces),
         description: formatContributionPercent(margin.percentage),
         tone: margin.amount >= 0 ? 'success' : 'danger'
       });
@@ -1612,7 +1600,6 @@
       if (Object.values(values).some((value) => !Number.isFinite(value))) return null;
       return {
         productId: product.id,
-        canEdit: productMatch.canEdit === true,
         productCost: values.productCost,
         taxRate: values.taxRate,
         taxSource: margin.taxSource || '',
@@ -1638,7 +1625,7 @@
     function formatContributionCost(amount, currency, decimalPlaces) {
       const value = Number(amount);
       return Number.isFinite(value) && value >= 0
-        ? `-${CommerceModel.formatMoney(value, currency, decimalPlaces)}`
+        ? `-${CommerceModel.formatSignedMoney(value, currency, decimalPlaces)}`
         : '—';
     }
 
@@ -1743,31 +1730,6 @@
       clearPromotionFeedback(key);
       schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key]);
       rerenderModal();
-    }
-
-    async function savePromotionProductFinancials(key, changes) {
-      const row = promotionManagerRow(key);
-      const estimateRecord = state.promotionEstimates[key] || (row && row.entry && row.entry._onframeEstimate) || null;
-      const estimate = estimateRecord && estimateRecord.status === 'ready' ? estimateRecord.data : null;
-      const financials = promotionManagerProductFinancials(estimate);
-      if (!row || !financials) {
-        return { ok: false, error: 'Os dados financeiros deste produto estão indisponíveis.' };
-      }
-      const payload = {};
-      if (changes && Object.prototype.hasOwnProperty.call(changes, 'cost')) payload.cost = changes.cost;
-      if (changes && Object.prototype.hasOwnProperty.call(changes, 'taxRate')) payload.taxRate = changes.taxRate;
-      if (!Object.keys(payload).length) return { ok: true };
-      try {
-        await api(itemApiPath('/product-financials'), {
-          method: 'PATCH',
-          body: JSON.stringify(payload)
-        });
-        clearPromotionEstimate(key);
-        schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key] || {}, true);
-        return { ok: true };
-      } catch (error) {
-        return { ok: false, error: toUserError(error) };
-      }
     }
 
     function togglePromotionManagerBulk(checked) {
@@ -2007,9 +1969,14 @@
         });
       }
       if (commission !== null) {
+        const rate = estimate.commission.effective_percentage ?? estimate.commission.percentage;
+        const percentage = rate === null || rate === undefined ? null : Number(rate);
         rows.push({
           label: 'Tarifa de venda',
-          description: saleFeeListingType(estimate.commission),
+          description: percentage === null || !Number.isFinite(percentage) || percentage < 0
+            ? ''
+            : `${formatPercent(percentage)} do preço no anúncio`,
+          listingType: saleFeeListingType(estimate.commission),
           benefit: saleFeeReductionLabel(estimate.commission, currency),
           value: formatPromotionCost(commission, currency)
         });
@@ -2487,7 +2454,7 @@
         fields.push({
           label: 'Margem de contribuição',
           value: formatContributionPercent(margin.percentage),
-          secondaryValue: CommerceModel.formatMoney(margin.amount, currency, margin.costDecimalPlaces),
+          secondaryValue: CommerceModel.formatSignedMoney(margin.amount, currency, margin.costDecimalPlaces),
           tone: Number(margin.amount) < 0 ? 'danger' : 'success'
         });
       }
@@ -3640,6 +3607,22 @@
       if (!returningFromDirectDiscount && formAction !== 'details' && !previousEstimate && row) {
         schedulePromotionEstimate(key, row.entry, {}, true);
       }
+    }
+
+    function cancelPromotionManagerChanges() {
+      const key = state.promotionFormKey;
+      if (!key || state.busy || state.promotionFormAction !== 'update') return;
+      const row = promotionManagerRow(key);
+      clearPromotionFeedback(key);
+      clearPromotionEstimateTimer(key);
+      delete state.promotionDraftValues[key];
+      if (state.promotionFormEstimate) state.promotionEstimates[key] = state.promotionFormEstimate;
+      else delete state.promotionEstimates[key];
+      state.promotionFormAction = 'details';
+      state.promotionFormEstimate = null;
+      state.promotionBulkEnabled = false;
+      rerenderModal();
+      if (row) schedulePromotionEstimate(key, row.entry, {}, true);
     }
 
     async function reloadCommerce() {
