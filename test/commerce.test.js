@@ -138,6 +138,7 @@ test('commerce model nao conta desconto pix acumulativo como promocao de preco',
 
 test('commerce model permite acoes do cupom do item sem estimar desconto no checkout', () => {
   const coupon = {
+    id: 'COUPON-1',
     type: 'SELLER_COUPON_CAMPAIGN',
     capabilities: { offerCreate: ['promotion_id'], offerDelete: ['promotion_id'] }
   };
@@ -148,6 +149,27 @@ test('commerce model permite acoes do cupom do item sem estimar desconto no chec
   assert.strictEqual(commerceModel.canUpdateOffer(coupon), false);
   assert.strictEqual(commerceModel.canDeleteOffer(coupon), true);
   assert.strictEqual(commerceModel.canEstimatePromotion({ type: 'DEAL' }), true);
+  assert.deepStrictEqual(commerceModel.buildOfferPayload(coupon), {
+    promotionType: 'SELLER_COUPON_CAMPAIGN',
+    promotionId: 'COUPON-1'
+  });
+});
+
+test('aplicação direta usa dados válidos da oferta sem dispensar preço obrigatório', () => {
+  const campaign = {
+    id: 'CAMPAIGN-1',
+    type: 'DEAL',
+    min_price: 20,
+    max_price: 30,
+    capabilities: { offerCreate: ['promotion_id', 'deal_price'] }
+  };
+  assert.deepStrictEqual(commerceModel.buildOfferPayload(campaign, { deal_price: '27,64' }), {
+    promotionType: 'DEAL',
+    promotionId: 'CAMPAIGN-1',
+    dealPrice: 27.64
+  });
+  assert.throws(() => commerceModel.buildOfferPayload(campaign, {}), /promotion_missing_deal_price/);
+  assert.throws(() => commerceModel.buildOfferPayload(campaign, { deal_price: '18,00' }));
 });
 
 test('commerce model classifica participação iniciada sem preço vigente como programada', () => {
@@ -614,6 +636,9 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /const operator = margin \|\| subtotal \? '=' : item\.label === 'Crédito promocional' \? '\+' /);
   assert.match(view, /<Calculation row=\{displayRow\} items=\{calculation\} actions=\{actions\} productEditor=\{productEditor\} confirm=\{confirm\} \/>/);
   assert.match(view, /function CouponNote\(\{ row \}\)/);
+  assert.match(view, /<small>Desconto máx\. \{row\.result\.secondary\}<\/small>/);
+  assert.match(view, /label: 'Desconto máximo', value: row\.result\.secondary/);
+  assert.doesNotMatch(view, /Reembolso máx/);
   assert.match(styles, /\.onframe-promotion-manager-note-row\s*\{[\s\S]*min-height: 48px;/s);
   assert.match(styles, /\.onframe-promotion-manager-note-row\.total\s*\{[\s\S]*background: var\(--ob-bg-alt\);/s);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
@@ -637,14 +662,19 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   );
   assert.doesNotMatch(view, /\{row\.typeLabel\} · \{row\.period\}/);
   assert.match(view, /const isCoupon = row\.type === 'coupon'/);
-  assert.match(view, /tone=\{isCoupon \? 'warning' : 'primary'\}/);
-  assert.match(view, /icon=\{icon\(isCoupon \? 'clipboard-text' : 'tag'\)\}/);
+  assert.match(view, /label: isCoupon \? 'Revisar' : 'Configurar'/);
+  assert.match(view, /icon: isCoupon \? 'clipboard-text' : 'tag'/);
+  assert.match(view, /row\.canQuickApply[\s\S]*label: 'Aplicar'[\s\S]*actions\.onQuickApply\(row\.key\)/s);
   assert.match(view, /Menu,[\s\S]*from '@onblide\/ui'/s);
   assert.match(view, /label: 'Editar'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'update'\)/s);
   assert.match(view, /label: 'Ver detalhes'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'details'\)/s);
   assert.match(view, /label: 'Remover'[\s\S]*tone: 'danger'[\s\S]*onSelect: \(\) => actions\.onRemove\(row\.key\)/s);
   assert.match(view, /aria-label=\{`Abrir ações de \$\{row\.name\}`\}/);
   assert.match(view, /icon=\{icon\('dots-three-vertical', 18\)\}/);
+  assert.match(view, /label: 'Recolher detalhes'[\s\S]*onSelect: actions\.onCancelEdit/s);
+  assert.doesNotMatch(view, /aria-label="Recolher detalhes"/);
+  assert.match(view, /<span>Você recebe<\/span>[\s\S]*<strong className=\{row\.result\.primary \? 'amount' : undefined\}>/s);
+  assert.match(styles, /\.onframe-promotion-manager-result strong\.amount\s*\{\s*color: var\(--ob-blue\);/);
   assert.doesNotMatch(view, /aria-label="Remover promoção"/);
   assert.match(view, /aria-hidden="true"/);
   assert.match(view, /aria-label="Preço promocional"/);
@@ -672,6 +702,12 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /tone="danger"/);
   assert.doesNotMatch(view, /Desfazer/);
   assert.match(source, /function buildPromotionManagerViewModel/);
+  assert.match(source, /canQuickApply: Boolean\(promotionManagerQuickApplyValues\(entry, canCreate\)\)/);
+  assert.match(source, /function promotionManagerQuickApplyValues\(entry, canCreate\)[\s\S]*CommerceModel\.buildOfferPayload\(entry, values\)/s);
+  assert.match(source, /function applyPromotionManagerDirectly\(key\)[\s\S]*commitPromotionManagerAction\(key, 'create', null, values\)/s);
+  assert.match(source, /const bulkEnabled = !quickApply && state\.promotionBulkEnabled && canUseBulkActions\(\)/);
+  assert.match(source, /if \(!quickApply\) \{\s*state\.promotionFormKey = '';/);
+  assert.match(source, /scope: action === 'delete' \|\| state\.promotionFormKey !== key \? 'card' : 'form'/);
   assert.match(
     source,
     /label: 'Tarifa de venda',[\s\S]*description: percentage === null \|\| !Number\.isFinite\(percentage\)[\s\S]*`\$\{formatPercent\(percentage\)\} do preço no anúncio`,[\s\S]*listingType: saleFeeListingType\(estimate\.commission\)/s
@@ -785,8 +821,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(styles, /\.onframe-promotion-manager-card\.is-open\s*\{\s*grid-template-columns: minmax\(0, 1fr\) auto;/);
   assert.match(styles, /\.onframe-promotion-manager-card\.is-open \.onframe-promotion-manager-actions\s*\{\s*grid-column: 1 \/ -1;/);
   assert.match(view, /panelMounted && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
-  assert.match(view, /function CardActions\(\{ row, actions, simulatingFinancials, setSimulatingFinancials \}\)[\s\S]*onClick=\{\(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)\}/s);
-  assert.match(view, /\(!row\.readOnly \|\| simulatingFinancials\) && \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
+  assert.match(view, /function CardActions\(\{ row, actions, simulatingFinancials, setSimulatingFinancials \}\)[\s\S]*onSelect: \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/s);
+  assert.match(view, /row\.formOpen && \(!row\.readOnly \|\| simulatingFinancials\) && \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-note-tools\s*\{/);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-label\s*\{\s*font-family: var\(--ob-font\) !important;/);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-value strong\s*\{\s*font-family: var\(--ob-font\) !important;/);
@@ -931,7 +967,7 @@ test('modal de promoções mantém filtros e revisão financeira na view React',
   assert.match(view, /label="Elegíveis"/);
   assert.match(view, /function Calculation\(\{ row, items = row\.calculation/);
   assert.match(view, /lines\.map\(\(item, index\) =>/);
-  assert.match(view, /onClick=\{\(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)\}/);
+  assert.match(view, /onSelect: \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/);
   assert.match(view, /Margem de contribuição/);
   assert.match(view, /const editing = !row\.readOnly \|\| simulatingFinancials/);
   assert.doesNotMatch(view, /Salvar no produto|onSaveProductFinancials/);
@@ -1142,7 +1178,7 @@ test('feedback de promoções permanece contextual e só escala eventos de fundo
 
   assert.match(source, /promotionFeedback: null/);
   assert.match(source, /function setPromotionFeedback\(/);
-  assert.match(commit, /scope: action === 'delete' \? 'card' : 'form'/);
+  assert.match(commit, /scope: action === 'delete' \|\| state\.promotionFormKey !== key \? 'card' : 'form'/);
   assert.match(commit, /keepFormOpen = !publishPromotionBulkFeedback\(result, action\)\.changed/);
   assert.doesNotMatch(commit, /notifyBulkResult\(/);
   assert.match(source, /function publishPromotionBulkFeedback\(/);

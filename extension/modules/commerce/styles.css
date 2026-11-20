@@ -1323,6 +1323,10 @@ body:has(
   color: var(--ob-green);
 }
 
+.onframe-promotion-manager-result strong.amount {
+  color: var(--ob-blue);
+}
+
 .onframe-promotion-manager-margin-summary strong.danger {
   color: var(--ob-danger);
 }

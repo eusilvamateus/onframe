@@ -71,7 +71,7 @@ function Result({ row }) {
       <div className="onframe-promotion-manager-result">
         <span>Compra mínima</span>
         <strong>{row.result.primary || '—'}</strong>
-        {row.result.secondary && <small>Reembolso máx. {row.result.secondary}</small>}
+        {row.result.secondary && <small>Desconto máx. {row.result.secondary}</small>}
       </div>
     );
   }
@@ -81,7 +81,7 @@ function Result({ row }) {
       {row.result.loading ? (
         <Skeleton width={110} height={20} style={{ marginTop: 'var(--ob-space-4)' }} />
       ) : (
-        <strong>{row.result.primary || '—'}</strong>
+        <strong className={row.result.primary ? 'amount' : undefined}>{row.result.primary || '—'}</strong>
       )}
       {row.result.feeReduction ? (
         <small className="fee-reduction">Tarifa reduzida {row.result.feeReduction}</small>
@@ -388,7 +388,7 @@ function CouponNote({ row }) {
   const items = [
     { label: 'Desconto', value: row.condition.primary, description: 'sobre o total da compra' },
     { label: 'Compra mínima', value: row.result.primary, description: '' },
-    ...(row.result.secondary ? [{ label: 'Reembolso máximo', value: row.result.secondary, description: '' }] : [])
+    ...(row.result.secondary ? [{ label: 'Desconto máximo', value: row.result.secondary, description: '' }] : [])
   ];
   return <Calculation row={row} items={items} includeOfferFields={false} />;
 }
@@ -466,99 +466,71 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
 }
 
 function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancials }) {
-  if (row.formOpen) {
-    return (
-      <>
-        {(!row.readOnly || simulatingFinancials) && (
-          <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
-        )}
-        {row.readOnly && !simulatingFinancials && (row.canUpdate || (row.type !== 'coupon' && row.productFinancials)) && (
+  const isCoupon = row.type === 'coupon';
+  const items = row.formOpen
+    ? [
+        ...(row.readOnly && !simulatingFinancials && (row.canUpdate || (!isCoupon && row.productFinancials))
+          ? [{
+              label: 'Editar',
+              icon: 'pencil-simple',
+              disabled: row.busy,
+              onSelect: () => row.canUpdate ? actions.onOpen(row.key, 'update') : setSimulatingFinancials(true)
+            }]
+          : []),
+        {
+          label: 'Recolher detalhes',
+          icon: 'caret-up',
+          disabled: row.busy,
+          onSelect: actions.onCancelEdit
+        }
+      ]
+    : row.group === 'available'
+      ? [
+          ...(row.canQuickApply
+            ? [{ label: 'Aplicar', icon: 'check-circle', disabled: row.busy, onSelect: () => actions.onQuickApply(row.key) }]
+            : []),
+          {
+            label: isCoupon ? 'Revisar' : 'Configurar',
+            icon: isCoupon ? 'clipboard-text' : 'tag',
+            disabled: row.busy,
+            onSelect: () => actions.onOpen(row.key, row.createAction ? 'create' : 'details')
+          }
+        ]
+      : [
+          ...(row.canUpdate
+            ? [{ label: 'Editar', icon: 'pencil-simple', disabled: row.busy, onSelect: () => actions.onOpen(row.key, 'update') }]
+            : []),
+          { label: 'Ver detalhes', icon: 'eye', disabled: row.busy, onSelect: () => actions.onOpen(row.key, 'details') },
+          ...(row.canDelete
+            ? [
+                { type: 'separator' },
+                { label: 'Remover', icon: 'trash', tone: 'danger', disabled: row.busy, onSelect: () => actions.onRemove(row.key) }
+              ]
+            : [])
+        ];
+  return (
+    <>
+      {row.formOpen && (!row.readOnly || simulatingFinancials) && (
+        <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
+      )}
+      <Menu
+        size="sm"
+        align="right"
+        placement="auto"
+        ariaLabel={`Ações de ${row.name}`}
+        items={items}
+        trigger={
           <Button
             kind="quiet"
-            tone="primary"
             size="sm"
-            icon={icon('pencil-simple')}
-            onClick={() => row.canUpdate ? actions.onOpen(row.key, 'update') : setSimulatingFinancials(true)}
+            iconOnly
+            aria-label={`Abrir ações de ${row.name}`}
+            icon={icon('dots-three-vertical', 18)}
             disabled={row.busy}
-          >
-            Editar
-          </Button>
-        )}
-        <Button
-          kind="neutral"
-          size="sm"
-          iconOnly
-          icon={icon('caret-up')}
-          aria-label="Recolher detalhes"
-          onClick={actions.onCancelEdit}
-          disabled={row.busy}
-        />
-      </>
-    );
-  }
-  if (row.group === 'available') {
-    const isCoupon = row.type === 'coupon';
-    return (
-      <Button
-        kind="quiet"
-        tone={isCoupon ? 'warning' : 'primary'}
-        size="sm"
-        icon={icon(isCoupon ? 'clipboard-text' : 'tag')}
-        onClick={() => actions.onOpen(row.key, row.createAction ? 'create' : 'details')}
-        disabled={row.busy}
-      >
-        {isCoupon ? 'Revisar' : 'Configurar'}
-      </Button>
-    );
-  }
-  const items = [
-    ...(row.canUpdate
-      ? [
-          {
-            label: 'Editar',
-            icon: 'pencil-simple',
-            disabled: row.busy,
-            onSelect: () => actions.onOpen(row.key, 'update')
-          }
-        ]
-      : []),
-    {
-      label: 'Ver detalhes',
-      icon: 'eye',
-      disabled: row.busy,
-      onSelect: () => actions.onOpen(row.key, 'details')
-    },
-    ...(row.canDelete
-      ? [
-          { type: 'separator' },
-          {
-            label: 'Remover',
-            icon: 'trash',
-            tone: 'danger',
-            disabled: row.busy,
-            onSelect: () => actions.onRemove(row.key)
-          }
-        ]
-      : [])
-  ];
-  return (
-    <Menu
-      size="sm"
-      align="right"
-      placement="auto"
-      ariaLabel={`Ações de ${row.name}`}
-      items={items}
-      trigger={
-        <Button
-          kind="quiet"
-          size="sm"
-          iconOnly
-          aria-label={`Abrir ações de ${row.name}`}
-          icon={icon('dots-three-vertical', 18)}
-          disabled={row.busy}
-        />
-      }
-    />
+          />
+        }
+      />
+    </>
   );
 }
 

@@ -1172,6 +1172,7 @@
         onClearAdvancedFilters: clearPromotionManagerAdvancedFilters,
         onClearFilters: clearPromotionManagerFilters,
         onOpen: openPromotionManagerCard,
+        onQuickApply: applyPromotionManagerDirectly,
         onCancelEdit: cancelPromotionForm,
         onCancelChanges: cancelPromotionManagerChanges,
         onDraftChange: updatePromotionManagerDraft,
@@ -1446,6 +1447,7 @@
         canDelete,
         locallyApplied: locallyPending,
         createAction: canCreate,
+        canQuickApply: Boolean(promotionManagerQuickApplyValues(entry, canCreate)),
         formOpen: state.promotionFormKey === key,
         formAction,
         readOnly,
@@ -1515,6 +1517,21 @@
       if (range.min !== null && stock < range.min) return `O estoque mínimo é ${range.min}.`;
       if (range.max !== null && stock > range.max) return `O estoque máximo é ${range.max}.`;
       return '';
+    }
+
+    function promotionManagerQuickApplyValues(entry, canCreate) {
+      if (!canCreate || !CommerceModel.canCreateOffer(entry)) return null;
+      const fields = CommerceModel.getUserFields(CommerceModel.getOfferCreateFields(entry));
+      const values = Object.fromEntries(fields.map((field) => [field, defaultFieldValue(field, entry)]));
+      if (fields.includes('deal_price') && promotionManagerPriceError(entry, values.deal_price)) return null;
+      if (fields.includes('stock') && promotionManagerStockError(entry, values.stock)) return null;
+      if (promotionDraftWarning(entry, values)) return null;
+      try {
+        CommerceModel.buildOfferPayload(entry, values);
+        return values;
+      } catch (error) {
+        return null;
+      }
     }
 
     function promotionManagerStockHint(entry) {
@@ -1720,6 +1737,16 @@
         schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key] || {});
       }
       rerenderModal();
+    }
+
+    function applyPromotionManagerDirectly(key) {
+      if (state.busy) return;
+      const row = promotionManagerRow(key);
+      if (!row) return;
+      const managerRow = buildPromotionManagerRow(row);
+      const values = promotionManagerQuickApplyValues(row.entry, managerRow.createAction);
+      if (!values) return;
+      void commitPromotionManagerAction(key, 'create', null, values);
     }
 
     function updatePromotionManagerDraft(key, field, value) {
@@ -3333,13 +3360,14 @@
       removeDirectDiscountModal();
     }
 
-    async function commitPromotionManagerAction(key, action, explicitEntry = null) {
+    async function commitPromotionManagerAction(key, action, explicitEntry = null, explicitValues = null) {
       if (!state.itemId || state.busy || !['create', 'update', 'delete'].includes(action)) return;
+      const quickApply = action === 'create' && explicitValues !== null;
       const row = promotionManagerRow(key);
       const entry = explicitEntry || (row && row.entry);
       if (!entry) return;
       const createdDirectDiscount = Boolean(entry.direct_discount_draft);
-      const values = Object.assign({}, state.promotionDraftValues[key] || {});
+      const values = Object.assign({}, explicitValues || state.promotionDraftValues[key] || {});
       const estimateRecord = state.promotionEstimates[key] || null;
       const fields =
         action === 'delete'
@@ -3349,8 +3377,10 @@
                 ? CommerceModel.getOfferUpdateFields(entry)
                 : CommerceModel.getOfferCreateFields(entry)
             );
-      ensurePromotionDraft(key, entry, fields);
-      Object.assign(values, state.promotionDraftValues[key] || {});
+      if (!explicitValues) {
+        ensurePromotionDraft(key, entry, fields);
+        Object.assign(values, state.promotionDraftValues[key] || {});
+      }
 
       const draftWarning = action === 'delete' ? '' : promotionDraftWarning(entry, values);
       const priceWarning = fields.includes('deal_price') ? promotionManagerPriceError(entry, values.deal_price) : '';
@@ -3384,15 +3414,15 @@
               : CommerceModel.buildOfferPayload(entry, values);
 
         state.busy = true;
-        state.operationPending =
-          state.promotionBulkEnabled && canUseBulkActions() ? 'promotion-bulk-commit' : 'promotion-single';
+        const bulkEnabled = !quickApply && state.promotionBulkEnabled && canUseBulkActions();
+        state.operationPending = bulkEnabled ? 'promotion-bulk-commit' : 'promotion-single';
         state.operationPendingKey = key;
         state.operationPendingAction = action;
         state.actionError = '';
         clearPromotionFeedback(key);
         rerenderModal();
 
-        if (state.promotionBulkEnabled && canUseBulkActions()) {
+        if (bulkEnabled) {
           const result = await commitBulkInBatches(`promotion.offer.${action}`, payload);
           const currentTarget = currentBulkPromotionTarget(result);
           if (currentTarget) {
@@ -3417,13 +3447,15 @@
         }
 
         if (keepFormOpen) return;
-        state.promotionFormKey = '';
-        state.promotionFormAction = '';
-        state.promotionFormEstimate = null;
+        if (!quickApply) {
+          state.promotionFormKey = '';
+          state.promotionFormAction = '';
+          state.promotionFormEstimate = null;
+          state.promotionBulkEnabled = false;
+        }
         delete state.promotionDraftValues[key];
         clearPromotionEstimateTimer(key);
         delete state.promotionEstimates[key];
-        state.promotionBulkEnabled = false;
         if (createdDirectDiscount) {
           state.directDiscountModalOpen = false;
           state.promotionModalOpen = true;
@@ -3435,7 +3467,7 @@
           state.actionError = message;
         } else {
           setPromotionFeedback({
-            scope: action === 'delete' ? 'card' : 'form',
+            scope: action === 'delete' || state.promotionFormKey !== key ? 'card' : 'form',
             key,
             title: promotionActionErrorTitle(action),
             message
