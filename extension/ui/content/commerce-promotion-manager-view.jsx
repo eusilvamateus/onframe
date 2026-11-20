@@ -2,6 +2,7 @@ import { Component, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
+  Accordion,
   Alert,
   AlertDialog,
   Badge,
@@ -119,11 +120,11 @@ function MarginSummary({ row }) {
   );
 }
 
-function Calculation({ row, items = row.calculation }) {
+function Calculation({ row, items = row.calculation, showHeading = true }) {
   if (!items?.length) return null;
   return (
     <div>
-      <div className="onframe-promotion-manager-kicker">Como o valor é calculado</div>
+      {showHeading && <div className="onframe-promotion-manager-kicker">Como o valor é calculado</div>}
       <div className="onframe-promotion-manager-calculation">
         {items.map((item, index) => (
           <div key={`${item.label}-${index}`} className={item.tone || ''}>
@@ -393,15 +394,19 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
                     </Tooltip>
                   )}
                 </div>
-                <div className="onframe-promotion-manager-financial-values">
-                  <Metric label="Você recebe" value={formatFinancialMoney(financials.youReceive, financials)} />
-                  <Metric label="Custo do produto" value={formatFinancialMoney(snapshot.productCost, financials)} />
-                  <Metric label="Impostos" value={formatFinancialMoney(snapshot.taxAmount, financials)} />
-                </div>
-                <div className={`onframe-promotion-manager-financial-margin ${snapshot.amount < 0 ? 'danger' : ''}`}>
-                  <span>Margem de contribuição</span>
-                  <strong>{formatFinancialPercent(snapshot.percentage)}</strong>
-                  <small>{formatFinancialMoney(snapshot.amount, financials)}</small>
+                <div className="onframe-promotion-manager-financial-overview">
+                  <div className="onframe-promotion-manager-financial-values">
+                    <Metric label="Você recebe" value={formatFinancialMoney(financials.youReceive, financials)} />
+                    <Metric label="Custo do produto" value={formatFinancialMoney(snapshot.productCost, financials)} />
+                    <Metric label="Impostos" value={formatFinancialMoney(snapshot.taxAmount, financials)} />
+                  </div>
+                  <div
+                    className={`onframe-promotion-manager-financial-margin ${snapshot.amount < 0 ? 'danger' : ''}`}
+                  >
+                    <span>Margem de contribuição</span>
+                    <strong>{formatFinancialPercent(snapshot.percentage)}</strong>
+                    <small>{formatFinancialMoney(snapshot.amount, financials)}</small>
+                  </div>
                 </div>
               </div>
             )}
@@ -424,7 +429,20 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
         )}
       </div>
       <div>
-        <Calculation row={row} items={calculation} />
+        {financials && snapshot ? (
+          <Accordion
+            items={[{
+              id: 'calculation',
+              title: 'Como o valor é calculado',
+              content: <Calculation row={row} items={calculation} showHeading={false} />
+            }]}
+            appearance="ghost"
+            size="sm"
+            ariaLabel="Detalhamento da promoção"
+          />
+        ) : (
+          <Calculation row={row} items={calculation} />
+        )}
         {row.canBulk && !row.readOnly && (
           <div className="onframe-promotion-manager-bulk">
             <Checkbox
@@ -449,7 +467,9 @@ function EditPanel({ row, actions }) {
   return (
     <>
       <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-editor-feedback" />
-      <div className={`onframe-promotion-manager-editor${row.readOnly ? ' is-readonly' : ''}`}>
+      <div
+        className={`onframe-promotion-manager-editor${row.readOnly ? ' is-readonly' : ''}${row.productFinancials ? ' has-financials' : ''}`}
+      >
         {row.type === 'coupon' ? (
           <>
             <div>

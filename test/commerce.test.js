@@ -597,6 +597,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /kind="primary"\s+size="sm"\s+icon=\{icon\('tag', 18\)\}/s);
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
   assert.match(styles, /\.onframe-promotion-manager-financial-margin small\s*\{\s*margin-top: var\(--ob-space-4\);/);
+  assert.match(view, /<Accordion\s+items=\{\[\{[\s\S]*title: 'Como o valor é calculado'/);
+  assert.match(view, /appearance="ghost"\s+size="sm"\s+ariaLabel="Detalhamento da promoção"/);
+  assert.match(styles, /\.onframe-promotion-manager-financial-overview\s*\{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+  assert.match(styles, /\.onframe-promotion-manager-editor\.has-financials\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);
   assert.match(view, /label="Ativas"/);

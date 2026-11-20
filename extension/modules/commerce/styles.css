@@ -1363,6 +1363,15 @@ body:has(
   background: var(--ob-bg-alt);
 }
 
+.onframe-promotion-manager-editor.has-financials {
+  gap: var(--ob-space-12);
+}
+
+.onframe-promotion-manager-editor.has-financials > div:last-child {
+  padding-top: var(--ob-space-8);
+  border-top: 1px solid var(--ob-line-soft);
+}
+
 .onframe-promotion-manager-editor > div {
   border-inline: 0 !important;
 }
@@ -1382,7 +1391,6 @@ body:has(
   flex: 1;
 }
 
-.onframe-promotion-manager-financial-summary,
 .onframe-promotion-manager-financial-edit {
   display: flex;
   min-height: 100%;
@@ -1408,10 +1416,15 @@ body:has(
   color: var(--ob-fg-strong);
 }
 
-.onframe-promotion-manager-financial-values {
+.onframe-promotion-manager-financial-overview {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--ob-space-16);
-  margin-top: var(--ob-space-20);
+  margin-top: var(--ob-space-12);
+}
+
+.onframe-promotion-manager-financial-values {
+  display: contents;
 }
 
 .onframe-promotion-manager-financial-values .onframe-promotion-manager-metric {
@@ -1421,15 +1434,13 @@ body:has(
 
 .onframe-promotion-manager-financial-margin {
   display: grid;
+  align-content: start;
   gap: 0;
-  margin-top: auto;
-  padding-top: var(--ob-space-20);
-  border-top: 1px solid var(--ob-line-soft);
   color: var(--ob-green);
 }
 
 .onframe-promotion-manager-financial-margin > span {
-  margin-bottom: var(--ob-space-6);
+  margin-bottom: var(--ob-space-4);
   font-family: var(--ob-font-mono) !important;
   font-size: var(--ob-fs-11);
   font-weight: var(--ob-w-medium) !important;
@@ -1437,7 +1448,7 @@ body:has(
 }
 
 .onframe-promotion-manager-financial-margin strong {
-  font-size: var(--ob-fs-22);
+  font-size: var(--ob-fs-18);
   line-height: var(--ob-lh-tight);
 }
 
@@ -1601,6 +1612,10 @@ body:has(
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .onframe-promotion-manager-financial-overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .onframe-commerce-direct-discount-line {
     grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
   }
@@ -1633,5 +1648,9 @@ body:has(
 
   .onframe-promotion-manager-editor {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .onframe-promotion-manager-editor.has-financials {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
