@@ -1628,6 +1628,28 @@ body:has(
   min-width: 0;
 }
 
+.onframe-promotion-manager-bulk-report {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ob-space-8);
+  padding: var(--ob-space-12) var(--ob-space-24) 0;
+}
+
+.onframe-promotion-manager-bulk-report.in-editor {
+  padding: 0 var(--ob-space-16) var(--ob-space-16);
+  background: var(--ob-bg-alt);
+}
+
+.onframe-promotion-manager-bulk-error {
+  padding: 0 var(--ob-space-16) var(--ob-space-16);
+  background: var(--ob-bg-alt);
+}
+
+.onframe-promotion-manager-bulk-report > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .onframe-promotion-manager-editor-footer {
   display: flex;
   align-items: center;

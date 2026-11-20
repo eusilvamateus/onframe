@@ -733,7 +733,14 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /function applyPromotionManagerDirectly\(key\)[\s\S]*commitPromotionManagerAction\(key, 'create', null, values\)/s);
   assert.match(source, /if \(!values\) \{\s*if \(managerRow\.createAction\) openPromotionManagerCard\(key, 'create'\);/);
   assert.match(source, /if \(field === 'stock'\) \{\s*return '';/);
-  assert.match(source, /const bulkEnabled = !quickApply && state\.promotionBulkEnabled && canUseBulkActions\(\)/);
+  assert.match(source, /const bulkEnabled =\s*!quickApply && !createdDirectDiscount && state\.promotionBulkEnabled && canUseBulkActions\(\) &&\s*!fields\.includes\('stock'\)/);
+  assert.match(source, /canBulk: canUseBulkActions\(\) && Boolean\(state\.context && state\.context\.family\) && !fields\.includes\('stock'\)/);
+  assert.match(source, /state\.promotionBulkPreview = preview;[\s\S]*bulkEligibleTargets\(preview\)\.filter\(\(target\) => !target\.current\)\.length/s);
+  assert.match(source, /commitBulkInBatches\(bulkAction, payload, targetItemIds\)/);
+  assert.match(view, /label="Aplicar a outros anúncios da família"/);
+  assert.match(view, /function BulkReport\([\s\S]*Não aplicados[\s\S]*Resultado por anúncio/s);
+  assert.match(source, /while \(true\) \{[\s\S]*bulk_continuation_repeated/s);
+  assert.doesNotMatch(source, /bulk_continuation_limit/);
   assert.match(source, /if \(!quickApply\) \{\s*state\.promotionFormKey = '';/);
   assert.match(source, /scope: action === 'delete' \|\| state\.promotionFormKey !== key \? 'card' : 'form'/);
   assert.match(
@@ -1834,6 +1841,79 @@ test('bulk de promocao pagina a familia para respeitar o limite de subrequests',
 
   assert.deepStrictEqual(pageSizes, [2, 2, 2, 1]);
   assert.deepStrictEqual(Array.from(applied.keys()), itemIds);
+});
+
+test('bulk de promoção não replica estoque reservado entre anúncios', async () => {
+  const request = {
+    scope: 'user_product_family',
+    action: 'promotion.offer.create',
+    payload: { promotionType: 'LIGHTNING', dealPrice: 80, stock: 5 }
+  };
+  await assert.rejects(() => buildBulkPreview({}, 'MLB1000000001', request), /bulk_stock_requires_per_item/);
+  await assert.rejects(() => commitBulkAction({}, 'MLB1000000001', request), /bulk_stock_requires_per_item/);
+  assert.strictEqual(
+    commerceModel.friendlyError('bulk_stock_requires_per_item'),
+    'Defina o estoque reservado em cada anúncio separadamente.'
+  );
+});
+
+test('prévia da promoção separa anúncios elegíveis dos bloqueados pela faixa', async () => {
+  const ids = ['MLB4000000001', 'MLB4000000002'];
+  const client = {
+    getMe: async () => ({ id: 123 }),
+    getItem: async (itemId) => ({
+      id: itemId,
+      title: itemId === ids[0] ? 'Azul' : 'Verde',
+      seller_id: 123,
+      site_id: 'MLB',
+      family_name: 'Camiseta',
+      family_id: 'FAMILY4',
+      user_product_id: itemId === ids[0] ? 'MLBU400000001' : 'MLBU400000002',
+      category_id: 'MLB1055',
+      status: 'active',
+      price: 100,
+      currency_id: 'BRL',
+      listing_type_id: 'gold_special',
+      shipping: { mode: 'me2', logistic_type: 'fulfillment', free_shipping: true },
+      condition: 'new',
+      pictures: []
+    }),
+    getUserProduct: async () => ({ family_id: 'FAMILY4' }),
+    getUserProductFamily: async () => ({
+      user_products: [{ id: 'MLBU400000001' }, { id: 'MLBU400000002' }]
+    }),
+    searchItemsByUserProduct: async (_sellerId, _userProductIds, options) => ({
+      results: options.status === 'active' ? ids : []
+    }),
+    getItemPromotions: async (itemId) => ({
+      results: [{
+        id: 'P-MLB4',
+        type: 'DEAL',
+        status: 'candidate',
+        min_discounted_price: itemId === ids[0] ? 70 : 90,
+        max_discounted_price: 95,
+        price: 80,
+        original_price: 100
+      }]
+    }),
+    getListingPrices: async () => [
+      { listing_type_id: 'gold_special', sale_fee_amount: 10, sale_fee_details: { percentage_fee: 12.5 } }
+    ],
+    getSellerShippingCost: async () => ({ coverage: { all_country: { list_cost: 5, currency_id: 'BRL' } } })
+  };
+
+  const preview = await buildBulkPreview(client, ids[0], {
+    scope: 'user_product_family',
+    action: 'promotion.offer.create',
+    payload: { promotionType: 'DEAL', promotionId: 'P-MLB4', dealPrice: 80 }
+  });
+
+  assert.strictEqual(preview.counts.total, 2);
+  assert.strictEqual(preview.counts.eligible, 1);
+  assert.strictEqual(preview.counts.blocked, 1);
+  assert.strictEqual(preview.targets[0].title, 'Azul');
+  assert.strictEqual(preview.targets[1].status, 'blocked');
+  assert.strictEqual(preview.targets[1].reasonCode, 'promotion_price_out_of_range');
 });
 
 test('promotion offer só confirma sucesso quando a alteração aparece no anúncio', async () => {

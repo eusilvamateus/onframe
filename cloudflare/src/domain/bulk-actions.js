@@ -332,6 +332,11 @@ function normalizeOperation(input) {
   if (action === 'pricing.standard.update') return { type: action, payload };
   const promotionMatch = action.match(/^promotion\.offer\.(create|update|delete)$/);
   if (promotionMatch) {
+    if (Object.prototype.hasOwnProperty.call(payload, 'stock')) {
+      const err = new Error('bulk_stock_requires_per_item');
+      err.statusCode = 409;
+      throw err;
+    }
     return {
       type: action,
       promotionAction: promotionMatch[1],

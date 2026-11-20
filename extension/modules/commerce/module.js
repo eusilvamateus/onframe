@@ -122,6 +122,10 @@
       promotionEstimateTimers: {},
       promotionEstimateRequestId: 0,
       promotionBulkEnabled: false,
+      promotionBulkPreview: null,
+      promotionBulkHash: '',
+      promotionBulkError: '',
+      promotionBulkResult: null,
       promotionSearch: '',
       promotionTab: 'all',
       promotionStatusFilters: [],
@@ -192,6 +196,10 @@
       state.promotionFeedback = null;
       state.promotionRemovalKey = '';
       state.promotionBulkEnabled = false;
+      state.promotionBulkPreview = null;
+      state.promotionBulkHash = '';
+      state.promotionBulkError = '';
+      state.promotionBulkResult = null;
       resetPromotionListFilters();
       state.renderTimer = null;
       state.requestId += 1;
@@ -1177,6 +1185,7 @@
         onCancelChanges: cancelPromotionManagerChanges,
         onDraftChange: updatePromotionManagerDraft,
         onToggleBulk: togglePromotionManagerBulk,
+        onDismissBulkResult: dismissPromotionBulkResult,
         onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
         onRemove: openPromotionManagerRemoval,
         onCancelRemove: closePromotionManagerRemoval,
@@ -1307,6 +1316,7 @@
           state.promotionFeedback && state.promotionFeedback.scope === 'section'
             ? Object.assign({}, state.promotionFeedback)
             : null,
+        bulkResult: state.promotionBulkResult,
         tab: state.promotionTab,
         search: state.promotionSearch,
         statusFilters: state.promotionStatusFilters.slice(),
@@ -1473,13 +1483,15 @@
         offerDirty,
         priceHint: promotionManagerPriceHint(originalPrice, draftPrice),
         stockHint: promotionManagerStockHint(entry),
-        canBulk: canUseBulkActions(),
+        canBulk: canUseBulkActions() && Boolean(state.context && state.context.family) && !fields.includes('stock'),
         bulkEnabled: state.promotionBulkEnabled,
+        bulkPreview: formAction && state.promotionBulkEnabled ? state.promotionBulkPreview : null,
+        bulkError: formAction && state.promotionBulkEnabled ? state.promotionBulkError : '',
         busy: state.busy,
         confirmLabel: state.promotionBulkEnabled
-          ? formAction === 'update'
-            ? 'Alterar em todas as variações'
-            : 'Aplicar em todas as variações'
+          ? state.promotionBulkPreview
+            ? `Confirmar em ${bulkEligibleTargets(state.promotionBulkPreview).length} anúncios`
+            : 'Verificar anúncios da família'
           : formAction === 'update'
             ? 'Confirmar alteração'
             : 'Confirmar aplicação'
@@ -1719,6 +1731,18 @@
       return buildPromotionRows().find((row) => row.key === key) || null;
     }
 
+    function clearPromotionBulkPreview() {
+      state.promotionBulkPreview = null;
+      state.promotionBulkHash = '';
+      state.promotionBulkError = '';
+    }
+
+    function dismissPromotionBulkResult() {
+      state.promotionBulkResult = null;
+      if (state.promotionFeedback && state.promotionFeedback.scope === 'section') state.promotionFeedback = null;
+      rerenderModal();
+    }
+
     function openPromotionManagerCard(key, action) {
       if (state.busy) return;
       const row = promotionManagerRow(key);
@@ -1727,6 +1751,7 @@
       state.promotionFormKey = key;
       state.promotionFormAction = action;
       state.promotionBulkEnabled = false;
+      clearPromotionBulkPreview();
       state.actionError = '';
       state.promotionFeedback = null;
       if (action === 'details') {
@@ -1760,6 +1785,7 @@
       const row = promotionManagerRow(key);
       if (!row || state.busy) return;
       state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, { [field]: value });
+      clearPromotionBulkPreview();
       state.actionError = '';
       clearPromotionFeedback(key);
       schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key]);
@@ -1769,6 +1795,8 @@
     function togglePromotionManagerBulk(checked) {
       if (state.busy) return;
       state.promotionBulkEnabled = Boolean(checked);
+      clearPromotionBulkPreview();
+      if (checked) state.promotionBulkResult = null;
       state.actionError = '';
       clearPromotionFeedback(state.promotionFormKey);
       rerenderModal();
@@ -2699,6 +2727,7 @@
     function bulkBusyText() {
       if (state.operationPending === 'price-bulk-preview') return 'Validando variações elegíveis...';
       if (state.operationPending === 'price-bulk-commit') return 'Aplicando preço nas variações elegíveis...';
+      if (state.operationPending === 'promotion-bulk-preview') return 'Verificando anúncios da família...';
       if (state.operationPending === 'promotion-bulk-commit') {
         return state.operationPendingAction === 'delete'
           ? 'Removendo promoção das variações da família...'
@@ -3325,6 +3354,7 @@
       state.promotionRemovalKey = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
+      clearPromotionBulkPreview();
       resetPromotionListFilters();
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
@@ -3360,6 +3390,7 @@
       state.promotionRemovalKey = '';
       state.promotionDraftValues = {};
       state.promotionBulkEnabled = false;
+      clearPromotionBulkPreview();
       clearPromotionEstimateTimers();
       state.promotionEstimates = {};
       resetPromotionListFilters();
@@ -3420,8 +3451,44 @@
               ? CommerceModel.buildOfferUpdatePayload(entry, values)
               : CommerceModel.buildOfferPayload(entry, values);
 
+        const bulkEnabled =
+          !quickApply && !createdDirectDiscount && state.promotionBulkEnabled && canUseBulkActions() &&
+          !fields.includes('stock');
+        state.promotionBulkResult = null;
+        const bulkAction = `promotion.offer.${action}`;
+        const previewHash = bulkHash(bulkAction, payload);
+        if (bulkEnabled && (!state.promotionBulkPreview || state.promotionBulkHash !== previewHash)) {
+          state.busy = true;
+          state.operationPending = 'promotion-bulk-preview';
+          state.promotionBulkError = '';
+          clearPromotionFeedback(key);
+          rerenderModal();
+          try {
+            const preview = await api(itemApiPath('/bulk/preview'), {
+              method: 'POST',
+              body: JSON.stringify(bulkRequest(bulkAction, payload))
+            });
+            state.promotionBulkPreview = preview;
+            state.promotionBulkHash = previewHash;
+            const otherEligible = bulkEligibleTargets(preview).filter((target) => !target.current).length;
+            if (Number(preview.counts && preview.counts.total) < 2) {
+              state.promotionBulkError = 'Esta família não tem outros anúncios ativos ou pausados.';
+            } else if (!otherEligible) {
+              state.promotionBulkError = 'Nenhum outro anúncio aceita esta promoção. Desmarque a opção para aplicar só neste anúncio.';
+            }
+          } catch (error) {
+            clearPromotionBulkPreview();
+            state.promotionBulkError = toUserError(error);
+          } finally {
+            state.busy = false;
+            state.operationPending = '';
+            rerenderModal();
+          }
+          return;
+        }
+        if (bulkEnabled && state.promotionBulkError) return;
+
         state.busy = true;
-        const bulkEnabled = !quickApply && state.promotionBulkEnabled && canUseBulkActions();
         state.operationPending = bulkEnabled ? 'promotion-bulk-commit' : 'promotion-single';
         state.operationPendingKey = key;
         state.operationPendingAction = action;
@@ -3430,7 +3497,18 @@
         rerenderModal();
 
         if (bulkEnabled) {
-          const result = await commitBulkInBatches(`promotion.offer.${action}`, payload);
+          const targetItemIds = bulkEligibleTargets(state.promotionBulkPreview).map((target) => target.itemId);
+          const previewTargets = new Map(state.promotionBulkPreview.targets.map((target) => [target.itemId, target]));
+          const result = await commitBulkInBatches(bulkAction, payload, targetItemIds);
+          result.targets = result.targets.map((target) => {
+            const previewTarget = previewTargets.get(target.itemId) || {};
+            return Object.assign({}, target, {
+              title: target.title || previewTarget.title || null,
+              userProductId: target.userProductId || previewTarget.userProductId || null
+            });
+          });
+          state.promotionBulkResult = result;
+          clearPromotionBulkPreview();
           const currentTarget = currentBulkPromotionTarget(result);
           if (currentTarget) {
             const identity = applyOptimisticPromotionMutation(entry, action, values, currentTarget, estimateRecord);
@@ -3459,6 +3537,7 @@
           state.promotionFormAction = '';
           state.promotionFormEstimate = null;
           state.promotionBulkEnabled = false;
+          clearPromotionBulkPreview();
         }
         delete state.promotionDraftValues[key];
         clearPromotionEstimateTimer(key);
@@ -3636,6 +3715,7 @@
       state.promotionFormAction = '';
       state.promotionFormEstimate = null;
       state.promotionBulkEnabled = false;
+      clearPromotionBulkPreview();
       state.actionError = '';
       if (returningFromDirectDiscount) {
         state.directDiscountModalOpen = false;
@@ -3660,6 +3740,7 @@
       state.promotionFormAction = 'details';
       state.promotionFormEstimate = null;
       state.promotionBulkEnabled = false;
+      clearPromotionBulkPreview();
       rerenderModal();
       if (row) schedulePromotionEstimate(key, row.entry, {}, true);
     }
@@ -3867,8 +3948,9 @@
       const responses = [];
       const seenContinuations = new Set();
       let pendingTargetItemIds = Array.isArray(targetItemIds) ? targetItemIds : undefined;
+      let previousRemaining = pendingTargetItemIds ? pendingTargetItemIds.length : null;
 
-      for (let page = 0; page < 100; page += 1) {
+      while (true) {
         const response = await api(itemApiPath('/bulk/commit'), {
           method: 'POST',
           body: JSON.stringify(bulkRequest(action, payload, pendingTargetItemIds))
@@ -3882,12 +3964,12 @@
         if (!next.length) return mergeBulkResponses(responses);
 
         const signature = next.join(',');
-        if (seenContinuations.has(signature)) throw new Error('bulk_continuation_repeated');
+        if (seenContinuations.has(signature) || (previousRemaining !== null && next.length >= previousRemaining))
+          throw new Error('bulk_continuation_repeated');
         seenContinuations.add(signature);
+        previousRemaining = next.length;
         pendingTargetItemIds = next;
       }
-
-      throw new Error('bulk_continuation_limit');
     }
 
     function mergeBulkResponses(responses) {
@@ -3956,6 +4038,7 @@
         result = mergeBulkResponses([Object.assign({}, result, { targets })]);
         if (Number((result.counts && result.counts.pending) || 0) > 0) continue;
 
+        if (state.promotionBulkResult) state.promotionBulkResult = result;
         publishPromotionBulkFeedback(result, action, { background: true });
         try {
           await loadSummaries(state.requestId);

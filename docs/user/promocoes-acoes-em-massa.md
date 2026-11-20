@@ -16,7 +16,7 @@ Quando o Mercado Livre disponibiliza a acao para o anuncio, o OnFrame permite:
 - remover uma promocao;
 - revisar quanto voce recebe;
 - revisar descontos, tarifa de venda, frete e beneficios do Mercado Livre;
-- aplicar a mesma acao em variacoes elegiveis.
+- aplicar a mesma acao em outros anuncios elegiveis da familia.
 
 ## Entendendo os blocos de informacao
 
@@ -76,20 +76,24 @@ acao no anuncio.
 
 ![Print - Promocao aplicada com acoes](assets/promocoes-aplicada-acoes.png)
 
-## Aplicar em todas as variacoes
+## Aplicar em outros anuncios da familia
 
-Em anuncios com variacoes independentes, uma promocao aplicada em uma variacao
-nao necessariamente muda as demais.
+No modelo User Product, uma familia pode reunir diferentes variantes fisicas,
+e cada variante pode ter mais de uma condicao de venda (anuncio). A acao em
+massa alcanca os anuncios ativos e pausados dessa familia, nao apenas uma
+publicacao por variante.
 
-Quando fizer sentido, o OnFrame mostra `Aplicar a todas as variacoes`. Ao marcar
-essa opcao, a extensao verifica quais variacoes ativas e pausadas podem receber a
-acao e mostra um resumo antes ou depois do envio.
+Ao editar uma oferta que nao e cupom nem exige estoque reservado, marque
+`Aplicar a outros anuncios da familia`. O primeiro clique no botao de
+confirmacao verifica os anuncios da
+familia e apresenta os elegiveis e os bloqueados, com o motivo. O segundo
+clique envia a acao apenas aos elegiveis. Ofertas com estoque reservado devem
+ser aplicadas anuncio por anuncio.
 
-![Print - Revisao de promocao para todas as variacoes](assets/promocoes-revisao-todas-variacoes.png)
-
-Algumas variacoes podem nao ser elegiveis para a mesma promocao. Outras podem
-ter limites de preco diferentes. Por isso a revisao e importante: ela evita que
-voce presuma que todas as variacoes aceitaram exatamente a mesma mudanca.
+O envio pode ter resultados diferentes para cada anuncio. O modal separa os
+aplicados, os que aguardam confirmacao do Mercado Livre e os nao aplicados,
+com o motivo de cada falha. A mesma configuracao de preco e enviada aos
+elegiveis; confira a previa porque cada anuncio pode ter limites diferentes.
 
 ## Boas praticas
 
@@ -98,5 +102,5 @@ Antes de confirmar uma promocao, confira:
 - se o preco final esta correto;
 - se o desconto faz sentido para a margem;
 - se o valor `Voce recebe` esta dentro do esperado;
-- se todas as variacoes desejadas foram incluidas;
-- se alguma variacao ficou de fora por regra do Mercado Livre.
+- se todos os anuncios desejados foram incluidos;
+- se algum anuncio ficou de fora por regra do Mercado Livre.

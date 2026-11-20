@@ -116,9 +116,10 @@ refletir o resumo remoto sem apresentar a espera como erro de formulario.
 
 Se a confirmacao demorar, a participacao passa a indicar **Sincronizando**. Uma
 reconciliacao encerrada sem confirmacao restaura o estado remoto e apresenta o
-problema na superficie de promocoes ainda aberta. Acoes em massa usam um resumo
-contextual porque o resultado das outras variacoes nao e visivel no anuncio
-atual. As regras gerais estao em
+problema na superficie de promocoes ainda aberta. Acoes em massa mostram a
+previa de elegibilidade antes do envio e o resultado por anuncio depois, pois
+o estado dos demais anuncios da familia nao e visivel no anuncio atual. As
+regras gerais estao em
 [Feedback de operacoes](feedback-de-operacoes.md).
 
 ## Relacoes

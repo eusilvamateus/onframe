@@ -355,6 +355,8 @@
     if (text.includes('item_closed') || text.includes('status:closed')) return 'Anúncio encerrado.';
     if (text.includes('promotion_missing_deal_price')) return 'Informe o preço promocional.';
     if (text.includes('promotion_missing_stock')) return 'Informe o estoque.';
+    if (text.includes('bulk_stock_requires_per_item'))
+      return 'Defina o estoque reservado em cada anúncio separadamente.';
     if (text.includes('promotion_invalid_stock')) return 'Informe um estoque válido.';
     if (text.includes('promotion_stock_out_of_range')) return 'Informe um estoque dentro da faixa da campanha.';
     if (text.includes('promotion_missing_offer_id')) return 'Oferta não identificada. Atualize e tente de novo.';

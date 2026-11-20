@@ -2,6 +2,7 @@ import { Component, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
+  Accordion,
   Alert,
   AlertDialog,
   Badge,
@@ -251,6 +252,58 @@ function ContextFeedback({ feedback, className = '' }) {
   );
 }
 
+function BulkReport({ result, preview = false, feedback, onDismiss, className = '' }) {
+  if (!result) return null;
+  const targets = Array.isArray(result.targets) ? result.targets : [];
+  const groups = preview
+    ? [
+        { id: 'eligible', label: 'Elegíveis', statuses: ['eligible'] },
+        { id: 'blocked', label: 'Não elegíveis', statuses: ['blocked'] }
+      ]
+    : [
+        { id: 'applied', label: 'Aplicados', statuses: ['applied'] },
+        { id: 'pending', label: 'Aguardando confirmação', statuses: ['pending_confirmation'] },
+        { id: 'failed', label: 'Não aplicados', statuses: ['blocked', 'skipped', 'failed', 'unconfirmed'] }
+      ];
+  const items = groups.map((group) => {
+    const entries = targets.filter((target) => group.statuses.includes(target.status));
+    return {
+      id: group.id,
+      title: `${group.label} (${entries.length})`,
+      content: (
+        <ul className="onframe-commerce-bulk-status-list">
+          {entries.map((target) => (
+            <li key={`${group.id}:${target.itemId}`}>
+              {target.title ? `${target.title} (${target.itemId})` : target.itemId}
+              {target.message ? `: ${target.message}` : ''}
+            </li>
+          ))}
+        </ul>
+      ),
+      count: entries.length
+    };
+  }).filter((item) => item.count);
+  const counts = result.counts || {};
+  const title = preview
+    ? `${counts.eligible || 0} de ${counts.total || targets.length} anúncios elegíveis`
+    : feedback?.title || 'Última aplicação na família';
+  const tone = preview
+    ? (counts.blocked ? 'warning' : 'info')
+    : feedback?.tone || (counts.failed || counts.unconfirmed ? 'warning' : 'success');
+
+  return (
+    <div className={`onframe-promotion-manager-bulk-report ${className}`}>
+      <Alert appearance="soft" tone={tone} title={title}>
+        {!preview && <span>{feedback?.message || `${counts.applied || 0} aplicados; ${counts.pending || 0} aguardando confirmação; ${(counts.failed || 0) + (counts.skipped || 0) + (counts.unconfirmed || 0)} não aplicados.`}</span>}
+        {!!items.length && <Accordion items={items} type="multiple" ariaLabel={preview ? 'Prévia por anúncio' : 'Resultado por anúncio'} />}
+      </Alert>
+      {onDismiss && (
+        <Button kind="quiet" size="sm" iconOnly aria-label="Dispensar resultado" icon={icon('x', 14)} onClick={onDismiss} />
+      )}
+    </div>
+  );
+}
+
 function decimalInputValue(value) {
   const number = Number(value);
   return Number.isFinite(number) ? String(number).replace('.', ',') : '';
@@ -401,7 +454,7 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
     else setSimulatingFinancials(false);
   };
   const confirm = () => {
-    if (row.offerDirty && !row.validationError && !row.busy) actions.onConfirm(row.key, row.formAction);
+    if (row.offerDirty && !row.validationError && !row.bulkError && !row.busy) actions.onConfirm(row.key, row.formAction);
   };
 
   return (
@@ -420,6 +473,12 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
           />
         )}
       </div>
+      {row.bulkEnabled && row.bulkError && (
+        <div className="onframe-promotion-manager-bulk-error">
+          <Alert appearance="soft" tone="danger">{row.bulkError}</Alert>
+        </div>
+      )}
+      {row.bulkEnabled && row.bulkPreview && <BulkReport result={row.bulkPreview} preview className="in-editor" />}
       <div className={`onframe-promotion-manager-footer-shell${editing ? ' is-visible' : ''}`} aria-hidden={!editing}>
         <div className="onframe-promotion-manager-footer-content">
           <div className="onframe-promotion-manager-editor-footer">
@@ -429,8 +488,8 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
                   checked={row.bulkEnabled}
                   onChange={actions.onToggleBulk}
                   disabled={!editing || row.busy}
-                  label="Aplicar a todas as variações"
-                  description="A promoção será enviada às variações ativas e pausadas desta família."
+                  label="Aplicar a outros anúncios da família"
+                  description="Inclui anúncios ativos e pausados que aceitarem esta oferta."
                 />
               </div>
             )}
@@ -449,12 +508,10 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
                   kind="primary"
                   size="sm"
                   icon={icon('check-circle')}
-                  disabled={!editing || !row.offerDirty || Boolean(row.validationError) || row.busy}
+                  disabled={!editing || !row.offerDirty || Boolean(row.validationError || row.bulkError) || row.busy}
                   onClick={confirm}
                 >
-                  {row.formAction === 'update'
-                    ? row.bulkEnabled ? 'Alterar promoção em todas as variações' : 'Salvar promoção'
-                    : row.confirmLabel}
+                  {row.formAction === 'update' && !row.bulkEnabled ? 'Salvar promoção' : row.confirmLabel}
                 </Button>
               )}
             </div>
@@ -858,7 +915,10 @@ function PromotionManager({ model, actions }) {
             </div>
           )}
 
-          <ContextFeedback feedback={model.feedback} className="onframe-promotion-manager-alert" />
+          {!model.bulkResult && <ContextFeedback feedback={model.feedback} className="onframe-promotion-manager-alert" />}
+          {model.bulkResult && (
+            <BulkReport result={model.bulkResult} feedback={model.feedback} onDismiss={actions.onDismissBulkResult} />
+          )}
 
           <div className="onframe-promotion-manager-content">
             {model.loading && !model.rows.length ? (
