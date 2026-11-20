@@ -129,6 +129,7 @@
       promotionBulkAvailability: null,
       promotionBulkPollTimer: null,
       promotionBulkSettledJobId: '',
+      promotionBulkContextRequestId: 0,
       promotionSearch: '',
       promotionTab: 'all',
       promotionStatusFilters: [],
@@ -3365,6 +3366,9 @@
     function openPromotionModal() {
       state.popover = null;
       removePopover();
+      state.promotionBulkContextRequestId += 1;
+      state.promotionBulkResult = null;
+      state.promotionBulkAvailability = null;
       state.promotionModalOpen = true;
       state.directDiscountModalOpen = false;
       state.actionError = '';
@@ -3404,6 +3408,9 @@
 
     function closePromotionModal() {
       clearPromotionBulkPoll();
+      state.promotionBulkContextRequestId += 1;
+      state.promotionBulkResult = null;
+      state.promotionBulkSettledJobId = '';
       state.promotionModalOpen = false;
       state.directDiscountModalOpen = false;
       state.promotionFormKey = '';
@@ -3950,17 +3957,26 @@
       state.promotionBulkPollTimer = null;
     }
 
+    function isTrackedPromotionBulkJob(result) {
+      return Boolean(result && typeof result.id === 'string' &&
+        ['queued', 'running', 'confirming', 'completed', 'partial', 'failed'].includes(result.status) &&
+        result.counts && Number.isInteger(result.counts.total) && result.counts.total > 0 &&
+        Array.isArray(result.targets) && result.targets.length === result.counts.total);
+    }
+
     async function loadPromotionBulkContext() {
       const itemId = state.itemId;
+      const requestId = state.promotionBulkContextRequestId;
       const [availability, latest] = await Promise.allSettled([
         canUseBulkActions() && state.context && state.context.family
           ? api(itemApiPath('/bulk/targets'))
           : Promise.resolve(null),
         api(itemApiPath('/bulk/jobs/latest'))
       ]);
-      if (!state.promotionModalOpen || state.itemId !== itemId) return;
+      if (!state.promotionModalOpen || state.itemId !== itemId ||
+        state.promotionBulkContextRequestId !== requestId) return;
       state.promotionBulkAvailability = availability.status === 'fulfilled' ? availability.value : null;
-      if (latest.status === 'fulfilled' && latest.value) {
+      if (!state.promotionBulkResult && latest.status === 'fulfilled' && isTrackedPromotionBulkJob(latest.value)) {
         state.promotionBulkResult = latest.value;
         watchPromotionBulkJob(latest.value);
       }

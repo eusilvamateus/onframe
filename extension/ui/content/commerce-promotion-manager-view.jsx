@@ -255,6 +255,13 @@ function ContextFeedback({ feedback, className = '' }) {
 function BulkReport({ result, preview = false, feedback, onDismiss, className = '' }) {
   if (!result) return null;
   const targets = Array.isArray(result.targets) ? result.targets : [];
+  const counts = result.counts || {};
+  const tracked = preview || (
+    typeof result.id === 'string' &&
+    ['queued', 'running', 'confirming', 'completed', 'partial', 'failed'].includes(result.status) &&
+    Number.isInteger(counts.total) && counts.total > 0 && targets.length === counts.total
+  );
+  if (!tracked) return null;
   const groups = preview
     ? [
         { id: 'eligible', label: 'Elegíveis', statuses: ['eligible'] },
@@ -284,18 +291,21 @@ function BulkReport({ result, preview = false, feedback, onDismiss, className = 
       count: entries.length
     };
   }).filter((item) => item.count);
-  const counts = result.counts || {};
   const title = preview
     ? `${counts.eligible || 0} de ${counts.total || targets.length} anúncios elegíveis`
     : result.status === 'queued' || result.status === 'running'
       ? `Aplicando em ${counts.total || targets.length} anúncios`
       : result.status === 'confirming'
         ? 'Aguardando confirmação do Mercado Livre'
-        : feedback?.title || 'Última aplicação na família';
+        : feedback?.title || (counts.applied
+          ? counts.failed || counts.blocked || counts.unconfirmed ? 'Aplicação parcial' : 'Aplicação concluída'
+          : 'Nenhum anúncio aplicado');
   const tone = preview
     ? (counts.blocked ? 'warning' : 'info')
     : ['queued', 'running', 'confirming'].includes(result.status)
-      ? 'info' : feedback?.tone || (counts.failed || counts.unconfirmed ? 'warning' : 'success');
+      ? 'info' : feedback?.tone || (counts.applied
+        ? counts.failed || counts.blocked || counts.unconfirmed ? 'warning' : 'success'
+        : 'danger');
 
   return (
     <div className={`onframe-promotion-manager-bulk-report ${className}`}>

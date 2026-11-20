@@ -741,6 +741,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /api\(itemApiPath\('\/bulk\/jobs\/latest'\)\)/);
   assert.match(view, /label="Aplicar a outros anúncios da família"/);
   assert.match(view, /function BulkReport\([\s\S]*Não aplicados[\s\S]*Resultado por anúncio/s);
+  assert.match(view, /typeof result\.id === 'string'[\s\S]*counts\.total > 0[\s\S]*if \(!tracked\) return null/s);
+  assert.match(source, /function openPromotionModal\(\) \{[\s\S]*state\.promotionBulkResult = null;/s);
+  assert.match(source, /isTrackedPromotionBulkJob\(latest\.value\)/);
+  assert.doesNotMatch(view, /Última aplicação na família/);
   assert.match(source, /while \(true\) \{[\s\S]*bulk_continuation_repeated/s);
   assert.doesNotMatch(source, /bulk_continuation_limit/);
   assert.match(source, /if \(!quickApply\) \{\s*state\.promotionFormKey = '';/);
