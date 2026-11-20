@@ -1363,10 +1363,6 @@ body:has(
   background: var(--ob-bg-alt);
 }
 
-.onframe-promotion-manager-editor.has-financials {
-  gap: var(--ob-space-4);
-}
-
 .onframe-promotion-manager-editor > div {
   border-inline: 0 !important;
 }
@@ -1382,18 +1378,25 @@ body:has(
   gap: var(--ob-space-16);
 }
 
+.onframe-promotion-manager-financial {
+  flex: 1;
+}
+
+.onframe-promotion-manager-financial-summary,
 .onframe-promotion-manager-financial-edit {
   display: flex;
+  min-height: 100%;
   flex-direction: column;
 }
 
 .onframe-promotion-manager-financial-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--ob-space-16);
 }
 
+.onframe-promotion-manager-financial-heading > div,
 .onframe-promotion-manager-financial-edit > div:first-child {
   display: grid;
   gap: var(--ob-space-4);
@@ -1405,44 +1408,47 @@ body:has(
   color: var(--ob-fg-strong);
 }
 
-.onframe-promotion-manager-financial-calculation {
+.onframe-promotion-manager-financial-values {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: var(--ob-space-16);
+  gap: var(--ob-space-16);
+  margin-top: var(--ob-space-20);
 }
 
-.onframe-promotion-manager-financial-calculation > div {
+.onframe-promotion-manager-financial-values .onframe-promotion-manager-metric {
   display: grid;
-  align-content: start;
   gap: var(--ob-space-4);
-  min-width: 0;
-  padding: var(--ob-space-8) 0;
-  border-bottom: 1px solid var(--ob-line-soft);
 }
 
-.onframe-promotion-manager-financial-calculation span {
-  font-size: var(--ob-fs-12);
-  color: var(--ob-fg-soft);
-}
-
-.onframe-promotion-manager-financial-calculation strong {
-  font-size: var(--ob-fs-14);
-  color: var(--ob-fg-strong);
-}
-
-.onframe-promotion-manager-financial-calculation small {
-  font-size: var(--ob-fs-11);
-  color: var(--ob-fg-mute);
-}
-
-.onframe-promotion-manager-financial-calculation .success strong,
-.onframe-promotion-manager-financial-calculation .success small.amount,
-.onframe-promotion-manager-financial-calculation small.fee-reduction {
+.onframe-promotion-manager-financial-margin {
+  display: grid;
+  gap: 0;
+  margin-top: auto;
+  padding-top: var(--ob-space-20);
+  border-top: 1px solid var(--ob-line-soft);
   color: var(--ob-green);
 }
 
-.onframe-promotion-manager-financial-calculation .danger strong,
-.onframe-promotion-manager-financial-calculation .danger small.amount {
+.onframe-promotion-manager-financial-margin > span {
+  margin-bottom: var(--ob-space-6);
+  font-family: var(--ob-font-mono) !important;
+  font-size: var(--ob-fs-11);
+  font-weight: var(--ob-w-medium) !important;
+  text-transform: uppercase;
+}
+
+.onframe-promotion-manager-financial-margin strong {
+  font-size: var(--ob-fs-22);
+  line-height: var(--ob-lh-tight);
+}
+
+.onframe-promotion-manager-financial-margin small {
+  margin-top: var(--ob-space-4);
+  font-size: var(--ob-fs-13);
+  font-weight: var(--ob-w-semibold);
+  line-height: var(--ob-lh-tight);
+}
+
+.onframe-promotion-manager-financial-margin.danger {
   color: var(--ob-danger);
 }
 
@@ -1595,10 +1601,6 @@ body:has(
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .onframe-promotion-manager-financial-calculation {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
   .onframe-commerce-direct-discount-line {
     grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
   }
@@ -1631,9 +1633,5 @@ body:has(
 
   .onframe-promotion-manager-editor {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .onframe-promotion-manager-editor.has-financials {
-    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -140,29 +140,6 @@ function Calculation({ row, items = row.calculation }) {
   );
 }
 
-function FinancialCalculation({ items }) {
-  if (!items?.length) return null;
-  return (
-    <div className="onframe-promotion-manager-financial-calculation">
-      {items.map((item, index) => {
-        const isMargin = item.label === 'Margem de contribuição';
-        return (
-          <div key={`${item.label}-${index}`} className={item.tone || ''}>
-            <span>{item.label}</span>
-            <strong>{isMargin ? item.description : item.value}</strong>
-            {isMargin ? (
-              <small className="amount">{item.value}</small>
-            ) : (
-              item.description && <small>{item.description}</small>
-            )}
-            {item.benefit && <small className="fee-reduction">{item.benefit}</small>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function ContextFeedback({ feedback, className = '' }) {
   if (!feedback) return null;
   return (
@@ -399,7 +376,10 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
             ) : (
               <div className="onframe-promotion-manager-financial-summary">
                 <div className="onframe-promotion-manager-financial-heading">
-                  <strong>Como o valor é calculado</strong>
+                  <div>
+                    <span className="onframe-promotion-manager-kicker">Resultado</span>
+                    <strong>Resumo financeiro</strong>
+                  </div>
                   {financials.canEdit && (
                     <Tooltip label="Editar dados do cálculo" placement="left">
                       <Button
@@ -412,6 +392,16 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
                       />
                     </Tooltip>
                   )}
+                </div>
+                <div className="onframe-promotion-manager-financial-values">
+                  <Metric label="Você recebe" value={formatFinancialMoney(financials.youReceive, financials)} />
+                  <Metric label="Custo do produto" value={formatFinancialMoney(snapshot.productCost, financials)} />
+                  <Metric label="Impostos" value={formatFinancialMoney(snapshot.taxAmount, financials)} />
+                </div>
+                <div className={`onframe-promotion-manager-financial-margin ${snapshot.amount < 0 ? 'danger' : ''}`}>
+                  <span>Margem de contribuição</span>
+                  <strong>{formatFinancialPercent(snapshot.percentage)}</strong>
+                  <small>{formatFinancialMoney(snapshot.amount, financials)}</small>
                 </div>
               </div>
             )}
@@ -434,11 +424,7 @@ function PromotionFinancialDetails({ row, actions, confirm }) {
         )}
       </div>
       <div>
-        {financials && snapshot ? (
-          <FinancialCalculation items={calculation} />
-        ) : (
-          <Calculation row={row} items={calculation} />
-        )}
+        <Calculation row={row} items={calculation} />
         {row.canBulk && !row.readOnly && (
           <div className="onframe-promotion-manager-bulk">
             <Checkbox
@@ -463,9 +449,7 @@ function EditPanel({ row, actions }) {
   return (
     <>
       <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-editor-feedback" />
-      <div
-        className={`onframe-promotion-manager-editor${row.readOnly ? ' is-readonly' : ''}${row.productFinancials ? ' has-financials' : ''}`}
-      >
+      <div className={`onframe-promotion-manager-editor${row.readOnly ? ' is-readonly' : ''}`}>
         {row.type === 'coupon' ? (
           <>
             <div>
