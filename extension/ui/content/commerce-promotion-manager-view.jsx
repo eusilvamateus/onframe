@@ -513,7 +513,7 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
         <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
       )}
       <Menu
-        size="sm"
+        size="md"
         align="right"
         placement="auto"
         ariaLabel={`Ações de ${row.name}`}

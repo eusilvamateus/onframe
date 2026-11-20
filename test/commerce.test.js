@@ -666,6 +666,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /icon: isCoupon \? 'clipboard-text' : 'tag'/);
   assert.match(view, /row\.canQuickApply[\s\S]*label: 'Aplicar'[\s\S]*actions\.onQuickApply\(row\.key\)/s);
   assert.match(view, /Menu,[\s\S]*from '@onblide\/ui'/s);
+  assert.match(view, /<Menu\s+size="md"/);
   assert.match(view, /label: 'Editar'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'update'\)/s);
   assert.match(view, /label: 'Ver detalhes'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'details'\)/s);
   assert.match(view, /label: 'Remover'[\s\S]*tone: 'danger'[\s\S]*onSelect: \(\) => actions\.onRemove\(row\.key\)/s);
