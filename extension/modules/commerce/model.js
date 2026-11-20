@@ -291,6 +291,17 @@
     return getOfferCreateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
 
+  function canQuickApplyOffer(entry) {
+    if (!canCreateOffer(entry) || !getOfferCreateFields(entry).every((field) => ['promotion_id', 'offer_id'].includes(field)))
+      return false;
+    try {
+      buildOfferPayload(entry);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function canUpdateOffer(entry) {
     return getOfferUpdateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
@@ -445,6 +456,7 @@
     calculateDiscountPercentage,
     canEstimatePromotion,
     canCreateOffer,
+    canQuickApplyOffer,
     canDeleteOffer,
     canUpdateOffer,
     collectPromotionGroups,

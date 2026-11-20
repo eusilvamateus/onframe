@@ -490,15 +490,24 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
       ]
     : row.group === 'available'
       ? [
-          ...(row.canQuickApply
-            ? [{ label: 'Aplicar', icon: 'check-circle', disabled: row.busy, onSelect: () => actions.onQuickApply(row.key) }]
+          ...(row.createAction
+            ? [{
+                label: 'Aplicar',
+                icon: 'check-circle',
+                disabled: row.busy,
+                onSelect: () => row.canQuickApply
+                  ? actions.onQuickApply(row.key)
+                  : actions.onOpen(row.key, 'create')
+              }]
             : []),
-          {
-            label: isCoupon ? 'Revisar' : 'Configurar',
-            icon: isCoupon ? 'clipboard-text' : 'tag',
-            disabled: row.busy,
-            onSelect: () => actions.onOpen(row.key, row.createAction ? 'create' : 'details')
-          }
+          ...(row.canQuickApply || !row.createAction
+            ? [{
+                label: isCoupon ? 'Revisar' : 'Configurar',
+                icon: isCoupon ? 'clipboard-text' : 'tag',
+                disabled: row.busy,
+                onSelect: () => actions.onOpen(row.key, row.createAction ? 'create' : 'details')
+              }]
+            : [])
         ]
       : [
           ...(row.canUpdate

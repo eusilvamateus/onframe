@@ -1329,6 +1329,7 @@
       const canCreate =
         available &&
         !locallyPending &&
+        CommerceModel.canCreateOffer(entry) &&
         (kind === 'eligible-offer' ||
           (kind === 'stackable-offer' && isCandidatePromotion(entry)) ||
           (kind === 'discount-offer' && isCandidatePromotion(entry)));
@@ -1531,18 +1532,10 @@
     }
 
     function promotionManagerQuickApplyValues(entry, canCreate) {
-      if (!canCreate || !CommerceModel.canCreateOffer(entry)) return null;
-      const fields = CommerceModel.getUserFields(CommerceModel.getOfferCreateFields(entry));
-      const values = Object.fromEntries(fields.map((field) => [field, defaultFieldValue(field, entry)]));
-      if (fields.includes('deal_price') && promotionManagerPriceError(entry, values.deal_price)) return null;
-      if (fields.includes('stock') && promotionManagerStockError(entry, values.stock)) return null;
+      if (!canCreate || !CommerceModel.canQuickApplyOffer(entry)) return null;
+      const values = {};
       if (promotionDraftWarning(entry, values)) return null;
-      try {
-        CommerceModel.buildOfferPayload(entry, values);
-        return values;
-      } catch (error) {
-        return null;
-      }
+      return values;
     }
 
     function promotionManagerStockHint(entry) {
@@ -1756,7 +1749,10 @@
       if (!row) return;
       const managerRow = buildPromotionManagerRow(row);
       const values = promotionManagerQuickApplyValues(row.entry, managerRow.createAction);
-      if (!values) return;
+      if (!values) {
+        if (managerRow.createAction) openPromotionManagerCard(key, 'create');
+        return;
+      }
       void commitPromotionManagerAction(key, 'create', null, values);
     }
 
@@ -3821,8 +3817,7 @@
         return moneyInputValue(priceState && priceState.amount);
       }
       if (field === 'stock') {
-        const range = promotionManagerStockRange(entry);
-        return String(range.min || 1);
+        return '';
       }
       if (field === 'start_date') return isoDateOnly(entry && entry.start_date) || dateOffset(0);
       if (field === 'finish_date') return isoDateOnly(entry && (entry.end_date || entry.finish_date)) || dateOffset(7);

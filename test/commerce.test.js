@@ -155,7 +155,12 @@ test('commerce model permite acoes do cupom do item sem estimar desconto no chec
   });
 });
 
-test('aplicação direta usa dados válidos da oferta sem dispensar preço obrigatório', () => {
+test('aplicação direta exige revisão quando a oferta pede preço, estoque ou período', () => {
+  const coupon = {
+    id: 'COUPON-1',
+    type: 'SELLER_COUPON_CAMPAIGN',
+    capabilities: { offerCreate: ['promotion_id'] }
+  };
   const campaign = {
     id: 'CAMPAIGN-1',
     type: 'DEAL',
@@ -163,6 +168,23 @@ test('aplicação direta usa dados válidos da oferta sem dispensar preço obrig
     max_price: 30,
     capabilities: { offerCreate: ['promotion_id', 'deal_price'] }
   };
+  const lightning = {
+    id: 'LIGHTNING-1',
+    type: 'SMART_LIGHTNING',
+    stock: { min: 5, max: 10 },
+    capabilities: { offerCreate: ['promotion_id', 'stock'] }
+  };
+  const directDiscount = {
+    type: 'PRICE_DISCOUNT',
+    capabilities: { offerCreate: ['deal_price', 'start_date', 'finish_date'] }
+  };
+  assert.strictEqual(commerceModel.canQuickApplyOffer(coupon), true);
+  assert.strictEqual(commerceModel.canQuickApplyOffer({ ...coupon, id: '' }), false);
+  assert.strictEqual(commerceModel.canQuickApplyOffer(campaign), false);
+  assert.strictEqual(commerceModel.canQuickApplyOffer(lightning), false);
+  assert.strictEqual(commerceModel.canQuickApplyOffer(directDiscount), false);
+  assert.strictEqual(commerceModel.canQuickApplyOffer({ ...coupon, capabilities: { offerCreate: ['promotion_id', 'unknown_field'] } }), false);
+  assert.strictEqual(commerceModel.canQuickApplyOffer({ ...coupon, capabilities: { ...coupon.capabilities, readonly: true } }), false);
   assert.deepStrictEqual(commerceModel.buildOfferPayload(campaign, { deal_price: '27,64' }), {
     promotionType: 'DEAL',
     promotionId: 'CAMPAIGN-1',
@@ -664,7 +686,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /const isCoupon = row\.type === 'coupon'/);
   assert.match(view, /label: isCoupon \? 'Revisar' : 'Configurar'/);
   assert.match(view, /icon: isCoupon \? 'clipboard-text' : 'tag'/);
-  assert.match(view, /row\.canQuickApply[\s\S]*label: 'Aplicar'[\s\S]*actions\.onQuickApply\(row\.key\)/s);
+  assert.match(view, /row\.createAction[\s\S]*label: 'Aplicar'[\s\S]*row\.canQuickApply[\s\S]*actions\.onQuickApply\(row\.key\)[\s\S]*actions\.onOpen\(row\.key, 'create'\)/s);
   assert.match(view, /Menu,[\s\S]*from '@onblide\/ui'/s);
   assert.match(view, /<Menu\s+size="md"/);
   assert.match(view, /label: 'Editar'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'update'\)/s);
@@ -706,8 +728,11 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.doesNotMatch(view, /Desfazer/);
   assert.match(source, /function buildPromotionManagerViewModel/);
   assert.match(source, /canQuickApply: Boolean\(promotionManagerQuickApplyValues\(entry, canCreate\)\)/);
-  assert.match(source, /function promotionManagerQuickApplyValues\(entry, canCreate\)[\s\S]*CommerceModel\.buildOfferPayload\(entry, values\)/s);
+  assert.match(source, /const canCreate =\s*available &&\s*!locallyPending &&\s*CommerceModel\.canCreateOffer\(entry\)/);
+  assert.match(source, /function promotionManagerQuickApplyValues\(entry, canCreate\)[\s\S]*CommerceModel\.canQuickApplyOffer\(entry\)/s);
   assert.match(source, /function applyPromotionManagerDirectly\(key\)[\s\S]*commitPromotionManagerAction\(key, 'create', null, values\)/s);
+  assert.match(source, /if \(!values\) \{\s*if \(managerRow\.createAction\) openPromotionManagerCard\(key, 'create'\);/);
+  assert.match(source, /if \(field === 'stock'\) \{\s*return '';/);
   assert.match(source, /const bulkEnabled = !quickApply && state\.promotionBulkEnabled && canUseBulkActions\(\)/);
   assert.match(source, /if \(!quickApply\) \{\s*state\.promotionFormKey = '';/);
   assert.match(source, /scope: action === 'delete' \|\| state\.promotionFormKey !== key \? 'card' : 'form'/);
