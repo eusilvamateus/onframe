@@ -34,6 +34,7 @@ export {
   handlePictureUpload
 } from './domain/routes/pictures.js';
 export { handleBulkCommit, handleBulkPreview } from './domain/routes/bulk.js';
+export { buildBulkPreview, resolveFamilyTargets } from './domain/bulk-actions.js';
 export { verifyOfferMutation } from './domain/promotions.js';
 export { resolveItemClient } from './domain/account-client.js';
 export { sanitizeError, userFriendlyError } from './domain/errors.js';

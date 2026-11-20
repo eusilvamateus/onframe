@@ -21,6 +21,11 @@
       "name": "onframe-product-bulk",
       "binding": "PRODUCT_BULK",
       "class_name": "ProductBulkWorkflow"
+    },
+    {
+      "name": "onframe-promotion-bulk",
+      "binding": "PROMOTION_BULK",
+      "class_name": "PromotionBulkWorkflow"
     }
   ],
   "vars": {

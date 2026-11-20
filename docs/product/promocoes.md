@@ -116,9 +116,13 @@ refletir o resumo remoto sem apresentar a espera como erro de formulario.
 
 Se a confirmacao demorar, a participacao passa a indicar **Sincronizando**. Uma
 reconciliacao encerrada sem confirmacao restaura o estado remoto e apresenta o
-problema na superficie de promocoes ainda aberta. Acoes em massa mostram a
-previa de elegibilidade antes do envio e o resultado por anuncio depois, pois
-o estado dos demais anuncios da familia nao e visivel no anuncio atual. As
+problema na superficie de promocoes ainda aberta. Acoes em massa so sao
+oferecidas quando ha outros anuncios ativos ou pausados na familia. A extensao
+mostra a previa de elegibilidade antes do envio; na confirmacao, o Worker
+congela os alvos elegiveis e inicia um Workflow duravel. O progresso e o
+resultado de cada anuncio ficam no D1, inclusive apos fechar ou atualizar a
+pagina. Estados aceitos ainda dependem da reconciliacao; falhas incertas nao
+sao reenviadas automaticamente. As
 regras gerais estao em
 [Feedback de operacoes](feedback-de-operacoes.md).
 

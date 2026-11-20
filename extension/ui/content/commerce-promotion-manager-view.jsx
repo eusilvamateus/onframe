@@ -261,6 +261,7 @@ function BulkReport({ result, preview = false, feedback, onDismiss, className = 
         { id: 'blocked', label: 'Não elegíveis', statuses: ['blocked'] }
       ]
     : [
+        { id: 'queued', label: 'Em processamento', statuses: ['queued', 'running'] },
         { id: 'applied', label: 'Aplicados', statuses: ['applied'] },
         { id: 'pending', label: 'Aguardando confirmação', statuses: ['pending_confirmation'] },
         { id: 'failed', label: 'Não aplicados', statuses: ['blocked', 'skipped', 'failed', 'unconfirmed'] }
@@ -286,18 +287,25 @@ function BulkReport({ result, preview = false, feedback, onDismiss, className = 
   const counts = result.counts || {};
   const title = preview
     ? `${counts.eligible || 0} de ${counts.total || targets.length} anúncios elegíveis`
-    : feedback?.title || 'Última aplicação na família';
+    : result.status === 'queued' || result.status === 'running'
+      ? `Aplicando em ${counts.total || targets.length} anúncios`
+      : result.status === 'confirming'
+        ? 'Aguardando confirmação do Mercado Livre'
+        : feedback?.title || 'Última aplicação na família';
   const tone = preview
     ? (counts.blocked ? 'warning' : 'info')
-    : feedback?.tone || (counts.failed || counts.unconfirmed ? 'warning' : 'success');
+    : ['queued', 'running', 'confirming'].includes(result.status)
+      ? 'info' : feedback?.tone || (counts.failed || counts.unconfirmed ? 'warning' : 'success');
 
   return (
     <div className={`onframe-promotion-manager-bulk-report ${className}`}>
       <Alert appearance="soft" tone={tone} title={title}>
-        {!preview && <span>{feedback?.message || `${counts.applied || 0} aplicados; ${counts.pending || 0} aguardando confirmação; ${(counts.failed || 0) + (counts.skipped || 0) + (counts.unconfirmed || 0)} não aplicados.`}</span>}
+        {!preview && <span>{['queued', 'running', 'confirming'].includes(result.status)
+          ? `${counts.applied || 0} aplicados; ${counts.queued || 0} em processamento; ${counts.pending || 0} aguardando confirmação.`
+          : feedback?.message || `${counts.applied || 0} aplicados; ${counts.pending || 0} aguardando confirmação; ${(counts.failed || 0) + (counts.blocked || 0) + (counts.unconfirmed || 0)} não aplicados.`}</span>}
         {!!items.length && <Accordion items={items} type="multiple" ariaLabel={preview ? 'Prévia por anúncio' : 'Resultado por anúncio'} />}
       </Alert>
-      {onDismiss && (
+      {onDismiss && !['queued', 'running', 'confirming'].includes(result.status) && (
         <Button kind="quiet" size="sm" iconOnly aria-label="Dispensar resultado" icon={icon('x', 14)} onClick={onDismiss} />
       )}
     </div>

@@ -46,6 +46,13 @@ test('permissoes exigem leitura e rejeitam acoes desconhecidas', () => {
   assert.deepEqual(remotePermission('POST', '/items/MLB123456/bulk/commit', 'promotion.offer.delete'), [
     'promotions.delete'
   ]);
+  assert.deepEqual(remotePermission('POST', '/items/MLB123456/bulk/jobs', 'promotion.offer.create'), [
+    'promotions.write'
+  ]);
+  assert.deepEqual(remotePermission('POST', '/items/MLB123456/bulk/jobs', 'promotion.offer.delete'), [
+    'promotions.delete'
+  ]);
+  assert.deepEqual(remotePermission('GET', '/items/MLB123456/bulk/jobs/latest'), ['promotions.read']);
   assert.deepEqual(remotePermission('POST', '/items/MLB123456/promotions/estimate'), ['promotions.read']);
 });
 
@@ -75,6 +82,13 @@ test('rotas comerciais recusam leitura e escrita sem permissao', async () => {
   });
   const readOnly = new Request('https://onframe.test/v1/api/items/MLB123456/pricing/summary');
   await assert.rejects(handleRemoteApiRequest({ ...base, request: readOnly, url: new URL(readOnly.url) }), {
+    code: 'workspace_permission_denied'
+  });
+  const bulk = new Request('https://onframe.test/v1/api/items/MLB123456/bulk/jobs', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'promotion.offer.create', payload: {}, targetItemIds: ['MLB123456'] })
+  });
+  await assert.rejects(handleRemoteApiRequest({ ...base, request: bulk, url: new URL(bulk.url) }), {
     code: 'workspace_permission_denied'
   });
 });

@@ -32,6 +32,8 @@ import {
   handlePictureUpload,
   handleBulkCommit,
   handleBulkPreview,
+  buildBulkPreview,
+  resolveFamilyTargets,
   resolveItemClient,
   sanitizeError,
   userFriendlyError,
@@ -47,12 +49,13 @@ const RECONCILIATION_RETENTION_MS = 24 * 60 * 60 * 1000;
 const quickCache = createItemRouteCache();
 
 export function remotePermission(method: string, path: string, bulkAction?: string): Permission[] {
-  if (path.endsWith('/bulk/commit')) {
+  if (path.endsWith('/bulk/commit') || (method === 'POST' && path.endsWith('/bulk/jobs'))) {
     if (bulkAction === 'pricing.standard.update') return ['listings.write'];
     if (bulkAction === 'promotion.offer.delete') return ['promotions.delete'];
     if (bulkAction === 'promotion.offer.create' || bulkAction === 'promotion.offer.update') return ['promotions.write'];
     return ['listings.read'];
   }
+  if (path.includes('/bulk/jobs/')) return ['promotions.read'];
   if (path === '/promotions/campaigns' || path.includes('/promotions/')) {
     const action =
       method === 'DELETE'
@@ -83,9 +86,12 @@ export type PromotionReconciliationParams = {
   reconciliationId: string;
 };
 
+export type PromotionBulkParams = { jobId: string };
+
 export type RemoteRuntimeEnv = {
   ONFRAME_DB: D1Database;
   PROMOTION_RECONCILIATION: Workflow<PromotionReconciliationParams>;
+  PROMOTION_BULK: Workflow<PromotionBulkParams>;
   MELI_CLIENT_ID?: string;
   MELI_CLIENT_SECRET?: string;
   MELI_TOKEN_CIPHER_KEY_BASE64?: string;
@@ -205,7 +211,7 @@ export async function handleRemoteApiRequest(input: {
   url: URL;
 }): Promise<unknown> {
   const apiPath = input.url.pathname.slice('/v1/api'.length) || '/';
-  const bulkPayload: unknown = apiPath.endsWith('/bulk/commit')
+  const bulkPayload: unknown = apiPath.endsWith('/bulk/commit') || apiPath.endsWith('/bulk/jobs')
     ? await input.request
         .clone()
         .json()
@@ -396,6 +402,39 @@ export async function handleRemoteApiRequest(input: {
         itemId: bulkPreview[1],
         readJson
       });
+    }
+
+    const bulkTargets = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/targets$/u);
+    if (input.request.method === 'GET' && bulkTargets) {
+      const targets = await resolveFamilyTargets(await resolveBulkClient(bulkTargets[1]), bulkTargets[1]);
+      return {
+        total: targets.items.length,
+        otherCount: targets.items.filter((target: { current: boolean }) => !target.current).length
+      };
+    }
+
+    const bulkJobs = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/jobs$/u);
+    if (input.request.method === 'POST' && bulkJobs) {
+      const body = await readJson(input.request);
+      return createPromotionBulkJob(input.env, input.actor, await resolveBulkClient(bulkJobs[1]), bulkJobs[1], body);
+    }
+    const latestBulkJob = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/jobs\/latest$/u);
+    if (input.request.method === 'GET' && latestBulkJob) {
+      const row = await input.env.ONFRAME_DB.prepare(
+        `SELECT id FROM promotion_bulk_jobs WHERE workspace_id = ? AND user_id = ? AND source_item_id = ?
+         AND dismissed_at IS NULL ORDER BY created_at DESC LIMIT 1`
+      ).bind(input.actor.workspaceId, input.actor.userId, latestBulkJob[1]).first<{ id: string }>();
+      return row ? getPromotionBulkJob(input.env, input.actor, latestBulkJob[1], row.id) : null;
+    }
+    const bulkJob = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/jobs\/([0-9a-f-]{36})$/u);
+    if (bulkJob && input.request.method === 'GET') {
+      return getPromotionBulkJob(input.env, input.actor, bulkJob[1], bulkJob[2]);
+    }
+    if (bulkJob && input.request.method === 'DELETE') {
+      const job = await promotionBulkJobForActor(input.env, input.actor, bulkJob[1], bulkJob[2]);
+      await input.env.ONFRAME_DB.prepare('UPDATE promotion_bulk_jobs SET dismissed_at = ? WHERE id = ?')
+        .bind(Date.now(), job.id).run();
+      return { dismissed: true };
     }
 
     const bulkCommit = apiPath.match(/^\/items\/((?:MLB|MLBU)\d+)\/bulk\/commit$/u);
@@ -649,6 +688,272 @@ export function remoteApiErrorPayload(
       requestId
     }
   };
+}
+
+type PromotionBulkJobRow = {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  source_item_id: string;
+  seller_account_id: string;
+  action: string;
+  payload_json: string;
+  status: string;
+  total: number;
+};
+
+async function promotionBulkJobForActor(
+  env: RemoteRuntimeEnv, actor: RemoteApiActor, sourceItemId: string, id: string
+): Promise<PromotionBulkJobRow> {
+  const job = await env.ONFRAME_DB.prepare(
+    `SELECT * FROM promotion_bulk_jobs WHERE id = ? AND workspace_id = ? AND user_id = ? AND source_item_id = ?`
+  ).bind(id, actor.workspaceId, actor.userId, sourceItemId).first<PromotionBulkJobRow>();
+  if (!job) throw new RemoteApiError('promotion_bulk_job_not_found', 404);
+  return job;
+}
+
+async function createPromotionBulkJob(
+  env: RemoteRuntimeEnv, actor: RemoteApiActor, client: RemoteMeliClient,
+  sourceItemId: string, body: Record<string, unknown>
+): Promise<unknown> {
+  const action = String(body.action || '');
+  const payload = recordOrNull(body.payload);
+  const selected = body.targetItemIds;
+  if (!/^promotion\.offer\.(create|update|delete)$/u.test(action) || !payload ||
+    !Array.isArray(selected) || !selected.length || selected.some((id) => typeof id !== 'string') ||
+    new Set(selected).size !== selected.length) {
+    throw new RemoteApiError('promotion_bulk_invalid_selection', 400);
+  }
+  const preview = await buildBulkPreview(client, sourceItemId, { action, payload });
+  if (preview.targets.length > 500) {
+    throw new RemoteApiError('promotion_bulk_too_many_targets', 409,
+      'Esta família tem anúncios demais para uma única operação.');
+  }
+  const eligible = preview.targets.filter((target: { eligible: boolean }) => target.eligible);
+  const eligibleIds = new Set(eligible.map((target: { itemId: string }) => target.itemId));
+  if (selected.length !== eligibleIds.size || selected.some((id) => !eligibleIds.has(id)) ||
+    !eligible.some((target: { current: boolean }) => !target.current)) {
+    throw new RemoteApiError('promotion_bulk_selection_changed', 409,
+      'Os anúncios da família mudaram. Revise a prévia antes de confirmar.');
+  }
+
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const account = client.historyAccount();
+  const active = await env.ONFRAME_DB.prepare(
+    `SELECT id FROM promotion_bulk_jobs WHERE workspace_id = ? AND user_id = ? AND source_item_id = ?
+     AND status IN ('queued', 'running', 'confirming') LIMIT 1`
+  ).bind(actor.workspaceId, actor.userId, sourceItemId).first();
+  if (active) throw new RemoteApiError('promotion_bulk_job_active', 409,
+    'Já existe uma aplicação em andamento para este anúncio.');
+  try {
+    await env.ONFRAME_DB.prepare(
+    `INSERT INTO promotion_bulk_jobs
+     (id, workspace_id, user_id, source_item_id, seller_account_id, action, payload_json, total, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, actor.workspaceId, actor.userId, sourceItemId, account.id, action,
+      JSON.stringify(payload), preview.targets.length, now, now).run();
+  } catch (error) {
+    if (/UNIQUE constraint|SQLITE_CONSTRAINT_UNIQUE/iu.test(String(error))) {
+      throw new RemoteApiError('promotion_bulk_job_active', 409,
+        'Já existe uma aplicação em andamento para este anúncio.');
+    }
+    throw error;
+  }
+  try {
+    for (let index = 0; index < preview.targets.length; index += 50) {
+      await env.ONFRAME_DB.batch(preview.targets.slice(index, index + 50).map((target: {
+        itemId: string; title?: string; eligible: boolean; message?: string
+      }) => env.ONFRAME_DB.prepare(
+        `INSERT INTO promotion_bulk_job_items (job_id, item_id, title, status, message)
+         VALUES (?, ?, ?, ?, ?)`
+      ).bind(id, target.itemId, target.title || null, target.eligible ? 'queued' : 'blocked',
+        target.message || null)));
+    }
+    await env.PROMOTION_BULK.create({ id, params: { jobId: id } });
+  } catch (error) {
+    try {
+      const instance = await env.PROMOTION_BULK.get(id);
+      await instance.status();
+      return getPromotionBulkJob(env, actor, sourceItemId, id);
+    } catch {
+      await env.ONFRAME_DB.prepare('DELETE FROM promotion_bulk_jobs WHERE id = ?').bind(id).run();
+    }
+    throw error;
+  }
+  return getPromotionBulkJob(env, actor, sourceItemId, id);
+}
+
+export async function getPromotionBulkJob(
+  env: RemoteRuntimeEnv, actor: RemoteApiActor, sourceItemId: string, id: string
+): Promise<unknown> {
+  const job = await promotionBulkJobForActor(env, actor, sourceItemId, id);
+  let status = job.status;
+  if (job.status === 'queued' || job.status === 'running') {
+    try {
+      const instance = await env.PROMOTION_BULK.get(id);
+      const state = await instance.status();
+      if (state.status === 'errored' || state.status === 'terminated') {
+        await env.ONFRAME_DB.prepare(
+          `UPDATE promotion_bulk_job_items SET status = 'unconfirmed',
+           message = 'A execução foi interrompida; confira o anúncio antes de repetir a ação.'
+           WHERE job_id = ? AND status = 'running'`
+        ).bind(id).run();
+        await env.ONFRAME_DB.prepare(
+          `UPDATE promotion_bulk_job_items SET status = 'failed', message = 'A execução foi interrompida.'
+           WHERE job_id = ? AND status = 'queued'`
+        ).bind(id).run();
+        await finishPromotionBulkJob(env, id);
+        const finished = await env.ONFRAME_DB.prepare('SELECT status FROM promotion_bulk_jobs WHERE id = ?')
+          .bind(id).first<{ status: string }>();
+        status = finished?.status || status;
+      }
+    } catch {
+      // A instância pode ainda estar sendo criada; a próxima consulta reconcilia o estado.
+    }
+  }
+  if (status === 'confirming') {
+    const stalled = await env.ONFRAME_DB.prepare(
+      `SELECT reconciliations.id, reconciliations.expires_at AS expiresAt
+       FROM promotion_bulk_job_items AS items
+       INNER JOIN promotion_reconciliations AS reconciliations ON reconciliations.id = items.reconciliation_id
+       WHERE items.job_id = ? AND items.status = 'pending_confirmation'
+         AND reconciliations.status = 'pending'
+         AND (reconciliations.workflow_started_at IS NULL OR reconciliations.expires_at <= ?)
+       LIMIT 10`
+    ).bind(id, Date.now()).all<{ id: string; expiresAt: number }>();
+    for (const row of stalled.results) {
+      if (row.expiresAt <= Date.now()) await markPromotionReconciliationUnconfirmed(env, row.id);
+      else await startPromotionReconciliation(env, row.id);
+    }
+  }
+  const rows = await env.ONFRAME_DB.prepare(
+    `SELECT items.item_id AS itemId, items.title, items.status, items.message,
+            items.result_json AS resultJson, items.reconciliation_id AS reconciliationId,
+            reconciliations.status AS confirmationStatus, reconciliations.last_error AS confirmationError
+     FROM promotion_bulk_job_items AS items
+     LEFT JOIN promotion_reconciliations AS reconciliations ON reconciliations.id = items.reconciliation_id
+     WHERE items.job_id = ? ORDER BY items.item_id`
+  ).bind(id).all<{
+    itemId: string; title: string | null; status: string; message: string | null;
+    resultJson: string | null; reconciliationId: string | null; confirmationStatus: string | null;
+    confirmationError: string | null
+  }>();
+  const targets = rows.results.map((row) => ({
+    itemId: row.itemId,
+    title: row.title,
+    status: row.status === 'pending_confirmation' && row.confirmationStatus === 'confirmed' ? 'applied'
+      : row.status === 'pending_confirmation' && row.confirmationStatus === 'unconfirmed' ? 'unconfirmed'
+        : row.status,
+    eligible: row.status !== 'blocked',
+    message: row.confirmationStatus === 'confirmed' || row.confirmationStatus === 'unconfirmed'
+      ? reconciliationMessage(row.confirmationStatus, row.confirmationError) : row.message,
+    reconciliationId: row.reconciliationId,
+    result: row.resultJson ? parseStoredJson(row.resultJson) : null
+  }));
+  const counts = {
+    total: targets.length,
+    eligible: targets.filter((target) => target.eligible).length,
+    blocked: targets.filter((target) => target.status === 'blocked').length,
+    applied: targets.filter((target) => target.status === 'applied').length,
+    failed: targets.filter((target) => target.status === 'failed').length,
+    pending: targets.filter((target) => target.status === 'pending_confirmation').length,
+    unconfirmed: targets.filter((target) => target.status === 'unconfirmed').length,
+    queued: targets.filter((target) => target.status === 'queued' || target.status === 'running').length
+  };
+  if (status === 'confirming' && !counts.pending) {
+    await finishPromotionBulkJob(env, id, counts);
+    status = counts.failed || counts.unconfirmed || counts.blocked
+      ? counts.applied ? 'partial' : 'failed' : 'completed';
+  }
+  return { id, status, action: job.action, counts, targets };
+}
+
+export async function applyPromotionBulkTarget(env: RemoteRuntimeEnv, jobId: string, itemId: string) {
+  const claimed = await env.ONFRAME_DB.prepare(
+    `UPDATE promotion_bulk_job_items SET status = 'running'
+     WHERE job_id = ? AND item_id = ? AND status = 'queued'`
+  ).bind(jobId, itemId).run();
+  if (claimed.meta.changes !== 1) {
+    return { status: 'unconfirmed', message: 'Confira o anúncio antes de repetir a ação.' };
+  }
+  const job = await env.ONFRAME_DB.prepare('SELECT * FROM promotion_bulk_jobs WHERE id = ?')
+    .bind(jobId).first<PromotionBulkJobRow>();
+  if (!job) return { status: 'failed', message: 'A operação não foi encontrada.' };
+  const membership = await env.ONFRAME_DB.prepare(
+    `SELECT role_id, (SELECT group_concat(permission) FROM workspace_role_permissions
+      WHERE role_id = workspace_members.role_id) AS permissions_csv
+     FROM workspace_members WHERE workspace_id = ? AND user_id = ?`
+  ).bind(job.workspace_id, job.user_id).first<{ role_id: string; permissions_csv: string | null }>();
+  if (!membership) return { status: 'failed', message: 'O acesso ao workspace foi removido.' };
+  const account = await env.ONFRAME_DB.prepare(
+    'SELECT meli_user_id FROM seller_accounts WHERE id = ? AND workspace_id = ?'
+  ).bind(job.seller_account_id, job.workspace_id).first<{ meli_user_id: string }>();
+  if (!account) return { status: 'failed', message: 'A conta conectada não está mais disponível.' };
+  const actor: RemoteApiActor = {
+    sessionId: job.id, userId: job.user_id, workspaceId: job.workspace_id,
+    roleId: membership.role_id, permissions: membership.permissions_csv?.split(',') || []
+  };
+  const url = new URL(`https://onframe.onblide.com/v1/api/items/${job.source_item_id}/bulk/commit`);
+  url.searchParams.set('owner_user_id', account.meli_user_id);
+  const request = new Request(url, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ scope: 'user_product_family', action: job.action,
+      payload: JSON.parse(job.payload_json), targetItemIds: [itemId] })
+  });
+  try {
+    const response = await handleRemoteApiRequest({ actor, env, request, requestId: `${jobId}:${itemId}`, url });
+    const responseTargets = recordOrNull(response)?.targets;
+    const target = recordOrNull(Array.isArray(responseTargets) ? responseTargets[0] : null);
+    if (!target || target.itemId !== itemId) return { status: 'unconfirmed', message: 'Resultado do anúncio indisponível.' };
+    if (target.status === 'pending_confirmation' && typeof target.reconciliationId !== 'string') {
+      return { status: 'unconfirmed', message: 'A alteração foi aceita, mas não foi possível acompanhar a confirmação.' };
+    }
+    const uncertainFailure = target.status === 'failed' &&
+      (target.statusCode == null || !Number.isInteger(Number(target.statusCode)) || Number(target.statusCode) >= 500);
+    return {
+      status: uncertainFailure ? 'unconfirmed' : String(target.status || 'unconfirmed'),
+      message: String(target.message || ''),
+      reconciliationId: typeof target.reconciliationId === 'string' ? target.reconciliationId : null,
+      result: target.result || null
+    };
+  } catch (error) {
+    const failure = normalizeRemoteApiError(error);
+    return { status: failure.statusCode >= 500 ? 'unconfirmed' : 'failed',
+      message: userFriendlyError(failure, sanitizeError(failure), failure.statusCode) };
+  }
+}
+
+export async function storePromotionBulkTarget(
+  env: RemoteRuntimeEnv, jobId: string, itemId: string,
+  outcome: { status: string; message?: string; reconciliationId?: string | null; result?: unknown }
+) {
+  const status = ['applied', 'pending_confirmation', 'failed', 'unconfirmed'].includes(outcome.status)
+    ? outcome.status : 'unconfirmed';
+  await env.ONFRAME_DB.prepare(
+    `UPDATE promotion_bulk_job_items SET status = ?, message = ?, result_json = ?, reconciliation_id = ?
+     WHERE job_id = ? AND item_id = ? AND status = 'running'`
+  ).bind(status, outcome.message || null, outcome.result ? JSON.stringify(outcome.result) : null,
+    outcome.reconciliationId || null, jobId, itemId).run();
+}
+
+export async function finishPromotionBulkJob(
+  env: RemoteRuntimeEnv, id: string, providedCounts?: { pending: number; applied: number; failed: number; unconfirmed: number; blocked: number }
+) {
+  let counts = providedCounts;
+  if (!counts) {
+    const rows = await env.ONFRAME_DB.prepare(
+      'SELECT status, COUNT(*) AS total FROM promotion_bulk_job_items WHERE job_id = ? GROUP BY status'
+    ).bind(id).all<{ status: string; total: number }>();
+    const byStatus = Object.fromEntries(rows.results.map((row) => [row.status, row.total]));
+    counts = { pending: byStatus.pending_confirmation || 0, applied: byStatus.applied || 0,
+      failed: byStatus.failed || 0, unconfirmed: byStatus.unconfirmed || 0, blocked: byStatus.blocked || 0 };
+  }
+  const status = counts.pending ? 'confirming' : counts.failed || counts.unconfirmed || counts.blocked
+    ? counts.applied ? 'partial' : 'failed' : 'completed';
+  await env.ONFRAME_DB.prepare(
+    'UPDATE promotion_bulk_jobs SET status = ?, updated_at = ?, finished_at = ? WHERE id = ?'
+  ).bind(status, Date.now(), status === 'confirming' ? null : Date.now(), id).run();
 }
 
 function unwrapLegacyRouteResult(value: unknown): unknown {

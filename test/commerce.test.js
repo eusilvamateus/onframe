@@ -733,10 +733,12 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /function applyPromotionManagerDirectly\(key\)[\s\S]*commitPromotionManagerAction\(key, 'create', null, values\)/s);
   assert.match(source, /if \(!values\) \{\s*if \(managerRow\.createAction\) openPromotionManagerCard\(key, 'create'\);/);
   assert.match(source, /if \(field === 'stock'\) \{\s*return '';/);
-  assert.match(source, /const bulkEnabled =\s*!quickApply && !createdDirectDiscount && state\.promotionBulkEnabled && canUseBulkActions\(\) &&\s*!fields\.includes\('stock'\)/);
-  assert.match(source, /canBulk: canUseBulkActions\(\) && Boolean\(state\.context && state\.context\.family\) && !fields\.includes\('stock'\)/);
+  assert.match(source, /const bulkEnabled =\s*!quickApply && !createdDirectDiscount && state\.promotionBulkEnabled && canUseBulkActions\(\) &&\s*Number\(state\.promotionBulkAvailability/);
+  assert.match(source, /canBulk: canUseBulkActions\(\) &&\s*Number\(state\.promotionBulkAvailability/);
+  assert.match(source, /api\(itemApiPath\('\/bulk\/targets'\)\)/);
   assert.match(source, /state\.promotionBulkPreview = preview;[\s\S]*bulkEligibleTargets\(preview\)\.filter\(\(target\) => !target\.current\)\.length/s);
-  assert.match(source, /commitBulkInBatches\(bulkAction, payload, targetItemIds\)/);
+  assert.match(source, /api\(itemApiPath\('\/bulk\/jobs'\)/);
+  assert.match(source, /api\(itemApiPath\('\/bulk\/jobs\/latest'\)\)/);
   assert.match(view, /label="Aplicar a outros anúncios da família"/);
   assert.match(view, /function BulkReport\([\s\S]*Não aplicados[\s\S]*Resultado por anúncio/s);
   assert.match(source, /while \(true\) \{[\s\S]*bulk_continuation_repeated/s);
@@ -1231,16 +1233,16 @@ test('feedback de promoções permanece contextual e só escala eventos de fundo
   );
   const commit = source.slice(
     source.indexOf('async function commitPromotionManagerAction'),
-    source.indexOf('function currentBulkPromotionTarget')
+    source.indexOf('function isAcceptedPromotionRequestError')
   );
 
   assert.match(source, /promotionFeedback: null/);
   assert.match(source, /function setPromotionFeedback\(/);
   assert.match(commit, /scope: action === 'delete' \|\| state\.promotionFormKey !== key \? 'card' : 'form'/);
-  assert.match(commit, /keepFormOpen = !publishPromotionBulkFeedback\(result, action\)\.changed/);
+  assert.match(commit, /state\.promotionBulkResult = result;[\s\S]*watchPromotionBulkJob\(result\)/s);
   assert.doesNotMatch(commit, /notifyBulkResult\(/);
   assert.match(source, /function publishPromotionBulkFeedback\(/);
-  assert.match(source, /function reconcilePromotionBulkResult\(/);
+  assert.match(source, /function watchPromotionBulkJob\(/);
   assert.match(source, /function markPromotionMutationSyncing\(/);
   assert.match(source, /function rejectOptimisticPromotionMutation\(/);
   assert.match(source, /state\.promotionModalOpen[\s\S]*setPromotionFeedback[\s\S]*showToast\('warning'/s);

@@ -126,6 +126,9 @@
       promotionBulkHash: '',
       promotionBulkError: '',
       promotionBulkResult: null,
+      promotionBulkAvailability: null,
+      promotionBulkPollTimer: null,
+      promotionBulkSettledJobId: '',
       promotionSearch: '',
       promotionTab: 'all',
       promotionStatusFilters: [],
@@ -200,6 +203,9 @@
       state.promotionBulkHash = '';
       state.promotionBulkError = '';
       state.promotionBulkResult = null;
+      state.promotionBulkAvailability = null;
+      state.promotionBulkSettledJobId = '';
+      clearPromotionBulkPoll();
       resetPromotionListFilters();
       state.renderTimer = null;
       state.requestId += 1;
@@ -1483,7 +1489,10 @@
         offerDirty,
         priceHint: promotionManagerPriceHint(originalPrice, draftPrice),
         stockHint: promotionManagerStockHint(entry),
-        canBulk: canUseBulkActions() && Boolean(state.context && state.context.family) && !fields.includes('stock'),
+        canBulk: canUseBulkActions() &&
+          Number(state.promotionBulkAvailability && state.promotionBulkAvailability.otherCount) > 0 &&
+          !['queued', 'running', 'confirming'].includes(String(state.promotionBulkResult && state.promotionBulkResult.status)) &&
+          !fields.includes('stock'),
         bulkEnabled: state.promotionBulkEnabled,
         bulkPreview: formAction && state.promotionBulkEnabled ? state.promotionBulkPreview : null,
         bulkError: formAction && state.promotionBulkEnabled ? state.promotionBulkError : '',
@@ -1737,7 +1746,19 @@
       state.promotionBulkError = '';
     }
 
-    function dismissPromotionBulkResult() {
+    async function dismissPromotionBulkResult() {
+      const result = state.promotionBulkResult;
+      if (!result) return;
+      if (result.id) {
+        try {
+          await api(itemApiPath(`/bulk/jobs/${result.id}`), { method: 'DELETE' });
+        } catch (error) {
+          setPromotionFeedback({ scope: 'section', title: 'Não foi possível dispensar o resultado', message: toUserError(error) });
+          rerenderModal();
+          return;
+        }
+      }
+      clearPromotionBulkPoll();
       state.promotionBulkResult = null;
       if (state.promotionFeedback && state.promotionFeedback.scope === 'section') state.promotionFeedback = null;
       rerenderModal();
@@ -3360,6 +3381,7 @@
       state.promotionEstimates = {};
       renderModal();
       schedulePromotionManagerEstimates();
+      void loadPromotionBulkContext();
     }
 
     function openDirectDiscountForm() {
@@ -3381,6 +3403,7 @@
     }
 
     function closePromotionModal() {
+      clearPromotionBulkPoll();
       state.promotionModalOpen = false;
       state.directDiscountModalOpen = false;
       state.promotionFormKey = '';
@@ -3441,7 +3464,6 @@
         return;
       }
 
-      let keepFormOpen = false;
       try {
         const method = action === 'delete' ? 'DELETE' : action === 'update' ? 'PUT' : 'POST';
         const payload =
@@ -3453,8 +3475,8 @@
 
         const bulkEnabled =
           !quickApply && !createdDirectDiscount && state.promotionBulkEnabled && canUseBulkActions() &&
+          Number(state.promotionBulkAvailability && state.promotionBulkAvailability.otherCount) > 0 &&
           !fields.includes('stock');
-        state.promotionBulkResult = null;
         const bulkAction = `promotion.offer.${action}`;
         const previewHash = bulkHash(bulkAction, payload);
         if (bulkEnabled && (!state.promotionBulkPreview || state.promotionBulkHash !== previewHash)) {
@@ -3498,24 +3520,14 @@
 
         if (bulkEnabled) {
           const targetItemIds = bulkEligibleTargets(state.promotionBulkPreview).map((target) => target.itemId);
-          const previewTargets = new Map(state.promotionBulkPreview.targets.map((target) => [target.itemId, target]));
-          const result = await commitBulkInBatches(bulkAction, payload, targetItemIds);
-          result.targets = result.targets.map((target) => {
-            const previewTarget = previewTargets.get(target.itemId) || {};
-            return Object.assign({}, target, {
-              title: target.title || previewTarget.title || null,
-              userProductId: target.userProductId || previewTarget.userProductId || null
-            });
+          const result = await api(itemApiPath('/bulk/jobs'), {
+            method: 'POST',
+            body: JSON.stringify(bulkRequest(bulkAction, payload, targetItemIds))
           });
           state.promotionBulkResult = result;
           clearPromotionBulkPreview();
-          const currentTarget = currentBulkPromotionTarget(result);
-          if (currentTarget) {
-            const identity = applyOptimisticPromotionMutation(entry, action, values, currentTarget, estimateRecord);
-            if (identity) void reconcilePromotionManagerMutation(identity, currentTarget.reconciliationId);
-          }
-          keepFormOpen = !publishPromotionBulkFeedback(result, action).changed;
-          void reconcilePromotionBulkResult(result, action);
+          state.promotionBulkSettledJobId = '';
+          watchPromotionBulkJob(result);
         } else {
           let response;
           try {
@@ -3531,7 +3543,6 @@
           if (identity) void reconcilePromotionManagerMutation(identity, response && response.reconciliationId);
         }
 
-        if (keepFormOpen) return;
         if (!quickApply) {
           state.promotionFormKey = '';
           state.promotionFormAction = '';
@@ -3548,6 +3559,7 @@
           removeDirectDiscountModal();
         }
       } catch (err) {
+        if (state.operationPending === 'promotion-bulk-commit') clearPromotionBulkPreview();
         const message = CommerceModel.friendlyError(err);
         if (createdDirectDiscount) {
           state.actionError = message;
@@ -3566,17 +3578,6 @@
         state.operationPendingAction = '';
         mountCommerce();
       }
-    }
-
-    function currentBulkPromotionTarget(result) {
-      return (
-        (Array.isArray(result && result.targets) ? result.targets : []).find(
-          (target) =>
-            target &&
-            target.itemId === state.itemId &&
-            ['applied', 'pending_confirmation'].includes(String(target.status || ''))
-        ) || null
-      );
     }
 
     function isAcceptedPromotionRequestError(error) {
@@ -3944,6 +3945,55 @@
       return request;
     }
 
+    function clearPromotionBulkPoll() {
+      if (state.promotionBulkPollTimer) clearTimeout(state.promotionBulkPollTimer);
+      state.promotionBulkPollTimer = null;
+    }
+
+    async function loadPromotionBulkContext() {
+      const itemId = state.itemId;
+      const [availability, latest] = await Promise.allSettled([
+        canUseBulkActions() && state.context && state.context.family
+          ? api(itemApiPath('/bulk/targets'))
+          : Promise.resolve(null),
+        api(itemApiPath('/bulk/jobs/latest'))
+      ]);
+      if (!state.promotionModalOpen || state.itemId !== itemId) return;
+      state.promotionBulkAvailability = availability.status === 'fulfilled' ? availability.value : null;
+      if (latest.status === 'fulfilled' && latest.value) {
+        state.promotionBulkResult = latest.value;
+        watchPromotionBulkJob(latest.value);
+      }
+      rerenderModal();
+    }
+
+    function watchPromotionBulkJob(result) {
+      clearPromotionBulkPoll();
+      if (!result || !result.id || !state.promotionModalOpen) return;
+      if (['queued', 'running', 'confirming'].includes(result.status)) {
+        state.promotionBulkPollTimer = setTimeout(() => void refreshPromotionBulkJob(result.id), 2000);
+      } else if (state.promotionBulkSettledJobId !== result.id) {
+        state.promotionBulkSettledJobId = result.id;
+        publishPromotionBulkFeedback(result, String(result.action || '').replace('promotion.offer.', ''));
+        void loadSummaries(state.requestId).then(() => schedulePromotionManagerEstimates());
+      }
+    }
+
+    async function refreshPromotionBulkJob(id) {
+      const itemId = state.itemId;
+      try {
+        const result = await api(itemApiPath(`/bulk/jobs/${id}`));
+        if (!state.promotionModalOpen || state.itemId !== itemId ||
+          !state.promotionBulkResult || state.promotionBulkResult.id !== id) return;
+        state.promotionBulkResult = result;
+        watchPromotionBulkJob(result);
+        rerenderModal();
+      } catch (error) {
+        if (!state.promotionModalOpen || state.itemId !== itemId) return;
+        state.promotionBulkPollTimer = setTimeout(() => void refreshPromotionBulkJob(id), 5000);
+      }
+    }
+
     async function commitBulkInBatches(action, payload, targetItemIds) {
       const responses = [];
       const seenContinuations = new Set();
@@ -3992,65 +4042,6 @@
       });
     }
 
-    async function reconcilePromotionBulkResult(initialResult, action) {
-      let result = initialResult;
-      const reconciliationIds = Array.from(
-        new Set(
-          (Array.isArray(result && result.targets) ? result.targets : [])
-            .map((target) => (target && target.status === 'pending_confirmation' ? target.reconciliationId : ''))
-            .filter(Boolean)
-        )
-      );
-      if (!reconciliationIds.length) return;
-
-      for (let attempt = 0; attempt < 150; attempt += 1) {
-        await waitForPromotionReconciliation(2000);
-        let response;
-        try {
-          response = await api(`/api/bulk/reconciliations?ids=${encodeURIComponent(reconciliationIds.join(','))}`);
-        } catch (error) {
-          continue;
-        }
-
-        const operations = Array.isArray(response && response.operations) ? response.operations : [];
-        const byId = new Map(operations.map((operation) => [operation && operation.id, operation]));
-        const targets = (Array.isArray(result && result.targets) ? result.targets : []).map((target) => {
-          const operation = target && target.reconciliationId ? byId.get(target.reconciliationId) : null;
-          if (!operation || operation.status === 'pending') return target;
-          if (operation.status === 'confirmed') {
-            return Object.assign({}, target, {
-              eligible: true,
-              status: 'applied',
-              message: operation.message || 'Alteração confirmada pelo Mercado Livre.',
-              result: operation.result || target.result || null
-            });
-          }
-          if (operation.status === 'unconfirmed') {
-            return Object.assign({}, target, {
-              eligible: false,
-              status: 'unconfirmed',
-              reasonCode: 'promotion_change_unconfirmed',
-              message: operation.message || 'O estado final não foi confirmado.'
-            });
-          }
-          return target;
-        });
-        result = mergeBulkResponses([Object.assign({}, result, { targets })]);
-        if (Number((result.counts && result.counts.pending) || 0) > 0) continue;
-
-        if (state.promotionBulkResult) state.promotionBulkResult = result;
-        publishPromotionBulkFeedback(result, action, { background: true });
-        try {
-          await loadSummaries(state.requestId);
-          schedulePromotionManagerEstimates();
-          mountCommerce();
-        } catch (error) {
-          // A confirmação já foi persistida; uma falha de atualização visual não a desfaz.
-        }
-        return;
-      }
-    }
-
     function publishPromotionBulkFeedback(result, action, options = {}) {
       const counts = result && result.counts ? result.counts : {};
       const applied = Number(counts.applied || 0);
@@ -4064,17 +4055,17 @@
       const hasAttention = unchanged + unconfirmed > 0;
       const tone = !changed ? 'danger' : hasAttention ? 'warning' : pending ? 'info' : 'success';
       const title = !changed
-        ? 'Nenhuma variação foi alterada'
+        ? 'Nenhum anúncio foi alterado'
         : pending && !applied
-          ? 'Sincronizando variações'
+          ? 'Sincronizando anúncios'
           : promotionActionSuccessLabel(action);
       const parts = [
-        applied ? `${applied} variação${applied === 1 ? '' : 'ões'} alterada${applied === 1 ? '' : 's'}.` : '',
+        applied ? `${applied} anúncio${applied === 1 ? '' : 's'} alterado${applied === 1 ? '' : 's'}.` : '',
         pending ? `${pending} aguarda${pending === 1 ? '' : 'm'} confirmação do Mercado Livre.` : '',
         unconfirmed ? `${unconfirmed} não teve${unconfirmed === 1 ? '' : 'ram'} o estado final confirmado.` : '',
-        unchanged ? `${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterada${unchanged === 1 ? '' : 's'}.` : ''
+        unchanged ? `${unchanged} não foi${unchanged === 1 ? '' : 'ram'} alterado${unchanged === 1 ? '' : 's'}.` : ''
       ].filter(Boolean);
-      const message = parts.join(' ') || 'Revise a elegibilidade das variações e tente novamente.';
+      const message = parts.join(' ') || 'Revise a elegibilidade dos anúncios e tente novamente.';
       const feedback = { scope: 'section', tone, title, message };
 
       if (options.background && !state.promotionModalOpen) {
