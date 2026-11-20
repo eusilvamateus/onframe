@@ -1393,12 +1393,24 @@ body:has(
 .onframe-promotion-manager-footer-shell {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--ob-dur-base) var(--ob-ease);
+  visibility: hidden;
+  transition: grid-template-rows var(--ob-dur-base) var(--ob-ease), visibility var(--ob-dur-base) var(--ob-ease);
 }
 
 .onframe-promotion-manager-panel-shell.is-expanded,
 .onframe-promotion-manager-footer-shell.is-visible {
   grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.onframe-promotion-manager-footer-shell {
+  opacity: 0;
+  transition: grid-template-rows var(--ob-dur-base) var(--ob-ease-out),
+    opacity var(--ob-dur-base) var(--ob-ease-out), visibility var(--ob-dur-base) var(--ob-ease-out);
+}
+
+.onframe-promotion-manager-footer-shell.is-visible {
+  opacity: 1;
 }
 
 .onframe-promotion-manager-panel-content,
@@ -1427,12 +1439,12 @@ body:has(
 }
 
 @keyframes onframe-promotion-note-edit {
-  from { opacity: 0.7; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes onframe-promotion-note-read {
-  from { opacity: 0.7; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 

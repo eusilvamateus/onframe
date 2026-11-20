@@ -536,30 +536,20 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
 function PromotionCard({ row, actions }) {
   const [simulatingFinancials, setSimulatingFinancials] = useState(false);
   const [panelMounted, setPanelMounted] = useState(row.formOpen);
-  const [panelExpanded, setPanelExpanded] = useState(row.formOpen);
   const lastOpenRow = useRef(row);
-  const panelShellRef = useRef(null);
   if (row.formOpen) lastOpenRow.current = row;
 
   useEffect(() => {
-    setSimulatingFinancials(false);
+    if (row.formOpen) setSimulatingFinancials(false);
   }, [row.formOpen, row.formAction]);
 
   useEffect(() => {
     if (row.formOpen) {
       setPanelMounted(true);
-      const frame = requestAnimationFrame(() => setPanelExpanded(true));
-      return () => cancelAnimationFrame(frame);
-    }
-    setPanelExpanded(false);
-    if (!panelExpanded || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    } else if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setPanelMounted(false);
-      return;
+      setSimulatingFinancials(false);
     }
-    const frame = requestAnimationFrame(() => {
-      if (panelShellRef.current?.getBoundingClientRect().height === 0) setPanelMounted(false);
-    });
-    return () => cancelAnimationFrame(frame);
   }, [row.formOpen]);
 
   const expanded = row.formOpen || panelMounted;
@@ -570,11 +560,11 @@ function PromotionCard({ row, actions }) {
       padding={0}
       style={{
         overflow: expanded ? 'hidden' : 'visible',
-        borderColor: panelExpanded ? 'var(--ob-blue)' : 'var(--ob-line-soft)',
+        borderColor: row.formOpen ? 'var(--ob-blue)' : 'var(--ob-line-soft)',
         transition: 'border-color var(--ob-dur-base) var(--ob-ease)'
       }}
     >
-      <div className={`onframe-promotion-manager-card${panelExpanded ? ' is-open' : ''}`}>
+      <div className={`onframe-promotion-manager-card${row.formOpen ? ' is-open' : ''}`}>
         <div className="onframe-promotion-manager-name">
           <span className={`onframe-commerce-promotion-type-icon ${row.type}`} aria-hidden="true">
             <Ph n={row.type === 'coupon' ? 'ticket' : row.type === 'payment' ? 'credit-card' : 'tag'} size={20} />
@@ -590,7 +580,7 @@ function PromotionCard({ row, actions }) {
             </div>
           </div>
         </div>
-        <div className={`onframe-promotion-manager-summary-shell${panelExpanded ? ' is-collapsed' : ''}`} aria-hidden={row.formOpen}>
+        <div className={`onframe-promotion-manager-summary-shell${row.formOpen ? ' is-collapsed' : ''}`} aria-hidden={row.formOpen}>
           <div className="onframe-promotion-manager-summary-content">
             <div className="onframe-promotion-manager-condition">
               <span>{row.type === 'coupon' ? 'Desconto' : row.type === 'payment' ? 'Condição' : 'Preço'}</span>
@@ -607,20 +597,20 @@ function PromotionCard({ row, actions }) {
       </div>
       {!expanded && <ContextFeedback feedback={row.feedback} className="onframe-promotion-manager-card-feedback" />}
       <div
-        className={`onframe-promotion-manager-panel-shell${panelExpanded ? ' is-expanded' : ''}`}
+        className={`onframe-promotion-manager-panel-shell${row.formOpen ? ' is-expanded' : ''}`}
         aria-hidden={!row.formOpen}
         ref={(element) => {
-          panelShellRef.current = element;
           if (element) element.inert = !row.formOpen;
         }}
         onTransitionEnd={(event) => {
           if (event.target === event.currentTarget && event.propertyName === 'grid-template-rows' && !row.formOpen) {
             setPanelMounted(false);
+            setSimulatingFinancials(false);
           }
         }}
       >
         <div className="onframe-promotion-manager-panel-content">
-          {panelMounted && (
+          {(row.formOpen || panelMounted) && (
             <EditPanel row={panelRow} actions={actions} simulatingFinancials={simulatingFinancials} setSimulatingFinancials={setSimulatingFinancials} />
           )}
         </div>

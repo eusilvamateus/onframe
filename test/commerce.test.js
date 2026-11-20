@@ -652,7 +652,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /Aplicadas ao anúncio/);
   assert.match(view, /Disponíveis para aplicar/);
   assert.match(view, /<Card[\s\S]*padding=\{0\}/);
-  assert.match(view, /borderColor: panelExpanded \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
+  assert.match(view, /borderColor: row\.formOpen \? 'var\(--ob-blue\)' : 'var\(--ob-line-soft\)'/);
   assert.doesNotMatch(view, /Avatar/);
   assert.match(view, /onframe-commerce-promotion-type-icon \$\{row\.type\}/);
   assert.match(view, /row\.type === 'coupon' \? 'ticket' : row\.type === 'payment' \? 'credit-card' : 'tag'/);
@@ -824,9 +824,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(styles, /\.onframe-promotion-manager-card\.is-open\s*\{\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 0fr\) auto;/);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-card\.is-open \.onframe-promotion-manager-actions/);
   assert.match(view, /onTransitionEnd=\{\(event\) => \{[\s\S]*event\.propertyName === 'grid-template-rows' && !row\.formOpen[\s\S]*setPanelMounted\(false\)/s);
-  assert.match(view, /panelShellRef\.current\?\.getBoundingClientRect\(\)\.height === 0/);
-  assert.doesNotMatch(view, /PANEL_TRANSITION_MS|setTimeout\(\(\) => setPanelMounted/);
-  assert.match(view, /panelMounted && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
+  assert.match(view, /\(row\.formOpen \|\| panelMounted\) && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
+  assert.doesNotMatch(view, /panelExpanded|requestAnimationFrame|panelShellRef|PANEL_TRANSITION_MS|setTimeout\(\(\) => setPanelMounted/);
   assert.match(view, /function CardActions\(\{ row, actions, simulatingFinancials, setSimulatingFinancials \}\)[\s\S]*onSelect: \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/s);
   assert.match(view, /row\.formOpen && \(!row\.readOnly \|\| simulatingFinancials\) && \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-note-tools\s*\{/);
@@ -844,6 +843,8 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(styles, /\.onframe-promotion-manager-editor-footer\s*\{[\s\S]*display: flex;[\s\S]*align-items: center;/s);
   assert.match(styles, /\.onframe-promotion-manager-panel-shell\.is-expanded,[\s\S]*grid-template-rows: 1fr;/s);
   assert.match(styles, /\.onframe-promotion-manager-note-layout\.is-editing\s*\{[\s\S]*animation: onframe-promotion-note-edit/s);
+  assert.match(styles, /\.onframe-promotion-manager-footer-shell\.is-visible\s*\{\s*opacity: 1;/);
+  assert.match(styles, /@keyframes onframe-promotion-note-edit\s*\{\s*from \{ opacity: 0; transform: translateY\(-4px\); \}/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(source, /const estimatePending = !estimateRecord && CommerceModel\.canEstimatePromotion\(entry\)/);
   assert.match(source, /Boolean\(targetPrice\) && !promotionRangeWarning\(entry, targetPrice\)/);
