@@ -1442,6 +1442,7 @@ body:has(
 }
 
 .onframe-promotion-manager-financial-margin small {
+  margin-top: var(--ob-space-4);
   font-size: var(--ob-fs-13);
   font-weight: var(--ob-w-semibold);
   line-height: var(--ob-lh-tight);

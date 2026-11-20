@@ -596,6 +596,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /kind="neutral"\s+size="sm"\s+iconOnly\s+aria-label="Atualizar promoções"/s);
   assert.match(view, /kind="primary"\s+size="sm"\s+icon=\{icon\('tag', 18\)\}/s);
   assert.match(view, /<Badge tone=\{tone\} appearance="soft" size="sm" dot>/);
+  assert.match(styles, /\.onframe-promotion-manager-financial-margin small\s*\{\s*margin-top: var\(--ob-space-4\);/);
   assert.match(view, /status\.id === 'available'[\s\S]*\? 'warning'/);
   assert.match(view, /title="Filtrar promoções"/);
   assert.match(view, /label="Ativas"/);
