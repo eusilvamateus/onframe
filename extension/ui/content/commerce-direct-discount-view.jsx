@@ -31,9 +31,10 @@ function ResultValue({ loading, value }) {
 }
 
 function ResultRow({ label, description = '', value, loading = false, tone = '', separated = false }) {
+  const empty = !loading && (value === '' || value === '—' || value == null);
   return (
     <div
-      className={`onframe-commerce-direct-discount-line${tone ? ` ${tone}` : ''}${separated ? ' is-separated' : ''}`}
+      className={`onframe-commerce-direct-discount-line${tone && !empty ? ` ${tone}` : ''}${empty ? ' is-empty' : ''}${separated ? ' is-separated' : ''}`}
     >
       <span>
         {label}
@@ -82,7 +83,7 @@ function DirectDiscountModal({ model, actions }) {
 
   const footer = (
     <>
-      <Button kind="secondary" size="sm" disabled={model.busy} onClick={actions.onClose}>
+      <Button kind="quiet" tone="danger" size="sm" disabled={model.busy} onClick={actions.onClose}>
         Cancelar
       </Button>
       <Button

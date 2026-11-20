@@ -19,7 +19,8 @@ import {
   Skeleton,
   Spinner,
   Tabs,
-  Tooltip
+  Tooltip,
+  useBreakpoint
 } from '@onblide/ui';
 
 const roots = new WeakMap();
@@ -466,14 +467,18 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
 
 function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancials }) {
   const isCoupon = row.type === 'coupon';
+  const showEditLabel = useBreakpoint().atLeast('sm');
+  const editing = row.formOpen && (!row.readOnly || simulatingFinancials);
+  const canEdit = row.canUpdate || (!isCoupon && row.productFinancials);
+  const startEditing = () => row.canUpdate ? actions.onOpen(row.key, 'update') : setSimulatingFinancials(true);
   const items = row.formOpen
     ? [
-        ...(row.readOnly && !simulatingFinancials && (row.canUpdate || (!isCoupon && row.productFinancials))
+        ...(row.readOnly && !simulatingFinancials && canEdit
           ? [{
               label: 'Editar',
               icon: 'pencil-simple',
               disabled: row.busy,
-              onSelect: () => row.canUpdate ? actions.onOpen(row.key, 'update') : setSimulatingFinancials(true)
+              onSelect: startEditing
             }]
           : []),
         {
@@ -509,8 +514,38 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
         ];
   return (
     <>
-      {row.formOpen && (!row.readOnly || simulatingFinancials) && (
-        <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
+      {row.formOpen && (!editing || showEditLabel) && (
+        <span className="onframe-promotion-manager-direct-actions">
+          {editing ? (
+            <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
+          ) : (
+            <>
+              {canEdit && (
+                <Button
+                  kind="quiet"
+                  tone="primary"
+                  size="sm"
+                  iconOnly={!showEditLabel}
+                  aria-label="Editar"
+                  icon={icon('pencil-simple', 14)}
+                  disabled={row.busy}
+                  onClick={startEditing}
+                >
+                  Editar
+                </Button>
+              )}
+              <Button
+                kind="neutral"
+                size="sm"
+                iconOnly
+                aria-label="Recolher detalhes"
+                icon={icon('caret-up', 16)}
+                disabled={row.busy}
+                onClick={actions.onCancelEdit}
+              />
+            </>
+          )}
+        </span>
       )}
       <Menu
         size="md"

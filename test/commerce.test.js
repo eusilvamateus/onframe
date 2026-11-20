@@ -673,7 +673,9 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /aria-label=\{`Abrir ações de \$\{row\.name\}`\}/);
   assert.match(view, /icon=\{icon\('dots-three-vertical', 18\)\}/);
   assert.match(view, /label: 'Recolher detalhes'[\s\S]*onSelect: actions\.onCancelEdit/s);
-  assert.doesNotMatch(view, /aria-label="Recolher detalhes"/);
+  assert.match(view, /<Button[\s\S]*kind="quiet"[\s\S]*tone="primary"[\s\S]*aria-label="Editar"[\s\S]*onClick=\{startEditing\}/s);
+  assert.match(view, /<Button[\s\S]*kind="neutral"[\s\S]*aria-label="Recolher detalhes"[\s\S]*onClick=\{actions\.onCancelEdit\}/s);
+  assert.match(view, /useBreakpoint\(\)\.atLeast\('sm'\)/);
   assert.match(view, /<span>Você recebe<\/span>[\s\S]*<strong className=\{row\.result\.primary \? 'amount' : undefined\}>/s);
   assert.match(styles, /\.onframe-promotion-manager-result strong\.amount\s*\{\s*color: var\(--ob-blue\);/);
   assert.doesNotMatch(view, /aria-label="Remover promoção"/);
@@ -826,8 +828,9 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /onTransitionEnd=\{\(event\) => \{[\s\S]*event\.propertyName === 'grid-template-rows' && !row\.formOpen[\s\S]*setPanelMounted\(false\)/s);
   assert.match(view, /\(row\.formOpen \|\| panelMounted\) && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
   assert.doesNotMatch(view, /panelExpanded|requestAnimationFrame|panelShellRef|PANEL_TRANSITION_MS|setTimeout\(\(\) => setPanelMounted/);
-  assert.match(view, /function CardActions\(\{ row, actions, simulatingFinancials, setSimulatingFinancials \}\)[\s\S]*onSelect: \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/s);
-  assert.match(view, /row\.formOpen && \(!row\.readOnly \|\| simulatingFinancials\) && \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
+  assert.match(view, /const startEditing = \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/);
+  assert.match(view, /editing \? \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
+  assert.match(styles, /\.onframe-promotion-manager-direct-actions\s*\{\s*display: inline-flex;/);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-note-tools\s*\{/);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-label\s*\{\s*font-family: var\(--ob-font\) !important;/);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-value strong\s*\{\s*font-family: var\(--ob-font\) !important;/);
@@ -882,6 +885,7 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   );
   const build = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build', 'extension-ui.js'), 'utf8');
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'extension', 'manifest.json'), 'utf8'));
+  const foundations = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'foundations.css'), 'utf8');
   const styles = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'styles.css'), 'utf8');
   const scripts = manifest.content_scripts[0].js;
 
@@ -903,7 +907,7 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   assert.match(source, /const promotionalPrice = CommerceModel\.parseMoneyInput\(draft\.deal_price\)/);
   assert.match(source, /discountAmount: discountAmount === null \? '' : `−\$\{CommerceModel\.formatMoney\(discountAmount, itemCurrency\(\)\)\}`/);
   assert.match(priceView, /<Input[\s\S]*label="Novo preço base"[\s\S]*startAddon="R\$"/s);
-  assert.match(view, /<Button kind="secondary" size="sm"/);
+  assert.match(view, /<Button kind="quiet" tone="danger" size="sm"/);
   assert.match(view, /<Button[\s\S]*kind="primary"[\s\S]*size="sm"/s);
   assert.match(view, /<Alert appearance="soft" tone="danger">/);
   assert.match(view, /<Skeleton width=\{72\} height=\{16\}/);
@@ -947,7 +951,13 @@ test('modal de desconto direto usa somente componentes oficiais do design system
   assert.match(styles, /\.onframe-commerce-direct-discount-item\s*{[\s\S]*display: flex;/s);
   assert.match(styles, /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s);
   assert.match(styles, /@media \(max-width: 540px\)\s*{[\s\S]*\.onframe-commerce-direct-discount-date-range\s*{\s*grid-template-columns: minmax\(0, 1fr\)/s);
-  assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount-field input[\s\S]*!important/s);
+  assert.match(view, /const empty = !loading && \(value === '' \|\| value === '—' \|\| value == null\)/);
+  assert.match(styles, /\.onframe-commerce-direct-discount-line\.is-empty > strong\s*\{\s*color: var\(--ob-fg-mute\);/);
+  assert.match(styles, /\.onframe-commerce-direct-discount input:focus,[\s\S]*box-shadow: none !important;/s);
+  assert.match(foundations, /body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\) > \.ob-modal-fundo\s*\{\s*--ob-z-modal: var\(--ob-z-extension-modal\);/);
+  assert.match(foundations, /body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\) > \[data-ob-camada\]\s*\{\s*--ob-z-dropdown: var\(--ob-z-extension-toast\);/);
+  assert.match(foundations, /:root\[data-onframe-theme='dark'\][\s\S]*body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\) > \.ob-modal-fundo,/s);
+  assert.match(styles, /body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\) > \.ob-modal-fundo,/);
   assert.doesNotMatch(styles, /\.onframe-commerce-direct-discount[^}]*\.ob-field-(?:shell|prefix|suffix)/s);
   assert.match(source, /description: saleFeeDescription\(commission, currency\)/);
   assert.match(source, /`Tarifa de venda · \$\{formatPercent\(commissionPercentage\)\}`/);
@@ -960,6 +970,14 @@ test('modal de desconto direto usa somente componentes oficiais do design system
     source,
     /if \(state\.directDiscountModalOpen\) \{\s*event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);/s
   );
+});
+
+test('portais dos modais de comércio preservam tema escuro e camadas dos popovers', () => {
+  const foundations = fs.readFileSync(path.join(__dirname, '..', 'extension', 'styles', 'foundations.css'), 'utf8');
+  const portalRoots = '(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root)';
+  assert.ok(foundations.includes(`body:has(> :is${portalRoots}) > .ob-modal-fundo`));
+  assert.ok(foundations.includes(`body:has(> :is${portalRoots}) > [data-ob-camada]`));
+  assert.match(foundations, /:root\[data-onframe-theme='dark'\][\s\S]*> \.ob-modal-fundo,[\s\S]*\) \{\s*--ob-blue:/s);
 });
 
 test('modal de promoções mantém filtros e revisão financeira na view React', () => {
@@ -975,7 +993,7 @@ test('modal de promoções mantém filtros e revisão financeira na view React',
   assert.match(view, /label="Elegíveis"/);
   assert.match(view, /function Calculation\(\{ row, items = row\.calculation/);
   assert.match(view, /lines\.map\(\(item, index\) =>/);
-  assert.match(view, /onSelect: \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/);
+  assert.match(view, /const startEditing = \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/);
   assert.match(view, /Margem de contribuição/);
   assert.match(view, /const editing = !row\.readOnly \|\| simulatingFinancials/);
   assert.doesNotMatch(view, /Salvar no produto|onSaveProductFinancials/);

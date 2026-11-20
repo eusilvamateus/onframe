@@ -728,6 +728,11 @@
   white-space: nowrap;
 }
 
+.onframe-commerce-direct-discount-line.is-empty > strong {
+  color: var(--ob-fg-mute);
+  font-weight: var(--ob-w-regular);
+}
+
 .onframe-commerce-direct-discount-line > span > small {
   display: block;
   margin-top: var(--ob-space-2);
@@ -748,6 +753,13 @@
   width: 160px;
   min-width: 0;
   justify-self: end;
+}
+
+.onframe-commerce-direct-discount input:focus,
+.onframe-commerce-direct-discount input:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
 }
 
 .onframe-commerce-direct-discount-date-range {
@@ -855,6 +867,7 @@
   .onframe-commerce-modal-root,
   .onframe-commerce-direct-discount-modal-root
 ),
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root)) > .ob-modal-fundo,
 body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root))
   > :is([data-ob-popover-id], [data-ob-camada]),
 body:has(
@@ -931,6 +944,23 @@ body:has(
     tr,
     th,
     td,
+    time,
+    output
+  ),
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root))
+  > .ob-modal-fundo
+  :where(
+    div,
+    section,
+    article,
+    button,
+    input,
+    label,
+    span,
+    p,
+    strong,
+    small,
+    h3,
     time,
     output
   ),
@@ -1389,6 +1419,18 @@ body:has(
   gap: var(--ob-space-4);
 }
 
+.onframe-promotion-manager-direct-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ob-space-4);
+  animation: onframe-promotion-actions-enter var(--ob-dur-base) var(--ob-ease-out) both;
+}
+
+@keyframes onframe-promotion-actions-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .onframe-promotion-manager-panel-shell,
 .onframe-promotion-manager-footer-shell {
   display: grid;
@@ -1653,6 +1695,10 @@ body:has(
 
   .onframe-promotion-manager-note-layout.is-editing,
   .onframe-promotion-manager-note-layout.is-reading {
+    animation: none;
+  }
+
+  .onframe-promotion-manager-direct-actions {
     animation: none;
   }
 }

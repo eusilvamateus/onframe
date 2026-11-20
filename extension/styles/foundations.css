@@ -224,16 +224,16 @@
   box-sizing: border-box;
 }
 
-:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root) {
+:is(.onblide-ml-dialog-root, .onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root) {
   --ob-z-overlay: var(--ob-z-extension-overlay);
   --ob-z-modal: var(--ob-z-extension-modal);
 }
 
-body:has(> .onframe-commerce-modal-root) > .ob-modal-fundo {
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root)) > .ob-modal-fundo {
   --ob-z-modal: var(--ob-z-extension-modal);
 }
 
-body:has(> .onframe-commerce-modal-root) > [data-ob-camada] {
+body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root)) > [data-ob-camada] {
   --ob-z-dropdown: var(--ob-z-extension-toast);
 }
 
@@ -275,6 +275,7 @@ body:has(
     [class*=' onframe-'],
     [data-ob-popover-id],
     [data-ob-camada],
+    body:has(> :is(.onframe-commerce-modal-root, .onframe-commerce-direct-discount-modal-root)) > .ob-modal-fundo,
     body:has(
         :is(
             .onblide-ml-tray,
