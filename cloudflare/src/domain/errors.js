@@ -151,9 +151,6 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
   ) {
     return 'Conexão indisponível no Onblide Connect.';
   }
-  if (text.includes('update_release_lookup_failed')) {
-    return 'Não consegui consultar as releases.';
-  }
   if (
     text.includes('nao foi possivel identificar') ||
     text.includes('item_id da pagina') ||

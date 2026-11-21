@@ -118,12 +118,6 @@ export function initials(value) {
   );
 }
 
-export function openUpdater() {
-  const link = document.createElement('a');
-  link.href = 'onframe-updater://update';
-  link.click();
-}
-
 export function openExternal(url) {
   chrome.tabs.create({ url });
 }

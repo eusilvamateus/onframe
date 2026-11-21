@@ -10,8 +10,8 @@ tenha uma fonte canonica.
   e usar a extensao.
 - [Guia do usuario](user/guia-do-usuario.md) - fluxo diario na pagina do
   anuncio.
-- [Instalacao e atualizacao](user/instalacao-e-atualizacao.md) - instalacao,
-  acesso e atualizacao no Windows e macOS.
+- [Instalacao e atualizacao](user/instalacao-e-atualizacao.md) - instalacao
+  pela loja, acesso, atualizacao e remocao.
 - [Editar descricao](user/editar-descricao.md) - edicao do texto no contexto do
   anuncio.
 - [Editar caracteristicas](user/editar-caracteristicas.md) - revisao da ficha
@@ -54,8 +54,8 @@ tenha uma fonte canonica.
 
 ## Referencias
 
-- [Pacote de release](reference/pacote-de-release.md) - conteudo distribuido,
-  validacao e pipeline tecnico da GitHub Release.
+- [Pacote para a Chrome Web Store](reference/pacote-de-release.md) - conteudo
+  do ZIP, validacao e pipeline tecnico da GitHub Release.
 
 ## Como manter esta documentacao
 

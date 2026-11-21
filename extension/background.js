@@ -52,7 +52,6 @@ async function handleRemoteMessage(message) {
   if (action === 'account-update') return updateRemoteAccount(message.userId, message.payload);
   if (action === 'account-remove') return removeRemoteAccount(message.userId);
   if (action === 'app-overview') return requestPlatform('/v1/app/overview');
-  if (action === 'app-release') return requestPlatform('/v1/app/release');
   if (action === 'item-edit-history') return requestPlatform(itemEditHistoryPath(message.query));
   if (action === 'products') return requestPlatform(productsPath(message.query));
   if (action === 'product-settings') return requestPlatform('/v1/app/products/settings');

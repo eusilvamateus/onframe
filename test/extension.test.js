@@ -420,7 +420,7 @@ test('preferência de largura total é persistida e aplicada apenas a páginas e
   const isExpandable = (view, settingsPage) => vm.runInNewContext(`${expandableSource}\nexpandablePage`, { view, settingsPage });
   for (const view of ['products', 'integrations', 'history']) assert.equal(isExpandable(view, 'index'), true);
   for (const page of ['sessions', 'people', 'roles']) assert.equal(isExpandable('settings', page), true);
-  for (const page of ['index', 'profile', 'security', 'general', 'margin', 'appearance', 'updates']) {
+  for (const page of ['index', 'profile', 'security', 'general', 'margin', 'appearance']) {
     assert.equal(isExpandable('settings', page), false);
   }
   assert.equal(isExpandable('home', 'index'), false);
@@ -780,7 +780,7 @@ test('logo do workspace mostra o envio e nao depende do carregamento da pagina',
   const source = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'app.jsx'), 'utf8');
   const component = source.slice(
     source.indexOf('function WorkspaceGeneralSettings('),
-    source.indexOf('function ApplicationUpdatesSettings(')
+    source.indexOf('function Settings(')
   );
   const compiled = transformSync(`${component}\nWorkspaceGeneralSettings`, {
     loader: 'jsx',
@@ -1328,7 +1328,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(options, /trailing=\{<Ph n="caret-right" size=\{18\} \/>\}/);
   assert.doesNotMatch(
     options,
-    /function (?:ProfileSettings|WorkspacePeople|WorkspaceGeneralSettings|ApplicationUpdatesSettings)[\s\S]{0,500}<Card/
+    /function (?:ProfileSettings|WorkspacePeople|WorkspaceGeneralSettings)[\s\S]{0,500}<Card/
   );
   assert.match(options, /List/);
   assert.match(options, /ListItem/);
@@ -1337,7 +1337,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /SessionsSettings/);
   assert.match(options, /WorkspaceGeneralSettings/);
   assert.match(options, /<WorkspacePeople\s/);
-  assert.match(options, /ApplicationUpdatesSettings/);
+  assert.doesNotMatch(options, /ApplicationUpdatesSettings|openUpdater/);
   assert.doesNotMatch(options, /eyebrow: 'CONFIGURAÇÕES'/);
   assert.match(options, /FileUpload/);
   assert.match(options, /className="onframe-profile-layout"/);
@@ -1367,7 +1367,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(popupLoading, /<Skeleton circle height=\{40\}/);
   assert.match(popupLoading, /onframe-popup-home-loading-row/);
   assert.match(popup, /void refreshOverview\(\);/);
-  assert.match(popup, /void refreshRelease\(\);/);
+  assert.doesNotMatch(popup, /refreshRelease|app-release/);
   assert.doesNotMatch(popup, /await refreshOverview\(\)/);
   assert.match(
     popup,
@@ -1387,10 +1387,9 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
     popup,
     /LogoMark|manifestVersion|openUpdater|sendToTab|activeProductTab|sendRemoteMessage\('accounts'\)/
   );
-  assert.match(popup, /<PopupFooter release=\{release\} busy=\{busy\}/);
-  assert.match(popupFooter, /<Menu/);
-  assert.match(popupFooter, /placement="top"/);
-  assert.match(popupFooter, /kind="cream"\s+size="sm"\s+count=\{updateAvailable \? 1 : undefined\}/);
+  assert.match(popup, /<PopupFooter busy=\{busy\}/);
+  assert.match(popupFooter, /<Badge tone="neutral" appearance="ghost" dot=\{false\} size="sm">/);
+  assert.doesNotMatch(popupFooter, /<Menu|openUpdater|release|updateAvailable/);
   assert.match(popupFooter, /kind="quiet"\s+tone="danger"\s+size="sm"/);
   assert.doesNotMatch(popup, /<Card|<Badge|Visibilidade na página|Abrir painel do workspace/);
   assert.match(
@@ -1422,7 +1421,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(background, /profile-avatar-remove/);
   assert.match(options, /account-update/);
   assert.match(options, /account-remove/);
-  assert.match(runtime, /onframe-updater:\/\/update/);
+  assert.doesNotMatch(runtime, /onframe-updater|openUpdater/);
   assert.doesNotMatch(optionsHtml, /Sessão expira/);
   assert.doesNotMatch(popupHtml, /Sessão expira/);
   assert.doesNotMatch(popup, /127\.0\.0\.1|onframe:openLauncher|\/updates\//);
@@ -1520,11 +1519,6 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
         return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts'))
         return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
-      if (url.endsWith('/v1/app/release'))
-        return Response.json({
-          latestVersion: '0.6.0',
-          changelogUrl: 'https://github.com/eusilvamateus/onframe/releases/tag/v0.6.0'
-        });
       if (url.includes('/v1/app/item-edit-history'))
         return Response.json({ events: [], page: 1, total: 0, totalPages: 1 });
       if (url.endsWith('/v1/accounts/123')) {
@@ -1608,11 +1602,6 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
   const accounts = await send({ type: 'onframe:remote', action: 'accounts' });
   assert.equal(accounts.ok, true);
   assert.equal(accounts.body.accounts[0].user_id, '123');
-
-  const release = await send({ type: 'onframe:remote', action: 'app-release' });
-  assert.equal(release.ok, true);
-  assert.equal(release.body.latestVersion, '0.6.0');
-  assert.equal(requests.at(-1).headers.get('authorization'), 'Bearer ' + token);
 
   const history = await send({
     type: 'onframe:remote',
@@ -1709,7 +1698,7 @@ test('Worker mantém as contas e o contrato remoto como única fronteira', () =>
   assert.match(worker, /\/v1\/accounts/);
   assert.match(worker, /\/v1\/extension-sessions\/from-auth/);
   assert.match(worker, /\/v1\/extension-auth-flows/);
-  assert.match(worker, /\/v1\/app\/release/);
+  assert.doesNotMatch(worker, /\/v1\/app\/release/);
   assert.doesNotMatch(worker, /extension_pairings|\/v1\/connect\/issue/);
   assert.doesNotMatch(contracts, /\.\.\/\.\.\/service/);
   assert.match(contracts, /\.\/domain\/routes\/items\.js/);

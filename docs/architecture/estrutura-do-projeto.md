@@ -68,19 +68,15 @@ suíte Node os usa diretamente e com um adaptador HTTP exclusivo de teste em
 
 ### Scripts (`scripts/`)
 
-- `bootstrap/` expõe somente `install`, `update` e `uninstall` na raiz; os
-  registradores específicos ficam em `internal/windows/` e `internal/macos/`.
-- `onframe-updater://update` inicia o atualizador registrado no computador.
 - `build/` compila as interfaces da extensão e as páginas públicas do Worker.
-- `release/` valida versão, prepara notas e monta o pacote distribuído.
-- `test/` contém os executores das suítes de interface e do ciclo de bootstrap
-  no macOS.
+- `release/` valida versão, prepara notas e monta o pacote para a Chrome Web Store.
+- `test/` contém os executores das suítes de interface.
 
 ### Testes (`test/`)
 
 Os testes Node cobrem modelos da extensão, domínio comercial, contratos do
-Worker, pacote de release e bootstrap. O adaptador em `test/support/` não é
-parte do produto nem do pacote de instalação.
+Worker e pacote da loja. O adaptador em `test/support/` não é parte do produto
+nem do pacote da extensão.
 
 ## Fluxo principal
 

@@ -99,7 +99,6 @@ function Popup() {
   const [view, setView] = useState('home');
   const [resourcesEnabled, setResourcesEnabled] = useState(true);
   const [overview, setOverview] = useState(null);
-  const [release, setRelease] = useState(undefined);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [popupSession, setPopupSession] = useState(null);
@@ -126,14 +125,6 @@ function Popup() {
     }
   }, []);
 
-  const refreshRelease = useCallback(async () => {
-    try {
-      setRelease(await sendRemoteMessage('app-release'));
-    } catch {
-      setRelease(null);
-    }
-  }, []);
-
   const load = useCallback(
     async ({ resetUi = false } = {}) => {
       setBusy(true);
@@ -151,11 +142,9 @@ function Popup() {
         setResourcesEnabled(nextResourcesEnabled);
         setFeedback('');
         setOverview(null);
-        setRelease(undefined);
         if (resetUi) void clearPopupSessionState();
         if (nextConnection?.connected) {
           void refreshOverview();
-          void refreshRelease();
         }
       } catch (error) {
         setConnection({ connected: false, reason: 'unavailable' });
@@ -164,7 +153,7 @@ function Popup() {
         setBusy(false);
       }
     },
-    [refreshOverview, refreshRelease]
+    [refreshOverview]
   );
 
   useEffect(() => {
@@ -192,7 +181,6 @@ function Popup() {
     try {
       await sendRemoteMessage('disconnect');
       setConnection({ connected: false, reason: 'disconnected' });
-      setRelease(undefined);
       setView('home');
       popupSessionRef.current = emptyPopupSessionState();
       setPopupSession(popupSessionRef.current);
@@ -226,7 +214,7 @@ function Popup() {
         />
       </main>
     );
-  const footer = <PopupFooter release={release} busy={busy} onDisconnect={() => void disconnect()} />;
+  const footer = <PopupFooter busy={busy} onDisconnect={() => void disconnect()} />;
   const userHeader = (
     <PopupUserHeader
       connection={connection}

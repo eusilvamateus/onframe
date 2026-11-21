@@ -10,8 +10,8 @@ pagina do anuncio.
 
 - [Guia do usuario](guia-do-usuario.md) - visao geral dos recursos e do uso na
   pagina do anuncio.
-- [Instalacao e atualizacao](instalacao-e-atualizacao.md) - instalacao,
-  inicializacao, diagnostico, atualizacao e remocao.
+- [Instalacao e atualizacao](instalacao-e-atualizacao.md) - loja,
+  acesso, atualizacao e remocao.
 - [Editar descricao no anuncio](editar-descricao.md) - como alterar o texto sem
   sair da pagina do Mercado Livre.
 - [Editar caracteristicas do produto](editar-caracteristicas.md) - como revisar

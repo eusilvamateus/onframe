@@ -65,7 +65,6 @@ bloqueia o campo, a promocao ou a variacao.
 
 ## Atualizacoes
 
-Quando existir uma nova versao, o popup ou a pagina de opcoes mostra a acao
-`Atualizar agora`. A extensao abre sua tela de atualizacao e aciona o
-atualizador local registrado no computador. Veja o procedimento completo em
+O navegador atualiza automaticamente a extensão instalada pela Chrome Web Store.
+O rodapé do popup mostra a versão instalada. Veja mais em
 [Instalacao e atualizacao](instalacao-e-atualizacao.md).

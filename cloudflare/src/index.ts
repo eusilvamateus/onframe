@@ -28,7 +28,6 @@ import {
   retryProductBulkJob,
   startProductBulkJob
 } from './product-bulk-jobs';
-import { latestOnFrameRelease } from './releases';
 import {
   ProductRequestError,
   archiveProduct,
@@ -2648,11 +2647,6 @@ export default {
       if (url.pathname === '/v1/app/overview' && request.method === 'GET') {
         const actor = await authenticateExtensionSession(request, env);
         return json(await workspaceOverview(env, actor));
-      }
-
-      if (url.pathname === '/v1/app/release' && request.method === 'GET') {
-        await authenticateExtensionSession(request, env);
-        return json(await latestOnFrameRelease());
       }
 
       if (url.pathname === '/v1/app/item-edit-history' && request.method === 'GET') {

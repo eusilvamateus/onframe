@@ -9,8 +9,6 @@ O produto não possui servidor Node local para iniciar ou diagnosticar.
 
 - Node.js 20 ou superior para testes, scripts de release e o projeto Worker.
 - Dependências instaladas a partir de `package-lock.json` na raiz e em `cloudflare/`.
-- PowerShell no Windows para validar scripts `.ps1`.
-- `/bin/sh` no macOS ou Linux para validar scripts `.sh`.
 
 Na raiz do repositório:
 
@@ -25,7 +23,7 @@ npm ci
 | Testes padrão                 | `npm test`                              |
 | Suíte nomeada                 | `npm run test:all`                      |
 | Consistência de versão        | `npm run version:check`                 |
-| Pacote de release             | `npm run package:release`               |
+| Pacote para a loja            | `npm run package:store`                 |
 | Worker                        | `npm run check` dentro de `cloudflare/` |
 | Validação completa de release | `npm run release:check`                 |
 
@@ -41,8 +39,6 @@ testes e empacotamento.
   `legacy-contracts.ts` e pela suíte Node.
 - Mudanças no Worker devem validar tipos e, para deploy, usar exclusivamente os
   recursos oficiais da Cloudflare.
-- Mudanças em `scripts/bootstrap/` precisam considerar Windows e macOS,
-  pois os arquivos são baixados por instalações existentes.
 - Mudanças de produto devem atualizar a fonte correspondente em `docs/`.
 - Testes de identidade executam as migrações PostgreSQL com PGlite e as
   migrações D1 com Miniflare, sem acessar bancos remotos. Para a ativação,
@@ -52,4 +48,4 @@ testes e empacotamento.
 
 O fluxo de branches, commits, versão e publicação pertence exclusivamente à
 skill `fluxo-git-releases`. Para a composição técnica do artefato, consulte
-[Pacote de release](../reference/pacote-de-release.md).
+[Pacote para a Chrome Web Store](../reference/pacote-de-release.md).

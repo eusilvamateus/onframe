@@ -47,7 +47,7 @@ import { ItemEditHistory } from './ItemEditHistory';
 import { Products } from './Products';
 import { ProductSettings } from './ProductSettings';
 import { TaxSettings } from './TaxSettings';
-import { formatDate, openUpdater, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
+import { formatDate, readDataUrl, sendRemoteMessage, userError } from '../shared/runtime';
 
 const FULL_WIDTH_PAGES_STORAGE_KEY = 'onframeFullWidthPages';
 
@@ -140,15 +140,6 @@ const SETTINGS_OPTIONS = [
     description: 'Tema claro, escuro ou definido pelo sistema.',
     icon: 'circle-half',
     keywords: 'aparencia tema claro escuro sistema'
-  },
-  {
-    tab: 'application',
-    page: 'updates',
-    category: 'Aplicativo',
-    label: 'Atualizações',
-    description: 'Versão instalada e atualizador da extensão.',
-    icon: 'arrow-clockwise',
-    keywords: 'versao atualizar atualizador extensao'
   }
 ];
 
@@ -176,8 +167,7 @@ const SETTINGS_PAGE_META = {
     margin: { title: 'Margem de contribuição', icon: 'percent' }
   },
   application: {
-    appearance: { title: 'Aparência', icon: 'circle-half' },
-    updates: { title: 'Atualizações', icon: 'arrow-clockwise' }
+    appearance: { title: 'Aparência', icon: 'circle-half' }
   }
 };
 
@@ -858,22 +848,6 @@ function WorkspaceGeneralSettings({ workspace, details, loading, canWrite, onSav
   );
 }
 
-function ApplicationUpdatesSettings() {
-  return (
-    <section className="onframe-stack" aria-label="Atualizador">
-      <SectionHeader
-        title="Atualizador"
-        copy="Instale a versão mais recente pelo atualizador."
-        actions={
-          <Button kind="secondary" onClick={openUpdater} icon={<Ph n="arrow-square-out" size={17} />}>
-            Abrir atualizador
-          </Button>
-        }
-      />
-    </section>
-  );
-}
-
 function Settings({
   activeSection,
   onSectionChange,
@@ -1068,7 +1042,6 @@ function Settings({
       {!isIndex && activeSection === 'application' && settingsPage === 'appearance' && (
         <AppearanceSettings fullWidthPages={fullWidthPages} onFullWidthPagesChange={onFullWidthPagesChange} />
       )}
-      {!isIndex && activeSection === 'application' && settingsPage === 'updates' && <ApplicationUpdatesSettings />}
     </div>
   );
 }

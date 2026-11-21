@@ -27,7 +27,7 @@ neste arquivo.
 
 Antes de alterar autenticacao, contas conectadas, tokens ou chamadas ao Mercado
 Livre, leia [a integracao Mercado Livre](docs/integrations/mercado-livre.md).
-Antes de alterar o Worker ou os scripts de bootstrap, leia
+Antes de alterar o Worker ou os scripts de distribuição, leia
 [a arquitetura do projeto](docs/architecture/estrutura-do-projeto.md).
 
 ## Limites de Escopo
