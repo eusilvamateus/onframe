@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, Card, CodeInput, Input, Link, Logo, Ph, Tabs } from '@onblide/ui';
+import { Button, Card, Checkbox, CodeInput, Input, Link, Logo, Ph, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
 import { EmailVerification, PasskeySettings, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
@@ -833,6 +833,14 @@ test('login apresenta chamada por metodo e preserva os demais estados de autenti
       true
     );
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
+    assert.equal(h.requests.some((request) => request.path === 'signup'), false);
+    assert.equal(h.renderer.root.findByType(Checkbox).props.error, 'Leia e confirme antes de criar a conta.');
+    assert.equal(
+      h.renderer.root.findAllByType(Link).some((link) => link.props.href === 'https://onframe.onblide.com/privacidade'),
+      true
+    );
+    await act(async () => h.renderer.root.findByType(Checkbox).props.onChange(true));
+    await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     expectTitle('Confirme seu e-mail', 'Enviamos a confirmação para p•••••@example.com.');
     assert.match(JSON.stringify(h.renderer.toJSON()), /Confira seu e-mail para confirmar o cadastro/);
     await act(async () =>
@@ -1076,6 +1084,7 @@ test('cadastro e recuperacao sao links e preservam os callbacks nativos', async 
         .filter((field) => field.props.autoComplete === 'new-password')
         .forEach((field) => field.props.onChange({ target: { value: 'Senha-Forte1!' } }));
     });
+    await act(async () => h.renderer.root.findByType(Checkbox).props.onChange(true));
     await act(async () => h.renderer.root.findByType('form').props.onSubmit({ preventDefault() {} }));
     assert.ok(h.requests.find((request) => request.path === 'signup')?.redirectTo);
     assert.match(JSON.stringify(h.renderer.toJSON()), /confirmar o cadastro/);

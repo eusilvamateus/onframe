@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Card,
+  Checkbox,
   CodeInput,
   Divider,
   Input,
@@ -236,6 +237,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
   const [config, setConfig] = useState(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(false);
+  const [privacyError, setPrivacyError] = useState(false);
   const [fields, setFields] = useState({
     name: resumeState?.name || '',
     email: resumeState?.email || '',
@@ -314,6 +317,8 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
     setCodeSuccess(false);
     setSecondFactor(null);
     setFeedback(null);
+    setPrivacyAcknowledged(false);
+    setPrivacyError(false);
     setResending(false);
     setAutomaticCodeRequest(false);
     setPasskeyOpened(false);
@@ -486,6 +491,10 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
     }
     if (mode === 'signup' && fields.password !== fields.confirmation) {
       setFeedback({ tone: 'warning', message: 'As senhas não coincidem.' });
+      return;
+    }
+    if (mode === 'signup' && !privacyAcknowledged) {
+      setPrivacyError(true);
       return;
     }
     await run(
@@ -732,6 +741,22 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
                   autoComplete="new-password"
                   disabled={busy}
                 />
+              )}
+              {!verifying && mode === 'signup' && phase === 'email' && (
+                <div className="onframe-auth-privacy">
+                  <Checkbox
+                    checked={privacyAcknowledged}
+                    onChange={(checked) => {
+                      setPrivacyAcknowledged(checked);
+                      setPrivacyError(false);
+                    }}
+                    label="Estou ciente do uso dos meus dados para criar e operar minha conta OnFrame."
+                    error={privacyError ? 'Leia e confirme antes de criar a conta.' : undefined}
+                    disabled={busy}
+                    required
+                  />
+                  <Link href="https://onframe.onblide.com/privacidade" external>Política de privacidade</Link>
+                </div>
               )}
               {verifying && (
                 <>

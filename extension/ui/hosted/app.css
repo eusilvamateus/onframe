@@ -153,6 +153,10 @@ body {
 }
 
 .onframe-hosted-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--ob-space-12);
   padding: var(--ob-space-16) var(--ob-space-24) var(--ob-space-24);
   color: var(--ob-fg-mute);
   font-family: var(--ob-font-mono);
@@ -160,6 +164,53 @@ body {
   font-weight: var(--ob-w-medium);
   letter-spacing: var(--ob-tracking-normal);
   text-align: center;
+}
+
+.onframe-hosted-main--document {
+  align-items: start;
+}
+
+.onframe-hosted-policy {
+  width: min(100%, 720px);
+  display: grid;
+  gap: var(--ob-space-32);
+  color: var(--ob-fg);
+  font: var(--ob-w-regular) var(--ob-fs-14) / var(--ob-lh-relaxed) var(--ob-font);
+}
+
+.onframe-hosted-policy section {
+  display: grid;
+  gap: var(--ob-space-12);
+}
+
+.onframe-hosted-policy-intro {
+  display: grid;
+  gap: var(--ob-space-12);
+}
+
+.onframe-hosted-policy h1,
+.onframe-hosted-policy h2,
+.onframe-hosted-policy p,
+.onframe-hosted-policy ul {
+  margin: 0;
+}
+
+.onframe-hosted-policy h1 {
+  color: var(--ob-fg-strong);
+  font: var(--ob-w-semibold) var(--ob-fs-28) / var(--ob-lh-snug) var(--ob-font);
+}
+
+.onframe-hosted-policy h2 {
+  color: var(--ob-fg-strong);
+  font: var(--ob-w-semibold) var(--ob-fs-18) / var(--ob-lh-snug) var(--ob-font);
+}
+
+.onframe-hosted-policy ul {
+  padding-left: var(--ob-space-24);
+}
+
+.onframe-hosted-policy li + li {
+  margin-top: var(--ob-space-8);
 }
 
 @media (min-width: 768px) {

@@ -18,7 +18,8 @@ type ResultPageOptions = {
 type HostedPageConfig =
   | (ConnectionPageOptions & { kind: 'connection' })
   | (ResultPageOptions & { kind: 'result' })
-  | { kind: 'invitation'; title: string; extensionUrl: string };
+  | { kind: 'invitation'; title: string; extensionUrl: string }
+  | { kind: 'privacy'; title: string };
 
 function escapeHtml(value: string): string {
   return value
@@ -111,4 +112,8 @@ export function invitationPage(extensionUrl: string): string {
     title: 'Convite para o OnFrame',
     extensionUrl
   });
+}
+
+export function privacyPage(): string {
+  return hostedPage({ kind: 'privacy', title: 'Política de privacidade - OnFrame' });
 }

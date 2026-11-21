@@ -6,6 +6,7 @@ import {
   connectionPage,
   interactivePageCsp,
   invitationPage,
+  privacyPage,
   resultPage
 } from './connect-page';
 import { storageObjectUrl, storagePublicObjectPath, storageUploadFailureCode } from './avatar-storage';
@@ -2447,6 +2448,13 @@ export default {
           timestamp: new Date().toISOString()
         };
         return json(payload);
+      }
+
+      if (request.method === 'GET' && url.pathname === '/privacidade') {
+        return html(privacyPage(), 200, {
+          'content-security-policy': interactivePageCsp(),
+          'referrer-policy': 'no-referrer'
+        });
       }
 
       if (request.method === 'GET' && (url.pathname === '/app' || url.pathname === '/connect')) {

@@ -41,6 +41,8 @@ tenha uma fonte canonica.
 
 - [Publicacao da identidade](operations/publicacao-identidade.md) - ordem de
   migracoes, ativacao e verificacao da autoridade de identidade.
+- [Privacidade na Chrome Web Store](operations/privacidade-chrome-web-store.md) -
+  justificativas de permissoes, declaracoes de dados e conferencias antes do envio.
 
 ## Desenvolvimento
 

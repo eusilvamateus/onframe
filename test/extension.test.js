@@ -838,8 +838,8 @@ test('logo do workspace mostra o envio e nao depende do carregamento da pagina',
 
 test('manifest declara somente os hosts públicos indispensáveis', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
+  assert.deepEqual(manifest.permissions, ['storage']);
   assert.deepEqual(manifest.host_permissions, [
-    'https://*.mercadolivre.com.br/*',
     'https://onframe.onblide.com/*',
     'https://ignrkxityihpvreaimxe.supabase.co/*'
   ]);

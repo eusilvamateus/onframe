@@ -7,6 +7,7 @@ import {
   connectionPage,
   interactivePageCsp,
   invitationPage,
+  privacyPage,
   resultPage
 } from '../src/connect-page.ts';
 import { readConnectionContext, secondFactorUrl } from '../../extension/ui/hosted/connection-flow.js';
@@ -42,7 +43,7 @@ test('página pública conclui o fluxo iniciado pela extensão sem exibir códig
   assert.match(page, /\/security\/hosted\.js/);
   assert.match(page, /data-page-config=/);
   assert.doesNotMatch(page, /<input\b|<button\b|<style>/);
-  assert.match(hostedApp, /import \{ Alert, Button, Input, Logo, Ph, ProgressBar, Spinner \} from '@onblide\/ui'/);
+  assert.match(hostedApp, /import \{ Alert, Button, Input, Link, Logo, Ph, ProgressBar, Spinner \} from '@onblide\/ui'/);
   assert.doesNotMatch(hostedApp, /<Card/);
   assert.match(hostedApp, /extension-auth-flows/);
   assert.match(hostedApp, /auth\/v1\/user/);
@@ -53,6 +54,22 @@ test('página pública conclui o fluxo iniciado pela extensão sem exibir códig
     /token\?grant_type=password|request-otp|verify-otp|pairing-code|Cole este código|OF-\[/
   );
   assert.doesNotMatch(hostedApp, /<input\b|<button\b/);
+});
+
+test('política de privacidade tem rota pública e usa a interface hospedada', async () => {
+  const page = privacyPage();
+  assert.match(page, /Política de privacidade - OnFrame/);
+  assert.match(page, /&quot;kind&quot;:&quot;privacy&quot;/);
+  assert.match(hostedApp, /function PrivacyPage\(\)/);
+  assert.match(hostedApp, /Mercado Livre/);
+  assert.match(hostedApp, /Supabase/);
+  assert.match(hostedApp, /Cloudflare/);
+  assert.match(hostedApp, /Resend/);
+  const response = await worker.fetch(new Request('https://onframe.onblide.com/privacidade'), {} as Env);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('content-type') || '', /text\/html/);
+  assert.match(response.headers.get('content-security-policy') || '', /script-src 'self'/);
+  assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
 });
 
 test('recuperacao apresenta titulo e legenda proprios sem alterar o fluxo de senha', () => {
