@@ -1193,7 +1193,7 @@
         onDraftChange: updatePromotionManagerDraft,
         onToggleBulk: togglePromotionManagerBulk,
         onDismissBulkResult: dismissPromotionBulkResult,
-        onConfirm: (key, action) => void commitPromotionManagerAction(key, action),
+        onConfirm: (key, action) => void commitPromotionManagerAction(key, action === 'apply-stock' ? 'create' : action),
         onRemove: openPromotionManagerRemoval,
         onCancelRemove: closePromotionManagerRemoval,
         onConfirmRemove: confirmPromotionManagerRemoval,
@@ -1354,14 +1354,20 @@
       const canDelete = !available && !locallyPending && CommerceModel.canDeleteOffer(entry);
       const formAction = state.promotionFormKey === key ? state.promotionFormAction : '';
       const readOnly = formAction === 'details';
+      const application = canCreate ? CommerceModel.offerApplication(entry) : { mode: 'none', values: {} };
+      const applyMode = application.mode === 'direct' && promotionDraftWarning(entry, application.values)
+        ? 'configure'
+        : application.mode;
       const fields = CommerceModel.getUserFields(
-        canUpdate ? CommerceModel.getOfferUpdateFields(entry) : CommerceModel.getOfferCreateFields(entry)
+        formAction === 'update' || (!formAction && canUpdate)
+          ? CommerceModel.getOfferUpdateFields(entry)
+          : CommerceModel.getOfferCreateFields(entry)
       );
       const draft = state.promotionDraftValues[key] || {};
-      const offerDirty = formAction === 'create' || (formAction === 'update' && fields.some((field) =>
+      const offerDirty = ['create', 'apply-stock'].includes(formAction) || (formAction === 'update' && fields.some((field) =>
         Object.prototype.hasOwnProperty.call(draft, field) && String(draft[field]) !== String(defaultFieldValue(field, entry))
       ));
-      const showPriceField = fields.includes('deal_price') && !readOnly;
+      const showPriceField = fields.includes('deal_price') && !readOnly && formAction !== 'apply-stock';
       const showStockField = fields.includes('stock') && !readOnly;
       const draftPrice = Object.prototype.hasOwnProperty.call(draft, 'deal_price')
         ? draft.deal_price
@@ -1476,7 +1482,8 @@
         canDelete,
         locallyApplied: locallyPending,
         createAction: canCreate,
-        canQuickApply: Boolean(promotionManagerQuickApplyValues(entry, canCreate)),
+        applyMode,
+        canConfigure: canCreate && CommerceModel.getOfferCreateFields(entry).includes('deal_price'),
         formOpen: state.promotionFormKey === key,
         formAction,
         readOnly,
@@ -1554,8 +1561,10 @@
     }
 
     function promotionManagerQuickApplyValues(entry, canCreate) {
-      if (!canCreate || !CommerceModel.canQuickApplyOffer(entry)) return null;
-      const values = {};
+      if (!canCreate) return null;
+      const application = CommerceModel.offerApplication(entry);
+      if (application.mode !== 'direct') return null;
+      const values = application.values;
       if (promotionDraftWarning(entry, values)) return null;
       return values;
     }
@@ -1785,6 +1794,13 @@
             : CommerceModel.getOfferCreateFields(row.entry)
         );
         ensurePromotionDraft(key, row.entry, fields);
+        if (action === 'apply-stock') {
+          state.promotionDraftValues[key] = Object.assign(
+            {},
+            state.promotionDraftValues[key],
+            CommerceModel.offerApplication(row.entry).values
+          );
+        }
         schedulePromotionEstimate(key, row.entry, state.promotionDraftValues[key] || {});
       }
       rerenderModal();
@@ -1797,7 +1813,7 @@
       const managerRow = buildPromotionManagerRow(row);
       const values = promotionManagerQuickApplyValues(row.entry, managerRow.createAction);
       if (!values) {
-        if (managerRow.createAction) openPromotionManagerCard(key, 'create');
+        if (managerRow.applyMode === 'stock') openPromotionManagerCard(key, 'apply-stock');
         return;
       }
       void commitPromotionManagerAction(key, 'create', null, values);
@@ -1806,6 +1822,7 @@
     function updatePromotionManagerDraft(key, field, value) {
       const row = promotionManagerRow(key);
       if (!row || state.busy) return;
+      if (state.promotionFormKey === key && state.promotionFormAction === 'apply-stock' && field !== 'stock') return;
       state.promotionDraftValues[key] = Object.assign({}, state.promotionDraftValues[key] || {}, { [field]: value });
       clearPromotionBulkPreview();
       state.actionError = '';

@@ -54,12 +54,15 @@ de **Ativa**, **Programada** e **Disponivel** segue as
 
 ## Aplicar promocao
 
-1. Abra o popover ou modal de promocoes.
-2. Escolha a promocao disponivel.
-3. Preencha os campos solicitados, como preco promocional ou estoque reservado,
-   quando aparecerem.
-4. Revise os valores.
-5. Clique em `Confirmar aplicacao`.
+1. Abra o popover ou modal de promocoes e escolha uma oferta disponivel.
+2. Use `Aplicar` para aceitar as condicoes ja apresentadas. Se a oferta exigir
+   estoque reservado, informe apenas essa quantidade antes de confirmar.
+3. Use `Configurar` quando quiser definir o preco promocional, ou quando a
+   campanha nao apresentar um preco pronto para aceitar. Revise o calculo e
+   confirme a aplicacao.
+
+`Editar` aparece somente para participacoes ja aplicadas cujo tipo permite
+alterar a oferta. `Ver detalhes` e a simulacao de custos nao modificam a oferta.
 
 ![Print - Modal de aplicacao de promocao](assets/promocoes-modal-aplicacao.png)
 

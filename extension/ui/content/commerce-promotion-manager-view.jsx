@@ -532,7 +532,7 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
   const editing = !row.readOnly || simulatingFinancials;
   const cancel = () => {
     if (row.formAction === 'update') actions.onCancelChanges();
-    else if (row.formAction === 'create') actions.onCancelEdit();
+    else if (['create', 'apply-stock'].includes(row.formAction)) actions.onCancelEdit();
     else setSimulatingFinancials(false);
   };
   const confirm = () => {
@@ -550,7 +550,7 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
             row={row}
             actions={actions}
             confirm={confirm}
-            editing={editing}
+            editing={editing && row.formAction !== 'apply-stock'}
             onCancel={cancel}
           />
         )}
@@ -608,12 +608,13 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
   const showEditLabel = useBreakpoint().atLeast('sm');
   const editing = row.formOpen && (!row.readOnly || simulatingFinancials);
   const canEdit = row.canUpdate || (!isCoupon && row.productFinancials);
+  const editLabel = row.canUpdate ? 'Editar' : 'Simular custos';
   const startEditing = () => row.canUpdate ? actions.onOpen(row.key, 'update') : setSimulatingFinancials(true);
   const items = row.formOpen
     ? [
         ...(row.readOnly && !simulatingFinancials && canEdit
           ? [{
-              label: 'Editar',
+              label: editLabel,
               icon: 'pencil-simple',
               disabled: row.busy,
               onSelect: startEditing
@@ -628,24 +629,20 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
       ]
     : row.group === 'available'
       ? [
-          ...(row.createAction
+          ...(['direct', 'stock'].includes(row.applyMode)
             ? [{
                 label: 'Aplicar',
                 icon: 'check-circle',
                 disabled: row.busy,
-                onSelect: () => row.canQuickApply
-                  ? actions.onQuickApply(row.key)
-                  : actions.onOpen(row.key, 'create')
+                onSelect: () => actions.onQuickApply(row.key)
               }]
             : []),
-          ...(row.canQuickApply || !row.createAction
-            ? [{
-                label: isCoupon ? 'Revisar' : 'Configurar',
-                icon: isCoupon ? 'clipboard-text' : 'tag',
-                disabled: row.busy,
-                onSelect: () => actions.onOpen(row.key, row.createAction ? 'create' : 'details')
-              }]
-            : [])
+          {
+            label: isCoupon ? 'Revisar' : row.canConfigure || row.applyMode === 'configure' ? 'Configurar' : 'Ver detalhes',
+            icon: isCoupon ? 'clipboard-text' : 'tag',
+            disabled: row.busy,
+            onSelect: () => actions.onOpen(row.key, row.canConfigure || row.applyMode === 'configure' ? 'create' : 'details')
+          }
         ]
       : [
           ...(row.canUpdate
@@ -664,7 +661,9 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
       {row.formOpen && (!editing || showEditLabel) && (
         <span className="onframe-promotion-manager-direct-actions">
           {editing ? (
-            <Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando</Badge>
+            <Badge size="sm" tone="primary" appearance="plain" icon={row.formAction === 'apply-stock' ? 'package' : 'pencil-simple'}>
+              {row.readOnly ? 'Simulando' : row.formAction === 'apply-stock' ? 'Informando estoque' : 'Editando'}
+            </Badge>
           ) : (
             <>
               {canEdit && (
@@ -678,7 +677,7 @@ function CardActions({ row, actions, simulatingFinancials, setSimulatingFinancia
                   disabled={row.busy}
                   onClick={startEditing}
                 >
-                  Editar
+                  {editLabel}
                 </Button>
               )}
               <Button

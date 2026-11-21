@@ -155,7 +155,7 @@ test('commerce model permite acoes do cupom do item sem estimar desconto no chec
   });
 });
 
-test('aplicação direta exige revisão quando a oferta pede preço, estoque ou período', () => {
+test('aplicação distingue preço configurável, sugestão aceita e estoque obrigatório', () => {
   const coupon = {
     id: 'COUPON-1',
     type: 'SELLER_COUPON_CAMPAIGN',
@@ -178,13 +178,39 @@ test('aplicação direta exige revisão quando a oferta pede preço, estoque ou 
     type: 'PRICE_DISCOUNT',
     capabilities: { offerCreate: ['deal_price', 'start_date', 'finish_date'] }
   };
-  assert.strictEqual(commerceModel.canQuickApplyOffer(coupon), true);
-  assert.strictEqual(commerceModel.canQuickApplyOffer({ ...coupon, id: '' }), false);
-  assert.strictEqual(commerceModel.canQuickApplyOffer(campaign), false);
-  assert.strictEqual(commerceModel.canQuickApplyOffer(lightning), false);
-  assert.strictEqual(commerceModel.canQuickApplyOffer(directDiscount), false);
-  assert.strictEqual(commerceModel.canQuickApplyOffer({ ...coupon, capabilities: { offerCreate: ['promotion_id', 'unknown_field'] } }), false);
-  assert.strictEqual(commerceModel.canQuickApplyOffer({ ...coupon, capabilities: { ...coupon.capabilities, readonly: true } }), false);
+  assert.deepStrictEqual(commerceModel.offerApplication(coupon), { mode: 'direct', values: {} });
+  assert.deepStrictEqual(commerceModel.offerApplication({ ...coupon, id: '' }), { mode: 'none', values: {} });
+  assert.deepStrictEqual(commerceModel.offerApplication(campaign), { mode: 'configure', values: {} });
+  assert.deepStrictEqual(commerceModel.offerApplication(lightning), { mode: 'stock', values: {} });
+  assert.deepStrictEqual(commerceModel.offerApplication(directDiscount), { mode: 'configure', values: {} });
+  const offerOfTheDay = {
+    type: 'DOD', price: 27.64, min_price: 20, max_price: 30,
+    capabilities: { offerCreate: ['deal_price'] }
+  };
+  const flashOffer = {
+    type: 'LIGHTNING', price: 27.64, stock: { min: 5, max: 10 },
+    capabilities: { offerCreate: ['deal_price', 'stock'] }
+  };
+  assert.deepStrictEqual(commerceModel.offerApplication(offerOfTheDay), {
+    mode: 'direct', values: { deal_price: '27.64' }
+  });
+  assert.deepStrictEqual(commerceModel.buildOfferPayload(offerOfTheDay, commerceModel.offerApplication(offerOfTheDay).values), {
+    promotionType: 'DOD', dealPrice: 27.64
+  });
+  assert.deepStrictEqual(commerceModel.offerApplication(flashOffer), {
+    mode: 'stock', values: { deal_price: '27.64' }
+  });
+  assert.deepStrictEqual(commerceModel.buildOfferPayload(flashOffer, {
+    ...commerceModel.offerApplication(flashOffer).values, stock: '5'
+  }), { promotionType: 'LIGHTNING', dealPrice: 27.64, stock: 5 });
+  assert.deepStrictEqual(commerceModel.offerApplication({ ...offerOfTheDay, price: null }), {
+    mode: 'configure', values: {}
+  });
+  assert.deepStrictEqual(commerceModel.offerApplication({ ...campaign, price: 27.64 }), {
+    mode: 'configure', values: {}
+  });
+  assert.deepStrictEqual(commerceModel.offerApplication({ ...coupon, capabilities: { offerCreate: ['promotion_id', 'unknown_field'] } }), { mode: 'none', values: {} });
+  assert.deepStrictEqual(commerceModel.offerApplication({ ...coupon, capabilities: { ...coupon.capabilities, readonly: true } }), { mode: 'none', values: {} });
   assert.deepStrictEqual(commerceModel.buildOfferPayload(campaign, { deal_price: '27,64' }), {
     promotionType: 'DEAL',
     promotionId: 'CAMPAIGN-1',
@@ -684,9 +710,10 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   );
   assert.doesNotMatch(view, /\{row\.typeLabel\} · \{row\.period\}/);
   assert.match(view, /const isCoupon = row\.type === 'coupon'/);
-  assert.match(view, /label: isCoupon \? 'Revisar' : 'Configurar'/);
+  assert.match(view, /row\.canConfigure \|\| row\.applyMode === 'configure' \? 'Configurar' : 'Ver detalhes'/);
   assert.match(view, /icon: isCoupon \? 'clipboard-text' : 'tag'/);
-  assert.match(view, /row\.createAction[\s\S]*label: 'Aplicar'[\s\S]*row\.canQuickApply[\s\S]*actions\.onQuickApply\(row\.key\)[\s\S]*actions\.onOpen\(row\.key, 'create'\)/s);
+  assert.match(view, /\['direct', 'stock'\]\.includes\(row\.applyMode\)[\s\S]*label: 'Aplicar'[\s\S]*actions\.onQuickApply\(row\.key\)/s);
+  assert.match(view, /const editLabel = row\.canUpdate \? 'Editar' : 'Simular custos'/);
   assert.match(view, /Menu,[\s\S]*from '@onblide\/ui'/s);
   assert.match(view, /<Menu\s+size="md"/);
   assert.match(view, /label: 'Editar'[\s\S]*onSelect: \(\) => actions\.onOpen\(row\.key, 'update'\)/s);
@@ -727,11 +754,12 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /tone="danger"/);
   assert.doesNotMatch(view, /Desfazer/);
   assert.match(source, /function buildPromotionManagerViewModel/);
-  assert.match(source, /canQuickApply: Boolean\(promotionManagerQuickApplyValues\(entry, canCreate\)\)/);
+  assert.match(source, /applyMode: application\.mode|applyMode,/);
   assert.match(source, /const canCreate =\s*available &&\s*!locallyPending &&\s*CommerceModel\.canCreateOffer\(entry\)/);
-  assert.match(source, /function promotionManagerQuickApplyValues\(entry, canCreate\)[\s\S]*CommerceModel\.canQuickApplyOffer\(entry\)/s);
+  assert.match(source, /function promotionManagerQuickApplyValues\(entry, canCreate\)[\s\S]*CommerceModel\.offerApplication\(entry\)/s);
   assert.match(source, /function applyPromotionManagerDirectly\(key\)[\s\S]*commitPromotionManagerAction\(key, 'create', null, values\)/s);
-  assert.match(source, /if \(!values\) \{\s*if \(managerRow\.createAction\) openPromotionManagerCard\(key, 'create'\);/);
+  assert.match(source, /if \(!values\) \{\s*if \(managerRow\.applyMode === 'stock'\) openPromotionManagerCard\(key, 'apply-stock'\);/);
+  assert.match(source, /onConfirm: \(key, action\) => void commitPromotionManagerAction\(key, action === 'apply-stock' \? 'create' : action\)/);
   assert.match(source, /if \(field === 'stock'\) \{\s*return '';/);
   assert.match(source, /const bulkEnabled =\s*!quickApply && !createdDirectDiscount && state\.promotionBulkEnabled && canUseBulkActions\(\) &&\s*Number\(state\.promotionBulkAvailability/);
   assert.match(source, /canBulk: canUseBulkActions\(\) &&\s*Number\(state\.promotionBulkAvailability/);
@@ -867,7 +895,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(view, /\(row\.formOpen \|\| panelMounted\) && \(\s*<EditPanel row=\{panelRow\} actions=\{actions\} simulatingFinancials=\{simulatingFinancials\} setSimulatingFinancials=\{setSimulatingFinancials\} \/>/s);
   assert.doesNotMatch(view, /panelExpanded|requestAnimationFrame|panelShellRef|PANEL_TRANSITION_MS|setTimeout\(\(\) => setPanelMounted/);
   assert.match(view, /const startEditing = \(\) => row\.canUpdate \? actions\.onOpen\(row\.key, 'update'\) : setSimulatingFinancials\(true\)/);
-  assert.match(view, /editing \? \(\s*<Badge size="sm" tone="primary" appearance="plain" icon="pencil-simple">Editando<\/Badge>/s);
+  assert.match(view, /row\.readOnly \? 'Simulando' : row\.formAction === 'apply-stock' \? 'Informando estoque' : 'Editando'/);
   assert.match(styles, /\.onframe-promotion-manager-direct-actions\s*\{\s*display: inline-flex;/);
   assert.doesNotMatch(styles, /\.onframe-promotion-manager-note-tools\s*\{/);
   assert.match(styles, /\.onframe-promotion-manager \.onframe-promotion-manager-note-label\s*\{\s*font-family: var\(--ob-font\) !important;/);

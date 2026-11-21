@@ -291,14 +291,33 @@
     return getOfferCreateFields(entry).length > 0 && !(entry && entry.capabilities && entry.capabilities.readonly);
   }
 
-  function canQuickApplyOffer(entry) {
-    if (!canCreateOffer(entry) || !getOfferCreateFields(entry).every((field) => ['promotion_id', 'offer_id'].includes(field)))
-      return false;
+  function offerApplication(entry) {
+    if (!canCreateOffer(entry)) return { mode: 'none', values: {} };
+    const fields = getOfferCreateFields(entry);
+    const values = {};
+    if (fields.some((field) => !['promotion_id', 'offer_id', 'deal_price', 'stock'].includes(field))) {
+      return { mode: fields.some((field) => ['start_date', 'finish_date'].includes(field)) ? 'configure' : 'none', values };
+    }
+    if (fields.includes('deal_price')) {
+      const type = String((entry && entry.type) || '').toUpperCase();
+      if (!['DOD', 'LIGHTNING'].includes(type)) return { mode: 'configure', values };
+      const price = Number(entry && (entry.price || entry.suggested_price));
+      if (!Number.isFinite(price) || price <= 0) return { mode: 'configure', values };
+      values.deal_price = String(price);
+    }
+    if (fields.includes('stock')) {
+      try {
+        buildOfferPayload({ ...entry, capabilities: { ...entry.capabilities, offerCreate: fields.filter((field) => field !== 'stock') } }, values);
+        return { mode: 'stock', values };
+      } catch (error) {
+        return { mode: fields.includes('deal_price') ? 'configure' : 'none', values: {} };
+      }
+    }
     try {
-      buildOfferPayload(entry);
-      return true;
+      buildOfferPayload(entry, values);
+      return { mode: 'direct', values };
     } catch (error) {
-      return false;
+      return { mode: fields.includes('deal_price') ? 'configure' : 'none', values: {} };
     }
   }
 
@@ -458,7 +477,6 @@
     calculateDiscountPercentage,
     canEstimatePromotion,
     canCreateOffer,
-    canQuickApplyOffer,
     canDeleteOffer,
     canUpdateOffer,
     collectPromotionGroups,
@@ -467,6 +485,7 @@
     formatSignedMoney,
     friendlyError,
     getOfferCreateFields,
+    offerApplication,
     getOfferDeleteFields,
     getOfferUpdateFields,
     getPriceState,
