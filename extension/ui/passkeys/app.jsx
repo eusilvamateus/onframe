@@ -44,13 +44,13 @@ const PASSKEY_HELP = [
     id: 'what',
     title: 'O que é uma chave de acesso?',
     content:
-      'É uma forma de entrar sem senha. Você confirma com a digital, o rosto ou o PIN do aparelho, e o aparelho prova para a Onblide que é você.'
+      'É uma forma de entrar sem senha. Você confirma com a digital, o rosto ou o PIN do aparelho, e o aparelho prova para a onblide que é você.'
   },
   {
     id: 'security',
     title: 'Por que é mais segura que a senha?',
     content:
-      'A chave só funciona no endereço verdadeiro da Onblide. Um site falso não consegue usá-la, e a Onblide guarda somente a parte pública da chave.'
+      'A chave só funciona no endereço verdadeiro da onblide. Um site falso não consegue usá-la, e a onblide guarda somente a parte pública da chave.'
   },
   {
     id: 'lost',
@@ -359,7 +359,7 @@ function PasskeyPage() {
       <PasskeyLayout>
         <VerificationFrame
           title="Confirme no aplicativo"
-          description="Abra o seu aplicativo autenticador e digite o código de 6 dígitos da Onblide."
+          description="Abra o seu aplicativo autenticador e digite o código de 6 dígitos da onblide."
           icon="device-mobile"
           iconTone="var(--ob-blue)"
           headingLevel={1}

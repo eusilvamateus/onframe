@@ -65,7 +65,7 @@ function createApp(options = {}) {
           throw error;
         }
         if (account.enabled === false) {
-          const error = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
+          const error = new Error('Esta conta está desativada no onframe. Ative a conta para editar este anúncio.');
           error.statusCode = 403;
           throw error;
         }

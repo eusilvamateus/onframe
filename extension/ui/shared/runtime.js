@@ -3,11 +3,11 @@ export function sendRemoteMessage(action, payload = {}) {
     chrome.runtime.sendMessage({ type: 'onframe:remote', action, ...payload }, (response) => {
       const runtimeError = chrome.runtime.lastError;
       if (runtimeError) {
-        reject(new Error(runtimeError.message || 'Não foi possível acessar o OnFrame.'));
+        reject(new Error(runtimeError.message || 'Não foi possível acessar o onframe.'));
         return;
       }
       if (!response || response.ok !== true) {
-        const error = new Error(response?.error || 'Não foi possível acessar o OnFrame.');
+        const error = new Error(response?.error || 'Não foi possível acessar o onframe.');
         error.code = response?.code || (response?.error === 'Ação remota inválida.' ? 'remote_action_unsupported' : '');
         reject(error);
         return;
@@ -36,7 +36,7 @@ export function userError(error, fallback = 'Não foi possível concluir a açã
     account_deletion_verification_required: 'A verificação expirou. Confirme sua identidade novamente.',
     account_deletion_unavailable: 'Não foi possível excluir sua conta agora. Tente novamente mais tarde.',
     account_deletion_cleanup_failed:
-      'A identidade foi removida, mas a limpeza dos dados do OnFrame não terminou. Entre em contato com o suporte.',
+      'A identidade foi removida, mas a limpeza dos dados do onframe não terminou. Entre em contato com o suporte.',
     workspace_admin_required: 'Esta ação exige uma pessoa administradora.',
     workspace_last_admin_required: 'O workspace precisa manter uma pessoa administradora.',
     workspace_self_management_forbidden: 'Use a ação Sair do workspace para encerrar sua participação.',
@@ -108,7 +108,7 @@ export function formatRelativeDate(value, reference = Date.now()) {
 
 export function initials(value) {
   return (
-    String(value || 'OnFrame')
+    String(value || 'onframe')
       .split(/\s+/u)
       .filter(Boolean)
       .slice(0, 2)

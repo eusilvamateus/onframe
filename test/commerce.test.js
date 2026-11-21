@@ -365,8 +365,8 @@ test('commerce model envia datas de promocao em formato local', () => {
 
 test('commerce model preserva mensagem amigavel ja traduzida', () => {
   assert.strictEqual(
-    commerceModel.friendlyError('Vincule esta extensão ao OnFrame para editar anúncios.'),
-    'Vincule esta extensão ao OnFrame para editar anúncios.'
+    commerceModel.friendlyError('Vincule esta extensão ao onframe para editar anúncios.'),
+    'Vincule esta extensão ao onframe para editar anúncios.'
   );
   assert.strictEqual(
     commerceModel.friendlyError('promotion_change_not_confirmed'),

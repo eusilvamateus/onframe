@@ -13,8 +13,8 @@ reconferidos a cada alteração de permissões ou de tratamento de dados.
 
 | Declaração | Justificativa para o painel |
 | --- | --- |
-| `storage` | Guarda a sessão revogável do OnFrame e preferências locais, como tema e visibilidade dos recursos. |
-| `https://onframe.onblide.com/*` | Permite à extensão acessar a API do OnFrame, autenticar o usuário e abrir páginas hospedadas de segurança. |
+| `storage` | Guarda a sessão revogável do onframe e preferências locais, como tema e visibilidade dos recursos. |
+| `https://onframe.onblide.com/*` | Permite à extensão acessar a API do onframe, autenticar o usuário e abrir páginas hospedadas de segurança. |
 | `https://ignrkxityihpvreaimxe.supabase.co/*` | Permite os fluxos de autenticação e segurança da conta no provedor de identidade. |
 | Script de conteúdo em `https://*.mercadolivre.com.br/*` | Identifica o anúncio aberto no Mercado Livre e exibe ali as ferramentas de gestão. O acesso é limitado a esse domínio. |
 
@@ -28,7 +28,7 @@ Marque no formulário as categorias correspondentes às opções que a loja apre
 
 - Identificação pessoal: nome, e-mail, identificadores de conta, foto de perfil.
 - Autenticação: senha informada ao provedor de identidade, fatores de segurança e
-  sessão revogável da extensão. Não declarar que o OnFrame guarda a senha em texto.
+  sessão revogável da extensão. Não declarar que o onframe guarda a senha em texto.
 - Dados financeiros ou comerciais: preços, custos, impostos, margens e resultados
   de promoções. Não confundir com dados de cartão ou pagamento, que não são pedidos.
 - Conteúdo de sites e conteúdo criado pelo usuário: dados do anúncio aberto,

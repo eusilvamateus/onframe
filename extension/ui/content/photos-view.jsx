@@ -40,7 +40,7 @@ class PhotosViewBoundary extends Component {
 function ModalTitle({ children }) {
   return (
     <span className="onblide-ml-modal-title">
-      <span className="onblide-ml-modal-brand">OnFrame</span>
+      <span className="onblide-ml-modal-brand">onframe</span>
       <span>{children}</span>
     </span>
   );

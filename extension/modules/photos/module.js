@@ -18,8 +18,8 @@
       typeof PhotosView.unmount === 'function'
     );
     if (!hasPhotosView) throw new Error('Interface de fotos indisponível.');
-    const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[Onblide ML] detalhe tecnico:' });
-    const AUTH_REQUIRED_MESSAGE = 'Entre na extensão do OnFrame para editar anúncios.';
+    const toUserError = (err) => Shared.toUserError(err, { logPrefix: '[onblide ML] detalhe tecnico:' });
+    const AUTH_REQUIRED_MESSAGE = 'Entre na extensão do onframe para editar anúncios.';
 
     const state = {
       context: null,
@@ -380,7 +380,7 @@
       if (state.error === AUTH_REQUIRED_MESSAGE) {
         return {
           title: 'Extensão desconectada',
-          text: 'Entre no OnFrame para editar anúncios.',
+          text: 'Entre no onframe para editar anúncios.',
           tone: 'muted',
           icon: 'plug'
         };
@@ -443,7 +443,7 @@
 
     function handlePhotosViewFailure(error) {
       if (rootScope.console && typeof rootScope.console.error === 'function') {
-        rootScope.console.error('[OnFrame] A interface de fotos falhou.', error);
+        rootScope.console.error('[onframe] A interface de fotos falhou.', error);
       }
     }
 
@@ -803,7 +803,7 @@
 
     function logPictureQualityWarning(err) {
       if (!Shared.isDebugLoggingEnabled || !Shared.isDebugLoggingEnabled()) return;
-      console.warn('[OnFrame] qualidade de fotos:', err && (err.technicalError || err.message || err));
+      console.warn('[onframe] qualidade de fotos:', err && (err.technicalError || err.message || err));
     }
 
     function wait(ms) {
@@ -840,18 +840,18 @@
     function sendRemoteMessage(action, payload = {}) {
       return new Promise((resolve, reject) => {
         if (!window.chrome || !chrome.runtime || typeof chrome.runtime.sendMessage !== 'function') {
-          reject(new Error('A extensão OnFrame não está disponível.'));
+          reject(new Error('A extensão onframe não está disponível.'));
           return;
         }
         chrome.runtime.sendMessage(Object.assign({ type: 'onframe:remote', action }, payload), (response) => {
           const runtimeError = chrome.runtime.lastError;
           if (runtimeError) {
-            reject(new Error(runtimeError.message || 'Não consegui acessar o OnFrame remoto.'));
+            reject(new Error(runtimeError.message || 'Não consegui acessar o onframe remoto.'));
             return;
           }
           if (!response || response.ok !== true) {
             const error = new Error(
-              response && response.error ? response.error : 'Não consegui acessar o OnFrame remoto.'
+              response && response.error ? response.error : 'Não consegui acessar o onframe remoto.'
             );
             error.code = response && response.code ? response.code : '';
             error.technicalError = response && response.technicalError ? response.technicalError : error.message;

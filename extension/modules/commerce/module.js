@@ -49,7 +49,7 @@
     );
     if (!hasCommerceDirectDiscountView) throw new Error('Interface de desconto direto indisponível.');
     const toUserError = (err) =>
-      CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame comercio] detalhe tecnico:' }));
+      CommerceModel.friendlyError(Shared.toUserError(err, { logPrefix: '[onframe comercio] detalhe tecnico:' }));
     const LISTING_REQUEST_CONCURRENCY = 20;
     const PROMOTION_TYPE_LABELS = Object.freeze({
       DEAL: 'Campanha com melhor exposição',
@@ -657,7 +657,7 @@
         record.media = media;
         media.classList.add('onframe-commerce-listing-media');
         CommerceActionsView.renderBadge(badge, {
-          onError: (error) => console.error('[OnFrame comércio] selo da listagem:', error)
+          onError: (error) => console.error('[onframe comércio] selo da listagem:', error)
         });
       }
     }
@@ -668,7 +668,7 @@
       if (!record.controls) {
         const controls = document.createElement('div');
         controls.className = 'onframe-commerce-listing-controls';
-        controls.setAttribute('aria-label', 'Ações OnFrame para este anúncio');
+        controls.setAttribute('aria-label', 'Ações onframe para este anúncio');
         price.insertAdjacentElement('afterend', controls);
         record.controls = controls;
       }
@@ -680,7 +680,7 @@
       CommerceActionsView.render(record.controls, buildListingActionsViewModel(record), {
         onChange: (type) => handleListingActionChange(record, type),
         onReload: () => {},
-        onError: (error) => console.error('[OnFrame comércio] ações da listagem:', error)
+        onError: (error) => console.error('[onframe comércio] ações da listagem:', error)
       });
       scheduleListingControlsLayout(record);
     }
@@ -970,7 +970,7 @@
       CommerceActionsView.render(state.inline, buildInlineActionsViewModel(), {
         onChange: handleInlineActionChange,
         onReload: () => void reloadCommerce(),
-        onError: (error) => console.error('[OnFrame comércio] ações do anúncio:', error)
+        onError: (error) => console.error('[onframe comércio] ações do anúncio:', error)
       });
     }
 
@@ -4338,13 +4338,13 @@
 
     function handleCommercePriceViewFailure(error) {
       if (rootScope.console && typeof rootScope.console.error === 'function') {
-        rootScope.console.error('[OnFrame] A interface de preço falhou.', error);
+        rootScope.console.error('[onframe] A interface de preço falhou.', error);
       }
     }
 
     function handleCommercePromotionsViewFailure(error) {
       if (rootScope.console && typeof rootScope.console.error === 'function') {
-        rootScope.console.error('[OnFrame] A interface de promoções falhou.', error);
+        rootScope.console.error('[onframe] A interface de promoções falhou.', error);
       }
     }
 

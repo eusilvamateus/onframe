@@ -727,7 +727,7 @@ test('api resolve ignora conta desativada e informa quando ela e dona do anuncio
   const body = await response.json();
 
   assert.strictEqual(response.status, 403);
-  assert.strictEqual(body.error, 'Conta desativada no OnFrame. Ative para editar este anúncio.');
+  assert.strictEqual(body.error, 'Conta desativada no onframe. Ative para editar este anúncio.');
   assert.deepStrictEqual(attempts, [
     [101, 'MLB1234567890'],
     [202, 'MLB1234567890']
@@ -827,7 +827,7 @@ test('api item bloqueia owner_user_id de conta desativada', async (t) => {
   const body = await response.json();
 
   assert.strictEqual(response.status, 403);
-  assert.strictEqual(body.error, 'Conta desativada no OnFrame. Ative para editar este anúncio.');
+  assert.strictEqual(body.error, 'Conta desativada no onframe. Ative para editar este anúncio.');
 });
 
 test('api item encontra conta dona quando owner_user_id nao vem', async (t) => {

@@ -88,7 +88,7 @@ function sheetIndexes(matrix, keys, headerResolver = headerKey) {
   if (missing.length > 0 || unknownHeaders.length > 0) {
     throw new ProductSpreadsheetError(
       'product_spreadsheet_headers',
-      'Use o modelo oficial do OnFrame sem adicionar, remover ou renomear colunas.'
+      'Use o modelo oficial do onframe sem adicionar, remover ou renomear colunas.'
     );
   }
   return indexes;
@@ -139,7 +139,7 @@ export function parseProductWorkbook(buffer) {
   if (!costsWorksheet)
     throw new ProductSpreadsheetError(
       'product_spreadsheet_headers',
-      'Use o modelo oficial do OnFrame com as abas Produtos, Custos e Impostos por conta.'
+      'Use o modelo oficial do onframe com as abas Produtos, Custos e Impostos por conta.'
     );
   const costsMatrix = utils.sheet_to_json(costsWorksheet, { header: 1, raw: true, defval: '' });
   const costHeader = (value) =>
@@ -175,7 +175,7 @@ export function parseProductWorkbook(buffer) {
   if (!accountTaxesWorksheet)
     throw new ProductSpreadsheetError(
       'product_spreadsheet_headers',
-      'Use o modelo oficial do OnFrame com as abas Produtos, Custos e Impostos por conta.'
+      'Use o modelo oficial do onframe com as abas Produtos, Custos e Impostos por conta.'
     );
   const accountTaxesMatrix = utils.sheet_to_json(accountTaxesWorksheet, { header: 1, raw: true, defval: '' });
   const accountTaxHeader = (value) =>
@@ -305,7 +305,7 @@ export function createProductWorkbook(products = [], includeInstructions = false
     utils.book_append_sheet(workbook, instructions, 'Instruções');
   }
   workbook.Props = {
-    Title: products.length ? 'Produtos do OnFrame' : 'Modelo de produtos do OnFrame',
+    Title: products.length ? 'Produtos do onframe' : 'Modelo de produtos do onframe',
     Subject: 'Catálogo de produtos'
   };
   return workbook;

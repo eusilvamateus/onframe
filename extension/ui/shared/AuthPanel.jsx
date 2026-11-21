@@ -21,7 +21,7 @@ import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 import { passwordMeetsRequirements, passwordRequirementState } from './password-policy';
 
 const AUTH_MODES = {
-  signin: { title: 'Entrar na Onblide', description: 'Use o e-mail com que você criou a conta.' },
+  signin: { title: 'Entrar na onblide', description: 'Use o e-mail com que você criou a conta.' },
   signup: { title: 'Criar sua conta', description: 'Comece de graça. Não pedimos cartão de crédito.' },
   magic: { title: 'Entrar com código', description: 'Enviaremos um código de acesso para o seu e-mail.' },
   recovery: {
@@ -162,7 +162,7 @@ export function AuthStep({ onBack, icon, iconTone, title, description, children,
 
 export function AuthBrand() {
   return (
-    <header className="onframe-auth-brand" aria-label="Onblide">
+    <header className="onframe-auth-brand" aria-label="onblide">
       <Logo size={28} />
     </header>
   );
@@ -277,7 +277,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
         if (active) setConfig(value);
       })
       .catch(() => {
-        if (active) setFeedback({ tone: 'danger', message: 'Não foi possível preparar o acesso ao OnFrame.' });
+        if (active) setFeedback({ tone: 'danger', message: 'Não foi possível preparar o acesso ao onframe.' });
       });
     return () => {
       active = false;
@@ -604,7 +604,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
           ? 'Digite sua senha'
           : AUTH_MODES[mode].title;
   const description = secondFactor
-    ? 'Abra o seu aplicativo autenticador e digite o código de 6 dígitos da Onblide.'
+    ? 'Abra o seu aplicativo autenticador e digite o código de 6 dígitos da onblide.'
     : phase === 'code'
       ? `Enviamos um código de ${codeLength} dígitos para ${maskEmail(fields.email)}.`
       : phase === 'sent' && mode === 'signup'
@@ -750,7 +750,7 @@ export function AuthPanel({ initialState, onStateChange, onConnected, onPending 
                       setPrivacyAcknowledged(checked);
                       setPrivacyError(false);
                     }}
-                    label="Estou ciente do uso dos meus dados para criar e operar minha conta OnFrame."
+                    label="Estou ciente do uso dos meus dados para criar e operar minha conta onframe."
                     error={privacyError ? 'Leia e confirme antes de criar a conta.' : undefined}
                     disabled={busy}
                     required

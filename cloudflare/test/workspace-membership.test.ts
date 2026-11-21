@@ -20,7 +20,7 @@ const actor = {
   subject: 'subject-1',
   authSessionId: 'auth-session-1',
   identityVersion: 1,
-  label: 'Extensão OnFrame'
+  label: 'Extensão onframe'
 } as any;
 
 function database(
@@ -359,7 +359,7 @@ test('D1 encerra participacao e sessoes sem restaurar o acesso no proximo login'
         "INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at) VALUES ('workspace-1', 'user-1', 'admin', 1, 1), ('workspace-1', 'user-2', 'admin', 2, 2), ('workspace-2', 'user-1', 'collaborator:workspace-2', 3, 3)"
       ),
       db.prepare(
-        "INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at, identity_version, auth_session_id) VALUES ('session-1', 'hash-1', 'user-1', 'workspace-1', 'Extensão OnFrame', 4102444800000, 1, 1, 'auth-session-1')"
+        "INSERT INTO extension_sessions (id, token_hash, user_id, workspace_id, label, expires_at, created_at, identity_version, auth_session_id) VALUES ('session-1', 'hash-1', 'user-1', 'workspace-1', 'Extensão onframe', 4102444800000, 1, 1, 'auth-session-1')"
       )
     ]);
     const response = await leaveWorkspace({ ONFRAME_DB: db } as any, actor);

@@ -72,7 +72,7 @@ export function IntegrationsSession({ connection, initialState, onStateChange, o
     if (result !== null) {
       setFeedback({
         tone: 'info',
-        message: 'Autorização aberta. Conclua a conexão no Mercado Livre e retorne ao OnFrame.'
+        message: 'Autorização aberta. Conclua a conexão no Mercado Livre e retorne ao onframe.'
       });
     }
   }

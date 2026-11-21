@@ -3,7 +3,7 @@
 ## Finalidade
 
 O Worker em `onframe.onblide.com` é a única fronteira autenticada entre o
-OnFrame e a API do Mercado Livre. A extensão não chama a API do Mercado Livre
+onframe e a API do Mercado Livre. A extensão não chama a API do Mercado Livre
 diretamente e não guarda credenciais de conta no computador.
 
 ## Autenticação

@@ -30,7 +30,7 @@
   ],
   "vars": {
     "MELI_REDIRECT_URI": "https://onframe.onblide.com/oauth/mercadolivre/callback",
-    "AUTH_EMAIL_FROM": "OnFrame <acesso@onframe.onblide.com>",
+    "AUTH_EMAIL_FROM": "onframe <acesso@onframe.onblide.com>",
     "SUPABASE_URL": "https://ignrkxityihpvreaimxe.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_e4YLeOdiFZ7N0QIkIL7wJA_rOeaS6ux",
     "TURNSTILE_SITEKEY": "0x4AAAAAAFIJHY8iacQ0d-dn"

@@ -1,12 +1,12 @@
-# Documentacao do OnFrame
+# Documentacao do onframe
 
-Este diretorio concentra o conhecimento duravel do OnFrame. Os guias de uso,
+Este diretorio concentra o conhecimento duravel do onframe. Os guias de uso,
 as regras de produto e a arquitetura ficam separados para que cada assunto
 tenha uma fonte canonica.
 
 ## Usuario
 
-- [Guias do OnFrame](user/README.md) - ponto de entrada para instalar, conectar
+- [Guias do onframe](user/README.md) - ponto de entrada para instalar, conectar
   e usar a extensao.
 - [Guia do usuario](user/guia-do-usuario.md) - fluxo diario na pagina do
   anuncio.

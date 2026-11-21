@@ -1,6 +1,6 @@
 (function (root) {
   function createApi(options = {}) {
-    const offlineMessage = options.offlineMessage || 'Entre na extensão do OnFrame para continuar.';
+    const offlineMessage = options.offlineMessage || 'Entre na extensão do onframe para continuar.';
 
     return async function api(path, requestOptions = {}) {
       if (canUseRuntimeBridge()) {

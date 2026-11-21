@@ -19,14 +19,14 @@ function HostedLayout({ children, document = false }) {
   return (
     <div className="onframe-hosted-page">
       <header className="onframe-hosted-header">
-        <a className="onframe-hosted-brand" href="/connect" aria-label="Onblide">
+        <a className="onframe-hosted-brand" href="/connect" aria-label="onblide">
           <Logo size={24} />
         </a>
         <ThemeCycleButton />
       </header>
       <main className={`onframe-hosted-main${document ? ' onframe-hosted-main--document' : ''}`}>{children}</main>
       <footer className="onframe-hosted-footer">
-        ONBLIDE · ONFRAME
+        onblide · onframe
         {!document && <Link href="/privacidade" tone="muted">Política de privacidade</Link>}
       </footer>
     </div>
@@ -97,7 +97,7 @@ function ConnectionPage({ config }) {
   const [phase, setPhase] = useState(recovery ? 'recovery' : 'loading');
   const [notice, setNotice] = useState(
     !context.flow || !context.accessToken
-      ? { tone: 'danger', message: 'Abra a extensão OnFrame para iniciar o acesso.' }
+      ? { tone: 'danger', message: 'Abra a extensão onframe para iniciar o acesso.' }
       : null
   );
   const [password, setPassword] = useState('');
@@ -120,7 +120,7 @@ function ConnectionPage({ config }) {
       return;
     }
     if (recovery) {
-      document.title = 'Redefinir senha - OnFrame';
+      document.title = 'Redefinir senha - onframe';
       clearConnectionFragment();
       return;
     }
@@ -307,7 +307,7 @@ function InvitationPage({ config }) {
     <HostedSurface
       eyebrow="Convite para workspace"
       title="Continue na extensão"
-      description="Abra o OnFrame para entrar ou criar sua conta. Depois, o convite será aceito automaticamente."
+      description="Abra o onframe para entrar ou criar sua conta. Depois, o convite será aceito automaticamente."
       icon="envelope-simple"
     >
       <Button
@@ -325,10 +325,10 @@ function PrivacyPage() {
   return (
     <article className="onframe-hosted-policy">
       <header className="onframe-hosted-policy-intro">
-        <h1>Política de privacidade do OnFrame</h1>
+        <h1>Política de privacidade do onframe</h1>
         <p>Atualizada em 21 de novembro de 2026.</p>
         <p>
-          O OnFrame é uma extensão da Onblide para gerenciar anúncios do Mercado Livre. Esta política explica
+          O onframe é uma extensão da onblide para gerenciar anúncios do Mercado Livre. Esta política explica
           quais dados usamos para oferecer o serviço, onde são processados e como você pode gerenciá-los.
         </p>
       </header>
@@ -336,7 +336,7 @@ function PrivacyPage() {
       <section>
         <h2>Dados tratados</h2>
         <ul>
-          <li>Dados da conta OnFrame: nome, e-mail, foto de perfil, credenciais de autenticação e informações de segurança da sessão.</li>
+          <li>Dados da conta onframe: nome, e-mail, foto de perfil, credenciais de autenticação e informações de segurança da sessão.</li>
           <li>Dados do workspace: nome, logo, membros, convites, perfis de acesso, contas conectadas e histórico das operações.</li>
           <li>Dados das contas Mercado Livre autorizadas: identificadores, informações públicas da conta e credenciais de autorização necessárias para executar operações.</li>
           <li>Dados dos anúncios e produtos gerenciados: títulos, descrições, fotos, características, preços, custos, impostos, margens, estoque e promoções, conforme os recursos utilizados.</li>
@@ -354,13 +354,13 @@ function PrivacyPage() {
         <p>
           Usamos esses dados para autenticar sua conta, proteger o acesso, administrar workspaces, consultar e editar
           anúncios autorizados, calcular resultados comerciais e registrar ações necessárias ao funcionamento e à
-          segurança do OnFrame. A extensão guarda localmente o identificador de sessão revogável e preferências como
-          tema. As operações autenticadas passam pelo serviço OnFrame em onframe.onblide.com.
+          segurança do onframe. A extensão guarda localmente o identificador de sessão revogável e preferências como
+          tema. As operações autenticadas passam pelo serviço onframe em onframe.onblide.com.
         </p>
         <p>
-          As credenciais de autorização do Mercado Livre ficam cifradas no banco do serviço OnFrame e não são
+          As credenciais de autorização do Mercado Livre ficam cifradas no banco do serviço onframe e não são
           entregues à página do anúncio. Senhas e fatores de autenticação são processados pelo provedor de identidade,
-          não guardados pelo OnFrame como texto. Fotos de perfil e logos enviados para a plataforma ficam em
+          não guardados pelo onframe como texto. Fotos de perfil e logos enviados para a plataforma ficam em
           armazenamento público e podem ser acessados por quem tiver o endereço do arquivo.
         </p>
       </section>
@@ -369,7 +369,7 @@ function PrivacyPage() {
         <h2>Compartilhamento necessário</h2>
         <p>Os dados são compartilhados apenas conforme a função de cada serviço:</p>
         <ul>
-          <li>Mercado Livre: autorização da conta e consultas ou alterações de anúncios solicitadas no OnFrame.</li>
+          <li>Mercado Livre: autorização da conta e consultas ou alterações de anúncios solicitadas no onframe.</li>
           <li>Supabase: autenticação, fatores de segurança e armazenamento das imagens de perfil e workspace.</li>
           <li>Cloudflare: hospedagem do serviço, banco de dados, proteção contra abuso e execução das operações.</li>
           <li>Resend: entrega dos e-mails transacionais de acesso e segurança.</li>
@@ -382,7 +382,7 @@ function PrivacyPage() {
         <h2>Conservação e controle</h2>
         <p>
           Mantemos os dados enquanto a conta, o workspace ou a integração precisarem deles. Você pode desconectar
-          contas do Mercado Livre, encerrar sessões e solicitar a exclusão da sua conta nas configurações do OnFrame.
+          contas do Mercado Livre, encerrar sessões e solicitar a exclusão da sua conta nas configurações do onframe.
           A exclusão pode exigir que outro administrador assuma um workspace compartilhado. Registros de operações
           que permanecem no workspace perdem a identificação pessoal da conta excluída. A conservação de registros
           técnicos dos provedores segue as políticas e configurações desses serviços.
@@ -416,7 +416,7 @@ function HostedApp({ config }) {
   if (!config) {
     return (
       <HostedLayout>
-        <HostedSurface eyebrow="OnFrame" title="Página indisponível">
+        <HostedSurface eyebrow="onframe" title="Página indisponível">
           <Alert appearance="soft" tone="danger">
             Não foi possível carregar esta página.
           </Alert>

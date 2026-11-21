@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-O OnFrame mostra campanhas disponiveis, participacoes ja enviadas e a promocao
+O onframe mostra campanhas disponiveis, participacoes ja enviadas e a promocao
 que efetivamente determina o preco publico do anuncio. Essas situacoes sao
 distintas e precisam permanecer coerentes no botao, no popover, no modal e no
 contador.
@@ -70,7 +70,7 @@ desconto, data ou ordem de retorno:
 1. Primeiro, `metadata.promotion_id` deve coincidir com `offer_id` ou `ref_id`
    da participacao do item. Essa identidade e suficiente; o
    `metadata.promotion_type` nao bloqueia a correspondencia.
-2. Se a participacao nao expuser um identificador de oferta, o OnFrame consulta
+2. Se a participacao nao expuser um identificador de oferta, o onframe consulta
    `GET /seller-promotions/offers/{offerId}` para obter a identidade da
    promocao associada a essa oferta.
 3. A participacao so e considerada vencedora quando `offer.id`, `item_id` e
@@ -102,7 +102,7 @@ reconciliacao conhecida ainda pode comprovar a identidade, mas nao altera o
 estado visual da participacao.
 
 Quando o Mercado Livre aceita uma criacao ou alteracao antes de sua leitura
-refletir o novo estado, o OnFrame fecha a edicao e mostra localmente a
+refletir o novo estado, o onframe fecha a edicao e mostra localmente a
 participacao como **Aplicada** na secao de promocoes aplicadas. Esse estado e
 otimista e impede o reenvio acidental da mesma operacao, mas nunca transforma
 uma promocao de preco em **Ativa** nem altera o chip de promocao ativa. A oferta

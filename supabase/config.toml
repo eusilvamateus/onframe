@@ -15,7 +15,7 @@ verify_enabled = true
 enabled = true
 
 [auth.webauthn]
-rp_display_name = "OnFrame"
+rp_display_name = "onframe"
 rp_id = "onframe.onblide.com"
 rp_origins = ["https://onframe.onblide.com"]
 
@@ -38,60 +38,60 @@ provider = "turnstile"
 secret = "env(SUPABASE_TURNSTILE_SECRET)"
 
 [auth.email.template.confirmation]
-subject = "Confirme seu e-mail no OnFrame"
+subject = "Confirme seu e-mail no onframe"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.invite]
-subject = "Você recebeu um convite para o OnFrame"
+subject = "Você recebeu um convite para o onframe"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.magic_link]
-subject = "Seu link de acesso ao OnFrame"
+subject = "Seu link de acesso ao onframe"
 content_path = "./supabase/templates/magic-link.html"
 
 [auth.email.template.recovery]
-subject = "Redefina sua senha do OnFrame"
+subject = "Redefina sua senha do onframe"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.email_change]
-subject = "Confirme seu novo e-mail no OnFrame"
+subject = "Confirme seu novo e-mail no onframe"
 content_path = "./supabase/templates/email-change.html"
 
 [auth.email.template.reauthentication]
-subject = "{{ .Token }} é seu código de verificação do OnFrame"
+subject = "{{ .Token }} é seu código de verificação do onframe"
 content_path = "./supabase/templates/reauthentication.html"
 
 [auth.email.notification.password_changed]
 enabled = true
-subject = "Sua senha do OnFrame foi alterada"
+subject = "Sua senha do onframe foi alterada"
 content_path = "./supabase/templates/password-changed.html"
 
 [auth.email.notification.email_changed]
 enabled = true
-subject = "O e-mail da sua conta OnFrame foi alterado"
+subject = "O e-mail da sua conta onframe foi alterado"
 content_path = "./supabase/templates/email-changed.html"
 
 [auth.email.notification.phone_changed]
 enabled = true
-subject = "O telefone da sua conta OnFrame foi alterado"
+subject = "O telefone da sua conta onframe foi alterado"
 content_path = "./supabase/templates/phone-changed.html"
 
 [auth.email.notification.mfa_factor_enrolled]
 enabled = true
-subject = "Um método de verificação foi adicionado à sua conta OnFrame"
+subject = "Um método de verificação foi adicionado à sua conta onframe"
 content_path = "./supabase/templates/mfa-factor-enrolled.html"
 
 [auth.email.notification.mfa_factor_unenrolled]
 enabled = true
-subject = "Um método de verificação foi removido da sua conta OnFrame"
+subject = "Um método de verificação foi removido da sua conta onframe"
 content_path = "./supabase/templates/mfa-factor-unenrolled.html"
 
 [auth.email.notification.identity_linked]
 enabled = true
-subject = "Um método de acesso foi conectado à sua conta OnFrame"
+subject = "Um método de acesso foi conectado à sua conta onframe"
 content_path = "./supabase/templates/identity-linked.html"
 
 [auth.email.notification.identity_unlinked]
 enabled = true
-subject = "Um método de acesso foi removido da sua conta OnFrame"
+subject = "Um método de acesso foi removido da sua conta onframe"
 content_path = "./supabase/templates/identity-unlinked.html"

@@ -1,6 +1,6 @@
 # Promocoes e acoes em massa
 
-O OnFrame mostra promocoes, descontos, custos e oportunidades direto na pagina
+O onframe mostra promocoes, descontos, custos e oportunidades direto na pagina
 do anuncio. A ideia e facilitar a revisao antes de aplicar, alterar ou remover
 uma promocao.
 
@@ -8,7 +8,7 @@ uma promocao.
 
 ## O que voce consegue fazer
 
-Quando o Mercado Livre disponibiliza a acao para o anuncio, o OnFrame permite:
+Quando o Mercado Livre disponibiliza a acao para o anuncio, o onframe permite:
 
 - aplicar uma promocao;
 - configurar preco promocional;
@@ -41,14 +41,14 @@ Cupons e descontos por pagamento continuam condicionais ao comprador ou a forma
 de pagamento e nao entram na estimativa principal.
 
 O valor `Voce recebe` e calculado como `preco promocional - tarifa de venda -
-frete do vendedor`. Quando houver reducao, o OnFrame mostra o valor reduzido na
+frete do vendedor`. Quando houver reducao, o onframe mostra o valor reduzido na
 propria tarifa e informa quanto ja foi abatido, sem apresentar o aporte como uma
 segunda receita.
 
 ![Print - Promocao com reducao de tarifas](assets/promocoes-rebate-mercado-livre.png)
 
 Nem toda promocao tem todos os campos. Quando uma informacao nao existe para
-aquele caso, o OnFrame evita preencher a tela com blocos vazios. A classificacao
+aquele caso, o onframe evita preencher a tela com blocos vazios. A classificacao
 de **Ativa**, **Programada** e **Disponivel** segue as
 [regras de produto](../product/promocoes.md).
 
@@ -66,7 +66,7 @@ alterar a oferta. `Ver detalhes` e a simulacao de custos nao modificam a oferta.
 
 ![Print - Modal de aplicacao de promocao](assets/promocoes-modal-aplicacao.png)
 
-Enquanto o envio esta em andamento, o OnFrame mostra estado de carregamento para
+Enquanto o envio esta em andamento, o onframe mostra estado de carregamento para
 evitar duvida sobre o que esta acontecendo.
 
 ## Alterar ou remover promocao
@@ -74,7 +74,7 @@ evitar duvida sobre o que esta acontecendo.
 Promocoes ja aplicadas podem mostrar acoes como `Alterar valores` ou `Remover
 promocao`, dependendo do tipo de campanha e das regras do Mercado Livre.
 
-Antes de confirmar, leia a revisao exibida pelo OnFrame. Ela mostra o efeito da
+Antes de confirmar, leia a revisao exibida pelo onframe. Ela mostra o efeito da
 acao no anuncio.
 
 ![Print - Promocao aplicada com acoes](assets/promocoes-aplicada-acoes.png)

@@ -12,7 +12,7 @@ const admin = {
   subject: 'subject-1',
   authSessionId: 'session-1',
   identityVersion: 1,
-  label: 'Extensão OnFrame'
+  label: 'Extensão onframe'
 } as any;
 
 test('nome de exibicao e estado da conta sao independentes do nome do Mercado Livre', async () => {

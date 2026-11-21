@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-O OnFrame permite que vendedores do Mercado Livre gerenciem anúncios a partir
+O onframe permite que vendedores do Mercado Livre gerenciem anúncios a partir
 da página pública do produto. A extensão executa a interface no navegador; o
 Worker remoto executa todas as operações autenticadas e guarda as credenciais.
 Não há servidor local, token local ou fallback para `localhost`.
@@ -14,7 +14,7 @@ Não há servidor local, token local ou fallback para `localhost`.
 - `core/` concentra detecção de página, registro de módulos, bridge de API e o
   shell da interface injetada.
 - `modules/` implementa fotos, descrição, características e comércio.
-- `background.js` mantém exclusivamente o bearer de sessão do OnFrame e
+- `background.js` mantém exclusivamente o bearer de sessão do onframe e
   encaminha contratos `/api/*` para `https://onframe.onblide.com/v1/api/*`.
 - `ui/options/` e `ui/popup/` autenticam a pessoa, mostram a sessão do
   workspace e administram contas, pessoas, convites, perfil e segurança. As

@@ -86,7 +86,7 @@ async function buildNoConnectedOwnerError(input) {
     clientFactory &&
     (await disabledAccountOwnsItem(disabledAccounts, itemId, clientFactory))
   ) {
-    const err = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
+    const err = new Error('Esta conta está desativada no onframe. Ative a conta para editar este anúncio.');
     err.statusCode = 403;
     err.disabledAccount = true;
     return err;
@@ -95,7 +95,7 @@ async function buildNoConnectedOwnerError(input) {
   const err = new Error(
     authErrors.length === rejected.length
       ? 'Conta desconectada. Clique em Conectar.'
-      : 'Este anúncio não pertence a nenhuma conta conectada no OnFrame.'
+      : 'Este anúncio não pertence a nenhuma conta conectada no onframe.'
   );
   err.statusCode = authErrors.length === rejected.length ? 401 : 403;
   err.rejectedAccounts = rejected.map((entry) => ({
@@ -131,7 +131,7 @@ function buildMissingOwnerAccountError() {
 }
 
 function buildDisabledOwnerAccountError() {
-  const err = new Error('Esta conta está desativada no OnFrame. Ative a conta para editar este anúncio.');
+  const err = new Error('Esta conta está desativada no onframe. Ative a conta para editar este anúncio.');
   err.statusCode = 403;
   err.disabledAccount = true;
   return err;

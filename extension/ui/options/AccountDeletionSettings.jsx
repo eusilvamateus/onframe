@@ -71,7 +71,7 @@ export function AccountDeletionSettings({ profile, securityOverview, onDeleted }
     <>
       <SectionHeader
         title="Excluir conta"
-        copy="Remova sua conta e seus acessos do OnFrame."
+        copy="Remova sua conta e seus acessos do onframe."
         actions={
           <Button kind="danger" icon={<Ph n="trash" size={18} />} onClick={() => void openDeletion()}>
             Excluir conta
@@ -154,7 +154,7 @@ export function AccountDeletionSettings({ profile, securityOverview, onDeleted }
         loading={busy}
         onConfirm={() => void removeAccount()}
       >
-        Você perderá o acesso ao OnFrame. Esta ação não pode ser desfeita.
+        Você perderá o acesso ao onframe. Esta ação não pode ser desfeita.
       </AlertDialog>
     </>
   );

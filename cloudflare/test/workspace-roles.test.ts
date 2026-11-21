@@ -18,7 +18,7 @@ const admin = {
   userId: 'admin-1',
   workspaceId: 'workspace-1',
   roleId: 'admin',
-  label: 'Extensão OnFrame'
+  label: 'Extensão onframe'
 } as Parameters<typeof saveWorkspaceRole>[2];
 
 function roleRequest(name: string, permissions: string[]) {

@@ -37,7 +37,7 @@ altere nenhum outro projeto ou diretório sem autorização explícita do usuár
 aquele local. O projeto `C:\Users\Mateus\onblide-design-system` é uma exceção
 permanente e estritamente somente leitura: nunca altere seus arquivos, execute
 comandos que possam modificá-lo, crie commits ou mude seu histórico, mesmo que uma
-tarefa do OnFrame dependa de uma correção nele. Nesses casos, apenas descreva a
+tarefa do onframe dependa de uma correção nele. Nesses casos, apenas descreva a
 lacuna para o usuário. Referenciar, consultar ou usar uma dependência externa não
 concede permissão para modificá-la.
 
@@ -60,11 +60,15 @@ e nomes descritivos em português para os testes. Mantenha comportamento de DOM
 nos módulos da extensão, transformações reutilizáveis de estado nos modelos e
 integrações de API/Mercado Livre no Worker.
 
+Escreva os nomes das marcas sempre como `onframe` e `onblide` nos textos
+visíveis ao usuário, e-mails e documentação. Preserve a grafia de identificadores
+técnicos, nomes de arquivos, domínios e contratos existentes.
+
 ## Design System Obrigatório
 
 Use exclusivamente o design system vigente em
 `C:\Users\Mateus\onblide-design-system` para toda decisão visual e de interação
-do OnFrame: componentes, variantes, tokens, tipografia, ícones, tamanhos,
+do onframe: componentes, variantes, tokens, tipografia, ícones, tamanhos,
 espaçamentos, estados e acessibilidade. Não crie, simule, combine ou customize
 variações visuais fora das especificações documentadas. Quando a necessidade não
 tiver componente, variante ou regra documentada, interrompa a implementação e
@@ -103,12 +107,12 @@ explícita do usuário. Use o conector `$mercado-livre` para informações do
 Mercado Livre. Para validar documentação, comportamento ou estado do Supabase,
 use exclusivamente a skill `$supabase`, o conector Supabase e o CLI autenticado;
 não use busca web genérica. Para descrever a arquitetura e as permissões do
-OnFrame, confirme também no código e nas migrações deste repositório.
+onframe, confirme também no código e nas migrações deste repositório.
 Para pesquisar documentação, limites, comportamento ou estado da Cloudflare,
 use exclusivamente a skill `$cloudflare` e o conector Cloudflare. Nunca use
 busca web (`web.run`), navegador ou outra fonte externa como alternativa.
 Se essas fontes não responderem, informe a limitação ao usuário. Para o
-comportamento do OnFrame, confira também o código deste repositório.
+comportamento do onframe, confira também o código deste repositório.
 
 ## Controle do Navegador e do Computador
 

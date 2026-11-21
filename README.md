@@ -1,6 +1,6 @@
-# OnFrame
+# onframe
 
-OnFrame e uma extensao para Chrome e Edge que ajuda vendedores do Mercado
+onframe e uma extensao para Chrome e Edge que ajuda vendedores do Mercado
 Livre a gerenciar anuncios diretamente pela pagina publica do produto.
 
 ## Recursos

@@ -19,7 +19,7 @@
     );
     if (!hasDescriptionView) throw new Error('Interface de descrição indisponível.');
     const toUserError = (err) =>
-      DescriptionModel.friendlyError(Shared.toUserError(err, { logPrefix: '[OnFrame descrição] detalhe tecnico:' }));
+      DescriptionModel.friendlyError(Shared.toUserError(err, { logPrefix: '[onframe descrição] detalhe tecnico:' }));
 
     const state = {
       context: null,
@@ -531,7 +531,7 @@
 
     function handleDescriptionViewFailure(error) {
       if (rootScope.console && typeof rootScope.console.error === 'function') {
-        rootScope.console.error('[OnFrame] A interface de descrição falhou.', error);
+        rootScope.console.error('[onframe] A interface de descrição falhou.', error);
       }
     }
 

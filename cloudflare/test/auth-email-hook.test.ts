@@ -100,7 +100,7 @@ function signedRequest(payload: object, options: { webhookId?: string; timestamp
 
 function runtime(db: FakeD1) {
   return {
-    AUTH_EMAIL_FROM: 'OnFrame <acesso@onframe.onblide.com>',
+    AUTH_EMAIL_FROM: 'onframe <acesso@onframe.onblide.com>',
     ONFRAME_DB: db as unknown as D1Database,
     RESEND_API_KEY: 're_test_key',
     SUPABASE_SEND_EMAIL_HOOK_SECRET: hookSecret,
@@ -116,7 +116,7 @@ test('renderiza magic link sem transformar o acesso em OTP', () => {
   assert.doesNotMatch(delivery.html, /class="access-code"/);
   assert.match(delivery.html, /onframe-horizontal-primary\.png/);
   assert.match(delivery.html, /onframe-horizontal-white\.png/);
-  assert.doesNotMatch(delivery.html, /alt="Onblide"|border-left:1px solid #ececec/);
+  assert.doesNotMatch(delivery.html, /alt="onblide"|border-left:1px solid #ececec/);
   assert.match(delivery.html, /auth\/v1\/verify\?token=token-hash-principal&amp;type=magiclink/);
 });
 
@@ -124,7 +124,7 @@ test('verificacao de identidade recebe codigo sem alterar o login por magic link
   const payload = event('magiclink');
   payload.email_data.redirect_to = 'https://onframe.onblide.com/connect?verification=email';
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), payload);
-  assert.equal(delivery.subject, 'Confirme seu e-mail no OnFrame');
+  assert.equal(delivery.subject, 'Confirme seu e-mail no onframe');
   assert.equal(delivery.html.match(/class="access-code-cell"/gu)?.length, 8);
   assert.match(delivery.html, /aria-label="Código de acesso: 12345678"/);
   assert.doesNotMatch(delivery.html, /auth\/v1\/verify/);
@@ -136,7 +136,7 @@ test('login faseado recebe OTP sem link que consuma o codigo', () => {
   const payload = event('magiclink');
   payload.email_data.redirect_to = 'https://onframe.onblide.com/connect?verification=login';
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), payload);
-  assert.equal(delivery.subject, 'Seu código de acesso ao OnFrame');
+  assert.equal(delivery.subject, 'Seu código de acesso ao onframe');
   assert.equal(delivery.html.match(/class="access-code-cell"/gu)?.length, 8);
   assert.match(delivery.html, /width:32px;height:48px/);
   assert.equal(delivery.html.match(/12345678/gu)?.length, 1);
@@ -218,7 +218,7 @@ test('aceita somente hook assinado e não duplica um reenvio do Supabase', async
     assert.equal(first.status, 200);
     assert.equal(retry.status, 200);
     assert.equal(sent.length, 1);
-    assert.equal(sent[0].from, 'OnFrame <acesso@onframe.onblide.com>');
+    assert.equal(sent[0].from, 'onframe <acesso@onframe.onblide.com>');
 
     const invalid = await handleSupabaseSendEmailHook(signedRequest(payload, { signature: 'v1,invalid' }), runtime(db));
     assert.equal(invalid.status, 401);

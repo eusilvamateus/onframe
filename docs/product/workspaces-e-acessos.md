@@ -3,7 +3,7 @@
 ## Finalidade
 
 O workspace concentra as contas Mercado Livre, pessoas e o historico de
-atividade do OnFrame. Uma pessoa pode participar de mais de um workspace e
+atividade do onframe. Uma pessoa pode participar de mais de um workspace e
 alterna o contexto ativo pelo seletor do painel.
 
 ## Perfis de usuarios
@@ -38,7 +38,7 @@ revogado por um administrador antes da aceitação. O convite determina o perfil
 e, para pessoas nao administradoras, as contas atribuídas inicialmente.
 
 O link de convite nao contém token de sessao. Ele abre a pagina hospedada do
-OnFrame, que encaminha para as opcoes da extensao. A extensao exige login ou
+onframe, que encaminha para as opcoes da extensao. A extensao exige login ou
 cadastro e aceita o convite usando sua sessao remota revogavel.
 
 ## Perfil

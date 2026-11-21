@@ -188,7 +188,7 @@ export function EmailVerification({
       title={factor ? 'Confirme no aplicativo' : sent ? 'Confira seu e-mail' : 'Verifique seu e-mail'}
       description={
         factor
-          ? 'Abra o seu aplicativo autenticador e digite o código de 6 dígitos da Onblide.'
+          ? 'Abra o seu aplicativo autenticador e digite o código de 6 dígitos da onblide.'
           : sent
             ? `Enviamos um código de ${codeLength} dígitos para ${maskEmail(email)}.`
             : `Enviaremos um código para ${maskEmail(email)} antes de ${purpose}.`
@@ -356,7 +356,7 @@ export function TwoFactorSettings({ profile, securityOverview, onDisconnect }) {
       const { data, error } = await clientRef.current.auth.mfa.enroll({
         factorType: 'totp',
         friendlyName: name.trim(),
-        issuer: 'OnFrame'
+        issuer: 'onframe'
       });
       if (error) throw error;
       pendingRef.current = data.id;
@@ -706,7 +706,7 @@ export function PasskeySettings({ profile, securityOverview }) {
                 {
                   id: 'security',
                   title: 'Por que é mais segura que a senha?',
-                  content: 'A chave só funciona no endereço verdadeiro da Onblide e não revela um segredo reutilizável.'
+                  content: 'A chave só funciona no endereço verdadeiro da onblide e não revela um segredo reutilizável.'
                 },
                 {
                   id: 'lost',

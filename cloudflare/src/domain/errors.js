@@ -149,7 +149,7 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
     text.includes('onblide_mercadolivre_client_id ausente') ||
     text.includes('onblide_mercadolivre_client_secret ausente')
   ) {
-    return 'Conexão indisponível no Onblide Connect.';
+    return 'Conexão indisponível no onblide Connect.';
   }
   if (
     text.includes('nao foi possivel identificar') ||
@@ -168,7 +168,7 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
     return 'Nenhuma conta habilitada para detectar anúncios.';
   }
   if (text.includes('conta está desativada') || text.includes('conta esta desativada')) {
-    return 'Conta desativada no OnFrame. Ative para editar este anúncio.';
+    return 'Conta desativada no onframe. Ative para editar este anúncio.';
   }
   if (text.includes('conta conectada não encontrada') || text.includes('conta conectada nao encontrada')) {
     return 'Conta não conectada para este anúncio.';
@@ -213,7 +213,7 @@ function userFriendlyError(err, sanitized = sanitizeError(err), statusCode = err
     return 'Anúncio mudou. Atualize a página.';
   }
   if (text.includes('failed to fetch') || text.includes('econnrefused') || text.includes('connect econnrefused')) {
-    return 'Não foi possível acessar o OnFrame remoto. Tente novamente.';
+    return 'Não foi possível acessar o onframe remoto. Tente novamente.';
   }
   if (status >= 500) {
     return 'Falha temporária. Tente de novo.';

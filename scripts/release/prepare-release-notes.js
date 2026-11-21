@@ -86,7 +86,7 @@ function buildReleaseNotes({ tag, previousTag, changelog, repoUrl = DEFAULT_REPO
     : '- Compare: unavailable';
 
   return [
-    `# OnFrame ${normalizedTag}`,
+    `# onframe ${normalizedTag}`,
     '',
     `- Version: \`${normalizedTag}\``,
     previousLine,

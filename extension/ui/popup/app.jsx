@@ -23,7 +23,7 @@ import { historySummary, integrationsSummary, workspaceSummary } from './summari
 const RESOURCES_ENABLED_KEY = 'onframeEditorVisible';
 
 function PopupUserHeader({ connection, resourcesEnabled, busy, onToggleResources, onOpenOptions }) {
-  const personName = connection.user.name || 'Conta OnFrame';
+  const personName = connection.user.name || 'Conta onframe';
   return (
     <header className="onframe-popup-userbar">
       <div className="onframe-popup-user">

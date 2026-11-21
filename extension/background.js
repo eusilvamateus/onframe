@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((err) =>
         sendResponse({
           ok: false,
-          error: err && err.message ? err.message : 'Não consegui acessar o OnFrame remoto.',
+          error: err && err.message ? err.message : 'Não consegui acessar o onframe remoto.',
           code: err && err.code ? err.code : '',
           technicalError:
             err && err.technicalError ? err.technicalError : err && err.message ? err.message : String(err)
@@ -30,7 +30,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({
         ok: false,
         status: 0,
-        error: 'Não consegui acessar o OnFrame remoto.',
+        error: 'Não consegui acessar o onframe remoto.',
         technicalError: err && err.message ? err.message : String(err)
       })
     );
@@ -502,7 +502,7 @@ async function startRemoteAuth() {
   }
   const authUrl = String((result && result.authorizationUrl) || '');
   if (!/^https:\/\/auth\.mercadolivre\.com\.br\/authorization\?/u.test(authUrl)) {
-    const error = new Error('O OnFrame remoto retornou uma autorização inválida.');
+    const error = new Error('O onframe remoto retornou uma autorização inválida.');
     error.code = 'invalid_remote_authorization';
     throw error;
   }
@@ -526,7 +526,7 @@ function normalizePendingAuthFlow(payload) {
   const token = String((payload && payload.flow) || '');
   const expiresAt = String((payload && payload.expiresAt) || '');
   if (!REMOTE_SESSION_TOKEN_PATTERN.test(token) || !Number.isFinite(Date.parse(expiresAt))) {
-    const error = new Error('O OnFrame remoto retornou um fluxo de acesso inválido.');
+    const error = new Error('O onframe remoto retornou um fluxo de acesso inválido.');
     error.code = 'invalid_remote_auth_flow';
     throw error;
   }
@@ -555,7 +555,7 @@ async function consumePendingAuthFlow() {
       return { status: 'pending', expiresAt: flow.expiresAt, session: null };
     }
     if (!result || result.status !== 'authenticated') {
-      throw new Error('O OnFrame remoto retornou um fluxo de acesso inválido.');
+      throw new Error('O onframe remoto retornou um fluxo de acesso inválido.');
     }
     const session = normalizeRemoteSession(result);
     await writeRemoteSession(session);
@@ -575,7 +575,7 @@ function normalizeRemoteSession(payload) {
   const sessionId = String((payload && payload.sessionId) || '');
   const expiresAt = String((payload && payload.expiresAt) || '');
   if (!REMOTE_SESSION_TOKEN_PATTERN.test(token) || !sessionId || !Number.isFinite(Date.parse(expiresAt))) {
-    const error = new Error('O OnFrame remoto retornou uma sessão inválida.');
+    const error = new Error('O onframe remoto retornou uma sessão inválida.');
     error.code = 'invalid_remote_session';
     throw error;
   }
@@ -586,7 +586,7 @@ function serializeRemoteConnection(session, context) {
   const user = context && context.user && typeof context.user === 'object' ? context.user : null;
   const workspace = context && context.workspace && typeof context.workspace === 'object' ? context.workspace : null;
   if (!user || !workspace || !user.email || !workspace.name) {
-    const error = new Error('O OnFrame remoto retornou um contexto inválido.');
+    const error = new Error('O onframe remoto retornou um contexto inválido.');
     error.code = 'invalid_remote_context';
     throw error;
   }
@@ -631,7 +631,7 @@ async function requestRemoteResponse(path, options = {}) {
       credentials: 'omit'
     });
   } catch (error) {
-    const failure = new Error('Não foi possível acessar o OnFrame remoto.');
+    const failure = new Error('Não foi possível acessar o onframe remoto.');
     failure.code = 'remote_unavailable';
     failure.technicalError = error && error.message ? error.message : String(error);
     throw failure;
@@ -685,7 +685,7 @@ function remoteErrorMessage(code, status, fallbackMessage) {
   if (typeof fallbackMessage === 'string' && fallbackMessage.trim() && !/^[a-z_]+$/u.test(fallbackMessage)) {
     return fallbackMessage;
   }
-  return `Não foi possível acessar o OnFrame remoto. Código ${status}.`;
+  return `Não foi possível acessar o onframe remoto. Código ${status}.`;
 }
 
 function readRemoteSession() {
@@ -791,7 +791,7 @@ async function handleApiMessage(message) {
     return {
       ok: false,
       status: 401,
-      error: 'Entre na extensão do OnFrame para editar anúncios.',
+      error: 'Entre na extensão do onframe para editar anúncios.',
       code: 'extension_session_unauthorized',
       technicalError: remoteSession ? 'extension_session_expired' : 'extension_session_missing'
     };
@@ -825,7 +825,7 @@ async function handleRemoteApiMessage(path, options, session) {
     return {
       ok: false,
       status: error && error.status ? error.status : 0,
-      error: error && error.message ? error.message : 'Não consegui acessar o OnFrame remoto.',
+      error: error && error.message ? error.message : 'Não consegui acessar o onframe remoto.',
       code: error && error.code ? error.code : '',
       technicalError:
         error && error.technicalError ? error.technicalError : error && error.message ? error.message : String(error)

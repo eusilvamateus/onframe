@@ -1119,7 +1119,7 @@ test('Turnstile so executa sob demanda e exibe area apenas durante interacao', a
   challenge.destroy();
 });
 
-test('popup e opções usam o pacote oficial da Onblide sem expor um código de pareamento', () => {
+test('popup e opções usam o pacote oficial da onblide sem expor um código de pareamento', () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const popup = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'app.jsx'), 'utf8');
   const popupLoading = fs.readFileSync(path.join(extensionRoot, 'ui', 'popup', 'PopupLoading.jsx'), 'utf8');
@@ -1205,7 +1205,7 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.doesNotMatch(optionsCss, /\.onframe-(?:popup-)?integration-list\s*\{[^}]*border-top/);
   assert.match(options, /<AuthBrand \/>/);
   assert.match(authPanel, /<Logo size=\{28\} \/>/);
-  assert.doesNotMatch(authPanel, /onframe-stacked-primary|alt="OnFrame"/);
+  assert.doesNotMatch(authPanel, /onframe-stacked-primary|alt="onframe"/);
   assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*40px/);
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
@@ -1438,9 +1438,9 @@ test('ponte da extensão exige sessão remota e nunca usa fallback HTTP local', 
 
   assert.doesNotMatch(shared, /127\.0\.0\.1|const SERVICE/);
   assert.doesNotMatch(background, /127\.0\.0\.1|onframe:openLauncher|const SERVICE/);
-  assert.match(background, /Entre na extensão do OnFrame para editar anúncios/);
+  assert.match(background, /Entre na extensão do onframe para editar anúncios/);
   assert.match(background, /\/v1\$\{path\}/);
-  assert.match(content, /Entre na extensão do OnFrame para editar anúncios/);
+  assert.match(content, /Entre na extensão do onframe para editar anúncios/);
 });
 
 test('background cria a sessão remota a partir do bearer do Supabase sem expor o token', async () => {
@@ -1517,11 +1517,11 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
             : { status: 'pending' }
         );
       if (url.endsWith('/v1/extension-session'))
-        return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'OnFrame' } });
+        return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'onframe' } });
       if (url.endsWith('/v1/extension-sessions/from-auth'))
         return Response.json({ token, sessionId: 'session-1', expiresAt: '2099-01-01T00:00:00.000Z' }, { status: 201 });
       if (url.endsWith('/v1/accounts'))
-        return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'OnFrame', enabled: true }] });
+        return Response.json({ accounts: [{ id: 'acc-1', userId: '123', nickname: 'onframe', enabled: true }] });
       if (url.includes('/v1/app/item-edit-history'))
         return Response.json({ events: [], page: 1, total: 0, totalPages: 1 });
       if (url.endsWith('/v1/accounts/123')) {
@@ -1531,7 +1531,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
             {
               id: 'acc-1',
               userId: '123',
-              nickname: 'OnFrame',
+              nickname: 'onframe',
               displayName: payload.displayName || null,
               enabled: payload.enabled ?? true
             }
@@ -1545,7 +1545,7 @@ test('background cria a sessão remota a partir do bearer do Supabase sem expor 
         );
       if (url.endsWith('/v1/api/resolve/quick')) return Response.json({ item: { id: 'MLB1234567890' }, quick: true });
       if (options.method === 'DELETE') return Response.json({ revokedAt: '2026-09-28T00:00:00.000Z' });
-      return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'OnFrame' } });
+      return Response.json({ user: { email: 'mateus@example.com', name: 'Mateus' }, workspace: { name: 'onframe' } });
     },
     Headers,
     Response,

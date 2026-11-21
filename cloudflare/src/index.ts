@@ -436,7 +436,7 @@ export async function provisionActor(env: Env, identity: SupabaseIdentity): Prom
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(id) DO NOTHING
     `
-          ).bind(workspaceId, `OnFrame - ${identity.name}`, userId, timestamp, timestamp),
+          ).bind(workspaceId, `onframe - ${identity.name}`, userId, timestamp, timestamp),
           env.ONFRAME_DB.prepare(
             `
       INSERT INTO workspace_members (workspace_id, user_id, role_id, created_at, updated_at)
@@ -470,7 +470,7 @@ function newExtensionSession(): { createdAt: number; expiresAt: number; sessionI
 async function createExtensionSession(
   env: Env,
   actor: Pick<Actor, 'userId' | 'workspaceId' | 'identityVersion' | 'authSessionId'>,
-  label: string | null = 'Extensão OnFrame'
+  label: string | null = 'Extensão onframe'
 ): Promise<{ expiresAt: number; sessionId: string; token: string }> {
   const session = newExtensionSession();
 
@@ -1525,7 +1525,7 @@ async function activateWorkspace(
     .first<{ role_id: string }>();
   if (!membership) throw new RequestError('workspace_access_forbidden', 403);
 
-  const session = await createExtensionSession(env, { ...actor, workspaceId }, actor.label || 'Extensão OnFrame');
+  const session = await createExtensionSession(env, { ...actor, workspaceId }, actor.label || 'Extensão onframe');
   await env.ONFRAME_DB.prepare(
     `
     UPDATE extension_sessions SET revoked_at = ?
@@ -1645,7 +1645,7 @@ async function profilePayload(env: RuntimeEnv, actor: ExtensionSessionActor): Pr
     },
     sessions: sessions.results.map((session) => ({
       id: session.id,
-      label: session.label || 'Extensão OnFrame',
+      label: session.label || 'Extensão onframe',
       current: session.id === actor.sessionId,
       createdAt: new Date(session.created_at).toISOString(),
       lastSeenAt: session.last_seen_at ? new Date(session.last_seen_at).toISOString() : null
@@ -1872,7 +1872,7 @@ export async function leaveWorkspace(env: RuntimeEnv, actor: ExtensionSessionAct
   const session = await createExtensionSession(
     env,
     { ...actor, workspaceId: nextMembership.workspace_id },
-    actor.label || 'Extensão OnFrame'
+    actor.label || 'Extensão onframe'
   );
   return json({ left: true, ...createdExtensionSessionPayload(session) });
 }
@@ -1900,7 +1900,7 @@ export async function deleteWorkspace(env: RuntimeEnv, actor: ExtensionSessionAc
   const session = await createExtensionSession(
     env,
     { ...actor, workspaceId: nextMembership.workspace_id },
-    actor.label || 'Extensão OnFrame'
+    actor.label || 'Extensão onframe'
   );
   return json({ deleted: true, ...createdExtensionSessionPayload(session) });
 }
@@ -1997,7 +1997,7 @@ function invitationUrl(token: string): string {
 }
 
 function invitationEmailHtml(workspaceName: string, url: string): string {
-  return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#f2f0e8;color:#545454;font-family:Poppins,Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:48px 16px"><table role="presentation" width="480" cellspacing="0" cellpadding="0" style="width:100%;max-width:480px;background:#fff;border:1px solid #ececec;border-radius:12px"><tr><td style="padding:32px"><p style="margin:0 0 12px;color:#0a4ee4;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em">CONVITE PARA WORKSPACE</p><h1 style="margin:0 0 12px;color:#2a2a2a;font-size:28px;line-height:1.2">Você foi convidado para ${escapeHtml(workspaceName)}</h1><p style="margin:0;color:#545454;font-size:15px;line-height:1.6">Entre ou crie sua conta OnFrame para participar do workspace.</p><table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:24px"><tr><td style="border-radius:8px;background:#0a4ee4"><a href="${escapeHtml(url)}" style="display:inline-block;padding:11px 18px;color:#fff;font-size:14px;font-weight:600;text-decoration:none">Aceitar convite</a></td></tr></table><p style="margin:24px 0 0;color:#7a7a7a;font-size:12px;line-height:1.5">Este convite expira em 7 dias e pode ser usado uma única vez.</p></td></tr><tr><td style="padding:16px 32px;border-top:1px solid #ececec;color:#a8a8a8;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-align:center">ONFRAME · ONBLIDE.COM</td></tr></table></td></tr></table></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#f2f0e8;color:#545454;font-family:Poppins,Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:48px 16px"><table role="presentation" width="480" cellspacing="0" cellpadding="0" style="width:100%;max-width:480px;background:#fff;border:1px solid #ececec;border-radius:12px"><tr><td style="padding:32px"><p style="margin:0 0 12px;color:#0a4ee4;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em">CONVITE PARA WORKSPACE</p><h1 style="margin:0 0 12px;color:#2a2a2a;font-size:28px;line-height:1.2">Você foi convidado para ${escapeHtml(workspaceName)}</h1><p style="margin:0;color:#545454;font-size:15px;line-height:1.6">Entre ou crie sua conta onframe para participar do workspace.</p><table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:24px"><tr><td style="border-radius:8px;background:#0a4ee4"><a href="${escapeHtml(url)}" style="display:inline-block;padding:11px 18px;color:#fff;font-size:14px;font-weight:600;text-decoration:none">Aceitar convite</a></td></tr></table><p style="margin:24px 0 0;color:#7a7a7a;font-size:12px;line-height:1.5">Este convite expira em 7 dias e pode ser usado uma única vez.</p></td></tr><tr><td style="padding:16px 32px;border-top:1px solid #ececec;color:#a8a8a8;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-align:center">onframe · onblide.com</td></tr></table></td></tr></table></body></html>`;
 }
 
 async function sendWorkspaceInvitationEmail(
@@ -2018,7 +2018,7 @@ async function sendWorkspaceInvitationEmail(
     body: JSON.stringify({
       from,
       to: recipient,
-      subject: `Convite para ${workspaceName} no OnFrame`,
+      subject: `Convite para ${workspaceName} no onframe`,
       html: invitationEmailHtml(workspaceName, invitationUrl(token))
     }),
     signal: AbortSignal.timeout(3500)
@@ -2234,7 +2234,7 @@ export async function acceptWorkspaceInvitation(
   const nextSession = await createExtensionSession(
     env,
     { ...actor, workspaceId: invitation.workspace_id },
-    actor.label || 'Extensão OnFrame'
+    actor.label || 'Extensão onframe'
   );
   await env.ONFRAME_DB.prepare(`UPDATE extension_sessions SET revoked_at = ? WHERE id = ?`)
     .bind(timestamp, actor.sessionId)
@@ -2363,7 +2363,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
     if (authorizationError || !code) {
       return html(
         resultPage({
-          title: 'Conta não conectada - OnFrame',
+          title: 'Conta não conectada - onframe',
           eyebrow: 'Mercado Livre',
           heading: 'Não foi possível conectar a conta',
           message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
@@ -2389,7 +2389,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
     );
     return html(
       resultPage({
-        title: 'Conta conectada - OnFrame',
+        title: 'Conta conectada - onframe',
         eyebrow: 'Mercado Livre',
         heading: 'Conta conectada',
         message: `${account.nickname || 'A conta'} foi vinculada ao workspace. Volte para as opções da extensão.`,
@@ -2404,7 +2404,7 @@ async function handleMeliCallback(request: Request, env: RuntimeEnv, requestId: 
     logFailure(requestId, request, error);
     return html(
       resultPage({
-        title: 'Conta não conectada - OnFrame',
+        title: 'Conta não conectada - onframe',
         eyebrow: 'Mercado Livre',
         heading: 'Não foi possível conectar a conta',
         message: 'A autorização não foi concluída. Feche esta aba e inicie uma nova conexão pela extensão.',
@@ -2465,9 +2465,9 @@ export default {
         );
         return html(
           connectionPage({
-            title: 'Conectar extensão - OnFrame',
+            title: 'Conectar extensão - onframe',
             eyebrow: 'ACESSO À EXTENSÃO',
-            heading: 'Conclua o acesso ao OnFrame',
+            heading: 'Conclua o acesso ao onframe',
             description: 'Esta página confirma o link enviado pela extensão.',
             supabaseUrl,
             supabasePublishableKey
@@ -2579,7 +2579,7 @@ export default {
         const actor = await provisionActor(env, await authenticateSupabaseRequest(request, env));
         return json({
           user: { id: actor.userId, email: actor.email, name: actor.name },
-          workspace: { id: actor.workspaceId, name: `OnFrame - ${actor.name}` }
+          workspace: { id: actor.workspaceId, name: `onframe - ${actor.name}` }
         });
       }
 

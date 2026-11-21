@@ -8,7 +8,7 @@ nao explica o que aconteceu ou quando a pessoa precisa tomar uma decisao.
 
 Esse contrato segue os principios de proximidade de feedback do GitHub Primer,
 a sincronizacao local do Linear e a hierarquia de mensagens do Atlassian Design
-System. O OnFrame adota as regras, nao a aparencia desses produtos.
+System. O onframe adota as regras, nao a aparencia desses produtos.
 
 ## Resultados
 
@@ -46,7 +46,7 @@ acao diferente da familia a que pertencem.
 Uma operacao `accepted` atualiza o estado local e e reconciliada em segundo
 plano. A interface nao apresenta essa espera como erro. Se a confirmacao demorar,
 o item passa a indicar sincronizacao. Se a fonte remota encerrar a reconciliacao
-sem confirmar a mudanca, o OnFrame restaura o estado remoto e apresenta o
+sem confirmar a mudanca, o onframe restaura o estado remoto e apresenta o
 problema no contexto ainda aberto ou por notificacao global quando esse contexto
 ja tiver sido fechado.
 

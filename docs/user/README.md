@@ -1,6 +1,6 @@
-# Guias do OnFrame
+# Guias do onframe
 
-Esta pasta reune materiais para quem usa o OnFrame no dia a dia. Os guias
+Esta pasta reune materiais para quem usa o onframe no dia a dia. Os guias
 explicam como instalar a extensao, conectar uma conta e operar os recursos na
 pagina do anuncio.
 

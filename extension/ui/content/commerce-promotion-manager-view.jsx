@@ -848,7 +848,7 @@ function PromotionSection({ definition, rows, actions }) {
 function HeaderTitle() {
   return (
     <div className="onframe-promotion-manager-title">
-      <span>ONFRAME</span>
+      <span>onframe</span>
       <strong>Promoções</strong>
       <small>Controle ofertas e campanhas deste anúncio.</small>
     </div>

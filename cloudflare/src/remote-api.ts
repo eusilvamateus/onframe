@@ -566,7 +566,7 @@ export async function handleRemoteApiRequest(input: {
         throw new RemoteApiError(
           'product_not_found',
           404,
-          'Nenhum produto do OnFrame foi encontrado para este anúncio.'
+          'Nenhum produto do onframe foi encontrado para este anúncio.'
         );
       }
       const body = await readJson(input.request);
@@ -1463,7 +1463,7 @@ async function resolveLegacyBulkClient(input: {
       'Conta conectada nao encontrada para este anuncio.'
     );
   if (account.enabled === false)
-    throw new RemoteApiError('workspace_accounts_disabled', 403, 'Esta conta esta desativada no OnFrame.');
+    throw new RemoteApiError('workspace_accounts_disabled', 403, 'Esta conta esta desativada no onframe.');
   return input.context.clientFactory(account);
 }
 

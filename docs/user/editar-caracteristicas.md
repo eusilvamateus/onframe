@@ -1,7 +1,7 @@
 # Editar caracteristicas do produto
 
 A ficha tecnica mostra as principais informacoes do produto, como marca, modelo,
-cor, medidas, material e outros detalhes importantes. O OnFrame permite editar
+cor, medidas, material e outros detalhes importantes. O onframe permite editar
 parte dessas caracteristicas direto na tabela exibida pelo Mercado Livre.
 
 ![Print - Caracteristicas antes da edicao](assets/caracteristicas-antes-edicao.png)
@@ -36,7 +36,7 @@ Algumas caracteristicas recebem marcadores para ajudar na revisao:
 - `Pendente`: o campo ainda precisa de informacao.
 - `Oculto`: o campo existe no cadastro, mas nao aparece para o comprador na
   ficha publica.
-- `Leitura`: o campo nao pode ser alterado pelo OnFrame naquele momento.
+- `Leitura`: o campo nao pode ser alterado pelo onframe naquele momento.
 
 ![Print - Marcadores pendente oculto e leitura](assets/caracteristicas-marcadores-status.png)
 
@@ -56,7 +56,7 @@ nesses campos podem alterar calculo de frete ou gerar divergencias na operacao.
 
 ## Aplicar em todas as variacoes
 
-Quando o anuncio possui variacoes independentes, o OnFrame pode mostrar a opcao
+Quando o anuncio possui variacoes independentes, o onframe pode mostrar a opcao
 `Aplicar a todas as variacoes`.
 
 Ao marcar essa opcao, a extensao tenta salvar as mesmas caracteristicas nas
@@ -65,7 +65,7 @@ variacoes ativas e pausadas que permitem edicao.
 ![Print - Aplicar caracteristicas em todas as variacoes](assets/caracteristicas-aplicar-todas-variacoes.png)
 
 Nem todas as variacoes aceitam os mesmos campos. Se uma variacao tiver algum
-bloqueio, o OnFrame mostra o resultado depois do envio.
+bloqueio, o onframe mostra o resultado depois do envio.
 
 ## Por que alguns campos nao podem ser editados
 
@@ -73,5 +73,5 @@ Algumas informacoes sao controladas pelo Mercado Livre ou ficam bloqueadas por
 causa do tipo de anuncio, categoria, catalogo, variacao ou regra interna da
 plataforma.
 
-Quando isso acontecer, o OnFrame preserva o campo e mostra que ele e somente
+Quando isso acontecer, o onframe preserva o campo e mostra que ele e somente
 leitura, em vez de oferecer uma edicao que nao seria aceita.

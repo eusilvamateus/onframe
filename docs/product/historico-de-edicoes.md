@@ -2,7 +2,7 @@
 
 ## Finalidade
 
-O historico registra alteracoes de anuncios realizadas pelo OnFrame e
+O historico registra alteracoes de anuncios realizadas pelo onframe e
 confirmadas pelo Mercado Livre. Tentativas recusadas, alvos bloqueados e itens
 ignorados em operacoes em lote nao aparecem na linha do tempo.
 

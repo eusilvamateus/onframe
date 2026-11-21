@@ -109,11 +109,11 @@ export function resultPage(options: ResultPageOptions): string {
 export function invitationPage(extensionUrl: string): string {
   return hostedPage({
     kind: 'invitation',
-    title: 'Convite para o OnFrame',
+    title: 'Convite para o onframe',
     extensionUrl
   });
 }
 
 export function privacyPage(): string {
-  return hostedPage({ kind: 'privacy', title: 'Política de privacidade - OnFrame' });
+  return hostedPage({ kind: 'privacy', title: 'Política de privacidade - onframe' });
 }

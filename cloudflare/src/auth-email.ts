@@ -178,7 +178,7 @@ function verificationUrl(
 
 function wordmark(): string {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0">
-  <tr><td><img class="email-logo-light" src="${EMAIL_LOGO_LIGHT_URL}" width="144" alt="OnFrame" style="display:block;width:144px;height:auto;border:0;outline:none;text-decoration:none;"><img class="email-logo-dark" src="${EMAIL_LOGO_DARK_URL}" width="144" alt="OnFrame" style="display:none;width:144px;height:auto;border:0;outline:none;text-decoration:none;"></td></tr>
+  <tr><td><img class="email-logo-light" src="${EMAIL_LOGO_LIGHT_URL}" width="144" alt="onframe" style="display:block;width:144px;height:auto;border:0;outline:none;text-decoration:none;"><img class="email-logo-dark" src="${EMAIL_LOGO_DARK_URL}" width="144" alt="onframe" style="display:none;width:144px;height:auto;border:0;outline:none;text-decoration:none;"></td></tr>
 </table>`;
 }
 
@@ -255,7 +255,7 @@ function emailShell(options: { title: string; preview: string; content: string; 
           </td></tr>
           <tr><td class="email-muted" style="padding:24px 4px 0;color:#7a7a7a;font-family:Poppins,Arial,sans-serif;font-size:12px;line-height:18px;">
             <p style="margin:0 0 8px;">É uma mensagem automática; não precisa responder.</p>
-            <p style="margin:0;">OnFrame · onblide.com</p>
+            <p style="margin:0;">onframe · onblide.com</p>
           </td></tr>
         </table>
       </td></tr>
@@ -385,7 +385,7 @@ function emailChangeDeliveries(env: AuthEmailRuntimeEnv, event: AuthEmailEvent):
         actionType: 'email_change',
         recipient: newEmail ?? currentEmail,
         title: 'Confirme seu novo e-mail',
-        preview: 'Confirme o novo e-mail da sua conta OnFrame.',
+        preview: 'Confirme o novo e-mail da sua conta onframe.',
         description: 'Use o código abaixo ou o botão para confirmar o novo e-mail da sua conta.',
         buttonLabel: 'Confirmar novo e-mail',
         note: 'Se você não solicitou esta alteração, não confirme este código.',
@@ -413,7 +413,7 @@ function emailChangeDeliveries(env: AuthEmailRuntimeEnv, event: AuthEmailEvent):
       actionType: 'email_change',
       recipient: newEmail,
       title: 'Confirme seu novo e-mail',
-      preview: 'Confirme o novo e-mail da sua conta OnFrame.',
+      preview: 'Confirme o novo e-mail da sua conta onframe.',
       description: 'Confirme esta etapa no novo endereço para concluir a alteração.',
       buttonLabel: 'Confirmar novo e-mail',
       note: 'Se você não solicitou esta alteração, ignore este e-mail.',
@@ -453,7 +453,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           actionType,
           recipient,
           title: 'Confirme seu e-mail',
-          preview: 'Confirme seu endereço para ativar a conta OnFrame.',
+          preview: 'Confirme seu endereço para ativar a conta onframe.',
           description: 'Use o link abaixo para confirmar seu endereço de e-mail.',
           buttonLabel: 'Confirmar e-mail',
           note: 'Se você não criou esta conta, ignore este e-mail.',
@@ -466,8 +466,8 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           actionType,
           recipient,
           title: 'Você recebeu um convite',
-          preview: 'Você foi convidado para acessar um workspace no OnFrame.',
-          description: 'Use o código abaixo ou o botão para aceitar seu convite para o OnFrame.',
+          preview: 'Você foi convidado para acessar um workspace no onframe.',
+          description: 'Use o código abaixo ou o botão para aceitar seu convite para o onframe.',
           buttonLabel: 'Aceitar convite',
           note: 'Se você não esperava este convite, ignore este e-mail.',
           warning: 'O convite só será aceito depois da sua confirmação.'
@@ -479,10 +479,10 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           {
             actionType,
             recipient,
-            subject: 'Seu código de acesso ao OnFrame',
+            subject: 'Seu código de acesso ao onframe',
             html: emailShell({
               title: 'Seu código de acesso',
-              preview: 'Use este código para entrar no OnFrame.',
+              preview: 'Use este código para entrar no onframe.',
               content: `<p class="email-copy" style="margin:0;color:#545454;font-family:Poppins,Arial,sans-serif;font-size:15px;line-height:24px;">Informe este código na tela de login.</p>${codeInput(tokenFor(event.email_data))}${notice('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não solicitou o acesso.', 'danger')}`,
               note: 'Este código é de uso único.'
             })
@@ -494,10 +494,10 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           {
             actionType,
             recipient,
-            subject: 'Confirme seu e-mail no OnFrame',
+            subject: 'Confirme seu e-mail no onframe',
             html: emailShell({
               title: 'Confirme seu e-mail',
-              preview: 'Use este código na tela de segurança do OnFrame.',
+              preview: 'Use este código na tela de segurança do onframe.',
               content: `<p class="email-copy" style="margin:0;color:#545454;font-family:Poppins,Arial,sans-serif;font-size:15px;line-height:24px;">Informe este código na tela em que você iniciou a verificação.</p>${codeInput(tokenFor(event.email_data))}${notice('Não foi você?', 'Não compartilhe este código. Ignore este e-mail se você não iniciou a verificação.', 'danger')}`,
               note: 'Este código é de uso único e permite verificar o acesso à sua conta.'
             })
@@ -509,9 +509,9 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           actionType,
           recipient,
           title: 'Seu link de acesso',
-          preview: 'Use este link para entrar no OnFrame.',
+          preview: 'Use este link para entrar no onframe.',
           description: 'Use o link abaixo para entrar na sua conta.',
-          buttonLabel: 'Entrar no OnFrame',
+          buttonLabel: 'Entrar no onframe',
           note: 'Se você não solicitou este acesso, ignore este e-mail.',
           warning: 'Nenhum acesso será concedido sem usar este link.'
         })
@@ -522,7 +522,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           actionType,
           recipient,
           title: 'Redefina sua senha',
-          preview: 'Use este link para redefinir a senha da sua conta OnFrame.',
+          preview: 'Use este link para redefinir a senha da sua conta onframe.',
           description: 'Use o link abaixo para definir uma nova senha.',
           buttonLabel: 'Redefinir senha',
           note: 'Se você não solicitou esta recuperação, ignore este e-mail. Sua senha não será alterada.',
@@ -535,7 +535,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
           actionType,
           recipient,
           title: 'Confirme esta ação',
-          preview: 'Use este código para confirmar uma ação sensível no OnFrame.',
+          preview: 'Use este código para confirmar uma ação sensível no onframe.',
           description: 'Informe este código na tela de verificação para continuar.',
           buttonLabel: 'Confirmar ação',
           note: 'Se você não iniciou esta ação, ignore este e-mail.',
@@ -549,7 +549,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         notificationDelivery(event, {
           actionType,
           title: 'Sua senha foi alterada',
-          description: 'A senha da sua conta OnFrame foi alterada.',
+          description: 'A senha da sua conta onframe foi alterada.',
           note: 'Se você não fez esta alteração, recupere o acesso imediatamente.'
         })
       ];
@@ -567,7 +567,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         notificationDelivery(event, {
           actionType,
           title: 'O telefone da sua conta foi alterado',
-          description: 'O telefone associado à sua conta OnFrame foi atualizado.',
+          description: 'O telefone associado à sua conta onframe foi atualizado.',
           note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
         })
       ];
@@ -594,7 +594,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         notificationDelivery(event, {
           actionType,
           title: 'Um método de acesso foi conectado',
-          description: 'Um método adicional de acesso foi conectado à sua conta OnFrame.',
+          description: 'Um método adicional de acesso foi conectado à sua conta onframe.',
           note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
         })
       ];
@@ -603,7 +603,7 @@ function deliveriesForEvent(env: AuthEmailRuntimeEnv, event: AuthEmailEvent): Au
         notificationDelivery(event, {
           actionType,
           title: 'Um método de acesso foi removido',
-          description: 'Um método de acesso foi removido da sua conta OnFrame.',
+          description: 'Um método de acesso foi removido da sua conta onframe.',
           note: 'Se você não fez esta alteração, revise a segurança da sua conta.'
         })
       ];

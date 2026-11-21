@@ -20,7 +20,7 @@
     const supabaseUrl = String((payload && payload.supabaseUrl) || '');
     const supabasePublishableKey = String((payload && payload.supabasePublishableKey) || '');
     if (!response.ok || !SUPABASE_ORIGIN_PATTERN.test(supabaseUrl) || !supabasePublishableKey) {
-      throw new Error('Não foi possível preparar o acesso ao OnFrame.');
+      throw new Error('Não foi possível preparar o acesso ao onframe.');
     }
     return {
       supabaseUrl,

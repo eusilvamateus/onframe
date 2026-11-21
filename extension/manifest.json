@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "OnFrame",
+  "name": "onframe",
   "version": "0.5.0",
   "description": "Edita anuncios do Mercado Livre pela pagina do produto.",
   "icons": {
@@ -20,7 +20,7 @@
     "open_in_tab": true
   },
   "action": {
-    "default_title": "OnFrame",
+    "default_title": "onframe",
     "default_popup": "ui/popup/index.html",
     "default_icon": {
       "16": "assets/icons/icon-16.png",

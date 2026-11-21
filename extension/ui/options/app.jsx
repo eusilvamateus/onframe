@@ -322,7 +322,7 @@ function Home({
         </section>
       )}
       <section className="onframe-stack onframe-home-section" aria-label="Acessos rápidos">
-        <SectionHeader title="Acessos rápidos" copy="Continue pelos fluxos centrais do OnFrame." />
+        <SectionHeader title="Acessos rápidos" copy="Continue pelos fluxos centrais do onframe." />
         <List as="nav" size="sm" dividers ariaLabel="Acessos rápidos">
           {canProductsRead && (
             <ListItem
@@ -546,7 +546,7 @@ function ProfileSettings({ profile, securityOverview, loading, onSave, onAvatar,
     : [];
   return (
     <section className="onframe-stack onframe-settings-form" aria-label="Dados pessoais">
-      <SectionHeader title="Dados pessoais" copy="Defina como sua conta aparece no OnFrame." />
+      <SectionHeader title="Dados pessoais" copy="Defina como sua conta aparece no onframe." />
       <div className="onframe-profile-layout">
         <FileUpload
           key={`${profile.user.avatarUrl || 'empty'}-${avatarControlKey}`}
@@ -1312,7 +1312,7 @@ function OptionsApp() {
       await sendRemoteMessage('oauth-start');
       const feedback = {
         tone: 'info',
-        message: 'Autorização aberta. Conclua a conexão no Mercado Livre e retorne ao OnFrame.'
+        message: 'Autorização aberta. Conclua a conexão no Mercado Livre e retorne ao onframe.'
       };
       if (view === 'integrations') setIntegrationFeedback(feedback);
       else setNotice(feedback);
@@ -1766,7 +1766,7 @@ function OptionsApp() {
             active={view}
             onNav={navigate}
             ariaLabel="Navegação do workspace"
-            header={<img className="onframe-sidebar-brand" src="../../assets/icons/icon-32.png" alt="OnFrame" />}
+            header={<img className="onframe-sidebar-brand" src="../../assets/icons/icon-32.png" alt="onframe" />}
             footer={({ collapsed }) => (
                 <Menu
                   block

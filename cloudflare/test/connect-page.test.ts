@@ -31,9 +31,9 @@ test('configuracao publica informa o contrato de seguranca sem expor segredo', a
 
 test('página pública conclui o fluxo iniciado pela extensão sem exibir código de pareamento', () => {
   const page = connectionPage({
-    title: 'Conectar extensão - OnFrame',
+    title: 'Conectar extensão - onframe',
     eyebrow: 'ACESSO À EXTENSÃO',
-    heading: 'Conclua o acesso ao <em>OnFrame</em>',
+    heading: 'Conclua o acesso ao <em>onframe</em>',
     description: 'Texto de teste.',
     supabaseUrl: 'https://ignrkxityihpvreaimxe.supabase.co',
     supabasePublishableKey: 'sb_publishable_example'
@@ -58,7 +58,7 @@ test('página pública conclui o fluxo iniciado pela extensão sem exibir códig
 
 test('política de privacidade tem rota pública e usa a interface hospedada', async () => {
   const page = privacyPage();
-  assert.match(page, /Política de privacidade - OnFrame/);
+  assert.match(page, /Política de privacidade - onframe/);
   assert.match(page, /&quot;kind&quot;:&quot;privacy&quot;/);
   assert.match(hostedApp, /function PrivacyPage\(\)/);
   assert.match(hostedApp, /Mercado Livre/);
@@ -98,7 +98,7 @@ test('recuperacao apresenta titulo e legenda proprios sem alterar o fluxo de sen
   );
 });
 
-test('desafio do Turnstile fica em uma origem do OnFrame e responde somente ao pai da extensão', () => {
+test('desafio do Turnstile fica em uma origem do onframe e responde somente ao pai da extensão', () => {
   const page = captchaPage('0x4AAAAAAFIJHY8iacQ0d-dn');
   assert.match(page, /challenges\.cloudflare\.com\/turnstile/);
   assert.match(page, /chrome-extension/);
@@ -137,7 +137,7 @@ test('CSP da confirmação e do desafio permite somente as origens necessárias'
 
 test('resultado OAuth mantém um resultado sem controles interativos aninhados', () => {
   const page = resultPage({
-    title: 'Conta conectada - OnFrame',
+    title: 'Conta conectada - onframe',
     eyebrow: 'Mercado Livre',
     heading: 'Conta conectada',
     message: 'Tudo certo.',

@@ -24,7 +24,7 @@
     if (!hasCharacteristicsView) throw new Error('Interface de características indisponível.');
     const toUserError = (err) =>
       CharacteristicsModel.friendlyError(
-        Shared.toUserError(err, { logPrefix: '[OnFrame características] detalhe tecnico:' })
+        Shared.toUserError(err, { logPrefix: '[onframe características] detalhe tecnico:' })
       );
 
     const state = {
@@ -1205,7 +1205,7 @@
 
     function handleCharacteristicsViewFailure(error) {
       if (rootScope.console && typeof rootScope.console.error === 'function') {
-        rootScope.console.error('[OnFrame] A interface de características falhou.', error);
+        rootScope.console.error('[onframe] A interface de características falhou.', error);
       }
     }
 
