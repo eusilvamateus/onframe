@@ -1635,9 +1635,57 @@ body:has(
   padding: var(--ob-space-12) var(--ob-space-24) 0;
 }
 
-.onframe-promotion-manager-bulk-report.in-editor {
-  padding: 0 var(--ob-space-16) var(--ob-space-16);
+.onframe-promotion-manager-bulk-preview {
+  padding: var(--ob-space-16);
+  border-top: 1px solid var(--ob-line-soft);
   background: var(--ob-bg-alt);
+}
+
+.onframe-promotion-manager-bulk-preview-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ob-space-8);
+  margin-bottom: var(--ob-space-8);
+  font: var(--ob-w-regular) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
+  color: var(--ob-fg-soft);
+}
+
+.onframe-promotion-manager-bulk-preview-heading strong,
+.onframe-promotion-manager-bulk-blocked > strong {
+  color: var(--ob-fg-strong);
+  font-weight: var(--ob-w-semibold);
+}
+
+.onframe-promotion-manager-bulk-target-image {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: var(--ob-r-xs);
+  background: var(--ob-surface);
+  color: var(--ob-fg-soft);
+}
+
+.onframe-promotion-manager-bulk-target-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.onframe-promotion-manager-bulk-target-reason {
+  display: block;
+}
+
+.onframe-promotion-manager-bulk-blocked {
+  margin-top: var(--ob-space-12);
+}
+
+.onframe-promotion-manager-bulk-blocked > strong {
+  display: block;
+  margin-bottom: var(--ob-space-4);
+  font: var(--ob-w-semibold) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
 }
 
 .onframe-promotion-manager-bulk-error {

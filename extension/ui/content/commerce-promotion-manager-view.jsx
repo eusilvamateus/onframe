@@ -12,6 +12,8 @@ import {
   EmptyState,
   Input,
   Kbd,
+  List,
+  ListItem,
   Menu,
   Modal,
   Ph,
@@ -252,27 +254,81 @@ function ContextFeedback({ feedback, className = '' }) {
   );
 }
 
-function BulkReport({ result, preview = false, feedback, onDismiss, className = '' }) {
+function BulkTargetImage({ target }) {
+  const picture = target.preview?.item?.pictures?.[0];
+  const imageUrl = picture?.secure_url || picture?.url || '';
+  const [broken, setBroken] = useState(false);
+  return (
+    <span className="onframe-promotion-manager-bulk-target-image">
+      {imageUrl && !broken
+        ? <img src={imageUrl} alt="" loading="lazy" onError={() => setBroken(true)} />
+        : icon('image', 20)}
+    </span>
+  );
+}
+
+function BulkPreview({ result }) {
+  const [visibleCount, setVisibleCount] = useState(5);
+  if (!Array.isArray(result?.targets)) return null;
+  const eligible = result.targets.filter((target) => target.status === 'eligible');
+  const blocked = result.targets.filter((target) => target.status === 'blocked');
+  const visibleEligible = eligible.slice(0, visibleCount);
+  const visibleBlocked = blocked.slice(0, Math.max(0, visibleCount - eligible.length));
+  const remaining = eligible.length + blocked.length - visibleEligible.length - visibleBlocked.length;
+  const renderTargets = (targets, ariaLabel) => (
+    <List size="md" dividers ariaLabel={ariaLabel}>
+      {targets.map((target) => (
+        <ListItem
+          key={target.itemId}
+          leading={<BulkTargetImage target={target} />}
+          title={<span title={target.title || target.itemId}>{target.title || target.itemId}</span>}
+          description={target.status === 'blocked' && target.message
+            ? <>{target.itemId}<span className="onframe-promotion-manager-bulk-target-reason">{target.message}</span></>
+            : target.itemId}
+          wrap={target.status === 'blocked'}
+          strong
+        />
+      ))}
+    </List>
+  );
+
+  return (
+    <section className="onframe-promotion-manager-bulk-preview" aria-label="Prévia dos anúncios da família">
+      <div className="onframe-promotion-manager-bulk-preview-heading">
+        <strong>{eligible.length} de {result.targets.length} anúncios elegíveis</strong>
+      </div>
+      {visibleEligible.length > 0 && renderTargets(visibleEligible, 'Anúncios elegíveis')}
+      {visibleBlocked.length > 0 && (
+        <div className="onframe-promotion-manager-bulk-blocked">
+          <strong>Não elegíveis ({blocked.length})</strong>
+          {renderTargets(visibleBlocked, 'Anúncios não elegíveis')}
+        </div>
+      )}
+      {remaining > 0 && (
+        <Button kind="quiet" size="sm" icon={icon('caret-down')} onClick={() => setVisibleCount((count) => count + 10)}>
+          Mostrar mais anúncios ({remaining})
+        </Button>
+      )}
+    </section>
+  );
+}
+
+function BulkReport({ result, feedback, onDismiss, className = '' }) {
   if (!result) return null;
   const targets = Array.isArray(result.targets) ? result.targets : [];
   const counts = result.counts || {};
-  const tracked = preview || (
+  const tracked = (
     typeof result.id === 'string' &&
     ['queued', 'running', 'confirming', 'completed', 'partial', 'failed'].includes(result.status) &&
     Number.isInteger(counts.total) && counts.total > 0 && targets.length === counts.total
   );
   if (!tracked) return null;
-  const groups = preview
-    ? [
-        { id: 'eligible', label: 'Elegíveis', statuses: ['eligible'] },
-        { id: 'blocked', label: 'Não elegíveis', statuses: ['blocked'] }
-      ]
-    : [
-        { id: 'queued', label: 'Em processamento', statuses: ['queued', 'running'] },
-        { id: 'applied', label: 'Aplicados', statuses: ['applied'] },
-        { id: 'pending', label: 'Aguardando confirmação', statuses: ['pending_confirmation'] },
-        { id: 'failed', label: 'Não aplicados', statuses: ['blocked', 'skipped', 'failed', 'unconfirmed'] }
-      ];
+  const groups = [
+    { id: 'queued', label: 'Em processamento', statuses: ['queued', 'running'] },
+    { id: 'applied', label: 'Aplicados', statuses: ['applied'] },
+    { id: 'pending', label: 'Aguardando confirmação', statuses: ['pending_confirmation'] },
+    { id: 'failed', label: 'Não aplicados', statuses: ['blocked', 'skipped', 'failed', 'unconfirmed'] }
+  ];
   const items = groups.map((group) => {
     const entries = targets.filter((target) => group.statuses.includes(target.status));
     return {
@@ -291,18 +347,14 @@ function BulkReport({ result, preview = false, feedback, onDismiss, className = 
       count: entries.length
     };
   }).filter((item) => item.count);
-  const title = preview
-    ? `${counts.eligible || 0} de ${counts.total || targets.length} anúncios elegíveis`
-    : result.status === 'queued' || result.status === 'running'
+  const title = result.status === 'queued' || result.status === 'running'
       ? `Aplicando em ${counts.total || targets.length} anúncios`
       : result.status === 'confirming'
         ? 'Aguardando confirmação do Mercado Livre'
         : feedback?.title || (counts.applied
           ? counts.failed || counts.blocked || counts.unconfirmed ? 'Aplicação parcial' : 'Aplicação concluída'
           : 'Nenhum anúncio aplicado');
-  const tone = preview
-    ? (counts.blocked ? 'warning' : 'info')
-    : ['queued', 'running', 'confirming'].includes(result.status)
+  const tone = ['queued', 'running', 'confirming'].includes(result.status)
       ? 'info' : feedback?.tone || (counts.applied
         ? counts.failed || counts.blocked || counts.unconfirmed ? 'warning' : 'success'
         : 'danger');
@@ -310,10 +362,10 @@ function BulkReport({ result, preview = false, feedback, onDismiss, className = 
   return (
     <div className={`onframe-promotion-manager-bulk-report ${className}`}>
       <Alert appearance="soft" tone={tone} title={title}>
-        {!preview && <span>{['queued', 'running', 'confirming'].includes(result.status)
+        <span>{['queued', 'running', 'confirming'].includes(result.status)
           ? `${counts.applied || 0} aplicados; ${counts.queued || 0} em processamento; ${counts.pending || 0} aguardando confirmação.`
-          : feedback?.message || `${counts.applied || 0} aplicados; ${counts.pending || 0} aguardando confirmação; ${(counts.failed || 0) + (counts.blocked || 0) + (counts.unconfirmed || 0)} não aplicados.`}</span>}
-        {!!items.length && <Accordion items={items} type="multiple" ariaLabel={preview ? 'Prévia por anúncio' : 'Resultado por anúncio'} />}
+          : feedback?.message || `${counts.applied || 0} aplicados; ${counts.pending || 0} aguardando confirmação; ${(counts.failed || 0) + (counts.blocked || 0) + (counts.unconfirmed || 0)} não aplicados.`}</span>
+        {!!items.length && <Accordion items={items} type="multiple" ariaLabel="Resultado por anúncio" />}
       </Alert>
       {onDismiss && !['queued', 'running', 'confirming'].includes(result.status) && (
         <Button kind="quiet" size="sm" iconOnly aria-label="Dispensar resultado" icon={icon('x', 14)} onClick={onDismiss} />
@@ -496,7 +548,7 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
           <Alert appearance="soft" tone="danger">{row.bulkError}</Alert>
         </div>
       )}
-      {row.bulkEnabled && row.bulkPreview && <BulkReport result={row.bulkPreview} preview className="in-editor" />}
+      {row.bulkEnabled && row.bulkPreview && <BulkPreview result={row.bulkPreview} />}
       <div className={`onframe-promotion-manager-footer-shell${editing ? ' is-visible' : ''}`} aria-hidden={!editing}>
         <div className="onframe-promotion-manager-footer-content">
           <div className="onframe-promotion-manager-editor-footer">
@@ -507,7 +559,6 @@ function EditPanel({ row, actions, simulatingFinancials, setSimulatingFinancials
                   onChange={actions.onToggleBulk}
                   disabled={!editing || row.busy}
                   label="Aplicar a outros anúncios da família"
-                  description="Inclui anúncios ativos e pausados que aceitarem esta oferta."
                 />
               </div>
             )}

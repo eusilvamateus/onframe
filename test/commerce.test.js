@@ -1255,6 +1255,23 @@ test('feedback de promoções permanece contextual e só escala eventos de fundo
   assert.match(view, /feedback=\{model\.feedback\}/);
 });
 
+test('prévia da família lista anúncios com foto, título e MLB sem alerta', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
+  const preview = view.slice(view.indexOf('function BulkTargetImage'), view.indexOf('function BulkReport'));
+
+  assert.match(preview, /target\.preview\?\.item\?\.pictures\?\.\[0\]/);
+  assert.match(preview, /picture\?\.secure_url \|\| picture\?\.url/);
+  assert.match(preview, /<img src=\{imageUrl\} alt=""/);
+  assert.match(preview, /<List size="md" dividers ariaLabel=\{ariaLabel\}>/);
+  assert.match(preview, /leading=\{<BulkTargetImage target=\{target\} \/>\}/);
+  assert.match(preview, /description=\{target\.status === 'blocked'[\s\S]*: target\.itemId\}/s);
+  assert.doesNotMatch(preview, /<Alert|<Accordion/);
+  assert.doesNotMatch(view, /Inclui anúncios ativos e pausados que aceitarem esta oferta/);
+});
+
 test('feedback de preço permanece no popover e não confirma sucesso individual por toast', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'extension', 'modules', 'commerce', 'module.js'), 'utf8');
   const view = fs.readFileSync(
@@ -3388,6 +3405,7 @@ test('api bulk preview expõe contrato por item', async (t) => {
       status: 'active',
       price: 100,
       currency_id: 'BRL',
+      pictures: [{ secure_url: 'https://example.com/azul.jpg' }],
       tags: []
     },
     MLB2000000002: {
@@ -3401,6 +3419,7 @@ test('api bulk preview expõe contrato por item', async (t) => {
       status: 'active',
       price: 100,
       currency_id: 'BRL',
+      pictures: [{ secure_url: 'https://example.com/verde.jpg' }],
       tags: []
     }
   };
@@ -3436,6 +3455,10 @@ test('api bulk preview expõe contrato por item', async (t) => {
   assert.strictEqual(body.action, 'pricing.standard.update');
   assert.strictEqual(body.counts.total, 2);
   assert.strictEqual(body.counts.eligible, 2);
+  assert.deepStrictEqual(
+    body.targets.map((target) => target.preview.item.pictures[0].secure_url),
+    ['https://example.com/azul.jpg', 'https://example.com/verde.jpg']
+  );
 
   const userProductResponse = await fetch(`${server.url}/api/items/MLBU200000001/bulk/preview`, {
     method: 'POST',
