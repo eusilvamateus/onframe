@@ -13,7 +13,8 @@ const outputs = [
   'popup-integrations-ui.test.cjs',
   'popup-home-summary-ui.test.cjs',
   'popup-footer-ui.test.cjs',
-  'history-ui.test.cjs'
+  'history-ui.test.cjs',
+  'hosted-privacy-ui.test.cjs'
 ].map((file) => path.join(outdir, file));
 // O pacote local do DS tem seu proprio React de desenvolvimento; o teste usa o mesmo alias do build.
 esbuild
@@ -25,7 +26,8 @@ esbuild
       'popup-integrations-ui.test.tsx',
       'popup-home-summary-ui.test.tsx',
       'popup-footer-ui.test.tsx',
-      'history-ui.test.tsx'
+      'history-ui.test.tsx',
+      'hosted-privacy-ui.test.tsx'
     ].map((file) => path.join(root, 'test', file)),
     outdir,
     outExtension: { '.js': '.cjs' },

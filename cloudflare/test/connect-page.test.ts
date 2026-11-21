@@ -15,6 +15,7 @@ import worker from '../src/index.ts';
 
 const hostedApp = fs.readFileSync(new URL('../../extension/ui/hosted/app.jsx', import.meta.url), 'utf8');
 const hostedStyles = fs.readFileSync(new URL('../../extension/ui/hosted/app.css', import.meta.url), 'utf8');
+const privacySource = fs.readFileSync(new URL('../../extension/ui/hosted/privacy-page.jsx', import.meta.url), 'utf8');
 
 test('configuracao publica informa o contrato de seguranca sem expor segredo', async () => {
   const response = await worker.fetch(new Request('https://onframe.onblide.com/v1/auth/config'), {
@@ -60,11 +61,12 @@ test('política de privacidade tem rota pública e usa a interface hospedada', a
   const page = privacyPage();
   assert.match(page, /Política de privacidade - onframe/);
   assert.match(page, /&quot;kind&quot;:&quot;privacy&quot;/);
-  assert.match(hostedApp, /function PrivacyPage\(\)/);
-  assert.match(hostedApp, /Mercado Livre/);
-  assert.match(hostedApp, /Supabase/);
-  assert.match(hostedApp, /Cloudflare/);
-  assert.match(hostedApp, /Resend/);
+  assert.match(hostedApp, /<PrivacyPage\s*\/>/);
+  assert.match(privacySource, /function PrivacyPage\(\)/);
+  assert.match(privacySource, /Mercado Livre/);
+  assert.match(privacySource, /Supabase/);
+  assert.match(privacySource, /Cloudflare/);
+  assert.match(privacySource, /Resend/);
   const response = await worker.fetch(new Request('https://onframe.onblide.com/privacidade'), {} as Env);
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type') || '', /text\/html/);

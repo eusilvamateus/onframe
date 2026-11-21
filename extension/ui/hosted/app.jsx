@@ -6,6 +6,7 @@ import { ThemeCycleButton } from '../shared/ThemeControl';
 import { passwordMeetsRequirements, passwordRequirementState } from '../shared/password-policy';
 import { clearConnectionFragment, readConnectionContext, secondFactorUrl } from './connection-flow';
 import './app.css';
+import { PrivacyPage } from './privacy-page';
 
 function pageConfig(root) {
   try {
@@ -17,7 +18,7 @@ function pageConfig(root) {
 
 function HostedLayout({ children, document = false }) {
   return (
-    <div className="onframe-hosted-page">
+    <div className={`onframe-hosted-page${document ? ' onframe-hosted-page--document' : ''}`}>
       <header className="onframe-hosted-header">
         <a className="onframe-hosted-brand" href="/connect" aria-label="onblide">
           <Logo size={24} />
@@ -321,97 +322,6 @@ function InvitationPage({ config }) {
   );
 }
 
-function PrivacyPage() {
-  return (
-    <article className="onframe-hosted-policy">
-      <header className="onframe-hosted-policy-intro">
-        <h1>Política de privacidade do onframe</h1>
-        <p>Atualizada em 21 de novembro de 2026.</p>
-        <p>
-          O onframe é uma extensão da onblide para gerenciar anúncios do Mercado Livre. Esta política explica
-          quais dados usamos para oferecer o serviço, onde são processados e como você pode gerenciá-los.
-        </p>
-      </header>
-
-      <section>
-        <h2>Dados tratados</h2>
-        <ul>
-          <li>Dados da conta onframe: nome, e-mail, foto de perfil, credenciais de autenticação e informações de segurança da sessão.</li>
-          <li>Dados do workspace: nome, logo, membros, convites, perfis de acesso, contas conectadas e histórico das operações.</li>
-          <li>Dados das contas Mercado Livre autorizadas: identificadores, informações públicas da conta e credenciais de autorização necessárias para executar operações.</li>
-          <li>Dados dos anúncios e produtos gerenciados: títulos, descrições, fotos, características, preços, custos, impostos, margens, estoque e promoções, conforme os recursos utilizados.</li>
-          <li>Dados técnicos necessários à segurança e ao funcionamento, como identificadores de sessão e registros de falhas e operações.</li>
-        </ul>
-        <p>
-          A extensão atua nas páginas do Mercado Livre declaradas no navegador. Ela usa os dados do anúncio exibido
-          para mostrar ferramentas de edição e identificar o produto correspondente. Não acompanha o histórico geral
-          de navegação nem usa esses dados para publicidade comportamental.
-        </p>
-      </section>
-
-      <section>
-        <h2>Finalidades e armazenamento</h2>
-        <p>
-          Usamos esses dados para autenticar sua conta, proteger o acesso, administrar workspaces, consultar e editar
-          anúncios autorizados, calcular resultados comerciais e registrar ações necessárias ao funcionamento e à
-          segurança do onframe. A extensão guarda localmente o identificador de sessão revogável e preferências como
-          tema. As operações autenticadas passam pelo serviço onframe em onframe.onblide.com.
-        </p>
-        <p>
-          As credenciais de autorização do Mercado Livre ficam cifradas no banco do serviço onframe e não são
-          entregues à página do anúncio. Senhas e fatores de autenticação são processados pelo provedor de identidade,
-          não guardados pelo onframe como texto. Fotos de perfil e logos enviados para a plataforma ficam em
-          armazenamento público e podem ser acessados por quem tiver o endereço do arquivo.
-        </p>
-      </section>
-
-      <section>
-        <h2>Compartilhamento necessário</h2>
-        <p>Os dados são compartilhados apenas conforme a função de cada serviço:</p>
-        <ul>
-          <li>Mercado Livre: autorização da conta e consultas ou alterações de anúncios solicitadas no onframe.</li>
-          <li>Supabase: autenticação, fatores de segurança e armazenamento das imagens de perfil e workspace.</li>
-          <li>Cloudflare: hospedagem do serviço, banco de dados, proteção contra abuso e execução das operações.</li>
-          <li>Resend: entrega dos e-mails transacionais de acesso e segurança.</li>
-          <li>Membros do mesmo workspace: dados e ações permitidos pelo perfil e pelas contas atribuídas a cada pessoa.</li>
-        </ul>
-        <p>Não vendemos dados pessoais nem os usamos para anúncios personalizados.</p>
-      </section>
-
-      <section>
-        <h2>Conservação e controle</h2>
-        <p>
-          Mantemos os dados enquanto a conta, o workspace ou a integração precisarem deles. Você pode desconectar
-          contas do Mercado Livre, encerrar sessões e solicitar a exclusão da sua conta nas configurações do onframe.
-          A exclusão pode exigir que outro administrador assuma um workspace compartilhado. Registros de operações
-          que permanecem no workspace perdem a identificação pessoal da conta excluída. A conservação de registros
-          técnicos dos provedores segue as políticas e configurações desses serviços.
-        </p>
-      </section>
-
-      <section>
-        <h2>Seus direitos e contato</h2>
-        <p>
-          Você pode consultar e corrigir seus dados no perfil, gerenciar integrações e solicitar acesso, informação
-          ou exclusão de dados pessoais. Para dúvidas e solicitações de privacidade, escreva para{' '}
-          <Link href="mailto:eu.silvamateus80@gmail.com">eu.silvamateus80@gmail.com</Link>.
-        </p>
-      </section>
-
-      <section>
-        <h2>Uso limitado</h2>
-        <p>
-          O uso de informações obtidas pelas permissões da extensão segue a Política de Dados do Usuário da Chrome
-          Web Store, inclusive os requisitos de Uso Limitado. Usamos essas informações somente para oferecer e
-          melhorar as funções descritas aqui, sem venda de dados ou publicidade personalizada. O acesso humano a
-          dados pessoais é restrito às situações permitidas pela política, como suporte solicitado, segurança e
-          obrigações legais.
-        </p>
-      </section>
-    </article>
-  );
-}
-
 function HostedApp({ config }) {
   if (!config) {
     return (
@@ -434,5 +344,5 @@ function HostedApp({ config }) {
   );
 }
 
-const root = document.getElementById('root');
-createRoot(root).render(<HostedApp config={pageConfig(root)} />);
+const root = typeof document === 'undefined' ? null : document.getElementById('root');
+if (root) createRoot(root).render(<HostedApp config={pageConfig(root)} />);
