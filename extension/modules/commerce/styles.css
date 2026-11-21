@@ -1629,10 +1629,29 @@ body:has(
 }
 
 .onframe-promotion-manager-bulk-report {
+  padding: var(--ob-space-16) var(--ob-space-24);
+  border-bottom: 1px solid var(--ob-line-soft);
+}
+
+.onframe-promotion-manager-bulk-report-heading {
   display: flex;
   align-items: flex-start;
-  gap: var(--ob-space-8);
-  padding: var(--ob-space-12) var(--ob-space-24) 0;
+  gap: var(--ob-space-10);
+  margin-bottom: var(--ob-space-8);
+}
+
+.onframe-promotion-manager-bulk-report-copy {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--ob-space-2);
+  font: var(--ob-w-regular) var(--ob-fs-12) / var(--ob-lh-normal) var(--ob-font);
+  color: var(--ob-fg-soft);
+}
+
+.onframe-promotion-manager-bulk-report-copy strong {
+  color: var(--ob-fg-strong);
+  font-weight: var(--ob-w-semibold);
 }
 
 .onframe-promotion-manager-bulk-preview {
@@ -1691,11 +1710,6 @@ body:has(
 .onframe-promotion-manager-bulk-error {
   padding: 0 var(--ob-space-16) var(--ob-space-16);
   background: var(--ob-bg-alt);
-}
-
-.onframe-promotion-manager-bulk-report > :first-child {
-  flex: 1 1 auto;
-  min-width: 0;
 }
 
 .onframe-promotion-manager-editor-footer {

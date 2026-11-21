@@ -763,12 +763,17 @@ async function createPromotionBulkJob(
   try {
     for (let index = 0; index < preview.targets.length; index += 50) {
       await env.ONFRAME_DB.batch(preview.targets.slice(index, index + 50).map((target: {
-        itemId: string; title?: string; eligible: boolean; message?: string
-      }) => env.ONFRAME_DB.prepare(
-        `INSERT INTO promotion_bulk_job_items (job_id, item_id, title, status, message)
-         VALUES (?, ?, ?, ?, ?)`
-      ).bind(id, target.itemId, target.title || null, target.eligible ? 'queued' : 'blocked',
-        target.message || null)));
+        itemId: string; title?: string; eligible: boolean; message?: string;
+        preview?: { item?: { pictures?: Array<{ secure_url?: string; url?: string }> } }
+      }) => {
+        const picture = target.preview?.item?.pictures?.[0];
+        const thumbnailUrl = picture?.secure_url || picture?.url || '';
+        return env.ONFRAME_DB.prepare(
+          `INSERT INTO promotion_bulk_job_items (job_id, item_id, title, status, message, thumbnail_url)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(id, target.itemId, target.title || null, target.eligible ? 'queued' : 'blocked',
+          target.message || null, thumbnailUrl.startsWith('https://') ? thumbnailUrl : null);
+      }));
     }
     await env.PROMOTION_BULK.create({ id, params: { jobId: id } });
   } catch (error) {
@@ -829,6 +834,7 @@ export async function getPromotionBulkJob(
   }
   const rows = await env.ONFRAME_DB.prepare(
     `SELECT items.item_id AS itemId, items.title, items.status, items.message,
+            items.thumbnail_url AS thumbnailUrl,
             items.result_json AS resultJson, items.reconciliation_id AS reconciliationId,
             reconciliations.status AS confirmationStatus, reconciliations.last_error AS confirmationError
      FROM promotion_bulk_job_items AS items
@@ -836,12 +842,14 @@ export async function getPromotionBulkJob(
      WHERE items.job_id = ? ORDER BY items.item_id`
   ).bind(id).all<{
     itemId: string; title: string | null; status: string; message: string | null;
+    thumbnailUrl: string | null;
     resultJson: string | null; reconciliationId: string | null; confirmationStatus: string | null;
     confirmationError: string | null
   }>();
   const targets = rows.results.map((row) => ({
     itemId: row.itemId,
     title: row.title,
+    thumbnailUrl: row.thumbnailUrl,
     status: row.status === 'pending_confirmation' && row.confirmationStatus === 'confirmed' ? 'applied'
       : row.status === 'pending_confirmation' && row.confirmationStatus === 'unconfirmed' ? 'unconfirmed'
         : row.status,

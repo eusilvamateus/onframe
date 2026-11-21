@@ -48,7 +48,7 @@ async function testDatabase() {
       "INSERT INTO promotion_bulk_jobs (id, workspace_id, user_id, source_item_id, seller_account_id, action, payload_json, status, total, created_at, updated_at) VALUES ('job-1', 'workspace-1', 'user-1', 'MLB1000000001', 'account-1', 'promotion.offer.create', '{}', 'running', 3, 1, 1)"
     ),
     db.prepare(
-      "INSERT INTO promotion_bulk_job_items (job_id, item_id, status) VALUES ('job-1', 'MLB1000000001', 'running'), ('job-1', 'MLB1000000002', 'queued'), ('job-1', 'MLB1000000003', 'blocked')"
+      "INSERT INTO promotion_bulk_job_items (job_id, item_id, status, thumbnail_url) VALUES ('job-1', 'MLB1000000001', 'running', 'https://example.com/item-1.jpg'), ('job-1', 'MLB1000000002', 'queued', NULL), ('job-1', 'MLB1000000003', 'blocked', NULL)"
     )
   ]);
   const env = {
@@ -65,10 +65,13 @@ test('job de promoção persiste progresso, restringe acesso e impede execução
     const running = (await getPromotionBulkJob(env, actor, 'MLB1000000001', 'job-1')) as {
       status: string;
       counts: { queued: number; blocked: number };
+      targets: { itemId: string; thumbnailUrl: string | null }[];
     };
     assert.equal(running.status, 'running');
     assert.equal(running.counts.queued, 2);
     assert.equal(running.counts.blocked, 1);
+    assert.equal(running.targets.find((target) => target.itemId === 'MLB1000000001')?.thumbnailUrl,
+      'https://example.com/item-1.jpg');
     await assert.rejects(getPromotionBulkJob(env, { ...actor, userId: 'other' }, 'MLB1000000001', 'job-1'));
     await assert.rejects(
       db

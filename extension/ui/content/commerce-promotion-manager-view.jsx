@@ -2,7 +2,6 @@ import { Component, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
-  Accordion,
   Alert,
   AlertDialog,
   Badge,
@@ -256,7 +255,7 @@ function ContextFeedback({ feedback, className = '' }) {
 
 function BulkTargetImage({ target }) {
   const picture = target.preview?.item?.pictures?.[0];
-  const imageUrl = picture?.secure_url || picture?.url || '';
+  const imageUrl = target.thumbnailUrl || picture?.secure_url || picture?.url || '';
   const [broken, setBroken] = useState(false);
   return (
     <span className="onframe-promotion-manager-bulk-target-image">
@@ -264,6 +263,42 @@ function BulkTargetImage({ target }) {
         ? <img src={imageUrl} alt="" loading="lazy" onError={() => setBroken(true)} />
         : icon('image', 20)}
     </span>
+  );
+}
+
+function bulkTargetStatus(status) {
+  switch (status) {
+    case 'queued': return { label: 'Na fila', tone: 'neutral' };
+    case 'running': return { label: 'Em andamento', tone: 'primary' };
+    case 'pending_confirmation': return { label: 'Confirmando', tone: 'warning' };
+    case 'applied': return { label: 'Aplicado', tone: 'success' };
+    case 'unconfirmed': return { label: 'Não confirmado', tone: 'warning' };
+    case 'blocked': return { label: 'Não elegível', tone: 'neutral' };
+    default: return { label: 'Não aplicado', tone: 'danger' };
+  }
+}
+
+function BulkTargetList({ targets, ariaLabel, showStatus = false }) {
+  return (
+    <List size="md" dividers ariaLabel={ariaLabel}>
+      {targets.map((target) => {
+        const status = bulkTargetStatus(target.status);
+        const showMessage = target.message && ['blocked', 'failed', 'unconfirmed', 'skipped'].includes(target.status);
+        return (
+          <ListItem
+            key={target.itemId}
+            leading={<BulkTargetImage target={target} />}
+            title={<span title={target.title || target.itemId}>{target.title || target.itemId}</span>}
+            description={showMessage
+              ? <>{target.itemId}<span className="onframe-promotion-manager-bulk-target-reason">{target.message}</span></>
+              : target.itemId}
+            meta={showStatus && <Badge tone={status.tone} appearance="plain" size="sm">{status.label}</Badge>}
+            wrap={Boolean(showMessage)}
+            strong
+          />
+        );
+      })}
+    </List>
   );
 }
 
@@ -275,33 +310,17 @@ function BulkPreview({ result }) {
   const visibleEligible = eligible.slice(0, visibleCount);
   const visibleBlocked = blocked.slice(0, Math.max(0, visibleCount - eligible.length));
   const remaining = eligible.length + blocked.length - visibleEligible.length - visibleBlocked.length;
-  const renderTargets = (targets, ariaLabel) => (
-    <List size="md" dividers ariaLabel={ariaLabel}>
-      {targets.map((target) => (
-        <ListItem
-          key={target.itemId}
-          leading={<BulkTargetImage target={target} />}
-          title={<span title={target.title || target.itemId}>{target.title || target.itemId}</span>}
-          description={target.status === 'blocked' && target.message
-            ? <>{target.itemId}<span className="onframe-promotion-manager-bulk-target-reason">{target.message}</span></>
-            : target.itemId}
-          wrap={target.status === 'blocked'}
-          strong
-        />
-      ))}
-    </List>
-  );
 
   return (
     <section className="onframe-promotion-manager-bulk-preview" aria-label="Prévia dos anúncios da família">
       <div className="onframe-promotion-manager-bulk-preview-heading">
         <strong>{eligible.length} de {result.targets.length} anúncios elegíveis</strong>
       </div>
-      {visibleEligible.length > 0 && renderTargets(visibleEligible, 'Anúncios elegíveis')}
+      {visibleEligible.length > 0 && <BulkTargetList targets={visibleEligible} ariaLabel="Anúncios elegíveis" />}
       {visibleBlocked.length > 0 && (
         <div className="onframe-promotion-manager-bulk-blocked">
           <strong>Não elegíveis ({blocked.length})</strong>
-          {renderTargets(visibleBlocked, 'Anúncios não elegíveis')}
+          <BulkTargetList targets={visibleBlocked} ariaLabel="Anúncios não elegíveis" />
         </div>
       )}
       {remaining > 0 && (
@@ -314,6 +333,7 @@ function BulkPreview({ result }) {
 }
 
 function BulkReport({ result, feedback, onDismiss, className = '' }) {
+  const [visibleCount, setVisibleCount] = useState(5);
   if (!result) return null;
   const targets = Array.isArray(result.targets) ? result.targets : [];
   const counts = result.counts || {};
@@ -323,54 +343,46 @@ function BulkReport({ result, feedback, onDismiss, className = '' }) {
     Number.isInteger(counts.total) && counts.total > 0 && targets.length === counts.total
   );
   if (!tracked) return null;
-  const groups = [
-    { id: 'queued', label: 'Em processamento', statuses: ['queued', 'running'] },
-    { id: 'applied', label: 'Aplicados', statuses: ['applied'] },
-    { id: 'pending', label: 'Aguardando confirmação', statuses: ['pending_confirmation'] },
-    { id: 'failed', label: 'Não aplicados', statuses: ['blocked', 'skipped', 'failed', 'unconfirmed'] }
-  ];
-  const items = groups.map((group) => {
-    const entries = targets.filter((target) => group.statuses.includes(target.status));
-    return {
-      id: group.id,
-      title: `${group.label} (${entries.length})`,
-      content: (
-        <ul className="onframe-commerce-bulk-status-list">
-          {entries.map((target) => (
-            <li key={`${group.id}:${target.itemId}`}>
-              {target.title ? `${target.title} (${target.itemId})` : target.itemId}
-              {target.message ? `: ${target.message}` : ''}
-            </li>
-          ))}
-        </ul>
-      ),
-      count: entries.length
-    };
-  }).filter((item) => item.count);
+  const inProgress = ['queued', 'running', 'confirming'].includes(result.status);
+  const notApplied = (counts.failed || 0) + (counts.blocked || 0) + (counts.unconfirmed || 0);
   const title = result.status === 'queued' || result.status === 'running'
       ? `Aplicando em ${counts.total || targets.length} anúncios`
       : result.status === 'confirming'
         ? 'Aguardando confirmação do Mercado Livre'
-        : feedback?.title || (counts.applied
-          ? counts.failed || counts.blocked || counts.unconfirmed ? 'Aplicação parcial' : 'Aplicação concluída'
-          : 'Nenhum anúncio aplicado');
-  const tone = ['queued', 'running', 'confirming'].includes(result.status)
-      ? 'info' : feedback?.tone || (counts.applied
-        ? counts.failed || counts.blocked || counts.unconfirmed ? 'warning' : 'success'
-        : 'danger');
+        : notApplied && counts.applied ? 'Aplicação parcial'
+          : feedback?.title || (counts.applied ? 'Aplicação concluída' : 'Nenhum anúncio aplicado');
+  const tone = inProgress ? 'primary' : notApplied ? counts.applied ? 'warning' : 'danger'
+    : counts.applied ? 'success' : 'danger';
+  const iconColor = tone === 'primary' ? 'var(--ob-blue)' : tone === 'success' ? 'var(--ob-green)'
+    : tone === 'warning' ? 'var(--ob-orange)' : 'var(--ob-danger)';
+  const summary = [
+    counts.applied && `${counts.applied} aplicado${counts.applied === 1 ? '' : 's'}`,
+    counts.queued && `${counts.queued} em processamento`,
+    counts.pending && `${counts.pending} aguardando confirmação`,
+    notApplied > 0 && `${notApplied} não aplicado${notApplied === 1 ? '' : 's'}`
+  ].filter(Boolean).join(' · ');
+  const remaining = targets.length - visibleCount;
 
   return (
-    <div className={`onframe-promotion-manager-bulk-report ${className}`}>
-      <Alert appearance="soft" tone={tone} title={title}>
-        <span>{['queued', 'running', 'confirming'].includes(result.status)
-          ? `${counts.applied || 0} aplicados; ${counts.queued || 0} em processamento; ${counts.pending || 0} aguardando confirmação.`
-          : feedback?.message || `${counts.applied || 0} aplicados; ${counts.pending || 0} aguardando confirmação; ${(counts.failed || 0) + (counts.blocked || 0) + (counts.unconfirmed || 0)} não aplicados.`}</span>
-        {!!items.length && <Accordion items={items} type="multiple" ariaLabel="Resultado por anúncio" />}
-      </Alert>
-      {onDismiss && !['queued', 'running', 'confirming'].includes(result.status) && (
-        <Button kind="quiet" size="sm" iconOnly aria-label="Dispensar resultado" icon={icon('x', 14)} onClick={onDismiss} />
+    <section className={`onframe-promotion-manager-bulk-report ${className}`} aria-label="Aplicação nos anúncios da família">
+      <div className="onframe-promotion-manager-bulk-report-heading">
+        <Ph n={inProgress ? 'clock' : tone === 'success' ? 'check-circle' : 'warning-circle'}
+          size={18} c={iconColor} />
+        <div className="onframe-promotion-manager-bulk-report-copy" aria-live="polite">
+          <strong>{title}</strong>
+          <span>{summary || feedback?.message}</span>
+        </div>
+        {onDismiss && !inProgress && (
+          <Button kind="quiet" size="sm" iconOnly aria-label="Dispensar resultado" icon={icon('x', 14)} onClick={onDismiss} />
+        )}
+      </div>
+      <BulkTargetList targets={targets.slice(0, visibleCount)} ariaLabel="Estado por anúncio" showStatus />
+      {remaining > 0 && (
+        <Button kind="quiet" size="sm" icon={icon('caret-down')} onClick={() => setVisibleCount((count) => count + 10)}>
+          Mostrar mais anúncios ({remaining})
+        </Button>
       )}
-    </div>
+    </section>
   );
 }
 

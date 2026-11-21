@@ -740,7 +740,7 @@ test('gerenciador de promocoes usa cartoes, filtros e edicao interna do design s
   assert.match(source, /api\(itemApiPath\('\/bulk\/jobs'\)/);
   assert.match(source, /api\(itemApiPath\('\/bulk\/jobs\/latest'\)\)/);
   assert.match(view, /label="Aplicar a outros anúncios da família"/);
-  assert.match(view, /function BulkReport\([\s\S]*Não aplicados[\s\S]*Resultado por anúncio/s);
+  assert.match(view, /function BulkReport\([\s\S]*<BulkTargetList targets=\{targets\.slice\(0, visibleCount\)\}/s);
   assert.match(view, /typeof result\.id === 'string'[\s\S]*counts\.total > 0[\s\S]*if \(!tracked\) return null/s);
   assert.match(source, /function openPromotionModal\(\) \{[\s\S]*state\.promotionBulkResult = null;/s);
   assert.match(source, /isTrackedPromotionBulkJob\(latest\.value\)/);
@@ -1267,9 +1267,23 @@ test('prévia da família lista anúncios com foto, título e MLB sem alerta', (
   assert.match(preview, /<img src=\{imageUrl\} alt=""/);
   assert.match(preview, /<List size="md" dividers ariaLabel=\{ariaLabel\}>/);
   assert.match(preview, /leading=\{<BulkTargetImage target=\{target\} \/>\}/);
-  assert.match(preview, /description=\{target\.status === 'blocked'[\s\S]*: target\.itemId\}/s);
+  assert.match(preview, /description=\{showMessage[\s\S]*: target\.itemId\}/s);
   assert.doesNotMatch(preview, /<Alert|<Accordion/);
   assert.doesNotMatch(view, /Inclui anúncios ativos e pausados que aceitarem esta oferta/);
+});
+
+test('resultado da família mostra estado por anúncio sem alerta nem acordeão', () => {
+  const view = fs.readFileSync(
+    path.join(__dirname, '..', 'extension', 'ui', 'content', 'commerce-promotion-manager-view.jsx'),
+    'utf8'
+  );
+  const report = view.slice(view.indexOf('function BulkReport'), view.indexOf('function decimalInputValue'));
+
+  assert.match(view, /target\.thumbnailUrl \|\| picture\?\.secure_url/);
+  assert.match(view, /<Badge tone=\{status\.tone\} appearance="plain" size="sm">\{status\.label\}<\/Badge>/);
+  assert.match(report, /<section className=\{`onframe-promotion-manager-bulk-report/);
+  assert.match(report, /<BulkTargetList targets=\{targets\.slice\(0, visibleCount\)\} ariaLabel="Estado por anúncio" showStatus \/>/);
+  assert.doesNotMatch(report, /<Alert|<Accordion/);
 });
 
 test('feedback de preço permanece no popover e não confirma sucesso individual por toast', () => {
