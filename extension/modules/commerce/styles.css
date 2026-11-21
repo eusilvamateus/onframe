@@ -710,7 +710,7 @@
 
 .onframe-commerce-direct-discount-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 140px);
   align-items: center;
   gap: var(--ob-space-12);
   min-width: 0;
@@ -750,7 +750,7 @@
 }
 
 .onframe-commerce-direct-discount-field > div {
-  width: 160px;
+  width: 140px;
   min-width: 0;
   justify-self: end;
 }
@@ -764,9 +764,9 @@
 
 .onframe-commerce-direct-discount-date-range {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: var(--ob-space-12);
+  gap: var(--ob-space-6);
   color: var(--ob-fg-soft);
   font: var(--ob-w-regular) var(--ob-fs-13) / var(--ob-lh-normal) var(--ob-font);
 }
@@ -811,18 +811,18 @@
   margin: var(--ob-space-6) 0;
 }
 
-@media (max-width: 540px) {
+@media (min-width: 768px) {
   .onframe-commerce-direct-discount-date-range {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--ob-space-6);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+    gap: var(--ob-space-12);
   }
 
   .onframe-commerce-direct-discount-line {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 140px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 160px);
   }
 
   .onframe-commerce-direct-discount-field > div {
-    width: 140px;
+    width: 160px;
   }
 }
 
@@ -1745,28 +1745,24 @@ body:has(
   white-space: nowrap;
 }
 
-@media (max-width: 599px) {
-  .onframe-promotion-manager-note-row.is-editable {
-    grid-template-columns: 20px minmax(0, 1fr);
-  }
-
-  .onframe-promotion-manager-note-row.is-editable .onframe-promotion-manager-note-value {
-    grid-column: 2;
-    justify-self: stretch;
-    width: 100%;
-    max-width: 180px;
-    text-align: left;
-  }
+.onframe-promotion-manager-note-row.is-editable {
+  grid-template-columns: 20px minmax(0, 1fr);
 }
 
-@media (max-width: 767px) {
-  .onframe-promotion-manager-editor-footer {
-    flex-wrap: wrap;
-  }
+.onframe-promotion-manager-note-row.is-editable .onframe-promotion-manager-note-value {
+  grid-column: 2;
+  justify-self: stretch;
+  width: 100%;
+  max-width: 180px;
+  text-align: left;
+}
 
-  .onframe-promotion-manager-bulk {
-    flex-basis: 100%;
-  }
+.onframe-promotion-manager-editor-footer {
+  flex-wrap: wrap;
+}
+
+.onframe-promotion-manager-bulk {
+  flex-basis: 100%;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1788,6 +1784,26 @@ body:has(
 }
 
 @media (min-width: 768px) {
+  .onframe-promotion-manager-note-row.is-editable {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+  }
+
+  .onframe-promotion-manager-note-row.is-editable .onframe-promotion-manager-note-value {
+    grid-column: auto;
+    justify-self: end;
+    width: 136px;
+    max-width: 100%;
+    text-align: right;
+  }
+
+  .onframe-promotion-manager-editor-footer {
+    flex-wrap: nowrap;
+  }
+
+  .onframe-promotion-manager-bulk {
+    flex-basis: auto;
+  }
+
   .onframe-promotion-manager {
     min-height: min(680px, calc(88vh - 156px));
   }

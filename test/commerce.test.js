@@ -1015,8 +1015,9 @@ test('modal de desconto direto usa somente componentes oficiais do design system
     /\.onframe-commerce-direct-discount-calculation,[\s\S]*\.onframe-commerce-direct-discount-results\s*{\s*display: grid/s
   );
   assert.match(styles, /\.onframe-commerce-direct-discount-item\s*{[\s\S]*display: flex;/s);
-  assert.match(styles, /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 160px\)/s);
-  assert.match(styles, /@media \(max-width: 540px\)\s*{[\s\S]*\.onframe-commerce-direct-discount-date-range\s*{\s*grid-template-columns: minmax\(0, 1fr\)/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-line\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 140px\)/s);
+  assert.match(styles, /\.onframe-commerce-direct-discount-date-range\s*{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\)/s);
+  assert.match(styles, /@media \(min-width: 768px\)\s*{\s*\.onframe-commerce-direct-discount-date-range\s*{\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 290px\)/s);
   assert.match(view, /const empty = !loading && \(value === '' \|\| value === '—' \|\| value == null\)/);
   assert.match(styles, /\.onframe-commerce-direct-discount-line\.is-empty > strong\s*\{\s*color: var\(--ob-fg-mute\);/);
   assert.match(styles, /\.onframe-commerce-direct-discount input:focus,[\s\S]*box-shadow: none !important;/s);

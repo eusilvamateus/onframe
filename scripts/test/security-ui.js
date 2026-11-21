@@ -33,10 +33,10 @@ esbuild
     platform: 'node',
     format: 'cjs',
     jsx: 'automatic',
-    external: ['react', 'react/jsx-runtime', 'react-test-renderer', '@supabase/supabase-js']
+    external: ['react', 'react/jsx-runtime', 'react-dom', 'react-test-renderer', '@supabase/supabase-js']
   })
   .then(() => {
-    const result = spawnSync(process.execPath, ['--test', ...outputs], { cwd: root, stdio: 'inherit' });
+    const result = spawnSync(process.execPath, ['--require', path.join(root, 'test', 'setup-react-dom.js'), '--test', ...outputs], { cwd: root, stdio: 'inherit' });
     for (const output of outputs) fs.rmSync(output, { force: true });
     process.exitCode = result.status ?? 1;
   })

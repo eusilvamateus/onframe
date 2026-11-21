@@ -95,7 +95,9 @@ async function harness(
         callback({
           ok: true,
           body:
-            action === 'security-flow-start'
+            action === 'auth-flow-start'
+              ? { redirectTo: 'https://onframe.onblide.com/connect?flow=test-flow' }
+              : action === 'security-flow-start'
               ? {
                   flow: 'test-flow',
                   passkeyUrl: 'https://onframe.onblide.com/auth/passkeys?action=verify&purpose=security&flow=test-flow'
@@ -456,8 +458,8 @@ test('ativacao TOTP so conclui depois de verificar o codigo do autenticador', as
   try {
     await emailVerified(h.renderer);
     const button = h.renderer.root
-      .findAllByType('button')
-      .find((value) => value.props.children?.includes?.('Adicionar autenticador'));
+      .findAllByType(Button)
+      .find((value) => value.props.children === 'Adicionar autenticador');
     assert.ok(button);
     await act(async () => button.props.onClick());
     assert.equal(disconnected, 0);

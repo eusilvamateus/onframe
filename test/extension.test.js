@@ -365,7 +365,7 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(foundations, /--ob-z-tooltip: var\(--ob-z-extension-toast\)/);
   assert.match(
     foundations,
-    /:is\(\.onblide-ml-dialog-root, \.onframe-commerce-modal-root\)\s*\{[\s\S]*--ob-z-overlay: var\(--ob-z-extension-overlay\);[\s\S]*--ob-z-modal: var\(--ob-z-extension-modal\);/s
+    /:is\(\.onblide-ml-dialog-root, \.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\s*\{[\s\S]*--ob-z-overlay: var\(--ob-z-extension-overlay\);[\s\S]*--ob-z-modal: var\(--ob-z-extension-modal\);/s
   );
   assert.match(
     foundations,
@@ -373,11 +373,11 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   );
   assert.match(
     foundations,
-    /body:has\(> \.onframe-commerce-modal-root\) > \.ob-modal-fundo \{\s*--ob-z-modal: var\(--ob-z-extension-modal\);/
+    /body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\) > \.ob-modal-fundo \{\s*--ob-z-modal: var\(--ob-z-extension-modal\);/
   );
   assert.match(
     foundations,
-    /body:has\(> \.onframe-commerce-modal-root\) > \[data-ob-camada\] \{\s*--ob-z-dropdown: var\(--ob-z-extension-toast\);/
+    /body:has\(> :is\(\.onframe-commerce-modal-root, \.onframe-commerce-direct-discount-modal-root\)\) > \[data-ob-camada\] \{\s*--ob-z-dropdown: var\(--ob-z-extension-toast\);/
   );
   assert.match(foundations, /--ob-selection-bg: var\(--ob-blue-100\)/);
   assert.match(foundations, /--ob-selection-bg: #3a6ee0/);
@@ -694,7 +694,8 @@ test('upload de foto estima progresso sem concluir antes da resposta e libera o 
     Link: 'link-control',
     Divider: 'divider-control',
     Button: 'button-control',
-    ButtonGroup: 'button-group'
+    ButtonGroup: 'button-group',
+    AccountDeletionSettings: 'account-deletion-settings'
   });
   const profileWithAvatar = {
     user: { name: 'Mateus', email: 'mateus@example.com', avatarUrl: 'https://example.com/avatar.png' }
@@ -1264,14 +1265,16 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /connection === null && loading/);
   assert.match(options, /Skeleton/);
   assert.doesNotMatch(options, /hideAccount/);
-  assert.match(people, /Table/);
+  assert.match(people, /<List ariaLabel="Pessoas e convites do workspace">/);
+  assert.match(people, /<ListItem/);
+  assert.doesNotMatch(people, /<Table/);
   assert.match(options, /Modal/);
   assert.match(options, /layout="context"/);
   assert.match(options, /const breadcrumbs = settingsDetail/);
   assert.match(options, /\{ label: 'Início', icon: 'house', href: '#inicio' \}/);
   assert.match(options, /const pageContext = \(/);
   assert.match(options, /crumbs={pageContext}/);
-  assert.match(options, /function PageHeader\(\{ meta, actions, onBack, reserveContextSpace = false \}\)/);
+  assert.match(options, /function PageHeader\(\{ meta, actions, onBack, reserveContextSpace = false, alignActionsWithTitle = false \}\)/);
   assert.match(options, /<h1 className="onframe-page-title">\{meta\.title\}<\/h1>/);
   assert.doesNotMatch(options, /showTitle=/);
   assert.match(options, /onframe-options-content--root/);
@@ -1319,10 +1322,10 @@ test('popup e opções usam o pacote oficial da Onblide sem expor um código de 
   assert.match(options, /SETTINGS_SECTIONS/);
   assert.match(options, /SettingsDirectory/);
   assert.match(options, /className="onframe-settings-directory"/);
-  assert.match(options, /<List as="nav" dividers ariaLabel=\{section\.label\}>/);
+  assert.match(options, /<List as="nav" size="sm" ariaLabel=\{section\.label\}>/);
   assert.doesNotMatch(options, /<Tabs tabs=\{tabs\} active=\{activeTab\}/);
   assert.doesNotMatch(options, /<Card padding=\{0\}>\s*<List/);
-  assert.match(options, /<List as="nav" dividers ariaLabel=\{ariaLabel\}>/);
+  assert.match(options, /<List as="nav" size="sm" ariaLabel=\{ariaLabel\}>/);
   assert.doesNotMatch(options, /ListSubheader/);
   assert.doesNotMatch(options, /<List[^>]*dividers[^>]*ariaLabel="(?:Formas de entrar|Navegadores autorizados)"/);
   assert.doesNotMatch(options, /trailing=\{<Ph n="caret-right" size=\{18\} \/>\}/);

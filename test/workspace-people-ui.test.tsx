@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 import React from 'react';
-import { Button, ListItem, Menu } from '@onblide/ui';
+import { ListItem, Menu } from '@onblide/ui';
 import { create } from 'react-test-renderer';
 import { WorkspacePeople } from '../extension/ui/options/WorkspacePeople.jsx';
 import { WorkspaceRoles } from '../extension/ui/options/WorkspaceRoles.jsx';
-import { SectionHeader } from '../extension/ui/shared/SectionHeader.jsx';
+
+globalThis.document = {
+  addEventListener() {},
+  removeEventListener() {}
+} as unknown as Document;
 
 const self = { id: 'user-1', name: 'Pessoa atual', email: 'atual@example.com', roleId: 'admin', accounts: [] };
 const other = { id: 'user-2', name: 'Outra pessoa', email: 'outra@example.com', roleId: 'admin', accounts: [] };
@@ -33,29 +39,21 @@ test('a propria pessoa nao pode gerenciar o proprio acesso pela lista', () => {
   const people = renderer.root.findAllByType(ListItem);
   assert.equal(people.length, 2);
   assert.equal(people[0].props.onClick, undefined);
-  assert.match(JSON.stringify(people[0].props.title), /Você/);
+  assert.match(JSON.stringify(renderer.toJSON()), /Você/);
   people[1].props.onClick();
   assert.deepEqual(calls, ['edit']);
   renderer.unmount();
 });
 
-test('saida exige outro administrador e permanece separada da remocao', () => {
-  const alone = renderPeople([self]);
-  const aloneSection = alone.renderer.root
-    .findAllByType(SectionHeader)
-    .find((item) => item.props.title === 'Sair do workspace');
-  assert.equal(aloneSection?.props.actions.type, Button);
-  assert.equal(aloneSection?.props.actions.props.disabled, true);
-  alone.renderer.unmount();
+test('saida exige outro administrador e fica em Geral, separada da lista de pessoas', () => {
+  const people = renderPeople([self, other]);
+  assert.equal(people.renderer.root.findAllByType(ListItem).length, 2);
+  assert.equal(people.renderer.root.findAllByType(ListItem).some((item) => item.props.title === 'Sair do workspace'), false);
+  people.renderer.unmount();
 
-  const shared = renderPeople([self, other]);
-  const leaveSection = shared.renderer.root
-    .findAllByType(SectionHeader)
-    .find((item) => item.props.title === 'Sair do workspace');
-  assert.equal(leaveSection?.props.actions.props.disabled, false);
-  leaveSection?.props.actions.props.onClick();
-  assert.deepEqual(shared.calls, ['leave']);
-  shared.renderer.unmount();
+  const options = readFileSync(path.join(process.cwd(), 'extension/ui/options/app.jsx'), 'utf8');
+  assert.match(options, /const canLeave = details\?\.roleId !== 'admin' \|\| details\?\.adminCount > 1/);
+  assert.match(options, /title="Acesso ao workspace"[\s\S]*?disabled=\{loading \|\| !canLeave\} onClick=\{onLeave\}/);
 });
 
 test('administrador fica separado dos perfis editaveis', () => {

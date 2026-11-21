@@ -222,10 +222,9 @@ test('produtos integram navegacao e todas as operacoes remotas', () => {
   assert.match(commerce, /variation_id: state\.context && state\.context\.selectedVariationId/u);
   assert.match(commerce, /function promotionEstimateHash\(payload\)/u);
   assert.match(commerce, /hash: promotionEstimateHash\(payload\)/u);
-  assert.match(
-    commerce,
-    /Margem de contribuição[^]*promotionTaxSourceLabel[^]*configure uma alíquota no produto, na conta ou no workspace/u
-  );
+  assert.match(commerce, /description: `\$\{formatContributionPercent\(margin\.taxRate\)\}[^`]*promotionTaxSourceLabel/u);
+  assert.match(commerce, /label: 'Margem de contribuição'/u);
+  assert.match(commerce, /Margem indisponível: configure uma alíquota no produto, na conta ou no workspace\./u);
   assert.match(options, /page: 'margin'[^]*label: 'Margem de contribuição'/u);
   assert.match(options, /page: 'products'[^]*label: 'Produtos'[^]*Preferências do cadastro de produtos/u);
   assert.match(taxSettings, /tax-configuration-update/u);
