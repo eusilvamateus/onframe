@@ -10,7 +10,6 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "build:extension-ui": "node scripts/build/extension-ui.js",
-    "demo": "npm run build:extension-ui && node demo/build.js && node demo/server.js",
     "build:security-ui": "node scripts/build/security-ui.js",
     "package:store": "npm run build:extension-ui && node scripts/release/package-store.js",
     "release:notes": "node scripts/release/prepare-release-notes.js",
@@ -21,7 +20,7 @@
     "audit:deps": "npm audit --audit-level=moderate",
     "release:check": "npm run version:check && npm run audit:deps && npm run test:all && npm run package:store",
     "test": "node --test test/*.test.js && tsx --test test/popup-footer-ui.test.tsx test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test/security-ui.js",
-    "test:all": "npm run build:extension-ui && npm run build:security-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/demo.test.js test/extension.test.js test/items.test.js test/photos.test.js test/products.test.js test/remote-architecture.test.js && tsx --test test/popup-footer-ui.test.tsx test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test/security-ui.js"
+    "test:all": "npm run build:extension-ui && npm run build:security-ui && node --test test/auth-email-templates.test.js test/commerce.test.js test/extension.test.js test/items.test.js test/photos.test.js test/products.test.js test/remote-architecture.test.js && tsx --test test/popup-footer-ui.test.tsx test/product-spreadsheet.test.ts cloudflare/test/*.test.ts && node scripts/test/security-ui.js"
   },
   "engines": {
     "node": ">=20"

@@ -73,7 +73,7 @@ module.exports = defineConfig([
   },
   {
     name: 'onframe/browser-extension',
-    files: ['extension/**/*.{js,jsx,ts,tsx}', 'demo/marketplace.jsx', 'demo/mock-runtime.js'],
+    files: ['extension/**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       globals: {
         ...globals.browser,
@@ -88,7 +88,6 @@ module.exports = defineConfig([
       'eslint.config.js',
       'prettier.config.js',
       'scripts/**/*.js',
-      'demo/{build,server}.js',
       'test/**/*.{js,ts,tsx}',
       'cloudflare/test/**/*.ts',
       'cloudflare/src/domain/**/*.js'
@@ -103,7 +102,6 @@ module.exports = defineConfig([
       'eslint.config.js',
       'prettier.config.js',
       'scripts/**/*.js',
-      'demo/{build,server}.js',
       'test/**/*.js',
       'cloudflare/src/domain/**/*.js'
     ],
@@ -127,7 +125,7 @@ module.exports = defineConfig([
   },
   {
     name: 'onframe/react-hooks',
-    files: ['extension/ui/**/*.{jsx,tsx}', 'demo/**/*.jsx'],
+    files: ['extension/ui/**/*.{jsx,tsx}'],
     plugins: {
       'react-hooks': reactHooks
     },

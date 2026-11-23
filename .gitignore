@@ -21,8 +21,6 @@ extension/ui/popup/*.svg
 extension/ui/options/assets/
 extension/ui/popup/assets/
 .onframe/
-.playwright-cli/
-output/playwright/
 .env
 .env.*
 !.env.example
