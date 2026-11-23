@@ -18,7 +18,7 @@ const generatedFiles = [
 ];
 
 module.exports = defineConfig([
-  globalIgnores(['**/node_modules/**', '.code-review-graph/**', '.onframe/**', ...generatedFiles]),
+  globalIgnores(['**/node_modules/**', '.code-review-graph/**', '**/.onframe/**', ...generatedFiles]),
   {
     name: 'onframe/base',
     files: sourceFiles,

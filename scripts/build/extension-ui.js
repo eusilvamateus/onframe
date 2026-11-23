@@ -13,7 +13,9 @@ const reactAliases = {
 };
 const designSystemStylesPath = require.resolve('@onblide/ui/styles.css');
 const designSystemSourceRoot = path.dirname(designSystemStylesPath);
-const phosphorSourceRoot = path.join(designSystemSourceRoot, '..', 'node_modules', '@phosphor-icons', 'web', 'src');
+const phosphorSourceRoot = path.dirname(
+  path.dirname(require.resolve('@phosphor-icons/web/regular', { paths: [designSystemSourceRoot] }))
+);
 const phosphorTargetRoot = path.join(root, 'extension', 'vendor', 'phosphor');
 const compactPhosphorWeights = [
   { directory: 'regular', className: 'ph', family: 'Phosphor', file: 'Phosphor.woff2' },

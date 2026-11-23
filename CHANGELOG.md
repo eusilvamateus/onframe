@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.5.0 - 2026-11-23
+
+### Adicionado
+
+- Contas e workspaces remotos com autenticacao, convites, perfis de acesso e
+  permissoes granulares.
+- Seguranca da conta com verificacao em duas etapas, chaves de acesso e gestao
+  de sessoes.
+- Catalogo de produtos com importacao, custos, impostos, margem de contribuicao,
+  edicao em massa, lixeira e restauracao.
+- Historico de alteracoes e aplicacao de promocoes a anuncios da mesma familia
+  com progresso e confirmacao do resultado.
+
+### Melhorado
+
+- Popup, opcoes e ferramentas nos anuncios passam a usar a interface do design
+  system onblide, com temas claro e escuro.
+- Promocoes, cupons e precos apresentam o calculo financeiro e distinguem
+  aplicar, configurar e editar cada oferta.
+- Fluxos de e-mail e paginas publicas de seguranca usam a identidade do onframe.
+
+### Alteracao incompativel
+
+- A instalacao e a atualizacao manuais foram removidas. A distribuicao da
+  extensao passa a ser feita pela Chrome Web Store.
+
 ## v0.4.4 - 2026-09-21
 
 ### Melhorado

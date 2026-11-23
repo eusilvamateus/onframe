@@ -1146,7 +1146,7 @@ test('popup e opções usam o pacote oficial da onblide sem expor um código de 
     options.indexOf('function settingsOptionItems')
   );
 
-  assert.equal(packageJson.dependencies['@onblide/ui'], 'file:../../onblide-design-system/packages/ui');
+  assert.equal(packageJson.dependencies['@onblide/ui'], '1.0.0');
   assert.match(history, /formatarPeriodo\(dateFromIso\(period\.start\), dateFromIso\(period\.end\), \{ hoje \}\)/);
   assert.doesNotMatch(history, /Intl\.DateTimeFormat|formatPeriodDate/);
   assert.match(periodGlobal, /import \{ formatarPeriodo \} from '@onblide\/ui\/periodo'/);
