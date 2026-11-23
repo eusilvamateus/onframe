@@ -8,7 +8,7 @@ Este documento descreve o artefato de envio à Chrome Web Store. As regras de br
 
 `npm run package:store` compila a interface e cria `dist/onframe-store-vMAJOR.MINOR.PATCH.zip`. O ZIP contém somente os arquivos da pasta `extension/`, diretamente na raiz do arquivo compactado. `manifest.json` fica na raiz, sem pasta intermediária, scripts de instalação, arquivos do Worker ou credenciais.
 
-O arquivo é usado no envio da extensão à Chrome Web Store; não é um instalador para distribuição direta. O workflow de release preserva as notas da GitHub Release e disponibiliza o ZIP como artefato da execução, sem anexá-lo à release pública.
+O arquivo é usado no envio da extensão à Chrome Web Store; não é um instalador para distribuição direta. O workflow de release preserva as notas da GitHub Release e disponibiliza o ZIP como artefato da execução e como anexo da release pública.
 
 ## Consistência
 

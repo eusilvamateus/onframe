@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.2 - 2026-11-23
+
+### Corrigido
+
+- A extensao, as paginas hospedadas e os e-mails usam os icones e logotipos do
+  kit oficial do onframe, com variantes adequadas aos temas claro e escuro.
+- Os convites passam a abrir a extensao cadastrada na Chrome Web Store.
+
 ## v0.5.1 - 2026-11-23
 
 ### Corrigido
