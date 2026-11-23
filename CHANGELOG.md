@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.1 - 2026-11-23
+
+### Corrigido
+
+- O pacote enviado a Chrome Web Store nao inclui mais o campo `key` no
+  manifesto. A chave permanece no manifesto de desenvolvimento para manter o
+  identificador local estavel.
+
 ## v0.5.0 - 2026-11-23
 
 ### Adicionado
