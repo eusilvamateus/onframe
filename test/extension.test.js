@@ -12,6 +12,30 @@ const { Alert } = require('@onblide/ui');
 const root = path.join(__dirname, '..');
 const extensionRoot = path.join(root, 'extension');
 
+test('kit oficial do onframe alimenta os icones e logotipos da extensao', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(extensionRoot, 'manifest.json'), 'utf8'));
+  for (const size of [16, 32, 48, 128]) {
+    const iconPath = manifest.icons[String(size)];
+    assert.equal(manifest.action.default_icon[String(size)], iconPath);
+    const icon = fs.readFileSync(path.join(extensionRoot, iconPath));
+    assert.equal(icon.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(icon.readUInt32BE(16), size);
+    assert.equal(icon.readUInt32BE(20), size);
+  }
+
+  for (const variant of ['onframe-logo-cor.png', 'onframe-logo-cor-fundo-escuro.png']) {
+    const logo = fs.readFileSync(path.join(extensionRoot, 'assets', variant));
+    assert.equal(logo.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(logo.readUInt32BE(16), 2400);
+    assert.equal(logo.readUInt32BE(20), 412);
+  }
+
+  const brand = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'OnframeBrand.jsx'), 'utf8');
+  assert.match(brand, /useTheme\(\)/);
+  assert.match(brand, /resolved === 'dark' \? 'onframe-logo-cor-fundo-escuro\.png' : 'onframe-logo-cor\.png'/);
+  assert.equal(fs.existsSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png')), false);
+});
+
 test('Alert do design system mantém aparência, semântica e ação oficiais', () => {
   const outline = renderToStaticMarkup(React.createElement(Alert, { tone: 'info', title: 'Informação' }, 'Detalhe'));
   assert.match(outline, /role="status"/);
@@ -341,9 +365,8 @@ test('tema usa o contrato do design system nas interfaces da extensao', () => {
   assert.match(extensionBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /@onblide\/ui\/theme-init/);
   assert.match(securityBuild, /hosted: path\.join\(root, 'extension', 'ui', 'hosted', 'app\.jsx'\)/);
-  assert.match(securityBuild, /onframe-horizontal-black\.png/);
-  assert.match(securityBuild, /onframe-horizontal-primary\.png/);
-  assert.match(securityBuild, /onframe-horizontal-white\.png/);
+  assert.match(securityBuild, /onframe-logo-cor\.png/);
+  assert.match(securityBuild, /onframe-logo-cor-fundo-escuro\.png/);
   assert.equal(manifest.content_scripts[0].js[0], 'core/theme-sync.js');
   assert.match(themeSync, /data-onframe-theme/);
   assert.match(themeSync, /prefers-color-scheme: dark/);
@@ -1132,6 +1155,7 @@ test('popup e opções usam o pacote oficial da onblide sem expor um código de 
   const optionsCss = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'app.css'), 'utf8');
   const optionsHtml = fs.readFileSync(path.join(extensionRoot, 'ui', 'options', 'index.html'), 'utf8');
   const authPanel = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'AuthPanel.jsx'), 'utf8');
+  const hosted = fs.readFileSync(path.join(extensionRoot, 'ui', 'hosted', 'app.jsx'), 'utf8');
   const runtime = fs.readFileSync(path.join(extensionRoot, 'ui', 'shared', 'runtime.js'), 'utf8');
   const background = fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8');
   const buildScript = fs.readFileSync(path.join(root, 'scripts', 'build', 'extension-ui.js'), 'utf8');
@@ -1204,8 +1228,9 @@ test('popup e opções usam o pacote oficial da onblide sem expor um código de 
   );
   assert.doesNotMatch(optionsCss, /\.onframe-(?:popup-)?integration-list\s*\{[^}]*border-top/);
   assert.match(options, /<AuthBrand \/>/);
-  assert.match(authPanel, /<Logo size=\{28\} \/>/);
-  assert.doesNotMatch(authPanel, /onframe-stacked-primary|alt="onframe"/);
+  assert.match(authPanel, /<OnframeBrand assetBase="\.\.\/\.\.\/assets" height=\{28\} \/>/);
+  assert.match(hosted, /<OnframeBrand assetBase="\/security" height=\{24\} \/>/);
+  assert.doesNotMatch(authPanel, /<Logo|onframe-stacked-primary/);
   assert.match(optionsCss, /\.onframe-auth-brand\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*40px/);
   assert.match(optionsCss, /\.onframe-security-form\s*\{[^}]*margin-inline:\s*auto/);
   assert.doesNotMatch(optionsCss, /\.onframe-auth-brand \.onframe-help/);
@@ -1227,8 +1252,6 @@ test('popup e opções usam o pacote oficial da onblide sem expor um código de 
   );
   assert.match(optionsCss, /\.onframe-auth-code-scroll\s*\{[^}]*display:\s*flex/);
   assert.match(optionsCss, /\.onframe-auth-code-scroll > \*\s*\{[^}]*margin-inline:\s*auto/);
-  const loginLogo = fs.readFileSync(path.join(extensionRoot, 'assets', 'onframe-stacked-primary.png'));
-  assert.equal(loginLogo.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
   assert.match(options, /Sidebar/);
   assert.doesNotMatch(options, /SideNav/);
   assert.match(options, /groups=\{\[\{ items: navigation \}\]\}/);

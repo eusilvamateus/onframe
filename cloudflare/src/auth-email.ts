@@ -2,8 +2,8 @@ import { Webhook, WebhookVerificationError } from 'standardwebhooks';
 
 const AUTH_EMAIL_HOOK_PATH = '/hooks/supabase/send-email';
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
-const EMAIL_LOGO_LIGHT_URL = 'https://onframe.onblide.com/security/onframe-horizontal-primary.png';
-const EMAIL_LOGO_DARK_URL = 'https://onframe.onblide.com/security/onframe-horizontal-white.png';
+const EMAIL_LOGO_LIGHT_URL = 'https://onframe.onblide.com/security/onframe-logo-cor.png';
+const EMAIL_LOGO_DARK_URL = 'https://onframe.onblide.com/security/onframe-logo-cor-fundo-escuro.png';
 const MAX_HOOK_BODY_BYTES = 20 * 1024;
 const DELIVERY_LEASE_MS = 15 * 1000;
 

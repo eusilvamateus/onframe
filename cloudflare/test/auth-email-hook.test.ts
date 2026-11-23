@@ -114,8 +114,8 @@ test('renderiza magic link sem transformar o acesso em OTP', () => {
   assert.equal(delivery.recipient, 'pessoa@example.com');
   assert.equal(delivery.subject, 'Seu link de acesso');
   assert.doesNotMatch(delivery.html, /class="access-code"/);
-  assert.match(delivery.html, /onframe-horizontal-primary\.png/);
-  assert.match(delivery.html, /onframe-horizontal-white\.png/);
+  assert.match(delivery.html, /onframe-logo-cor\.png/);
+  assert.match(delivery.html, /onframe-logo-cor-fundo-escuro\.png/);
   assert.doesNotMatch(delivery.html, /alt="onblide"|border-left:1px solid #ececec/);
   assert.match(delivery.html, /auth\/v1\/verify\?token=token-hash-principal&amp;type=magiclink/);
 });

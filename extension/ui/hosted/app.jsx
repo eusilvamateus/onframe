@@ -1,8 +1,9 @@
 import { createRoot } from 'react-dom/client';
 import { useEffect, useMemo, useState } from 'react';
 import '@onblide/ui/styles.css';
-import { Alert, Button, Input, Link, Logo, Ph, ProgressBar, Spinner } from '@onblide/ui';
+import { Alert, Button, Input, Link, Ph, ProgressBar, Spinner } from '@onblide/ui';
 import { ThemeCycleButton } from '../shared/ThemeControl';
+import { OnframeBrand } from '../shared/OnframeBrand';
 import { passwordMeetsRequirements, passwordRequirementState } from '../shared/password-policy';
 import { clearConnectionFragment, readConnectionContext, secondFactorUrl } from './connection-flow';
 import './app.css';
@@ -20,8 +21,8 @@ function HostedLayout({ children, document = false }) {
   return (
     <div className={`onframe-hosted-page${document ? ' onframe-hosted-page--document' : ''}`}>
       <header className="onframe-hosted-header">
-        <a className="onframe-hosted-brand" href="/connect" aria-label="onblide">
-          <Logo size={24} />
+        <a className="onframe-hosted-brand" href="/connect" aria-label="onframe">
+          <OnframeBrand assetBase="/security" height={24} />
         </a>
         <ThemeCycleButton />
       </header>

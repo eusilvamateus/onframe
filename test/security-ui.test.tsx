@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
-import { Button, Card, Checkbox, CodeInput, Input, Link, Logo, Ph, Tabs } from '@onblide/ui';
+import { Button, Card, Checkbox, CodeInput, Input, Link, Ph, Tabs } from '@onblide/ui';
 import { act, create } from 'react-test-renderer';
 import { CredentialSettings } from '../extension/ui/options/CredentialSettings.jsx';
 import { EmailVerification, PasskeySettings, TwoFactorSettings } from '../extension/ui/options/TwoFactorSettings.jsx';
@@ -692,9 +692,11 @@ test('login apresenta um fluxo progressivo com senha, codigo e chave de acesso',
       );
       assert.equal(rendered.includes('Receber um código por e-mail'), false);
       const brand = h.renderer.root.findByType('header');
-      assert.equal(brand.props['aria-label'], 'onblide');
-      assert.equal(brand.findByType(Logo).props.size, 28);
-      assert.equal(brand.findAllByType('img').length, 0);
+      assert.equal(brand.props['aria-label'], 'onframe');
+      const logo = brand.findByType('img');
+      assert.equal(logo.props.height, 28);
+      assert.equal(logo.props.alt, '');
+      assert.match(logo.props.src, /\.\.\/\.\.\/assets\/onframe-logo-cor(?:-fundo-escuro)?\.png/);
       assert.equal(brand.findAllByType('p').length, 0);
       assert.equal(
         h.renderer.root.findAllByType('input').some((node) => node.props.type === 'password'),

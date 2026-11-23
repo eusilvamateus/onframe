@@ -21,6 +21,8 @@ tenha uma fonte canonica.
 
 ## Produto
 
+- [Identidade visual](product/identidade-visual.md) - aplicacao do kit oficial do
+  onframe nos icones, interfaces e materiais da loja.
 - [Feedback de operacoes](product/feedback-de-operacoes.md) - estados de
   retorno e regras para feedback contextual, sincronizacao e notificacoes.
 - [Estados de promocoes](product/promocoes.md) - regras que distinguem uma

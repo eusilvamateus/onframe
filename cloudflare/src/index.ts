@@ -54,7 +54,7 @@ const MELI_AUTHORIZATION_URL = 'https://auth.mercadolivre.com.br/authorization';
 const MELI_TOKEN_URL = 'https://api.mercadolibre.com/oauth/token';
 const MELI_ME_URL = 'https://api.mercadolibre.com/users/me';
 const MELI_TOKEN_KEY_VERSION = 2;
-const EXTENSION_ID = 'lcmagfimconmglpokmlkcjieohohnigj';
+const EXTENSION_ID = 'obakljokggnkgoapkampcgjpojjjkien';
 const OVERVIEW_RECENT_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 type RuntimeEnv = Env &

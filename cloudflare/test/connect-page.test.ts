@@ -44,7 +44,8 @@ test('página pública conclui o fluxo iniciado pela extensão sem exibir códig
   assert.match(page, /\/security\/hosted\.js/);
   assert.match(page, /data-page-config=/);
   assert.doesNotMatch(page, /<input\b|<button\b|<style>/);
-  assert.match(hostedApp, /import \{ Alert, Button, Input, Link, Logo, Ph, ProgressBar, Spinner \} from '@onblide\/ui'/);
+  assert.match(hostedApp, /import \{ Alert, Button, Input, Link, Ph, ProgressBar, Spinner \} from '@onblide\/ui'/);
+  assert.match(hostedApp, /<OnframeBrand assetBase="\/security" height=\{24\} \/>/);
   assert.doesNotMatch(hostedApp, /<Card/);
   assert.match(hostedApp, /extension-auth-flows/);
   assert.match(hostedApp, /auth\/v1\/user/);
@@ -155,4 +156,10 @@ test('convite hospedado encaminha para as opções sem expor um bearer', () => {
   assert.match(hostedApp, /Abrir extensão/);
   assert.match(page, /chrome-extension:\/\/example\/ui\/options\/index\.html\?invite=abc/);
   assert.doesNotMatch(page, /access_token|refresh_token|supabase\.co/);
+});
+
+test('convites usam o identificador da extensao cadastrada na Chrome Web Store', () => {
+  const worker = fs.readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+  assert.match(worker, /const EXTENSION_ID = 'obakljokggnkgoapkampcgjpojjjkien'/);
+  assert.doesNotMatch(worker, /lcmagfimconmglpokmlkcjieohohnigj/);
 });

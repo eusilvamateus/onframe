@@ -8,7 +8,6 @@ import {
   Divider,
   Input,
   Link,
-  Logo,
   Ph,
   ProgressBar,
   Spinner,
@@ -19,6 +18,7 @@ import { normalizeAuthResumeState } from './popup-session-state';
 import { openExternal, sendRemoteMessage } from './runtime';
 import { restoreProviderSession, verifySecondFactor } from './provider-auth';
 import { passwordMeetsRequirements, passwordRequirementState } from './password-policy';
+import { OnframeBrand } from './OnframeBrand';
 
 const AUTH_MODES = {
   signin: { title: 'Entrar na onblide', description: 'Use o e-mail com que você criou a conta.' },
@@ -162,8 +162,8 @@ export function AuthStep({ onBack, icon, iconTone, title, description, children,
 
 export function AuthBrand() {
   return (
-    <header className="onframe-auth-brand" aria-label="onblide">
-      <Logo size={28} />
+    <header className="onframe-auth-brand" aria-label="onframe">
+      <OnframeBrand assetBase="../../assets" height={28} />
     </header>
   );
 }
