@@ -19,6 +19,11 @@ try {
     if (!fs.existsSync(path.join(stagingDir, file))) throw new Error(`Arquivo ausente no pacote: ${file}`);
   }
 
+  const manifestPath = path.join(stagingDir, 'manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  delete manifest.key;
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
   const entries = fs.readdirSync(stagingDir);
   const command = process.platform === 'win32' ? 'tar' : 'zip';
   const args =

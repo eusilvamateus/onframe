@@ -10,6 +10,7 @@ test('o pacote da loja contém somente a extensão com manifesto na raiz', () =>
   const scripts = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;
   assert.match(source, /fs\.cpSync\(extensionDir, stagingDir/);
   assert.match(source, /'manifest\.json'/);
+  assert.match(source, /delete manifest\.key/);
   assert.match(source, /'ui\/options\/app\.js'/);
   assert.match(scripts['package:store'], /package-store\.js/);
   assert.equal(scripts['package:release'], undefined);
