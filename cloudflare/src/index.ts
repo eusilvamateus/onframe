@@ -1,4 +1,4 @@
-import { handleSupabaseSendEmailHook, type AuthEmailRuntimeEnv } from './auth-email';
+import { handleSupabaseSendEmailHook, workspaceInvitationEmail, type AuthEmailRuntimeEnv } from './auth-email';
 import { authenticateSupabaseRequest, SupabaseAuthError, type SupabaseIdentity } from './browser-auth';
 import {
   captchaPage,
@@ -1996,10 +1996,6 @@ function invitationUrl(token: string): string {
   return `https://onframe.onblide.com/invite?token=${encodeURIComponent(token)}`;
 }
 
-function invitationEmailHtml(workspaceName: string, url: string): string {
-  return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#f2f0e8;color:#545454;font-family:Poppins,Arial,sans-serif"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:48px 16px"><table role="presentation" width="480" cellspacing="0" cellpadding="0" style="width:100%;max-width:480px;background:#fff;border:1px solid #ececec;border-radius:12px"><tr><td style="padding:32px"><p style="margin:0 0 12px;color:#0a4ee4;font-family:'JetBrains Mono','Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em">CONVITE PARA WORKSPACE</p><h1 style="margin:0 0 12px;color:#2a2a2a;font-size:28px;line-height:1.2">Você foi convidado para ${escapeHtml(workspaceName)}</h1><p style="margin:0;color:#545454;font-size:15px;line-height:1.6">Entre ou crie sua conta onframe para participar do workspace.</p><table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:24px"><tr><td style="border-radius:8px;background:#0a4ee4"><a href="${escapeHtml(url)}" style="display:inline-block;padding:11px 18px;color:#fff;font-size:14px;font-weight:600;text-decoration:none">Aceitar convite</a></td></tr></table><p style="margin:24px 0 0;color:#7a7a7a;font-size:12px;line-height:1.5">Este convite expira em 7 dias e pode ser usado uma única vez.</p></td></tr><tr><td style="padding:16px 32px;border-top:1px solid #ececec;color:#a8a8a8;font-family:'JetBrains Mono','Courier New',monospace;font-size:10px;text-align:center">onframe · onblide.com</td></tr></table></td></tr></table></body></html>`;
-}
-
 async function sendWorkspaceInvitationEmail(
   env: RuntimeEnv,
   recipient: string,
@@ -2019,7 +2015,7 @@ async function sendWorkspaceInvitationEmail(
       from,
       to: recipient,
       subject: `Convite para ${workspaceName} no onframe`,
-      html: invitationEmailHtml(workspaceName, invitationUrl(token))
+      html: workspaceInvitationEmail(workspaceName, invitationUrl(token))
     }),
     signal: AbortSignal.timeout(3500)
   });

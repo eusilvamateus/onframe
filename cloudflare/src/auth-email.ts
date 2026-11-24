@@ -311,6 +311,18 @@ ${options.warning ? notice('Não foi você?', options.warning, 'danger') : ''}`;
   });
 }
 
+export function workspaceInvitationEmail(workspaceName: string, url: string): string {
+  return linkEmail({
+    title: `Você foi convidado para ${workspaceName}`,
+    preview: `Convite para participar de ${workspaceName} no onframe.`,
+    description:
+      'Use a extensão onframe para entrar ou criar sua conta e aceitar este convite. Se ela ainda não estiver instalada, instale-a antes de abrir o link.',
+    buttonLabel: 'Aceitar convite',
+    verificationUrl: url,
+    note: 'Este convite expira em 7 dias e pode ser usado uma única vez. Se você não esperava este convite, ignore este e-mail.'
+  });
+}
+
 function notificationEmail(options: { title: string; description: string; note: string }): string {
   return emailShell({
     title: options.title,

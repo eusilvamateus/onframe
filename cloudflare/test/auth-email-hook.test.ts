@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Webhook } from 'standardwebhooks';
-import { deliveriesForEvent, handleSupabaseSendEmailHook } from '../src/auth-email.ts';
+import { deliveriesForEvent, handleSupabaseSendEmailHook, workspaceInvitationEmail } from '../src/auth-email.ts';
 
 const hookSecret = 'v1,whsec_b25mZnJhbWUtc2VuZC1lbWFpbC1ob29rLXNlY3JldA==';
 const rawHookSecret = hookSecret.replace('v1,', '');
@@ -107,6 +107,24 @@ function runtime(db: FakeD1) {
     SUPABASE_URL: 'https://ignrkxityihpvreaimxe.supabase.co'
   };
 }
+
+test('convite de workspace usa o template transacional e orienta a instalação', () => {
+  const html = workspaceInvitationEmail(
+    'Equipe <Central> & Co',
+    'https://onframe.onblide.com/invite?token=abc&source=email'
+  );
+
+  assert.match(html, /onframe-logo-cor\.png/);
+  assert.match(html, /onframe-logo-cor-fundo-escuro\.png/);
+  assert.match(html, /class="email-card email-pad"/);
+  assert.match(html, /Você foi convidado para Equipe &lt;Central&gt; &amp; Co/);
+  assert.doesNotMatch(html, /Equipe <Central> & Co/);
+  assert.match(html, /instale-a antes de abrir o link/);
+  assert.match(html, /href="https:\/\/onframe\.onblide\.com\/invite\?token=abc&amp;source=email"/);
+  assert.match(html, /Aceitar convite/);
+  assert.match(html, /expira em 7 dias e pode ser usado uma única vez/);
+  assert.doesNotMatch(html, /#f2f0e8/);
+});
 
 test('renderiza magic link sem transformar o acesso em OTP', () => {
   const [delivery] = deliveriesForEvent(runtime(new FakeD1()), event('magiclink'));
